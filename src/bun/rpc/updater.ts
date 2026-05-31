@@ -225,26 +225,41 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 			`Add-Content -Path '${esc(WIN_APPLY_LOG)}' -Value "$(Get-Date -Format 'HH:mm:ss') ${msg}"; `;
 
 		const psCommand =
+			`$host.UI.RawUI.WindowTitle = 'AgentDesk Update'; ` +
+			`Write-Host ''; ` +
+			`Write-Host '  AgentDesk Update' -ForegroundColor Cyan; ` +
+			`Write-Host '  ──────────────────────────────────────' -ForegroundColor DarkGray; ` +
+			`Write-Host ''; ` +
 			psLog("Installer starting") +
+			`Write-Host '  [1/2]  Installing update, please wait...' -ForegroundColor Yellow; ` +
 			`Start-Process -FilePath '${esc(WIN_SETUP_EXE)}' -ArgumentList '/S' -WindowStyle Hidden -Wait; ` +
 			psLog("Installer finished") +
+			`Write-Host '         Done.' -ForegroundColor Green; ` +
+			`Write-Host ''; ` +
 			(hadFreelanceFlag
 				? `New-Item -ItemType File -Path '${esc(freelanceFlagPath)}' -Force | Out-Null; ${psLog("Restored freelance feature flag")}`
 				: "") +
 			(hadClaudeFlag
 				? `New-Item -ItemType File -Path '${esc(claudeFlagPath)}' -Force | Out-Null; ${psLog("Restored claude subscription feature flag")}`
 				: "") +
+			`Write-Host '  [2/2]  Launching AgentDesk...' -ForegroundColor Yellow; ` +
 			`if (Test-Path '${esc(launcherPath)}') { ` +
 				psLog("Launcher found, relaunching app") +
-				`Start-Process -FilePath '${esc(launcherPath)}' ` +
+				`Start-Process -FilePath '${esc(launcherPath)}'; ` +
+				`Write-Host '         Done.' -ForegroundColor Green; ` +
 			`} else { ` +
-				psLog("ERROR: launcher not found at ${launcherPath}") +
-			`}`;
+				psLog("ERROR: launcher not found") +
+				`Write-Host '         ERROR: Launcher not found. Please restart AgentDesk manually.' -ForegroundColor Red; ` +
+				`Start-Sleep -Seconds 8; ` +
+			`}` +
+			`Write-Host ''; ` +
+			`Write-Host '  Update complete. This window will close shortly.' -ForegroundColor DarkGray; ` +
+			`Start-Sleep -Seconds 3`;
 
 		applyLog("Launching install + relaunch wrapper");
 
 		Bun.spawnSync(
-			["cmd.exe", "/c", "start", "", "powershell.exe", "-WindowStyle", "Hidden", "-Command", psCommand],
+			["cmd.exe", "/c", "start", "", "powershell.exe", "-WindowStyle", "Normal", "-Command", psCommand],
 			{ stdout: "ignore", stderr: "ignore" },
 		);
 
