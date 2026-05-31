@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { create } from "zustand";
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,31 +40,35 @@ export function toast(type: Toast["type"], message: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Style maps
+// Style maps — full colored backgrounds, dark-mode aware
 // ---------------------------------------------------------------------------
 
 const typeStyles: Record<
   Toast["type"],
-  { container: string; icon: string; Icon: React.ElementType }
+  { container: string; icon: string; close: string; Icon: React.ElementType }
 > = {
   success: {
-    container: "border-green-500 bg-background",
-    icon: "text-green-500",
+    container: "bg-green-600 border-green-700 text-white dark:bg-green-500 dark:border-green-600",
+    icon: "text-white/90",
+    close: "text-white/60 hover:text-white",
     Icon: CheckCircle,
   },
   error: {
-    container: "border-destructive bg-background",
-    icon: "text-destructive",
+    container: "bg-red-600 border-red-700 text-white dark:bg-red-500 dark:border-red-600",
+    icon: "text-white/90",
+    close: "text-white/60 hover:text-white",
     Icon: XCircle,
   },
   warning: {
-    container: "border-amber-400 bg-background",
-    icon: "text-amber-500",
+    container: "bg-amber-500 border-amber-600 text-white dark:bg-amber-500 dark:border-amber-600",
+    icon: "text-white/90",
+    close: "text-white/60 hover:text-white",
     Icon: AlertTriangle,
   },
   info: {
-    container: "border-primary bg-background",
-    icon: "text-primary",
+    container: "bg-blue-600 border-blue-700 text-white dark:bg-blue-500 dark:border-blue-600",
+    icon: "text-white/90",
+    close: "text-white/60 hover:text-white",
     Icon: Info,
   },
 };
@@ -81,43 +85,46 @@ interface ToastItemProps {
 }
 
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
-  const { container, icon, Icon } = typeStyles[toast.type];
+  const { container, icon, close, Icon } = typeStyles[toast.type];
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [exiting, setExiting] = useState(false);
+
+  const dismiss = useCallback(() => setExiting(true), []);
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => {
-      onDismiss(toast.id);
-    }, AUTO_DISMISS_MS);
-
+    timerRef.current = setTimeout(dismiss, AUTO_DISMISS_MS);
     return () => {
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
     };
-  }, [toast.id, onDismiss]);
+  }, [toast.id, dismiss]);
 
   return (
     <div
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      onAnimationEnd={() => { if (exiting) onDismiss(toast.id); }}
       className={cn(
-        "flex items-start gap-3 rounded-lg border-l-4 px-4 py-3 shadow-md",
+        "flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg",
         "w-96 max-w-[calc(100vw-2rem)] overflow-hidden",
-        container
+        container,
+        exiting
+          ? "animate-out slide-out-to-right-full fade-out-0 duration-300 fill-mode-forwards"
+          : "animate-in slide-in-from-right-full fade-in-0 duration-300",
       )}
     >
-      <Icon
-        className={cn("mt-0.5 h-4 w-4 shrink-0", icon)}
-        aria-hidden="true"
-      />
-      <p className="flex-1 text-sm text-foreground break-words line-clamp-5">
-        {toast.message.length > 300 ? toast.message.slice(0, 300) + "..." : toast.message}
+      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", icon)} aria-hidden="true" />
+      <p className="flex-1 text-[15px] break-words line-clamp-5">
+        {toast.message.length > 300 ? `${toast.message.slice(0, 300)}…` : toast.message}
       </p>
       <button
-        onClick={() => onDismiss(toast.id)}
+        onClick={dismiss}
         aria-label="Dismiss notification"
-        className="ml-auto shrink-0 rounded-sm text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        className={cn(
+          "ml-auto shrink-0 rounded-sm transition-colors",
+          "focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-1",
+          close,
+        )}
       >
         <X className="h-4 w-4" aria-hidden="true" />
       </button>

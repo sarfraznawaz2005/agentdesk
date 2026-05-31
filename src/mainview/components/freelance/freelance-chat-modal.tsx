@@ -298,6 +298,11 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
     scrollToBottom();
   }, [messages, streamingContent, isFetching, errorState, scrollToBottom]);
 
+  // Re-focus input whenever isSending ends (textarea is disabled while sending)
+  useEffect(() => {
+    if (!isSending) requestAnimationFrame(() => inputRef.current?.focus());
+  }, [isSending]);
+
   // ── Load messages on open ──────────────────────────────────────────────────
 
   useEffect(() => {

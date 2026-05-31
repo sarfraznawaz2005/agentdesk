@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw } from "lucide-react";
+import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw, Check, Copy, Download } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,6 +132,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   const [input, setInput] = useState("");
   const [lastSent, setLastSent] = useState("");
   const [toolCalls, setToolCalls] = useState<Array<{ id: string; toolName: string; isSkill: boolean }>>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Initialise from localStorage once on mount
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -174,6 +176,11 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
   }, [open]);
+
+  // Re-focus input whenever streaming ends (textarea is disabled while streaming)
+  useEffect(() => {
+    if (!isStreaming) requestAnimationFrame(() => inputRef.current?.focus());
+  }, [isStreaming]);
 
   // Listen for streaming events
   useEffect(() => {
@@ -243,6 +250,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     if (!content || isStreaming) return;
 
     setInput("");
+    requestAnimationFrame(() => inputRef.current?.focus());
     setLastSent(content);
     setIsStreaming(true);
     setToolCalls([]);
@@ -313,6 +321,59 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
       setIsStreaming(false);
     }
   }, [isStreaming]);
+
+  const handleCopy = useCallback((id: string, text: string) => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 1500);
+    });
+  }, []);
+
+  const handleRegenerate = useCallback(async () => {
+    if (isStreaming) return;
+    const lastUserMsg = [...messagesRef.current].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+
+    setMessages((prev) => {
+      const lastAssistIdx = [...prev].reverse().findIndex((m) => m.role === "assistant" && !m.isError);
+      const actualIdx = lastAssistIdx === -1 ? -1 : prev.length - 1 - lastAssistIdx;
+      const next = actualIdx === -1 ? prev : prev.filter((_, i) => i !== actualIdx);
+      persistMessages(next);
+      return next;
+    });
+    setIsStreaming(true);
+    setToolCalls([]);
+
+    try {
+      await rpc.sendDashboardMessage(sessionId.current, lastUserMsg.content);
+    } catch {
+      setMessages((prev) => {
+        const next = [...prev, { id: crypto.randomUUID(), role: "assistant" as const, content: "Failed to regenerate response. Please try again.", isError: true }];
+        persistMessages(next);
+        return next;
+      });
+      setIsStreaming(false);
+    }
+  }, [isStreaming]);
+
+  const handleExportMarkdown = useCallback(() => {
+    const exportable = messages.filter((m) => !m.isError && m.content.trim());
+    if (exportable.length === 0) return;
+    const lines = ["# Project Manager Chat\n"];
+    for (const msg of exportable) {
+      lines.push(`## ${msg.role === "user" ? "User" : "Project Manager"}\n`);
+      lines.push(msg.content);
+      lines.push("");
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "project-manager-chat.md";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("success", "Chat exported as Markdown.");
+  }, [messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -394,6 +455,16 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                   /info
                 </button>
               </Tip>
+              <Tip content="Export as markdown" side="bottom">
+                <button
+                  type="button"
+                  onClick={handleExportMarkdown}
+                  disabled={messages.length === 0}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </Tip>
               <Tip content="Clear conversation" side="bottom">
                 <button
                   type="button"
@@ -425,45 +496,75 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                 </p>
               </div>
             )}
-            {messages.map((msg, index) => (
-              <div
-                key={msg.id}
-                className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
-              >
-                {msg.role === "user" ? (
-                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-indigo-600 px-3 py-2 text-sm leading-relaxed text-white whitespace-pre-wrap break-words">
-                    {msg.content}
-                  </div>
-                ) : msg.isError ? (
-                  <div className="w-full rounded-2xl rounded-bl-sm bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm leading-relaxed text-destructive overflow-hidden">
-                    <div>{msg.content}</div>
-                    {index === messages.length - 1 && (
-                      <button
-                        type="button"
-                        onClick={retryLastMessage}
-                        disabled={isStreaming}
-                        className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            {(() => {
+              const assistantMsgs = messages.filter((m) => m.role === "assistant" && !m.isError && !m.streaming);
+              const lastAssistantId = assistantMsgs.length > 0 ? assistantMsgs[assistantMsgs.length - 1].id : null;
+              return messages.map((msg, index) => (
+                <div
+                  key={msg.id}
+                  className={cn("flex flex-col group gap-0.5", msg.role === "user" ? "items-end" : "items-start")}
+                >
+                  {msg.role === "user" ? (
+                    <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-indigo-600 px-3 py-2 text-sm leading-relaxed text-white whitespace-pre-wrap break-words">
+                      {msg.content}
+                    </div>
+                  ) : msg.isError ? (
+                    <div className="w-full rounded-2xl rounded-bl-sm bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm leading-relaxed text-destructive overflow-hidden">
+                      <div>{msg.content}</div>
+                      {index === messages.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={retryLastMessage}
+                          disabled={isStreaming}
+                          className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <RefreshCw className={cn("w-3 h-3", isStreaming && "animate-spin")} aria-hidden="true" />
+                          {isStreaming ? "Retrying…" : "Retry"}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="font-arabic-aware w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground overflow-hidden">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                        components={MD_COMPONENTS as never}
                       >
-                        <RefreshCw className={cn("w-3 h-3", isStreaming && "animate-spin")} aria-hidden="true" />
-                        {isStreaming ? "Retrying…" : "Retry"}
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className="font-arabic-aware w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground overflow-hidden"
-                  >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeSanitize]}
-                      components={MD_COMPONENTS as never}
-                    >
-                      {msg.content + (msg.streaming ? "▍" : "")}
-                    </ReactMarkdown>
-                  </div>
-                )}
-              </div>
-            ))}
+                        {msg.content + (msg.streaming ? "▍" : "")}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                  {/* Copy + regenerate buttons (hidden until hover) */}
+                  {!msg.isError && !msg.streaming && (
+                    <div className="flex items-center gap-0.5 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Tip content={copiedId === msg.id ? "Copied!" : "Copy"} side="top">
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          aria-label="Copy message"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          {copiedId === msg.id ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </Tip>
+                      {msg.role === "assistant" && msg.id === lastAssistantId && (
+                        <Tip content="Regenerate response" side="top">
+                          <button
+                            type="button"
+                            onClick={handleRegenerate}
+                            disabled={isStreaming}
+                            aria-label="Regenerate response"
+                            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <RefreshCw className="size-3.5" />
+                          </button>
+                        </Tip>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
 
             {/* Tool call indicators — shown while PM is using tools */}
             {isStreaming && toolCalls.length > 0 && (

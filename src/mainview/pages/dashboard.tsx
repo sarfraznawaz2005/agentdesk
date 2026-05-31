@@ -98,6 +98,7 @@ export function DashboardPage() {
 		loadTaskStats();
 	}, [loadProjects, loadTaskStats]);
 
+
 	// Load initial active-agent counts and keep them up to date via events.
 	// Re-fetch on agent start/complete and stream-complete (catches PM finishing
 	// its summary after sub-agents are done). A 10s polling interval acts as a
