@@ -1,0 +1,619 @@
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+
+// ---------------------------------------------------------------------------
+// settings
+// ---------------------------------------------------------------------------
+// Generic key/value store for application configuration. Values are stored as
+// JSON-serialized strings so any serializable type can be persisted.
+export const settings = sqliteTable("settings", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	key: text("key").notNull().unique(),
+	value: text("value").notNull(),
+	category: text("category").notNull().default("general"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// ai_providers
+// ---------------------------------------------------------------------------
+// Stores configured AI provider credentials and preferences. The apiKey is
+// stored in plain text for Phase 1; encryption is planned for a later phase.
+export const aiProviders = sqliteTable("ai_providers", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull(),
+	// "anthropic" | "openai" | "custom"
+	providerType: text("provider_type").notNull(),
+	// Plain text for now; will be encrypted in a future phase
+	apiKey: text("api_key").notNull(),
+	// Optional override for providers that expose a custom base URL
+	baseUrl: text("base_url"),
+	// e.g. "claude-sonnet-4-20250514"
+	defaultModel: text("default_model"),
+	// Boolean stored as 0/1 — only one provider should have isDefault = 1
+	isDefault: integer("is_default").notNull().default(0),
+	// Cached result of the last API key validation attempt
+	isValid: integer("is_valid").notNull().default(0),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// projects
+// ---------------------------------------------------------------------------
+// A project maps to a local workspace directory and optionally a GitHub repo.
+// status: "active" | "idle" | "paused" | "completed" | "archived"
+export const projects = sqliteTable("projects", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull(),
+	description: text("description"),
+	// "active" | "idle" | "paused" | "completed" | "archived"
+	status: text("status").notNull().default("active"),
+	workspacePath: text("workspace_path").notNull(),
+	githubUrl: text("github_url"),
+	workingBranch: text("working_branch"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// agents
+// ---------------------------------------------------------------------------
+// Defines the built-in and user-created AI agents available in the app.
+// isBuiltin = 1 for agents shipped with the application, 0 for custom ones.
+export const agents = sqliteTable("agents", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	// Internal identifier (e.g. "orchestrator", "coder")
+	name: text("name").notNull(),
+	// Human-readable label shown in the UI
+	displayName: text("display_name").notNull(),
+	// Hex color string used to visually distinguish the agent in the UI
+	color: text("color").notNull(),
+	systemPrompt: text("system_prompt").notNull().default(""),
+	// 1 = shipped with the app, 0 = user-defined
+	isBuiltin: integer("is_builtin").notNull().default(1),
+	// Per-agent AI provider override (null = use project/global default)
+	providerId: text("provider_id"),
+	// Per-agent model override (null = use provider default)
+	modelId: text("model_id"),
+	// Per-agent generation parameters
+	temperature: text("temperature"),
+	maxTokens: integer("max_tokens"),
+	// 1 = agent is active, 0 = agent is disabled
+	isEnabled: integer("is_enabled").notNull().default(1),
+	// Per-agent thinking budget override: null = use default, "low" | "medium" | "high"
+	thinkingBudget: text("thinking_budget"),
+	// Custom-agent flags (only meaningful when isBuiltin = 0)
+	// 1 = skip AgentDesk's internal code-related prompt prefix; use only the user's system prompt as-is.
+	useSystemPromptOnly: integer("use_system_prompt_only").notNull().default(0),
+	// 1 = expose this custom agent in the chat picker (semantics defined separately).
+	chatEnabled: integer("chat_enabled").notNull().default(0),
+	// 1 = include this custom agent in the PM's system prompt so it can be
+	// orchestrated. Default 1 preserves the historical "all custom agents are
+	// visible to PM" behavior on upgrade. Ignored for built-in agents.
+	availableToPm: integer("available_to_pm").notNull().default(1),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// agent_tools
+// ---------------------------------------------------------------------------
+// Associates tools with agents and tracks whether each tool is enabled.
+// The optional config column holds JSON-encoded tool-specific configuration.
+export const agentTools = sqliteTable("agent_tools", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	agentId: text("agent_id")
+		.notNull()
+		.references(() => agents.id),
+	toolName: text("tool_name").notNull(),
+	// 1 = enabled, 0 = disabled
+	isEnabled: integer("is_enabled").notNull().default(1),
+	// JSON-encoded tool configuration; null when not applicable
+	config: text("config"),
+});
+
+// conversations
+export const conversations = sqliteTable("conversations", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	title: text("title").notNull().default("New conversation"),
+	isPinned: integer("is_pinned").notNull().default(0),
+	isArchived: integer("is_archived").notNull().default(0),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// messages
+export const messages = sqliteTable("messages", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	conversationId: text("conversation_id").notNull().references(() => conversations.id),
+	role: text("role").notNull(), // "user" | "assistant" | "system" | "tool"
+	agentId: text("agent_id"), // null for user messages
+	agentName: text("agent_name"), // sub-agent name for inline rendering
+	content: text("content").notNull(),
+	metadata: text("metadata"), // JSON: tool calls, usage stats, model
+	tokenCount: integer("token_count").notNull().default(0),
+	hasParts: integer("has_parts").notNull().default(0), // 1 if message_parts exist
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// conversation_summaries
+export const conversationSummaries = sqliteTable("conversation_summaries", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	conversationId: text("conversation_id").notNull().references(() => conversations.id),
+	summaryText: text("summary_text").notNull(),
+	messagesUpToId: text("messages_up_to_id").notNull(),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// notes
+// ---------------------------------------------------------------------------
+// Agent-created or user-created notes/documents within a project.
+export const notes = sqliteTable("notes", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id")
+		.notNull()
+		.references(() => projects.id),
+	title: text("title").notNull(),
+	content: text("content").notNull(),
+	authorAgentId: text("author_agent_id"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// kanban_tasks
+// ---------------------------------------------------------------------------
+// Kanban board tasks within a project, managed by agents and humans.
+export const kanbanTasks = sqliteTable("kanban_tasks", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id")
+		.notNull()
+		.references(() => projects.id),
+	title: text("title").notNull(),
+	description: text("description"),
+	// JSON array of { text: string; checked: boolean }
+	acceptanceCriteria: text("acceptance_criteria"),
+	importantNotes: text("important_notes"),
+	// "backlog" | "working" | "review" | "done"
+	column: text("column").notNull().default("backlog"),
+	// Number of code-review rounds this task has gone through (per-task review model)
+	reviewRounds: integer("review_rounds").notNull().default(0),
+	// "critical" | "high" | "medium" | "low"
+	priority: text("priority").notNull().default("medium"),
+	assignedAgentId: text("assigned_agent_id"),
+	// JSON array of task IDs that block this task
+	blockedBy: text("blocked_by"),
+	dueDate: text("due_date"),
+	// Position within column for ordering
+	position: integer("position").notNull().default(0),
+	// "passed" | "failed" | null — set by verify_implementation tool
+	verificationStatus: text("verification_status"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// kanban_task_activity
+// ---------------------------------------------------------------------------
+// Activity log for kanban task changes (moves, edits, comments).
+export const kanbanTaskActivity = sqliteTable("kanban_task_activity", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	taskId: text("task_id")
+		.notNull()
+		.references(() => kanbanTasks.id),
+	// "created" | "moved" | "updated" | "comment" | "assigned" | "completed"
+	type: text("type").notNull(),
+	// Who performed the action: agent ID or "human"
+	actorId: text("actor_id"),
+	// JSON details about the change (e.g. { from: "backlog", to: "working" })
+	data: text("data"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// Plugins
+// ---------------------------------------------------------------------------
+export const plugins = sqliteTable("plugins", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull().unique(),
+	version: text("version").notNull(),
+	enabled: integer("enabled").notNull().default(1),
+	settings: text("settings").default("{}"),
+	/** Optional prompt snippet injected into agent system prompts when plugin is enabled */
+	prompt: text("prompt"),
+	installedAt: text("installed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// Channels (Discord, future platforms)
+// ---------------------------------------------------------------------------
+export const channels = sqliteTable("channels", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").references(() => projects.id),
+	platform: text("platform").notNull().default("discord"),
+	config: text("config").notNull().default("{}"),
+	enabled: integer("enabled").notNull().default(0),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// Deploy
+// ---------------------------------------------------------------------------
+
+export const deployEnvironments = sqliteTable("deploy_environments", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	name: text("name").notNull(),
+	branch: text("branch"),
+	command: text("command").notNull(),
+	url: text("url"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const deployHistory = sqliteTable("deploy_history", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	environmentId: text("environment_id").notNull().references(() => deployEnvironments.id),
+	status: text("status").notNull().default("pending"),
+	logOutput: text("log_output"),
+	triggeredBy: text("triggered_by").notNull().default("human"),
+	durationMs: integer("duration_ms"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// prompts
+// ---------------------------------------------------------------------------
+// User-created and built-in prompt templates for reuse in chat.
+// category: "builtin" for shipped templates, "custom" for user-created ones.
+export const prompts = sqliteTable("prompts", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull(),
+	description: text("description").notNull().default(""),
+	content: text("content").notNull(),
+	category: text("category").notNull().default("custom"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// inbox_messages
+// ---------------------------------------------------------------------------
+export const inboxMessages = sqliteTable("inbox_messages", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").references(() => projects.id),
+  channelId: text("channel_id"),
+  sender: text("sender").notNull(),
+  content: text("content").notNull(),
+  isRead: integer("is_read").notNull().default(0),
+  agentResponse: text("agent_response"),
+	threadId: text("thread_id"),
+	priority: integer("priority").notNull().default(0),
+	category: text("category").notNull().default("chat"),
+	platform: text("platform").notNull().default("chat"),
+	isArchived: integer("is_archived").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const whatsappSessions = sqliteTable("whatsapp_sessions", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	channelId: text("channel_id").notNull(),
+	creds: text("creds").notNull().default("{}"),
+	keys: text("keys").notNull().default("{}"),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const notificationPreferences = sqliteTable("notification_preferences", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	platform: text("platform").notNull(),
+	projectId: text("project_id").references(() => projects.id),
+	soundEnabled: integer("sound_enabled").notNull().default(1),
+	badgeEnabled: integer("badge_enabled").notNull().default(1),
+	bannerEnabled: integer("banner_enabled").notNull().default(1),
+	muteUntil: text("mute_until"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const inboxRules = sqliteTable("inbox_rules", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").references(() => projects.id),
+	name: text("name").notNull(),
+	conditions: text("conditions").notNull().default("[]"),
+	actions: text("actions").notNull().default("[]"),
+	enabled: integer("enabled").notNull().default(1),
+	priority: integer("priority").notNull().default(0),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// cron_jobs — scheduled tasks
+// ---------------------------------------------------------------------------
+export const cronJobs = sqliteTable("cron_jobs", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").references(() => projects.id),
+	name: text("name").notNull(),
+	cronExpression: text("cron_expression").notNull(),
+	timezone: text("timezone").notNull().default("UTC"),
+	taskType: text("task_type").notNull(),
+	taskConfig: text("task_config").notNull().default("{}"),
+	enabled: integer("enabled").notNull().default(1),
+	oneShot: integer("one_shot").notNull().default(0),
+	lastRunAt: text("last_run_at"),
+	lastRunStatus: text("last_run_status"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// cron_job_history — execution log
+// ---------------------------------------------------------------------------
+export const cronJobHistory = sqliteTable("cron_job_history", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	jobId: text("job_id").notNull(),
+	startedAt: text("started_at").notNull(),
+	completedAt: text("completed_at"),
+	status: text("status").notNull(),
+	output: text("output"),
+	durationMs: integer("duration_ms"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// automation_rules — event-triggered automations
+// ---------------------------------------------------------------------------
+export const automationRules = sqliteTable("automation_rules", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").references(() => projects.id),
+	name: text("name").notNull(),
+	trigger: text("trigger").notNull(),
+	actions: text("actions").notNull(),
+	enabled: integer("enabled").notNull().default(1),
+	priority: integer("priority").notNull().default(0),
+	lastTriggeredAt: text("last_triggered_at"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// pull_requests — local PR tracking (GitHub-synced or local-only)
+// ---------------------------------------------------------------------------
+export const pullRequests = sqliteTable("pull_requests", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	prNumber: integer("pr_number"), // GitHub PR number when synced
+	title: text("title").notNull(),
+	description: text("description"),
+	sourceBranch: text("source_branch").notNull(),
+	targetBranch: text("target_branch").notNull(),
+	// "open" | "review" | "merged" | "closed"
+	state: text("state").notNull().default("open"),
+	authorName: text("author_name"),
+	linkedTaskId: text("linked_task_id"),
+	mergeStrategy: text("merge_strategy"), // "merge" | "squash" | "rebase"
+	mergedAt: text("merged_at"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// pr_comments — code review comment threads on PRs
+// ---------------------------------------------------------------------------
+export const prComments = sqliteTable("pr_comments", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	prId: text("pr_id").notNull().references(() => pullRequests.id),
+	file: text("file"), // null = general PR comment
+	lineNumber: integer("line_number"),
+	content: text("content").notNull(),
+	authorName: text("author_name").notNull(),
+	authorType: text("author_type").notNull().default("human"), // "human" | "agent"
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// webhook_configs — GitHub webhook polling configuration
+// ---------------------------------------------------------------------------
+export const webhookConfigs = sqliteTable("webhook_configs", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	name: text("name").notNull(),
+	// JSON array of event types: "push" | "pull_request" | "issues" | "release"
+	events: text("events").notNull().default("[]"),
+	enabled: integer("enabled").notNull().default(1),
+	lastPollAt: text("last_poll_at"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// webhook_events — event log from GitHub polling
+// ---------------------------------------------------------------------------
+export const webhookEvents = sqliteTable("webhook_events", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull(),
+	// "push" | "pull_request" | "issues" | "release" | "workflow_run"
+	eventType: text("event_type").notNull(),
+	title: text("title").notNull(),
+	// JSON payload summary
+	payload: text("payload").notNull().default("{}"),
+	// "pending" | "processed" | "ignored"
+	status: text("status").notNull().default("pending"),
+	processedAt: text("processed_at"),
+	// GitHub event ID for O(1) dedup
+	githubEventId: text("github_event_id"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// github_issues — GitHub issues synced to/from kanban tasks
+// ---------------------------------------------------------------------------
+export const githubIssues = sqliteTable("github_issues", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	githubIssueNumber: integer("github_issue_number").notNull(),
+	taskId: text("task_id"), // linked kanban task (null if not linked)
+	title: text("title").notNull(),
+	body: text("body"),
+	state: text("state").notNull().default("open"), // "open" | "closed"
+	// JSON array of label names
+	labels: text("labels").notNull().default("[]"),
+	githubCreatedAt: text("github_created_at"),
+	syncedAt: text("synced_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// branch_strategies — per-project branching model configuration
+// ---------------------------------------------------------------------------
+export const branchStrategies = sqliteTable("branch_strategies", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().unique().references(() => projects.id),
+	// "gitflow" | "github-flow" | "trunk"
+	model: text("model").notNull().default("github-flow"),
+	defaultBranch: text("default_branch").notNull().default("main"),
+	featureBranchPrefix: text("feature_branch_prefix").notNull().default("feature/"),
+	releaseBranchPrefix: text("release_branch_prefix").notNull().default("release/"),
+	hotfixBranchPrefix: text("hotfix_branch_prefix").notNull().default("hotfix/"),
+	// Template: "feature/{task-id}-{slug}"
+	namingTemplate: text("naming_template").notNull().default("feature/{task-id}-{slug}"),
+	// JSON array of protected branch names
+	protectedBranches: text("protected_branches").notNull().default('["main","master"]'),
+	autoCleanup: integer("auto_cleanup").notNull().default(0),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// cost_budgets — monthly spend alerts per project
+// ---------------------------------------------------------------------------
+export const costBudgets = sqliteTable("cost_budgets", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").references(() => projects.id), // null = global
+	// "daily" | "weekly" | "monthly"
+	period: text("period").notNull().default("monthly"),
+	limitUsd: text("limit_usd").notNull(), // stored as string to avoid float precision
+	alertThreshold: integer("alert_threshold").notNull().default(80), // % of limit
+	enabled: integer("enabled").notNull().default(1),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// audit_log — Phase 13: track user/system actions
+// ---------------------------------------------------------------------------
+export const auditLog = sqliteTable("audit_log", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	action: text("action").notNull(),
+	entityType: text("entity_type").notNull(),
+	entityId: text("entity_id"),
+	details: text("details"), // JSON
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// message_parts — decomposed message content for inline agent rendering
+// ---------------------------------------------------------------------------
+// Each message can have multiple parts: text, tool_call, tool_result, reasoning,
+// agent_start, agent_end. Enables rich inline rendering of sub-agent execution.
+export const messageParts = sqliteTable("message_parts", {
+	id: text("id").primaryKey().notNull(),
+	messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+	type: text("type").notNull(), // 'text' | 'tool_call' | 'tool_result' | 'reasoning' | 'agent_start' | 'agent_end'
+	content: text("content").notNull().default(""),
+	toolName: text("tool_name"),
+	toolInput: text("tool_input"), // JSON
+	toolOutput: text("tool_output"),
+	toolState: text("tool_state").default("pending"), // 'pending' | 'running' | 'success' | 'error'
+	sortOrder: integer("sort_order").notNull().default(0),
+	timeStart: text("time_start"),
+	timeEnd: text("time_end"),
+	createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
+// ---------------------------------------------------------------------------
+// freelance_listings — scraped/fetched listings from freelance platforms
+// ---------------------------------------------------------------------------
+// Stores job listings fetched from platforms like Upwork, Freelancer, etc.
+// skills is a JSON array of skill strings.
+// budget_type: "fixed" | "hourly"
+// status: "new" | "reviewed" | "applied" | "ignored"
+export const freelanceListings = sqliteTable("freelance_listings", {
+	id:          text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	platform:    text("platform").notNull(),
+	externalId:  text("external_id").notNull(),
+	title:       text("title").notNull(),
+	description: text("description").notNull(),
+	skills:      text("skills").notNull().default("[]"),
+	budgetType:  text("budget_type").notNull().default("fixed"),
+	budgetMin:   integer("budget_min"),
+	budgetMax:   integer("budget_max"),
+	currency:    text("currency").notNull().default("USD"),
+	url:               text("url").notNull(),
+	fullDescription:   text("full_description"),
+	wizardVerdict:     text("wizard_verdict"),    // "workable" | "not_workable" | null
+	wizardAnalyzedAt:  text("wizard_analyzed_at"), // ISO timestamp of last wizard analysis
+	wizardReason:      text("wizard_reason"),      // one-sentence AI verdict reason
+	wizardBlockers:    text("wizard_blockers"),    // JSON array of blocker strings
+	wizardAnalysisText: text("wizard_analysis_text"), // full AI analysis text from Phase 1
+	postedAt:          text("posted_at"),
+	status:      text("status").notNull().default("new"),
+	isDeleted:   integer("is_deleted").notNull().default(0),
+	projectId:   text("project_id").references(() => projects.id),
+	fetchedAt:   text("fetched_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	createdAt:   text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt:   text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const freelanceChatMessages = sqliteTable("freelance_chat_messages", {
+	id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	listingId: text("listing_id").notNull().references(() => freelanceListings.id),
+	role:      text("role").notNull(),
+	content:   text("content").notNull(),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

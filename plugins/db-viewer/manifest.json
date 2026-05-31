@@ -1,0 +1,10 @@
+{
+	"name": "db-viewer",
+	"displayName": "Database Viewer",
+	"version": "1.0.0",
+	"description": "Browse and manage AgentDesk database tables. Adds a sidebar link when enabled.",
+	"author": "AgentDesk",
+	"permissions": [],
+	"tools": [],
+	"defaultEnabled": false
+}

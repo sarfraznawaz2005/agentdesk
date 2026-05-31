@@ -1,0 +1,93 @@
+{
+	"name": "lsp-manager",
+	"displayName": "LSP Manager",
+	"version": "1.0.0",
+	"description": "Manages language servers for TypeScript, Python, Go, Rust, and PHP — provides diagnostics, hover, definition, references, and document symbols to AI agents.",
+	"author": "AgentDesk",
+	"permissions": ["shell"],
+	"tools": ["lsp_diagnostics", "lsp_hover", "lsp_definition", "lsp_references", "lsp_document_symbols"],
+	"defaultEnabled": true,
+	"prompt": "## LSP Tools (Language Server)\n\nYour workspace has a live language server. Use these tools for fast, precise code intelligence:\n\n- `lsp_diagnostics` — get real-time errors/warnings for a file (faster than `run_shell tsc`)\n- `lsp_hover` — inspect type signatures and docs at a specific position\n- `lsp_definition` — jump to where a symbol is defined\n- `lsp_references` — find all usages of a symbol across the codebase\n- `lsp_document_symbols` — list all functions, classes, and exports in a file\n\n**Prefer LSP tools over shell-based type checking.** `lsp_diagnostics` gives instant results without spawning a compiler process. Use `lsp_references` before renaming or removing symbols.",
+	"settings": {
+		"typescript_enabled": {
+			"type": "boolean",
+			"default": true,
+			"description": "Enable TypeScript/JavaScript language server"
+		},
+		"typescript_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to typescript-language-server binary (leave empty for auto-discovery)"
+		},
+		"python_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable Python language server (Pyright)"
+		},
+		"python_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to pyright-langserver binary"
+		},
+		"go_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable Go language server (gopls)"
+		},
+		"go_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to gopls binary"
+		},
+		"rust_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable Rust language server (rust-analyzer)"
+		},
+		"rust_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to rust-analyzer binary"
+		},
+		"php_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable PHP language server (Intelephense)"
+		},
+		"php_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to intelephense binary"
+		},
+		"html_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable HTML language server"
+		},
+		"html_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to vscode-html-language-server binary"
+		},
+		"css_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable CSS/SCSS/Less language server"
+		},
+		"css_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to vscode-css-language-server binary"
+		},
+		"json_enabled": {
+			"type": "boolean",
+			"default": false,
+			"description": "Enable JSON language server"
+		},
+		"json_binary": {
+			"type": "string",
+			"default": "",
+			"description": "Custom path to vscode-json-language-server binary"
+		}
+	}
+}

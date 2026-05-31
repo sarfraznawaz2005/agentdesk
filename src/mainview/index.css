@@ -1,0 +1,186 @@
+/*
+ * Scheherazade New — Quranic-Arabic typography, strictly Arabic-only.
+ *
+ * Only the 700-weight @font-face is registered (Scheherazade's heaviest).
+ * Because CSS font matching is per codepoint, when an Arabic character is
+ * encountered the browser finds exactly one variant (700-normal) and uses
+ * it — regardless of whether the surrounding paragraph requested weight 400
+ * or italic style. The result: Arabic always renders as bold + upright;
+ * Latin text in the same line still picks up its own weight/style from
+ * system-ui because Latin codepoints don't match the unicode-range below.
+ *
+ * Scoped to Arabic Unicode blocks:
+ *   U+0600-06FF — Arabic
+ *   U+0750-077F — Arabic Supplement
+ *   U+0870-089F — Arabic Extended-B
+ *   U+08A0-08FF — Arabic Extended-A
+ *   U+FB50-FDFF — Arabic Presentation Forms-A
+ *   U+FE70-FEFF — Arabic Presentation Forms-B
+ */
+@font-face {
+  font-family: "Scheherazade New";
+  font-style:   normal;
+  font-weight:  700;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/scheherazade-new/files/scheherazade-new-arabic-700-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+  /* Per-codepoint scale factor for glyphs delivered by THIS @font-face only.
+     Arabic chars render 25% larger than the surrounding text size; Latin
+     chars are unaffected because they fall through to system-ui (which has
+     its own metrics). Helps Arabic match the visual weight of English text
+     and gives diacritics enough room to render clearly. */
+  size-adjust: 125%;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * `.font-arabic-aware` — apply to any container whose text may contain Arabic.
+ * Scheherazade is listed first but only matches Arabic codepoints (see above);
+ * Latin text falls through to system-ui untouched. The bumped line-height is
+ * needed so tashkeel/harakat marks on adjacent lines don't collide; it's
+ * applied container-wide because line-height is a block property.
+ */
+@layer utilities {
+  .font-arabic-aware {
+    font-family: "Scheherazade New", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.8;
+    /* `style: none` stops the browser from skewing upright Arabic glyphs to
+       fake italic. `weight: auto` lets system-ui (Latin) still synthesize
+       bold if a particular weight isn't available — which it always is, so
+       this is a no-op in practice but kept explicit for clarity. */
+    font-synthesis-style:  none;
+    font-synthesis-weight: auto;
+  }
+}
+
+@keyframes shimmer-fire {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@layer utilities {
+  .text-shimmer-fire {
+    background: linear-gradient(
+      90deg,
+      #f87171 0%,
+      #f87171 30%,
+      #fb923c 44%,
+      #fde68a 50%,
+      #fb923c 56%,
+      #f87171 70%,
+      #f87171 100%
+    );
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer-fire 5s linear infinite;
+  }
+}
+
+/* Restore pointer cursor on anchors after href stripping */
+a { cursor: pointer; }
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Background / foreground */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary — indigo */
+    --primary: 238 84% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary — light indigo tint */
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+
+    /* Muted — neutral gray */
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+
+    /* Accent — slightly warm gray */
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+
+    /* Destructive — red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border / input / ring */
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 238 84% 56%;
+
+    /* Border radius base */
+    --radius: 0.5rem;
+
+    /* Chart colors */
+    --chart-1: 238 84% 56%;
+    --chart-2: 262 80% 58%;
+    --chart-3: 199 89% 48%;
+    --chart-4: 32 98% 50%;
+    --chart-5: 340 75% 55%;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --background: 222 47% 9%;
+    --foreground: 213 31% 91%;
+
+    --card: 222 47% 13%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 238 84% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 213 31% 91%;
+
+    --muted: 217 33% 16%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 217 33% 20%;
+    --accent-foreground: 213 31% 91%;
+
+    --destructive: 0 62% 48%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 238 84% 65%;
+
+    --chart-1: 238 84% 65%;
+    --chart-2: 262 80% 65%;
+    --chart-3: 199 89% 55%;
+    --chart-4: 32 98% 55%;
+    --chart-5: 340 75% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

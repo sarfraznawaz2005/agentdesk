@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Create the GitHub Release first so parallel build jobs can upload to it ──
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Extract tag name
+        id: meta
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+  # ── Windows x64 build ──────────────────────────────────────────────────────
+  build-windows:
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend (Vite)
+        run: bun run vite build
+
+      # First build: downloads electrobun's dist-win-x64 binaries (launcher.exe, etc.)
+      # and produces the initial build output. The app bundle folder is deleted after
+      # packaging, so we cannot embed the icon post-build without repacking manually.
+      - name: Build app — first pass
+        run: bunx electrobun build --env=stable
+
+      # Now that launcher.exe exists in node_modules, embed the icon before rebuilding.
+      # The second build will copy this icon-embedded launcher into the app bundle and
+      # pack it into the tar.zst automatically — no manual repacking needed.
+      - name: Embed icon into launcher
+        shell: pwsh
+        run: |
+          $rcedit = "node_modules\rcedit\bin\rcedit-x64.exe"
+          & $rcedit "node_modules\electrobun\dist-win-x64\launcher.exe" --set-icon "assets\icon.ico"
+          if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on launcher.exe"; exit 1 }
+          Write-Host "Icon embedded into node_modules launcher.exe"
+
+      # Second build: uses the icon-embedded launcher. Overwrites first build output.
+      - name: Build app — second pass (with icon-embedded launcher)
+        run: bunx electrobun build --env=stable
+
+      - name: Embed icon into installer exe
+        shell: pwsh
+        run: |
+          $rcedit = "node_modules\rcedit\bin\rcedit-x64.exe"
+          & $rcedit "build\stable-win-x64\AgentDesk-Setup.exe" --set-icon "assets\icon.ico"
+          if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on AgentDesk-Setup.exe"; exit 1 }
+          Write-Host "Icon embedded into AgentDesk-Setup.exe"
+
+      # Bundle exe + archive into a single zip so users download one file.
+      # Layout mirrors what electrobun's wrapWindowsInstallerInZip produces:
+      #   AgentDesk-Setup.zip
+      #   ├── AgentDesk-Setup.exe          ← user runs this
+      #   └── .installer/
+      #       ├── AgentDesk-Setup.metadata.json
+      #       └── AgentDesk-Setup.tar.zst
+      # Also rename files to the flat prefix-based names the updater expects:
+      #   {baseUrl}/stable-win-x64-update.json          ← checked by Updater.checkForUpdate()
+      #   {baseUrl}/stable-win-x64-AgentDesk.tar.zst     ← downloaded by Updater.downloadUpdate()
+      - name: Prepare distribution files
+        shell: pwsh
+        run: |
+          $dir = "build/stable-win-x64"
+
+          # Build single-zip installer for user distribution
+          $staging = "$dir/.installer-staging"
+          New-Item -ItemType Directory -Force -Path "$staging/.installer" | Out-Null
+          Copy-Item "$dir/AgentDesk-Setup.exe"           "$staging/AgentDesk-Setup.exe"
+          Copy-Item "$dir/AgentDesk-Setup.metadata.json" "$staging/.installer/AgentDesk-Setup.metadata.json"
+          Copy-Item "$dir/AgentDesk-Setup.tar.zst"       "$staging/.installer/AgentDesk-Setup.tar.zst"
+          Compress-Archive -Path "$staging/*" -DestinationPath "$dir/AgentDesk-win-x64-Setup.zip" -Force
+          Remove-Item -Recurse -Force "$staging"
+
+          # update.json for Updater.checkForUpdate()
+          # Inject version from the git tag (strips leading 'v') so Updater.checkForUpdate()
+          # can return a non-undefined version string for the UI to display.
+          $tag     = "${{ needs.create-release.outputs.tag }}"
+          $semver  = $tag -replace '^v', ''
+          $meta    = Get-Content "$dir/AgentDesk-Setup.metadata.json" | ConvertFrom-Json
+          $meta | Add-Member -NotePropertyName 'version' -NotePropertyValue $semver -Force
+          $meta | ConvertTo-Json -Compress | Set-Content "$dir/stable-win-x64-update.json"
+          # Renamed tarball for Updater.downloadUpdate()
+          Copy-Item "$dir/AgentDesk-Setup.tar.zst" "$dir/stable-win-x64-AgentDesk.tar.zst"
+
+      - name: Upload Windows artifacts
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          files: |
+            build/stable-win-x64/AgentDesk-win-x64-Setup.zip
+            build/stable-win-x64/stable-win-x64-update.json
+            build/stable-win-x64/stable-win-x64-AgentDesk.tar.zst
+          fail_on_unmatched_files: true
+
+  # ── macOS arm64 build (Apple Silicon) ──────────────────────────────────────
+  build-macos-arm64:
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend (Vite)
+        run: bun run vite build
+
+      - name: Build app (Electrobun stable)
+        run: bunx electrobun build --env=stable
+
+      - name: Prepare distribution files
+        run: |
+          set -e
+          dir="build/stable-macos-arm64"
+
+          # metadata.json is at Contents/Resources/metadata.json on macOS
+          metadata="$dir/AgentDesk.app/Contents/Resources/metadata.json"
+          echo "App metadata: $(cat $metadata)"
+
+          # update.json — fetched by Updater.checkForUpdate()
+          # Inject version from git tag so the UI can display it correctly.
+          semver="${{ needs.create-release.outputs.tag }}"
+          semver="${semver#v}"
+          jq --arg v "$semver" '. + {version: $v}' "$metadata" > "$dir/stable-macos-arm64-update.json"
+
+          # tar.zst — downloaded by Updater.downloadUpdate()
+          tar -cf - -C "$dir" "AgentDesk.app" | zstd --stdout > "$dir/stable-macos-arm64-AgentDesk.app.tar.zst"
+
+          # zip — for users to download and drag to /Applications
+          cd "$dir" && zip -r "AgentDesk-mac-arm64.zip" "AgentDesk.app" && cd -
+
+      - name: Upload macOS arm64 artifacts
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          files: |
+            build/stable-macos-arm64/AgentDesk-mac-arm64.zip
+            build/stable-macos-arm64/stable-macos-arm64-update.json
+            build/stable-macos-arm64/stable-macos-arm64-AgentDesk.app.tar.zst
+          fail_on_unmatched_files: true
+
+  # Intel (x64) macOS build intentionally omitted — macos-13 runners have very
+  # long queue times on GitHub Actions. Apple Silicon covers the vast majority
+  # of current Mac users. Re-add build-macos-x64 here if Intel support is needed.

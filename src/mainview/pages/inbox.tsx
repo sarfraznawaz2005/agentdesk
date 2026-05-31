@@ -1,0 +1,1112 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { relativeTime as formatTimestamp } from "@/lib/date-utils";
+import { useHeaderActions } from "@/lib/header-context";
+import {
+  Inbox,
+  Mail,
+  MailOpen,
+  CheckCheck,
+  MessageSquare,
+  Settings2,
+  Trash2,
+  Search,
+  Archive,
+  ArchiveRestore,
+  CheckSquare,
+  Square,
+  X,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import { Tip } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
+import { rpc } from "@/lib/rpc";
+import { cn } from "@/lib/utils";
+import { InboxRulesEditor } from "@/components/inbox/inbox-rules-editor";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface InboxMessage {
+  id: string;
+  projectId: string | null;
+  channelId: string | null;
+  sender: string;
+  content: string;
+  isRead: number; // 0 = unread, 1 = read
+  agentResponse: string | null;
+  createdAt: string;
+  threadId: string | null;
+  priority: number;    // 0=normal, 1=high, 2=urgent
+  category: string;    // "chat" | "work" | "status" | "reminder" | "other"
+  platform: string;    // "chat" | "discord" | "whatsapp" | "email"
+  isArchived: number;  // 0 = active, 1 = archived
+}
+
+interface Project {
+  id: string;
+  name: string;
+}
+
+type ChannelFilter = "all" | "chat" | "discord" | "whatsapp" | "email";
+type CategoryFilter = "all" | "work" | "chat" | "status" | "reminder" | "other";
+type ReadFilter = "all" | "unread" | "read";
+type ArchiveFilter = "inbox" | "archived";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getChannelSource(msg: InboxMessage): string {
+  return msg.platform || (msg.channelId === "chat" ? "chat" : "unknown");
+}
+
+function getSourceBadgeStyle(source: string): string {
+  switch (source) {
+    case "chat": return "bg-blue-50 text-blue-700 border-blue-200";
+    case "discord": return "bg-indigo-50 text-indigo-700 border-indigo-200";
+    case "whatsapp": return "bg-green-50 text-green-700 border-green-200";
+    case "email": return "bg-amber-50 text-amber-700 border-amber-200";
+    default: return "bg-muted/50 text-muted-foreground border-border";
+  }
+}
+
+function getSourceLabel(source: string): string {
+  switch (source) {
+    case "chat": return "Chat";
+    case "discord": return "Discord";
+    case "whatsapp": return "WhatsApp";
+    case "email": return "Email";
+    default: return source;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Message Row Skeleton
+// ---------------------------------------------------------------------------
+
+function MessageRowSkeleton() {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3 border-b border-border last:border-0">
+      <div className="mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0" />
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="h-4 w-12 rounded-md" />
+        </div>
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-2/3" />
+      </div>
+      <Skeleton className="h-3 w-12 mt-0.5 flex-shrink-0" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Message Detail Dialog
+// ---------------------------------------------------------------------------
+
+interface MessageDetailDialogProps {
+  message: InboxMessage | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  threadMessages: InboxMessage[];
+  onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  projectName?: string;
+}
+
+function MessageDetailDialog({
+  message,
+  open,
+  onOpenChange,
+  threadMessages,
+  onDelete,
+  onArchive,
+  projectName,
+}: MessageDetailDialogProps) {
+  if (!message) return null;
+
+  const source = getChannelSource(message);
+  const senderLabel = message.sender || "Unknown";
+  const hasThread = threadMessages.length > 1;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="max-w-lg max-h-[80vh] overflow-y-auto"
+        // Skip Radix's auto-focus of the first interactive element (Archive button),
+        // which was triggering its tooltip every time the dialog opened.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <div className="flex items-center gap-2 pr-6">
+            <MessageSquare
+              className={cn(
+                "h-4 w-4 flex-shrink-0",
+                source === "chat"
+                  ? "text-blue-500"
+                  : source === "discord"
+                    ? "text-indigo-500"
+                    : source === "whatsapp"
+                      ? "text-green-500"
+                      : source === "email"
+                        ? "text-amber-500"
+                        : "text-muted-foreground"
+              )}
+              aria-hidden="true"
+            />
+            <DialogTitle className="text-base">{senderLabel}</DialogTitle>
+          </div>
+        </DialogHeader>
+        <Separator />
+
+        {/* Metadata badges */}
+        <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+          <Badge
+            variant="outline"
+            className={cn("text-xs", getSourceBadgeStyle(source))}
+          >
+            {getSourceLabel(source)}
+          </Badge>
+
+          {message.priority > 0 && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs",
+                message.priority === 2
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : "bg-orange-50 text-orange-700 border-orange-200"
+              )}
+            >
+              {message.priority === 2 ? "Urgent" : "High"}
+            </Badge>
+          )}
+
+          {message.category && message.category !== "other" && (
+            <Badge
+              variant="outline"
+              className="text-xs bg-muted/50 text-muted-foreground border-border capitalize"
+            >
+              {message.category}
+            </Badge>
+          )}
+
+          {projectName && (
+            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+              {projectName}
+            </Badge>
+          )}
+
+          <span aria-label="Received at">
+            {new Date(message.createdAt).toLocaleString()}
+          </span>
+
+          <div className="ml-auto flex items-center gap-1">
+            <Tip content={message.isArchived ? "Unarchive" : "Archive"} side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => { onArchive(message.id); onOpenChange(false); }}
+            >
+              {message.isArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+            </Button>
+            </Tip>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-muted-foreground hover:text-destructive"
+              onClick={() => { onDelete(message.id); onOpenChange(false); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Message content */}
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+          {message.content}
+        </p>
+
+        {/* Agent response */}
+        {message.agentResponse && (
+          <>
+            <Separator />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent Response</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words bg-muted/50 rounded-md p-3">
+                {message.agentResponse}
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Thread messages */}
+        {hasThread && (
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Thread ({threadMessages.length} messages)
+              </p>
+              {threadMessages
+                .filter((m) => m.id !== message.id)
+                .map((m) => {
+                  const mSender = m.sender || "Unknown";
+                  return (
+                    <div
+                      key={m.id}
+                      className="flex gap-2.5 pl-3 border-l-2 border-border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-xs font-medium text-foreground">
+                            {mSender}
+                          </span>
+                          <time
+                            dateTime={m.createdAt}
+                            className="text-[10px] text-muted-foreground"
+                          >
+                            {formatTimestamp(m.createdAt)}
+                          </time>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-snug whitespace-pre-wrap break-words">
+                          {m.content}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </>
+        )}
+
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bulk Action Bar
+// ---------------------------------------------------------------------------
+
+interface BulkActionBarProps {
+  selectedCount: number;
+  onMarkRead: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+  onClearSelection: () => void;
+}
+
+function BulkActionBar({ selectedCount, onMarkRead, onArchive, onDelete, onClearSelection }: BulkActionBarProps) {
+  if (selectedCount === 0) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-6 py-2 bg-indigo-50 border-b border-indigo-200 shrink-0">
+      <span className="text-sm font-medium text-indigo-700">
+        {selectedCount} selected
+      </span>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onMarkRead}>
+          <CheckCheck className="h-3 w-3 mr-1" /> Mark Read
+        </Button>
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onArchive}>
+          <Archive className="h-3 w-3 mr-1" /> Archive
+        </Button>
+        <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={onDelete}>
+          <Trash2 className="h-3 w-3 mr-1" /> Delete
+        </Button>
+      </div>
+      <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={onClearSelection}>
+        <X className="h-3 w-3 mr-1" /> Clear
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inbox Page
+// ---------------------------------------------------------------------------
+
+const PAGE_SIZE = 25;
+
+export function InboxPage() {
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+
+  // Filters
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [readFilter, setReadFilter] = useState<ReadFilter>("all");
+  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>("inbox");
+
+  // Pagination
+  const [page, setPage] = useState(1);
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<InboxMessage[] | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Rules editor
+  const [rulesOpen, setRulesOpen] = useState(false);
+
+  // Detail dialog
+  const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // ---------------------------------------------------------------------------
+  // Project name map
+  // ---------------------------------------------------------------------------
+
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+
+  // ---------------------------------------------------------------------------
+  // Data loading
+  // ---------------------------------------------------------------------------
+
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const result = await rpc.getUnreadCount();
+      setUnreadCount((result as { count: number }).count ?? 0);
+    } catch {
+      // non-critical — silently ignore
+    }
+  }, []);
+
+  const loadMessages = useCallback(async () => {
+    setLoading(true);
+    try {
+      const filters: { projectId?: string; isRead?: boolean; isArchived?: boolean; limit?: number } = {};
+      if (projectFilter !== "all") filters.projectId = projectFilter;
+      if (readFilter === "unread") filters.isRead = false;
+      if (readFilter === "read") filters.isRead = true;
+      filters.isArchived = archiveFilter === "archived";
+
+      const [msgResult, projectsResult] = await Promise.all([
+        rpc.getInboxMessages(filters),
+        rpc.getProjects(),
+      ]);
+
+      const rawMessages = msgResult as unknown as InboxMessage[];
+      const rawProjects = projectsResult as unknown as Project[];
+
+      setMessages(Array.isArray(rawMessages) ? rawMessages : []);
+      setProjects(Array.isArray(rawProjects) ? rawProjects : []);
+      await loadUnreadCount();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load inbox.";
+      toast("error", message);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectFilter, readFilter, archiveFilter, loadUnreadCount]);
+
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
+  // Listen for real-time inbox updates
+  useEffect(() => {
+    const handler = () => {
+      loadMessages();
+      loadUnreadCount();
+    };
+    window.addEventListener("agentdesk:inbox-message-received", handler);
+    return () => window.removeEventListener("agentdesk:inbox-message-received", handler);
+  }, [loadMessages, loadUnreadCount]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const projectId = projectFilter !== "all" ? projectFilter : undefined;
+        const results = await rpc.searchInboxMessages(searchQuery.trim(), projectId);
+        setSearchResults(results as unknown as InboxMessage[]);
+      } catch {
+        // fall back to client-side filter
+        setSearchResults(null);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [searchQuery, projectFilter]);
+
+  // Reset to page 1 whenever any filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [projectFilter, channelFilter, categoryFilter, readFilter, archiveFilter, searchQuery]);
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
+  async function handleMarkAsRead(msg: InboxMessage) {
+    if (msg.isRead === 1) return;
+    try {
+      await rpc.markAsRead(msg.id);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, isRead: 1 } : m))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch {
+      toast("error", "Failed to mark message as read.");
+    }
+  }
+
+  function handleRowClick(msg: InboxMessage) {
+    setSelectedMessage(msg);
+    setDialogOpen(true);
+    handleMarkAsRead(msg);
+  }
+
+  async function handleDeleteMessage(id: string) {
+    const wasUnread = messages.find((m) => m.id === id)?.isRead === 0;
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    try {
+      await rpc.deleteInboxMessage(id);
+    } catch {
+      toast("error", "Failed to delete message.");
+      loadMessages();
+      loadUnreadCount();
+    }
+  }
+
+  async function handleArchiveMessage(id: string) {
+    const msg = messages.find((m) => m.id === id);
+    if (!msg) return;
+    const isCurrentlyArchived = msg.isArchived === 1;
+    // Optimistic: remove from current view
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    try {
+      if (isCurrentlyArchived) {
+        await rpc.unarchiveInboxMessage(id);
+        toast("success", "Message restored.");
+      } else {
+        await rpc.archiveInboxMessage(id);
+        toast("success", "Message archived.");
+      }
+    } catch {
+      toast("error", "Failed to archive/restore message.");
+      loadMessages();
+    }
+  }
+
+  async function handleMarkAllRead() {
+    setMarkingAllRead(true);
+    try {
+      const projectId = projectFilter !== "all" ? projectFilter : undefined;
+      await rpc.markAllAsRead(projectId);
+      setMessages((prev) => prev.map((m) => ({ ...m, isRead: 1 })));
+      setUnreadCount(0);
+      toast("success", "All messages marked as read.");
+    } catch {
+      toast("error", "Failed to mark all as read.");
+    } finally {
+      setMarkingAllRead(false);
+    }
+  }
+
+  // Bulk actions
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const pageIds = pagedMessages.map((m) => m.id);
+    const allPageSelected = pageIds.every((id) => selectedIds.has(id));
+    if (allPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...pageIds]));
+    }
+  }
+
+  async function handleBulkMarkRead() {
+    const ids = Array.from(selectedIds);
+    try {
+      await rpc.bulkMarkAsReadInboxMessages(ids);
+      setMessages((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, isRead: 1 } : m));
+      setSelectedIds(new Set());
+      loadUnreadCount();
+      toast("success", `Marked ${ids.length} messages as read.`);
+    } catch {
+      toast("error", "Failed to mark messages as read.");
+    }
+  }
+
+  async function handleBulkArchive() {
+    const ids = Array.from(selectedIds);
+    setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+    setSelectedIds(new Set());
+    try {
+      await rpc.bulkArchiveInboxMessages(ids);
+      toast("success", `Archived ${ids.length} messages.`);
+      loadUnreadCount();
+    } catch {
+      toast("error", "Failed to archive messages.");
+      loadMessages();
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    const unreadDeleted = messages.filter((m) => selectedIds.has(m.id) && m.isRead === 0).length;
+    setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+    setSelectedIds(new Set());
+    setUnreadCount((c) => Math.max(0, c - unreadDeleted));
+    try {
+      await rpc.bulkDeleteInboxMessages(ids);
+      toast("success", `Deleted ${ids.length} messages.`);
+    } catch {
+      toast("error", "Failed to delete messages.");
+      loadMessages();
+      loadUnreadCount();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Filtered view (channel + category filters are client-side)
+  // ---------------------------------------------------------------------------
+
+  const baseMessages = searchResults ?? messages;
+
+  const filteredMessages = baseMessages.filter((m) => {
+    const source = getChannelSource(m);
+    if (channelFilter !== "all" && source !== channelFilter) return false;
+    if (categoryFilter !== "all" && m.category !== categoryFilter) return false;
+    return true;
+  });
+
+  // This is the final display list used for rendering and bulk operations
+  const displayMessages = filteredMessages;
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(displayMessages.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, totalPages);
+  const pagedMessages = displayMessages.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
+
+  // Build thread groups from all filtered messages (not just current page, for thread detail)
+  const threadGroups = new Map<string, InboxMessage[]>();
+  for (const msg of displayMessages) {
+    if (msg.threadId) {
+      const existing = threadGroups.get(msg.threadId) || [];
+      existing.push(msg);
+      threadGroups.set(msg.threadId, existing);
+    }
+  }
+
+  const visibleUnread = displayMessages.filter((m) => m.isRead === 0).length;
+
+  const hasActiveFilter =
+    channelFilter !== "all" ||
+    categoryFilter !== "all" ||
+    readFilter !== "all" ||
+    projectFilter !== "all" ||
+    searchQuery.trim() !== "";
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  const hasUnread = messages.some((m) => m.isRead === 0);
+
+  useHeaderActions(
+    () => (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setRulesOpen(true)}
+          className="flex items-center gap-1.5"
+        >
+          <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+          Rules
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleMarkAllRead}
+          disabled={markingAllRead || loading || !hasUnread}
+          className="flex items-center gap-1.5"
+        >
+          <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
+          {markingAllRead ? "Marking..." : "Mark All Read"}
+        </Button>
+      </>
+    ),
+    [markingAllRead, loading, hasUnread],
+  );
+
+  return (
+    <div className="flex flex-1 flex-col gap-0 min-h-0">
+      {/* Sub-header: unread count + archive toggle */}
+      <div className="flex items-center justify-between px-6 pt-4 pb-4 shrink-0">
+        <div>
+          {!loading && (
+            <p className="text-sm text-muted-foreground">
+              {unreadCount === 0
+                ? "All caught up"
+                : `${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
+            </p>
+          )}
+        </div>
+
+        {/* Archive filter toggle */}
+        <div className="flex items-center gap-1" role="group" aria-label="Archive filter">
+          <Button
+            variant={archiveFilter === "inbox" ? "default" : "outline"}
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setArchiveFilter("inbox")}
+          >
+            <Inbox className="h-3 w-3 mr-1" /> Inbox
+          </Button>
+          <Button
+            variant={archiveFilter === "archived" ? "default" : "outline"}
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setArchiveFilter("archived")}
+          >
+            <Archive className="h-3 w-3 mr-1" /> Archived
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Filters bar */}
+      <div className="flex flex-col gap-2 px-6 py-3 shrink-0 bg-background border-b border-border">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search input */}
+          <div className="relative w-56">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search messages..."
+              className="w-full h-8 rounded-md border border-input bg-background pl-8 pr-8 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Project filter */}
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-44 h-8 text-sm">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Channel type filter */}
+          <div className="flex items-center gap-1" role="group" aria-label="Filter by channel type">
+            {(["all", "chat", "discord", "whatsapp", "email"] as ChannelFilter[]).map((f) => (
+              <Button
+                key={f}
+                variant={channelFilter === f ? "default" : "outline"}
+                size="sm"
+                className="h-8 px-3 text-xs capitalize"
+                onClick={() => setChannelFilter(f)}
+              >
+                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+              </Button>
+            ))}
+          </div>
+
+          {/* Read/Unread toggle */}
+          <div className="flex items-center gap-1" role="group" aria-label="Filter by read status">
+            {(["all", "unread", "read"] as ReadFilter[]).map((f) => (
+              <Button
+                key={f}
+                variant={readFilter === f ? "default" : "outline"}
+                size="sm"
+                className="h-8 px-3 text-xs capitalize"
+                onClick={() => setReadFilter(f)}
+              >
+                {f === "all" ? "All" : f === "unread" ? "Unread" : "Read"}
+              </Button>
+            ))}
+          </div>
+
+          {/* Live filter count + select all */}
+          {!loading && (
+            <div className="ml-auto flex items-center gap-2">
+              <Tip content={pagedMessages.length > 0 && pagedMessages.every((m) => selectedIds.has(m.id)) ? "Deselect page" : "Select page"} side="bottom">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {pagedMessages.length > 0 && pagedMessages.every((m) => selectedIds.has(m.id)) ? (
+                  <CheckSquare className="h-4 w-4" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+              </button>
+              </Tip>
+              <span className="text-xs text-muted-foreground">
+                {displayMessages.length}{" "}
+                {displayMessages.length === 1 ? "message" : "messages"}
+                {visibleUnread > 0 && (
+                  <span className="ml-1 text-indigo-600 font-medium">
+                    ({visibleUnread} unread)
+                  </span>
+                )}
+                {searchResults && (
+                  <span className="ml-1 text-amber-600 font-medium">
+                    (search results)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Category filter */}
+        <div className="flex items-center gap-1" role="group" aria-label="Filter by category">
+          {(["all", "work", "chat", "status", "reminder", "other"] as CategoryFilter[]).map((f) => (
+            <Button
+              key={f}
+              variant={categoryFilter === f ? "default" : "outline"}
+              size="sm"
+              className="h-8 px-3 text-xs capitalize"
+              onClick={() => setCategoryFilter(f)}
+            >
+              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bulk action bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        onMarkRead={handleBulkMarkRead}
+        onArchive={handleBulkArchive}
+        onDelete={handleBulkDelete}
+        onClearSelection={() => setSelectedIds(new Set())}
+      />
+
+      {/* Message list */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {loading ? (
+          <div aria-busy="true" aria-label="Loading messages">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <MessageRowSkeleton key={i} />
+            ))}
+          </div>
+        ) : displayMessages.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center h-full py-16">
+            <EmptyState
+              icon={
+                readFilter === "unread" ? (
+                  <Mail className="h-6 w-6" aria-hidden="true" />
+                ) : archiveFilter === "archived" ? (
+                  <Archive className="h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <MailOpen className="h-6 w-6" aria-hidden="true" />
+                )
+              }
+              title={
+                searchResults
+                  ? "No messages match your search"
+                  : readFilter === "unread"
+                    ? "No unread messages"
+                    : archiveFilter === "archived"
+                      ? "No archived messages"
+                      : hasActiveFilter
+                        ? "No messages match your filters"
+                        : "Your inbox is empty"
+              }
+              description={
+                searchResults
+                  ? "Try a different search term."
+                  : hasActiveFilter
+                    ? "Try adjusting your filters to see more messages."
+                    : "Messages from Chat, Discord, WhatsApp, and Email channels will appear here."
+              }
+              action={
+                hasActiveFilter && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setChannelFilter("all");
+                      setCategoryFilter("all");
+                      setReadFilter("all");
+                      setProjectFilter("all");
+                      setSearchQuery("");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                )
+              }
+            />
+          </div>
+        ) : (
+          <ul aria-label="Inbox messages">
+            {pagedMessages.map((msg) => {
+              const isUnread = msg.isRead === 0;
+              const source = getChannelSource(msg);
+              const senderLabel = msg.sender || "Unknown";
+              const threadCount = msg.threadId
+                ? (threadGroups.get(msg.threadId)?.length ?? 0)
+                : 0;
+              const pName = msg.projectId ? projectMap.get(msg.projectId) : undefined;
+              const isSelected = selectedIds.has(msg.id);
+
+              return (
+                <li key={msg.id}>
+                  <div
+                    className={cn(
+                      "w-full flex items-start gap-3 px-4 py-3",
+                      "border-b border-border last:border-0",
+                      "hover:bg-muted/50 transition-colors",
+                      isSelected && "bg-indigo-50/50",
+                      isUnread
+                        ? "border-l-2 border-l-indigo-500 pl-[14px]"
+                        : "border-l-2 border-l-transparent pl-[14px]"
+                    )}
+                  >
+                    {/* Checkbox */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(msg.id); }}
+                      className="mt-1 text-muted-foreground hover:text-foreground flex-shrink-0"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="h-4 w-4 text-indigo-600" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    {/* Clickable message content area */}
+                    <button
+                      type="button"
+                      onClick={() => handleRowClick(msg)}
+                      className={cn(
+                        "flex-1 min-w-0 text-left",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset rounded-sm",
+                      )}
+                      aria-label={`Message from ${senderLabel}${isUnread ? ", unread" : ""}${msg.priority === 2 ? ", urgent" : msg.priority === 1 ? ", high priority" : ""}`}
+                    >
+                      {/* Sender + badges row */}
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        {/* Unread dot */}
+                        <span
+                          className={cn(
+                            "h-2 w-2 rounded-full flex-shrink-0 transition-colors",
+                            isUnread ? "bg-indigo-500" : "bg-transparent"
+                          )}
+                          aria-hidden="true"
+                        />
+
+                        <span
+                          className={cn(
+                            "text-sm truncate",
+                            isUnread
+                              ? "font-semibold text-foreground"
+                              : "font-medium text-foreground"
+                          )}
+                        >
+                          {senderLabel}
+                        </span>
+
+                        {/* Platform badge */}
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-1.5 py-0 h-4 flex-shrink-0",
+                            getSourceBadgeStyle(source)
+                          )}
+                        >
+                          {getSourceLabel(source)}
+                        </Badge>
+
+                        {/* Priority badge */}
+                        {msg.priority > 0 && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] px-1.5 py-0 h-4 flex-shrink-0",
+                              msg.priority === 2
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-orange-50 text-orange-700 border-orange-200"
+                            )}
+                          >
+                            {msg.priority === 2 ? "Urgent" : "High"}
+                          </Badge>
+                        )}
+
+                        {/* Project name */}
+                        {pName && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0 bg-purple-50 text-purple-700 border-purple-200"
+                          >
+                            {pName}
+                          </Badge>
+                        )}
+
+                        {/* Agent responded indicator */}
+                        {msg.agentResponse && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200"
+                          >
+                            Replied
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Content preview */}
+                      <p className="text-sm text-muted-foreground truncate leading-snug">
+                        {msg.content}
+                      </p>
+                    </button>
+
+                    {/* Right side: timestamp + thread badge */}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-0.5">
+                      <time
+                        dateTime={msg.createdAt}
+                        className="text-xs text-muted-foreground whitespace-nowrap"
+                      >
+                        {formatTimestamp(msg.createdAt)}
+                      </time>
+
+                      {msg.threadId && threadCount > 1 && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0 bg-muted/50 text-muted-foreground border-border"
+                        >
+                          {threadCount} in thread
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 px-6 py-3 border-t border-border shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={clampedPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Page {clampedPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={clampedPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Message detail dialog */}
+      <MessageDetailDialog
+        message={selectedMessage}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSelectedMessage(null);
+        }}
+        threadMessages={
+          selectedMessage?.threadId
+            ? (threadGroups.get(selectedMessage.threadId) ?? [selectedMessage])
+            : selectedMessage
+              ? [selectedMessage]
+              : []
+        }
+        onDelete={handleDeleteMessage}
+        onArchive={handleArchiveMessage}
+        projectName={selectedMessage?.projectId ? projectMap.get(selectedMessage.projectId) : undefined}
+      />
+
+      {/* Inbox rules editor */}
+      <InboxRulesEditor open={rulesOpen} onOpenChange={setRulesOpen} />
+    </div>
+  );
+}

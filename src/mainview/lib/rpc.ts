@@ -1,0 +1,1184 @@
+/**
+ * Typed RPC client wrapper for the browser (Electroview) side.
+ *
+ * This module initialises the Electroview RPC instance, registers the
+ * webview-side request and message handlers, and re-exports typed
+ * convenience wrappers so the rest of the renderer never has to touch raw
+ * RPC primitives directly.
+ *
+ * Custom DOM events dispatched here:
+ *   - "agentdesk:navigate"        { detail: { route: string } }
+ *   - "agentdesk:show-toast"      { detail: { type, message } }
+ *   - "agentdesk:settings-changed"{ detail: { key, value } }
+ */
+
+import { Electroview } from "electrobun/view";
+import type { AgentDeskRPC } from "../../shared/rpc";
+
+// ---------------------------------------------------------------------------
+// Webview-side RPC definition
+// ---------------------------------------------------------------------------
+// defineRPC on the webview side means:
+//   - handlers.requests  → handles *incoming* requests from bun (webview schema)
+//   - handlers.messages  → handles *incoming* messages from bun (webview schema)
+//   - rpc.request.*      → calls bun-side request handlers (bun schema)
+//   - rpc.send.*         → fires fire-and-forget messages to bun (bun schema)
+
+const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
+  // Agent operations can take several minutes — disable the 1 s default timeout.
+  maxRequestTime: Infinity,
+  handlers: {
+    requests: {
+      /**
+       * Return the current client-side route so bun can query it.
+       * We use window.location.hash as the SPA router identifier.
+       * If the hash is empty the root route "/" is returned.
+       */
+      getViewState: (_params) => {
+        const route = window.location.hash
+          ? window.location.hash.replace(/^#/, "") || "/"
+          : "/";
+        return { route };
+      },
+    },
+    messages: {
+      /**
+       * Bun wants the renderer to navigate to a different route.
+       * Dispatch a DOM event that the router / any listener can act on.
+       */
+      navigateTo: ({ route }) => {
+        window.dispatchEvent(
+          new CustomEvent("agentdesk:navigate", { detail: { route } }),
+        );
+      },
+
+      /**
+       * Bun wants to surface a transient notification.
+       * Dispatch a DOM event that the toast component listens for.
+       */
+      showToast: ({ type, message }) => {
+        window.dispatchEvent(
+          new CustomEvent("agentdesk:show-toast", {
+            detail: { type, message },
+          }),
+        );
+      },
+
+      /**
+       * A setting was changed from the bun side (e.g. from another window or
+       * a background task). Dispatch a DOM event so any reactive UI that cares
+       * about that key can refresh itself.
+       */
+      settingsChanged: ({ key, value }) => {
+        window.dispatchEvent(
+          new CustomEvent("agentdesk:settings-changed", {
+            detail: { key, value },
+          }),
+        );
+      },
+      streamToken: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:stream-token", { detail: payload }));
+      },
+      streamReset: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:stream-reset", { detail: payload }));
+      },
+      streamComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:stream-complete", { detail: payload }));
+      },
+      streamError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:stream-error", { detail: payload }));
+      },
+      partCreated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:part-created", { detail: payload }));
+      },
+      partUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:part-updated", { detail: payload }));
+      },
+      agentInlineStart: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:agent-inline-start", { detail: payload }));
+      },
+      agentInlineComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:agent-inline-complete", { detail: payload }));
+      },
+      presentPlan: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:plan-presented", { detail: payload }));
+      },
+      kanbanTaskUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:kanban-task-updated", { detail: payload }));
+      },
+      providerTestResult: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:provider-test-result", { detail: payload }));
+      },
+      directorySelected: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:directory-selected", { detail: payload }));
+      },
+      shellApprovalRequest: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-request", { detail: payload }));
+      },
+      userQuestionRequest: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:user-question-request", { detail: payload }));
+      },
+      whatsappQR: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:whatsapp-qr", { detail: payload }));
+      },
+      whatsappStatus: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:whatsapp-status", { detail: payload }));
+      },
+      inboxMessageReceived: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:inbox-message-received", { detail: payload }));
+      },
+      conversationTitleChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:conversation-title-changed", { detail: payload }));
+      },
+      conversationUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:conversation-updated", { detail: payload }));
+      },
+      switchToConversation: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:switch-to-conversation", { detail: payload }));
+      },
+      compactionStarted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:compaction-started", { detail: payload }));
+      },
+      conversationCompacted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:conversation-compacted", { detail: payload }));
+      },
+      newMessage: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:new-message", { detail: payload }));
+      },
+      pmThinking: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:pm-thinking", { detail: payload }));
+      },
+      dashboardPMChunk: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-chunk", { detail: payload }));
+      },
+      dashboardPMComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-complete", { detail: payload }));
+      },
+      dashboardPMToolCall: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-tool-call", { detail: payload }));
+      },
+      dashboardPMError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-error", { detail: payload }));
+      },
+      dashboardAgentChunk: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-chunk", { detail: payload }));
+      },
+      dashboardAgentComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-complete", { detail: payload }));
+      },
+      dashboardAgentToolCall: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-tool-call", { detail: payload }));
+      },
+      dashboardAgentError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-error", { detail: payload }));
+      },
+      councilEvent: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:council-event", { detail: payload }));
+      },
+      updateStatus: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:update-status", { detail: payload }));
+      },
+      "freelance.fetchStarted": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-fetch-started", { detail: payload }));
+      },
+      "freelance.listingsUpdated": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-listings-updated", { detail: payload }));
+      },
+      "freelance.chat.fetching": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-fetching", { detail: payload }));
+      },
+      "freelance.chat.fetch_done": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-fetch-done", { detail: payload }));
+      },
+      "freelance.chat.tool_start": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-tool-start", { detail: payload }));
+      },
+      "freelance.chat.tool_done": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-tool-done", { detail: payload }));
+      },
+      "freelance.chat.token": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-token", { detail: payload }));
+      },
+      "freelance.chat.complete": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-complete", { detail: payload }));
+      },
+      "freelance.chat.error": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-error", { detail: payload }));
+      },
+      "freelance.chat.stopped": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-stopped", { detail: payload }));
+      },
+      "freelance.wizard.progress": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-wizard-progress", { detail: payload }));
+      },
+      "freelance.wizard.complete": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-wizard-complete", { detail: payload }));
+      },
+      "freelance.wizard.error": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-wizard-error", { detail: payload }));
+      },
+      "freelance.wizard.stopped": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-wizard-stopped", { detail: payload }));
+      },
+    },
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Electroview instance
+// ---------------------------------------------------------------------------
+// This wires up the WebSocket connection to bun and attaches the RPC
+// transport. Everything else in the renderer communicates via `rpc` below.
+
+export const electroview = new Electroview({ rpc: electroviewRpc });
+
+// ---------------------------------------------------------------------------
+// Typed convenience wrappers
+// ---------------------------------------------------------------------------
+// One thin layer so callers don't need to remember param shapes and never
+// import electroviewRpc directly. All methods return the same Promise that
+// the underlying rpc.request / rpc.send returns.
+
+export const rpc = {
+  // ---- Settings ------------------------------------------------------------
+
+  /** Fetch all settings, optionally filtered by category. */
+  getSettings: (category?: string) =>
+    electroviewRpc.request.getSettings({ category }),
+
+  /** Fetch a single setting by key. */
+  getSetting: (key: string, category?: string) =>
+    electroviewRpc.request.getSetting({ key, category }),
+
+  /** Persist a single setting value. */
+  saveSetting: (key: string, value: unknown, category: string) =>
+    electroviewRpc.request.saveSetting({ key, value, category }),
+
+  // ---- AI Providers --------------------------------------------------------
+
+  /** Fetch all configured AI providers. */
+  getProviders: () => electroviewRpc.request.getProviders({}),
+
+  /** Create or update an AI provider. Omit `id` to create a new one. */
+  saveProvider: (params: {
+    id?: string;
+    name: string;
+    providerType: string;
+    apiKey: string;
+    baseUrl?: string;
+    defaultModel?: string;
+    isDefault?: boolean;
+  }) => electroviewRpc.request.saveProvider(params),
+
+  /** Validate that a provider's credentials / endpoint are reachable. */
+  testProvider: (id: string) =>
+    electroviewRpc.request.testProvider({ id }),
+
+  /** Fetch the stored API key for a provider (used in the edit dialog). */
+  getProviderApiKey: (id: string) =>
+    electroviewRpc.request.getProviderApiKey({ id }),
+
+  /** Run a real testConnection() with raw credentials (used by Add/Edit dialog). */
+  testProviderWithCredentials: (params: { providerType: string; apiKey: string; baseUrl?: string; defaultModel?: string }) =>
+    electroviewRpc.request.testProviderWithCredentials(params),
+
+  /** List available models from a provider (without saving). */
+  listProviderModels: (params: {
+    providerType: string;
+    apiKey: string;
+    baseUrl?: string;
+  }) => electroviewRpc.request.listProviderModels(params),
+
+  /** List available models for an existing saved provider (uses stored API key). */
+  listProviderModelsById: (providerId: string) =>
+    electroviewRpc.request.listProviderModelsById({ providerId }),
+
+  /** Remove an AI provider by id. */
+  deleteProvider: (id: string) =>
+    electroviewRpc.request.deleteProvider({ id }),
+
+  /** Fetch models for all connected providers (grouped by provider). */
+  getConnectedProviderModels: () =>
+    electroviewRpc.request.getConnectedProviderModels({}),
+
+  /** Check whether a model supports the tool_choice parameter (OpenRouter only). */
+  checkModelToolSupport: (params: { providerType: string; apiKey?: string; providerId?: string; modelId: string }) =>
+    electroviewRpc.request.checkModelToolSupport(params),
+
+  // ---- Projects ------------------------------------------------------------
+
+  /** Fetch all projects. */
+  getProjects: () => electroviewRpc.request.getProjects({}),
+
+  /** Create a new project. */
+  createProject: (params: {
+    name: string;
+    description?: string;
+    workspacePath: string;
+    githubUrl?: string;
+    workingBranch?: string;
+  }) => electroviewRpc.request.createProject(params),
+
+  /** Delete a project by id. */
+  deleteProject: (id: string) =>
+    electroviewRpc.request.deleteProject({ id }),
+
+  /** Fetch a single project by id. */
+  getProject: (id: string) =>
+    electroviewRpc.request.getProject({ id }),
+
+  /** Update mutable fields on a project. */
+  updateProject: (params: {
+    id: string;
+    name?: string;
+    description?: string;
+    status?: string;
+    workspacePath?: string;
+    githubUrl?: string;
+    workingBranch?: string;
+  }) => electroviewRpc.request.updateProject(params),
+
+  /** Cascade-delete a project and all its data. */
+  deleteProjectCascade: (id: string) =>
+    electroviewRpc.request.deleteProjectCascade({ id }),
+
+  /** Permanently hard-delete a soft-deleted project (blocks if workspace folder still exists). */
+  permanentDeleteProject: (id: string) =>
+    electroviewRpc.request.permanentDeleteProject({ id }),
+
+  /** Reset all project data without deleting the project itself. */
+  resetProjectData: (id: string) =>
+    electroviewRpc.request.resetProjectData({ id }),
+
+  /** Persist a project-scoped setting. */
+  saveProjectSetting: (projectId: string, key: string, value: string) =>
+    electroviewRpc.request.saveProjectSetting({ projectId, key, value }),
+
+  /** Fetch all settings for a project as a flat key/value map. */
+  getProjectSettings: (projectId: string) =>
+    electroviewRpc.request.getProjectSettings({ projectId }),
+
+  /** List immediate contents of a workspace directory (lazy, one level at a time). */
+  listWorkspaceFiles: (projectId: string, subPath?: string) =>
+    electroviewRpc.request.listWorkspaceFiles({ projectId, subPath }),
+
+  /** Read the text content of a single workspace file (path relative to workspace root). */
+  readWorkspaceFile: (projectId: string, filePath: string) =>
+    electroviewRpc.request.readWorkspaceFile({ projectId, filePath }),
+
+  /** Read an image file as base64 (for previewing binary image assets). */
+  readWorkspaceImageFile: (projectId: string, filePath: string) =>
+    electroviewRpc.request.readWorkspaceImageFile({ projectId, filePath }),
+
+  /** Scan the global workspace path and register any new subdirectories as projects. */
+  syncWorkspaceFolders: () => electroviewRpc.request.syncWorkspaceFolders({}),
+
+  // ---- System --------------------------------------------------------------
+
+  /** Open a native OS directory picker and return the chosen path. */
+  selectDirectory: () => electroviewRpc.request.selectDirectory({}),
+
+  /** Return basic app metadata (version, platform, data directory). */
+  getAppInfo: () => electroviewRpc.request.getAppInfo({}),
+
+  /**
+   * Return whether this is the first time the app has been launched
+   * (i.e. no providers exist in the database yet).
+   */
+  isFirstLaunch: () => electroviewRpc.request.isFirstLaunch({}),
+  markOnboardingComplete: () => electroviewRpc.request.markOnboardingComplete({}),
+
+  // ---- Conversations -------------------------------------------------------
+
+  /** Fetch all conversations for a project. */
+  getConversations: (projectId: string) =>
+    electroviewRpc.request.getConversations({ projectId }),
+
+  /** Create a new conversation, optionally with a title. */
+  createConversation: (projectId: string, title?: string) =>
+    electroviewRpc.request.createConversation({ projectId, title }),
+
+  /** Delete a conversation by id. */
+  deleteConversation: (id: string) =>
+    electroviewRpc.request.deleteConversation({ id }),
+
+  /** Clear all messages in a conversation without deleting the conversation. */
+  clearConversationMessages: (id: string) =>
+    electroviewRpc.request.clearConversationMessages({ id }),
+
+  /** Fetch message parts for a message (inline agent tool calls, text, etc). */
+  getMessageParts: (messageId: string) =>
+    electroviewRpc.request.getMessageParts({ messageId }),
+
+  /** Delete a single message by ID. */
+  deleteMessage: (id: string) =>
+    electroviewRpc.request.deleteMessage({ id }),
+
+  /** Branch a conversation by copying messages up to and including the given message. */
+  branchConversation: (conversationId: string, upToMessageId: string) =>
+    electroviewRpc.request.branchConversation({ conversationId, upToMessageId }),
+
+  /** Rename a conversation. */
+  renameConversation: (id: string, title: string) =>
+    electroviewRpc.request.renameConversation({ id, title }),
+
+  /** Pin or unpin a conversation. */
+  pinConversation: (id: string, pinned: boolean) =>
+    electroviewRpc.request.pinConversation({ id, pinned }),
+
+  // ---- Messages ------------------------------------------------------------
+
+  /** Fetch messages for a conversation, with optional pagination. */
+  getMessages: (conversationId: string, limit?: number, before?: string) =>
+    electroviewRpc.request.getMessages({ conversationId, limit, before }),
+
+  /** Send a user message and start generation. */
+  sendMessage: (projectId: string, conversationId: string, content: string) =>
+    electroviewRpc.request.sendMessage({ projectId, conversationId, content }),
+
+  /** Stop the current generation for a project. */
+  stopGeneration: (projectId: string) =>
+    electroviewRpc.request.stopGeneration({ projectId }),
+
+  setAppFocused: (focused: boolean) =>
+    electroviewRpc.request.setAppFocused({ focused }),
+
+  // ---- Agents --------------------------------------------------------------
+
+  /** Fetch all registered runtime agents. */
+  getAgents: () => electroviewRpc.request.getAgents({}),
+
+  /** Update mutable fields on an agent. */
+  updateAgent: (params: { id: string; displayName?: string; color?: string; systemPrompt?: string; providerId?: string; modelId?: string; temperature?: string; maxTokens?: number; isEnabled?: boolean; thinkingBudget?: string | null; useSystemPromptOnly?: boolean; chatEnabled?: boolean; availableToPm?: boolean }) =>
+    electroviewRpc.request.updateAgent(params),
+
+  /** Reset a built-in agent's overrides to defaults. */
+  resetAgent: (id: string) =>
+    electroviewRpc.request.resetAgent({ id }),
+
+  /** Create a new custom agent. */
+  createAgent: (params: { name: string; displayName: string; color: string; systemPrompt: string; providerId?: string; modelId?: string; useSystemPromptOnly?: boolean; chatEnabled?: boolean; availableToPm?: boolean }) =>
+    electroviewRpc.request.createAgent(params),
+
+  /** Delete a custom (non-built-in) agent by id. */
+  deleteAgent: (id: string) =>
+    electroviewRpc.request.deleteAgent({ id }),
+
+  /** Get tool assignments for an agent. */
+  getAgentTools: (agentId: string) =>
+    electroviewRpc.request.getAgentTools({ agentId }),
+
+  /** Replace all tool assignments for an agent. */
+  setAgentTools: (agentId: string, tools: Array<{ toolName: string; isEnabled: boolean }>) =>
+    electroviewRpc.request.setAgentTools({ agentId, tools }),
+
+  /** Get all registered tool definitions (for UI display). */
+  getAllToolDefinitions: () =>
+    electroviewRpc.request.getAllToolDefinitions({}),
+
+  /** Reset agent tools to built-in defaults. */
+  resetAgentTools: (agentId: string) =>
+    electroviewRpc.request.resetAgentTools({ agentId }),
+
+  // ---- Kanban --------------------------------------------------------------
+
+  /** Fetch all kanban tasks for a project. */
+  getKanbanTasks: (projectId: string) =>
+    electroviewRpc.request.getKanbanTasks({ projectId }),
+
+  /** Fetch a single kanban task. */
+  getKanbanTask: (id: string) =>
+    electroviewRpc.request.getKanbanTask({ id }),
+
+  /** Create a new kanban task. */
+  createKanbanTask: (params: {
+    projectId: string;
+    title: string;
+    description?: string;
+    column?: string;
+    priority?: string;
+    assignedAgentId?: string;
+    blockedBy?: string;
+    dueDate?: string;
+  }) => electroviewRpc.request.createKanbanTask(params),
+
+  /** Update an existing kanban task. */
+  updateKanbanTask: (params: {
+    id: string;
+    title?: string;
+    description?: string;
+    acceptanceCriteria?: string;
+    importantNotes?: string;
+    column?: string;
+    priority?: string;
+    assignedAgentId?: string;
+    blockedBy?: string;
+    dueDate?: string;
+    position?: number;
+  }) => electroviewRpc.request.updateKanbanTask(params),
+
+  /** Move a kanban task to a different column. */
+  moveKanbanTask: (id: string, column: string, position?: number) =>
+    electroviewRpc.request.moveKanbanTask({ id, column, position }),
+
+  /** Delete a kanban task. */
+  deleteKanbanTask: (id: string) =>
+    electroviewRpc.request.deleteKanbanTask({ id }),
+
+  // ---- Notes ----------------------------------------------------------------
+
+  /** Fetch all notes for a project. */
+  getProjectNotes: (projectId: string) =>
+    electroviewRpc.request.getProjectNotes({ projectId }),
+
+  /** Fetch a single note by id. */
+  getNote: (id: string) =>
+    electroviewRpc.request.getNote({ id }),
+
+  /** Create a new note. */
+  createNote: (params: { projectId: string; title: string; content: string; authorAgentId?: string }) =>
+    electroviewRpc.request.createNote(params),
+
+  /** Update an existing note. */
+  updateNote: (params: { id: string; title?: string; content?: string }) =>
+    electroviewRpc.request.updateNote(params),
+
+  /** Delete a note by id. */
+  deleteNote: (id: string) =>
+    electroviewRpc.request.deleteNote({ id }),
+
+  /** Search notes by title and content. */
+  searchNotes: (projectId: string, query: string) =>
+    electroviewRpc.request.searchNotes({ projectId, query }),
+
+  /** Fetch plan .md files from the project workspace plans/ folder. */
+  getWorkspacePlans: (projectId: string) =>
+    electroviewRpc.request.getWorkspacePlans({ projectId }),
+
+  /** Delete a plan .md file from the workspace. */
+  deleteWorkspacePlan: (path: string) =>
+    electroviewRpc.request.deleteWorkspacePlan({ path }),
+
+  // ---- Discord -------------------------------------------------------------
+
+  /** Fetch all Discord channel configurations. */
+  getDiscordConfigs: () => electroviewRpc.request.getDiscordConfigs({}),
+
+  /** Create or update a Discord channel configuration. Omit `id` to create. */
+  saveDiscordConfig: (params: { id?: string; projectId?: string; token: string; serverId: string; channelId: string; enabled?: boolean }) =>
+    electroviewRpc.request.saveDiscordConfig(params),
+
+  /** Remove a Discord channel configuration by id. */
+  deleteDiscordConfig: (id: string) => electroviewRpc.request.deleteDiscordConfig({ id }),
+
+  /** Test a Discord bot token — returns bot name and accessible servers on success. */
+  testDiscordConnection: (token: string) => electroviewRpc.request.testDiscordConnection({ token }),
+
+  /** Return current Discord bot connection status. */
+  getDiscordStatus: () => electroviewRpc.request.getDiscordStatus({}),
+
+  // ---- Git ------------------------------------------------------------------
+
+  getGitStatus: (projectId: string) => electroviewRpc.request.getGitStatus({ projectId }),
+  getGitBranches: (projectId: string) => electroviewRpc.request.getGitBranches({ projectId }),
+  getGitLog: (projectId: string, limit?: number) => electroviewRpc.request.getGitLog({ projectId, limit }),
+  getGitDiff: (projectId: string, file?: string) => electroviewRpc.request.getGitDiff({ projectId, file }),
+  getCommitFiles: (projectId: string, hash: string) => electroviewRpc.request.getCommitFiles({ projectId, hash }),
+  gitCheckout: (projectId: string, branch: string) => electroviewRpc.request.gitCheckout({ projectId, branch }),
+  gitCreateBranch: (projectId: string, name: string) => electroviewRpc.request.gitCreateBranch({ projectId, name }),
+  gitStageFiles: (projectId: string, files: string[]) => electroviewRpc.request.gitStageFiles({ projectId, files }),
+  gitCommit: (projectId: string, message: string) => electroviewRpc.request.gitCommit({ projectId, message }),
+  gitPush: (projectId: string) => electroviewRpc.request.gitPush({ projectId }),
+  gitPull: (projectId: string, remoteBranch?: string) => electroviewRpc.request.gitPull({ projectId, remoteBranch }),
+
+  // ---- Plugins --------------------------------------------------------------
+
+  getPlugins: () => electroviewRpc.request.getPlugins({}),
+  togglePlugin: (name: string, enabled: boolean) => electroviewRpc.request.togglePlugin({ name, enabled }),
+  getPluginSettings: (name: string) => electroviewRpc.request.getPluginSettings({ name }),
+  savePluginSettings: (name: string, settings: Record<string, unknown>) => electroviewRpc.request.savePluginSettings({ name, settings }),
+  savePluginPrompt: (name: string, prompt: string | null) => electroviewRpc.request.savePluginPrompt({ name, prompt }),
+
+  // ---- Deploy --------------------------------------------------------------
+
+  getEnvironments: (projectId: string) => electroviewRpc.request.getEnvironments({ projectId }),
+  saveEnvironment: (params: {
+    projectId: string;
+    id?: string;
+    name: string;
+    branch?: string;
+    command: string;
+    url?: string;
+  }) => electroviewRpc.request.saveEnvironment(params),
+  deleteEnvironment: (id: string) => electroviewRpc.request.deleteEnvironment({ id }),
+  getDeployHistory: (environmentId: string, limit?: number) => electroviewRpc.request.getDeployHistory({ environmentId, limit }),
+  executeDeploy: (environmentId: string) => electroviewRpc.request.executeDeploy({ environmentId }),
+
+  // ---- Prompts ---------------------------------------------------------------
+
+  /** Fetch all prompt templates, ordered by name. */
+  getPrompts: () => electroviewRpc.request.getPrompts({}),
+
+  /** Create or update a prompt template. Omit `id` to create a new one. */
+  savePrompt: (params: { id?: string; name: string; description: string; content: string; category?: string }) =>
+    electroviewRpc.request.savePrompt(params),
+
+  /** Remove a prompt template by id. */
+  deletePrompt: (id: string) => electroviewRpc.request.deletePrompt({ id }),
+
+  /** Search prompt templates by name or description. */
+  searchPrompts: (query: string) => electroviewRpc.request.searchPrompts({ query }),
+
+  // ---- Search --------------------------------------------------------------
+
+  /** Search across projects, conversations, kanban tasks, and notes. */
+  globalSearch: (query: string) =>
+    electroviewRpc.request.globalSearch({ query }),
+
+  // ---- Inbox ---------------------------------------------------------------
+  getInboxMessages: (filters?: { projectId?: string; isRead?: boolean; isArchived?: boolean; limit?: number }) =>
+    electroviewRpc.request.getInboxMessages(filters ?? {}),
+  markAsRead: (id: string) =>
+    electroviewRpc.request.markAsRead({ id }),
+  markAsUnread: (id: string) =>
+    electroviewRpc.request.markAsUnread({ id }),
+  markAllAsRead: (projectId?: string) =>
+    electroviewRpc.request.markAllAsRead({ projectId }),
+  deleteInboxMessage: (id: string) =>
+    electroviewRpc.request.deleteInboxMessage({ id }),
+  getUnreadCount: (projectId?: string) =>
+    electroviewRpc.request.getUnreadCount({ projectId }),
+  searchInboxMessages: (query: string, projectId?: string) =>
+    electroviewRpc.request.searchInboxMessages({ query, projectId }),
+  archiveInboxMessage: (id: string) =>
+    electroviewRpc.request.archiveInboxMessage({ id }),
+  unarchiveInboxMessage: (id: string) =>
+    electroviewRpc.request.unarchiveInboxMessage({ id }),
+  bulkArchiveInboxMessages: (ids: string[]) =>
+    electroviewRpc.request.bulkArchiveInboxMessages({ ids }),
+  bulkDeleteInboxMessages: (ids: string[]) =>
+    electroviewRpc.request.bulkDeleteInboxMessages({ ids }),
+  bulkMarkAsReadInboxMessages: (ids: string[]) =>
+    electroviewRpc.request.bulkMarkAsReadInboxMessages({ ids }),
+  replyToInboxMessage: (id: string, content: string) =>
+    electroviewRpc.request.replyToInboxMessage({ id, content }),
+
+  // ---- Agent pause/resume/redirect/stop ------------------------------------
+
+  /** Resume a paused agent — re-runs the same task from scratch. */
+  resumeAgent: (projectId: string, agentId: string) =>
+    electroviewRpc.request.resumeAgent({ projectId, agentId }),
+
+  /** Redirect a paused agent with new human instructions. */
+  redirectAgent: (projectId: string, agentId: string, instructions: string) =>
+    electroviewRpc.request.redirectAgent({ projectId, agentId, instructions }),
+
+  /** Stop a specific running agent by name. */
+  stopAgent: (projectId: string, agentName: string) =>
+    electroviewRpc.request.stopAgent({ projectId, agentName }),
+
+  /** Stop all running sub-agents and set the engine stopped flag. */
+  stopAllAgents: (projectId: string) =>
+    electroviewRpc.request.stopAllAgents({ projectId }),
+
+  /** Get currently running sub-agents (restores UI state after navigation). */
+  getRunningAgents: (projectId: string) =>
+    electroviewRpc.request.getRunningAgents({ projectId }),
+
+  /** Get active agent counts for all projects (for the dashboard). */
+  getActiveProjectAgents: () =>
+    electroviewRpc.request.getActiveProjectAgents({}),
+
+  /** Get task done/total counts per project (for dashboard cards). */
+  getProjectTaskStats: () =>
+    electroviewRpc.request.getProjectTaskStats({}),
+
+  /** Check if the PM is currently streaming a response. */
+  getPmStatus: (projectId: string) =>
+    electroviewRpc.request.getPmStatus({ projectId }),
+
+  /** Test OS-level desktop notification. */
+  testOsNotification: () =>
+    electroviewRpc.request.testOsNotification({}),
+
+  /** Search workspace files recursively (for @ mentions). */
+  searchWorkspaceFiles: (projectId: string, query?: string) =>
+    electroviewRpc.request.searchWorkspaceFiles({ projectId, query }),
+
+  /** Execute a shell command directly in project workspace (for ! mode). */
+  executeShellCommand: (projectId: string, command: string, timeout?: number) =>
+    electroviewRpc.request.executeShellCommand({ projectId, command, timeout }),
+
+  /** Manually trigger conversation compaction (for /compact). */
+  compactConversation: (projectId: string, conversationId: string) =>
+    electroviewRpc.request.compactConversation({ projectId, conversationId }),
+
+  /** Open system terminal at project workspace (for /terminal). */
+  openTerminal: (projectId: string) =>
+    electroviewRpc.request.openTerminal({ projectId }),
+
+  /** Open a URL in the system default browser. */
+  openExternalUrl: (url: string) =>
+    electroviewRpc.request.openExternalUrl({ url }),
+
+  /** Open a local folder path in the OS file explorer. */
+  openInExplorer: (path: string) =>
+    electroviewRpc.request.openInExplorer({ path }),
+
+  /** Get the absolute path to the app's data directory (DB, logs, backups). */
+  getDataPath: () =>
+    electroviewRpc.request.getDataPath({}),
+
+  /** Enhance a user prompt via AI. */
+  enhancePrompt: (projectId: string, text: string, providerId?: string, modelId?: string) =>
+    electroviewRpc.request.enhancePrompt({ projectId, text, providerId, modelId }),
+
+  /** Respond to a shell command approval request. */
+  respondShellApproval: (requestId: string, decision: "allow" | "deny" | "always") =>
+    electroviewRpc.request.respondShellApproval({ requestId, decision }),
+
+  /** Save an attached file to the project workspace. */
+  saveAttachment: (projectId: string, fileName: string, dataBase64: string, type: "text" | "image" | "binary") =>
+    electroviewRpc.request.saveAttachment({ projectId, fileName, dataBase64, type }),
+
+  /** Respond to a user question from the PM agent. */
+  respondUserQuestion: (requestId: string, answer: string) =>
+    electroviewRpc.request.respondUserQuestion({ requestId, answer }),
+
+  /** Clear the prompt debug log file. */
+  clearPromptLog: () => electroviewRpc.request.clearPromptLog({}),
+
+  /** Open the prompt debug log file in the OS default editor. */
+  openPromptLog: () => electroviewRpc.request.openPromptLog({}),
+
+  /** Get token usage stats from the prompt debug log. */
+  getPromptLogStats: (limit?: number) => electroviewRpc.request.getPromptLogStats({ limit }),
+
+  /** Get full content of a specific prompt log entry by timestamp. */
+  getPromptLogEntry: (timestamp: string) => electroviewRpc.request.getPromptLogEntry({ timestamp }),
+
+  // ---- WhatsApp ------------------------------------------------------------
+
+  /** Fetch all WhatsApp channel configurations. */
+  getWhatsAppConfigs: () => electroviewRpc.request.getWhatsAppConfigs({}),
+
+  /** Create or update a WhatsApp channel configuration. Omit `id` to create. */
+  saveWhatsAppConfig: (params: { id?: string; projectId?: string; enabled?: boolean }) =>
+    electroviewRpc.request.saveWhatsAppConfig(params),
+
+  /** Remove a WhatsApp channel configuration by id. */
+  deleteWhatsAppConfig: (id: string) => electroviewRpc.request.deleteWhatsAppConfig({ id }),
+
+  /** Return current WhatsApp connection status for a channel. */
+  getWhatsAppStatus: (id: string) => electroviewRpc.request.getWhatsAppStatus({ id }),
+
+  /** Connect a WhatsApp channel adapter — triggers QR code generation. */
+  connectWhatsApp: (id: string) => electroviewRpc.request.connectWhatsApp({ id }),
+  getDefaultChannelProject: () => electroviewRpc.request.getDefaultChannelProject({}),
+  setDefaultChannelProject: (projectId: string | null) => electroviewRpc.request.setDefaultChannelProject({ projectId }),
+
+  // ---- Email ---------------------------------------------------------------
+
+  /** Fetch all Email channel configurations. */
+  getEmailConfigs: () => electroviewRpc.request.getEmailConfigs({}),
+
+  /** Create or update an Email channel configuration. Omit `id` to create. */
+  saveEmailConfig: (params: { id?: string; projectId?: string; imapHost: string; imapPort: number; imapUser: string; imapPass: string; imapTls: boolean; smtpHost: string; smtpPort: number; smtpUser: string; smtpPass: string; smtpTls: boolean; enabled?: boolean }) =>
+    electroviewRpc.request.saveEmailConfig(params),
+
+  /** Remove an Email channel configuration by id. */
+  deleteEmailConfig: (id: string) => electroviewRpc.request.deleteEmailConfig({ id }),
+
+  /** Test IMAP and SMTP connectivity for given credentials. */
+  testEmailConnection: (params: { imapHost: string; imapPort: number; imapUser: string; imapPass: string; imapTls: boolean; smtpHost: string; smtpPort: number; smtpUser: string; smtpPass: string; smtpTls: boolean }) =>
+    electroviewRpc.request.testEmailConnection(params),
+
+  // ---- Notifications -------------------------------------------------------
+
+  /** Fetch notification preferences, optionally filtered by platform and project. */
+  getNotificationPreferences: (params?: { platform?: string; projectId?: string }) =>
+    electroviewRpc.request.getNotificationPreferences(params ?? {}),
+
+  /** Create or update a notification preference entry. Omit `id` to create. */
+  saveNotificationPreference: (params: { id?: string; platform: string; projectId?: string; soundEnabled?: boolean; badgeEnabled?: boolean; bannerEnabled?: boolean; muteUntil?: string | null }) =>
+    electroviewRpc.request.saveNotificationPreference(params),
+
+  // ---- Inbox Rules ---------------------------------------------------------
+
+  /** Fetch all inbox rules, optionally filtered by project. */
+  getInboxRules: (projectId?: string) =>
+    electroviewRpc.request.getInboxRules({ projectId }),
+
+  /** Create a new inbox rule. */
+  createInboxRule: (params: { projectId?: string; name: string; conditions: string; actions: string; priority?: number }) =>
+    electroviewRpc.request.createInboxRule(params),
+
+  /** Update an existing inbox rule. */
+  updateInboxRule: (params: { id: string; name?: string; conditions?: string; actions?: string; enabled?: boolean; priority?: number }) =>
+    electroviewRpc.request.updateInboxRule(params),
+
+  /** Delete an inbox rule by id. */
+  deleteInboxRule: (id: string) => electroviewRpc.request.deleteInboxRule({ id }),
+
+  // ---- Cron Jobs -----------------------------------------------------------
+
+  getCronJobs: (params?: { projectId?: string }) =>
+    electroviewRpc.request.getCronJobs(params ?? {}),
+
+  createCronJob: (params: { projectId?: string; name: string; cronExpression: string; timezone?: string; taskType: string; taskConfig: string; enabled?: boolean; oneShot?: boolean }) =>
+    electroviewRpc.request.createCronJob(params),
+
+  updateCronJob: (params: { id: string; name?: string; cronExpression?: string; timezone?: string; taskType?: string; taskConfig?: string; enabled?: boolean; oneShot?: boolean }) =>
+    electroviewRpc.request.updateCronJob(params),
+
+  deleteCronJob: (id: string) => electroviewRpc.request.deleteCronJob({ id }),
+
+  getCronJobHistory: (jobId: string, limit?: number) =>
+    electroviewRpc.request.getCronJobHistory({ jobId, limit }),
+
+  clearCronJobHistory: (jobId?: string) =>
+    electroviewRpc.request.clearCronJobHistory({ jobId }),
+
+  previewCronSchedule: (cronExpression: string, timezone?: string, count?: number) =>
+    electroviewRpc.request.previewCronSchedule({ cronExpression, timezone, count }),
+
+  triggerCronJob: (params: { id: string }) =>
+    electroviewRpc.request.triggerCronJob(params),
+
+  // ---- Automation Rules ----------------------------------------------------
+
+  getAutomationRules: (projectId?: string) =>
+    electroviewRpc.request.getAutomationRules({ projectId }),
+
+  createAutomationRule: (params: { projectId?: string; name: string; trigger: string; actions: string; priority?: number }) =>
+    electroviewRpc.request.createAutomationRule(params),
+
+  updateAutomationRule: (params: { id: string; name?: string; trigger?: string; actions?: string; enabled?: boolean; priority?: number }) =>
+    electroviewRpc.request.updateAutomationRule(params),
+
+  deleteAutomationRule: (id: string) => electroviewRpc.request.deleteAutomationRule({ id }),
+
+  getAutomationTemplates: () => electroviewRpc.request.getAutomationTemplates({}),
+
+  // ── Git (Phase 9 additions) ──
+  getConflicts: (projectId: string) =>
+    electroviewRpc.request.getConflicts({ projectId }),
+  getConflictDiff: (projectId: string, file: string) =>
+    electroviewRpc.request.getConflictDiff({ projectId, file }),
+  gitDeleteBranch: (projectId: string, name: string) =>
+    electroviewRpc.request.gitDeleteBranch({ projectId, name }),
+  gitMergeBranch: (projectId: string, branch: string, strategy?: string) =>
+    electroviewRpc.request.gitMergeBranch({ projectId, branch, strategy }),
+  gitRebaseBranch: (projectId: string, onto: string) =>
+    electroviewRpc.request.gitRebaseBranch({ projectId, onto }),
+  gitAbortMerge: (projectId: string) =>
+    electroviewRpc.request.gitAbortMerge({ projectId }),
+
+  // ── Pull Requests ──
+  getPullRequests: (projectId: string, state?: string) =>
+    electroviewRpc.request.getPullRequests({ projectId, state }),
+  createPullRequest: (params: { projectId: string; title: string; description?: string; sourceBranch: string; targetBranch: string; linkedTaskId?: string }) =>
+    electroviewRpc.request.createPullRequest(params),
+  updatePullRequest: (params: { id: string; title?: string; description?: string; state?: string }) =>
+    electroviewRpc.request.updatePullRequest(params),
+  mergePullRequest: (id: string, strategy: "merge" | "squash" | "rebase", deleteBranch?: boolean) =>
+    electroviewRpc.request.mergePullRequest({ id, strategy, deleteBranch }),
+  deletePullRequest: (id: string) =>
+    electroviewRpc.request.deletePullRequest({ id }),
+  getPrDiff: (id: string) =>
+    electroviewRpc.request.getPrDiff({ id }),
+  getPrComments: (prId: string) =>
+    electroviewRpc.request.getPrComments({ prId }),
+  addPrComment: (params: { prId: string; content: string; file?: string; lineNumber?: number; authorName?: string; authorType?: string }) =>
+    electroviewRpc.request.addPrComment(params),
+  deletePrComment: (id: string) =>
+    electroviewRpc.request.deletePrComment({ id }),
+  generatePrDescription: (projectId: string, sourceBranch: string, targetBranch: string) =>
+    electroviewRpc.request.generatePrDescription({ projectId, sourceBranch, targetBranch }),
+
+  // ── Webhook Configs ──
+  getWebhookConfigs: (projectId: string) =>
+    electroviewRpc.request.getWebhookConfigs({ projectId }),
+  saveWebhookConfig: (params: { id?: string; projectId: string; name: string; events: string[]; enabled?: boolean }) =>
+    electroviewRpc.request.saveWebhookConfig(params),
+  deleteWebhookConfig: (id: string) =>
+    electroviewRpc.request.deleteWebhookConfig({ id }),
+  getWebhookEvents: (projectId: string, eventType?: string, limit?: number) =>
+    electroviewRpc.request.getWebhookEvents({ projectId, eventType, limit }),
+  pollGithubEvents: (projectId: string) =>
+    electroviewRpc.request.pollGithubEvents({ projectId }),
+
+  // ── GitHub Issues ──
+  getGithubIssues: (projectId: string, state?: string) =>
+    electroviewRpc.request.getGithubIssues({ projectId, state }),
+  syncGithubIssues: (projectId: string) =>
+    electroviewRpc.request.syncGithubIssues({ projectId }),
+  createGithubIssueFromTask: (taskId: string, projectId: string) =>
+    electroviewRpc.request.createGithubIssueFromTask({ taskId, projectId }),
+  linkIssueToTask: (issueId: string, taskId: string) =>
+    electroviewRpc.request.linkIssueToTask({ issueId, taskId }),
+  validateGithubToken: (token: string) =>
+    electroviewRpc.request.validateGithubToken({ token }),
+
+  // ── Branch Strategy ──
+  getBranchStrategy: (projectId: string) =>
+    electroviewRpc.request.getBranchStrategy({ projectId }),
+  saveBranchStrategy: (params: { projectId: string; model?: string; defaultBranch?: string; featureBranchPrefix?: string; releaseBranchPrefix?: string; hotfixBranchPrefix?: string; namingTemplate?: string; protectedBranches?: string[]; autoCleanup?: boolean }) =>
+    electroviewRpc.request.saveBranchStrategy(params),
+  createFeatureBranch: (projectId: string, taskId: string, taskTitle: string) =>
+    electroviewRpc.request.createFeatureBranch({ projectId, taskId, taskTitle }),
+  getMergedBranches: (projectId: string) =>
+    electroviewRpc.request.getMergedBranches({ projectId }),
+  cleanupMergedBranches: (projectId: string) =>
+    electroviewRpc.request.cleanupMergedBranches({ projectId }),
+
+  // ── Analytics ──
+  getProjectStats: (projectId: string, days?: number) =>
+    electroviewRpc.request.getProjectStats({ projectId, days }),
+  getAnalyticsSummary: (projectId: string) =>
+    electroviewRpc.request.getAnalyticsSummary({ projectId }),
+
+  // MCP
+  getMcpConfig: () => electroviewRpc.request.getMcpConfig({}),
+  saveMcpConfig: (configJson: string) => electroviewRpc.request.saveMcpConfig({ configJson }),
+  getMcpStatus: () => electroviewRpc.request.getMcpStatus({}),
+  reconnectMcpServer: (name?: string) => electroviewRpc.request.reconnectMcpServer({ name }),
+  disconnectMcpServer: (name: string) => electroviewRpc.request.disconnectMcpServer({ name }),
+
+  // Plugin Extensions
+  getPluginExtensions: () => electroviewRpc.request.getPluginExtensions({}),
+
+  // LSP
+  getLspStatus: () => electroviewRpc.request.getLspStatus({}),
+  installLspServer: (serverId: string) => electroviewRpc.request.installLspServer({ serverId }),
+  uninstallLspServer: (serverId: string) => electroviewRpc.request.uninstallLspServer({ serverId }),
+
+  // ── Database Viewer ──
+  dbViewerGetTables: () => electroviewRpc.request.dbViewerGetTables({}),
+  dbViewerGetRows: (params: { table: string; page: number; pageSize?: number }) =>
+    electroviewRpc.request.dbViewerGetRows(params),
+  dbViewerDeleteRow: (params: { table: string; id: string }) =>
+    electroviewRpc.request.dbViewerDeleteRow(params),
+
+  // ── Phase 13: Audit Log ──
+  getAuditLog: (params: { action?: string; entityType?: string; limit?: number; offset?: number; before?: string; after?: string }) =>
+    electroviewRpc.request.getAuditLog(params),
+  clearAuditLog: (before?: string) =>
+    electroviewRpc.request.clearAuditLog({ before }),
+
+  // ── Phase 13: Backup/Restore ──
+  createBackup: () => electroviewRpc.request.createBackup({}),
+  listBackups: () => electroviewRpc.request.listBackups({}),
+  deleteBackup: (filename: string) => electroviewRpc.request.deleteBackup({ filename }),
+  restoreBackup: (filename: string) => electroviewRpc.request.restoreBackup({ filename }),
+
+  // ── Phase 13: Export/Import ──
+  exportProjectData: (projectId: string) => electroviewRpc.request.exportProjectData({ projectId }),
+  importProjectData: (projectId: string, data: string, mode: "merge" | "replace") =>
+    electroviewRpc.request.importProjectData({ projectId, data, mode }),
+
+  // ── Settings Export/Import ──
+  exportSettings: () => electroviewRpc.request.exportSettings({}),
+  importSettings: (data: string) => electroviewRpc.request.importSettings({ data }),
+
+  // ── Reset Application ──
+  resetApplication: () => electroviewRpc.request.resetApplication({}),
+
+  // ── System Health ──
+  getHealthStatus: () => electroviewRpc.request.getHealthStatus({}),
+  checkDatabase: () => electroviewRpc.request.checkDatabase({}),
+  restartScheduler: () => electroviewRpc.request.restartScheduler({}),
+  cleanupEngines: () => electroviewRpc.request.cleanupEngines({}),
+
+  // ── Database Maintenance ──
+  optimizeDatabase: () => electroviewRpc.request.optimizeDatabase({}),
+  vacuumDatabase: () => electroviewRpc.request.vacuumDatabase({}),
+  pruneDatabase: (days?: number) => electroviewRpc.request.pruneDatabase({ days }),
+
+  // ── Conversation Archive ──
+  archiveConversation: (id: string) => electroviewRpc.request.archiveConversation({ id }),
+  restoreConversation: (id: string) => electroviewRpc.request.restoreConversation({ id }),
+  archiveOldConversations: (projectId: string, daysOld?: number) =>
+    electroviewRpc.request.archiveOldConversations({ projectId, daysOld }),
+  getArchivedConversations: (projectId: string) =>
+    electroviewRpc.request.getArchivedConversations({ projectId }),
+
+  // ---- Messages (fire-and-forget) ------------------------------------------
+
+  /** Forward a log entry to the bun-side console. */
+  log: (level: string, message: string) =>
+    electroviewRpc.send.log({ level, message }),
+
+  /** Forward a client-side error to the bun-side error log file. */
+  logClientError: (type: string, message: string, stack?: string) =>
+    electroviewRpc.send.logClientError({ type, message, stack }),
+
+  // ---- Dashboard PM Chat ---------------------------------------------------
+
+  /** Send a message to the dashboard PM chatbot. Returns immediately; tokens arrive via dashboardPMChunk events. */
+  sendDashboardMessage: (sessionId: string, content: string) =>
+    electroviewRpc.request.sendDashboardMessage({ sessionId, content }),
+
+  /** Abort an in-flight dashboard PM stream. */
+  abortDashboardMessage: (sessionId: string) =>
+    electroviewRpc.request.abortDashboardMessage({ sessionId }),
+
+  /** Clear dashboard PM conversation history for a session. */
+  clearDashboardSession: (sessionId: string) =>
+    electroviewRpc.request.clearDashboardSession({ sessionId }),
+
+  /** List custom agents that have "Enable Chat" turned on (and are enabled). */
+  getChatEnabledAgents: () =>
+    electroviewRpc.request.getChatEnabledAgents({}),
+
+  /** Send a message to a custom agent in its dashboard chat session. */
+  sendDashboardAgentMessage: (sessionId: string, agentName: string, content: string) =>
+    electroviewRpc.request.sendDashboardAgentMessage({ sessionId, agentName, content }),
+
+  /** Abort an in-flight custom-agent dashboard chat stream. */
+  abortDashboardAgentMessage: (sessionId: string) =>
+    electroviewRpc.request.abortDashboardAgentMessage({ sessionId }),
+
+  /** Clear the in-memory history for a custom-agent dashboard chat session. */
+  clearDashboardAgentSession: (sessionId: string) =>
+    electroviewRpc.request.clearDashboardAgentSession({ sessionId }),
+
+  // ---- Skills --------------------------------------------------------------
+
+  /** Get all loaded skills (summary metadata). */
+  getSkills: () => electroviewRpc.request.getSkills({}),
+
+  /** Get a single skill's full detail including content. */
+  getSkill: (name: string) => electroviewRpc.request.getSkill({ name }),
+
+  /** Re-scan the skills directory and reload all skills. */
+  refreshSkills: () => electroviewRpc.request.refreshSkills({}),
+
+  /** Get the absolute path to the skills directory. */
+  getSkillsDirectory: () => electroviewRpc.request.getSkillsDirectory({}),
+
+  /** Open a skill's SKILL.md in the OS default editor. */
+  openSkillInEditor: (name: string) => electroviewRpc.request.openSkillInEditor({ name }),
+
+  /** Open the skills directory in the OS file explorer. */
+  openSkillsFolder: () => electroviewRpc.request.openSkillsFolder({}),
+
+  /** Get all available agent tools (name, category, description). */
+  getAvailableTools: () => electroviewRpc.request.getAvailableTools({}),
+
+  /** Delete a user-installed skill by name. */
+  deleteSkill: (name: string) => electroviewRpc.request.deleteSkill({ name }),
+
+  // ---- Updater -------------------------------------------------------------
+
+  /** Check for an available app update. Returns devMode=true when running in dev channel. */
+  checkForUpdate: () => electroviewRpc.request.checkForUpdate({}),
+
+  /** Download and decompress the latest update. Progress arrives via "agentdesk:update-status" events. */
+  downloadUpdate: () => electroviewRpc.request.downloadUpdate({}),
+
+  /** Apply the downloaded update and restart the app. */
+  applyUpdate: () => electroviewRpc.request.applyUpdate({}),
+
+  // ---- Council -------------------------------------------------------------
+
+  /** Start a council session with a user query. Returns the session ID immediately. */
+  startCouncil: (query: string, context?: string) =>
+    electroviewRpc.request.startCouncil({ query, context }),
+
+  /** Stop an in-flight council session. */
+  stopCouncil: (sessionId: string) =>
+    electroviewRpc.request.stopCouncil({ sessionId }),
+
+  /** Submit a user answer to a pending PM question in a council session. */
+  answerCouncilQuestion: (sessionId: string, questionId: string, answer: string) =>
+    electroviewRpc.request.answerCouncilQuestion({ sessionId, questionId, answer }),
+
+  // ---- Freelance -----------------------------------------------------------
+
+  /** Check if the freelance feature is enabled. */
+  freelanceGetFeatureEnabled: () =>
+    electroviewRpc.request["freelance.getFeatureEnabled"]({}),
+
+  /** Fetch freelance general settings. */
+  freelanceGetSettings: () =>
+    electroviewRpc.request["freelance.getSettings"]({}),
+
+  /** Persist freelance general settings. */
+  freelanceSaveSettings: (params: {
+    rssSources: Array<{ name: string; url: string; enabled: boolean }>;
+    keywords: string[];
+    pollingInterval: number;
+    maxFeeds: number;
+    maxListings: number;
+    autoShortlistEnabled: boolean;
+    autoShortlistCount: number;
+    autoShortlistOnStartup: boolean;
+    analysisProviderId: string | null;
+    additionalNotes: string;
+  }) => electroviewRpc.request["freelance.saveSettings"](params),
+
+  /** Get counts for each listing filter tab. */
+  freelanceGetListingCounts: () =>
+    electroviewRpc.request["freelance.getListingCounts"]({}),
+
+  /** Fetch paginated listings. */
+  freelanceGetListings: (params?: { status?: "new" | "approved" | "shortlisted" | "closed"; page?: number; search?: string }) =>
+    electroviewRpc.request["freelance.getListings"](params ?? {}),
+
+  /** Approve a listing (creates a project). */
+  freelanceApproveListing: (listingId: string) =>
+    electroviewRpc.request["freelance.approveListing"]({ listingId }),
+
+  /** Soft-delete a listing (excluded from all future queries). */
+  freelanceDeleteListing: (listingId: string) =>
+    electroviewRpc.request["freelance.deleteListing"]({ listingId }),
+
+  /** Manually trigger a fetch cycle. */
+  freelanceTriggerFetch: () =>
+    electroviewRpc.request["freelance.triggerFetch"]({}),
+
+  /** Hard-delete all listings and their chat messages. */
+  freelanceDeleteAllListings: () =>
+    electroviewRpc.request["freelance.deleteAllListings"]({}),
+
+  /** Fetch all chat messages for a listing. */
+  freelanceChatGetMessages: (listingId: string) =>
+    electroviewRpc.request["freelance.chat.getMessages"]({ listingId }),
+
+  /** Send a chat message and start streaming the AI response. */
+  freelanceChatSendMessage: (listingId: string, content: string) =>
+    electroviewRpc.request["freelance.chat.sendMessage"]({ listingId, content }),
+
+  /** Regenerate the last assistant message. */
+  freelanceChatRegenerate: (listingId: string) =>
+    electroviewRpc.request["freelance.chat.regenerate"]({ listingId }),
+
+  /** Clear all chat messages for a listing. */
+  freelanceChatClearMessages: (listingId: string) =>
+    electroviewRpc.request["freelance.chat.clearMessages"]({ listingId }),
+
+  /** Stop the in-flight chat stream for a listing. */
+  freelanceChatStop: (listingId: string) =>
+    electroviewRpc.request["freelance.chat.stop"]({ listingId }),
+
+  /** Start the "Find Workable Projects" wizard (fire-and-forget). */
+  freelanceWizardStart: (count: number) =>
+    electroviewRpc.request["freelance.wizard.start"]({ count }),
+
+  /** Stop the running wizard immediately. */
+  freelanceWizardStop: () =>
+    electroviewRpc.request["freelance.wizard.stop"]({}),
+
+  /** Run workability analysis on a single listing. */
+  freelanceWizardAnalyzeListing: (listingId: string) =>
+    electroviewRpc.request["freelance.wizard.analyzeListing"]({ listingId }),
+
+  /** Mark selected listings as shortlisted. */
+  freelanceShortlistListings: (listingIds: string[]) =>
+    electroviewRpc.request["freelance.shortlistListings"]({ listingIds }),
+
+  /** Mark an approved listing as done (closed). */
+  freelanceMarkListingDone: (listingId: string) =>
+    electroviewRpc.request["freelance.markListingDone"]({ listingId }),
+} as const;
