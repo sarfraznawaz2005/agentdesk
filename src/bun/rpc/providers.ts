@@ -4,6 +4,7 @@ import { sqlite } from "../db/connection";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter, type ProviderConfig } from "../providers";
 import { logAudit } from "../db/audit";
+import { isClaudeSubscriptionEnabled } from "../claude/feature-flag";
 
 /**
  * Normalize a base URL by:
@@ -366,6 +367,10 @@ export async function checkModelToolSupportHandler(params: {
 		// Network error or timeout — don't block the user
 		return { supportsToolChoice: true };
 	}
+}
+
+export function getClaudeSubscriptionEnabledHandler(): { enabled: boolean } {
+	return { enabled: isClaudeSubscriptionEnabled() };
 }
 
 /**

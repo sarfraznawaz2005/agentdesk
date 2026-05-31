@@ -204,6 +204,11 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 		const hadFreelanceFlag = existsSync(freelanceFlagPath);
 		applyLog(`Freelance flag present: ${hadFreelanceFlag}`);
 
+		// Preserve claude-subscription feature flag the same way.
+		const claudeFlagPath = join(dirname(process.execPath), "claude");
+		const hadClaudeFlag = existsSync(claudeFlagPath);
+		applyLog(`Claude subscription flag present: ${hadClaudeFlag}`);
+
 		// Derive the launcher path for relaunch once the installer finishes.
 		// Updater.appDataFolder() returns e.g. %LOCALAPPDATA%\com.sarfrazai.agentdesk\stable
 		const appDataFolder = await Updater.appDataFolder();
@@ -225,6 +230,9 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 			psLog("Installer finished") +
 			(hadFreelanceFlag
 				? `New-Item -ItemType File -Path '${esc(freelanceFlagPath)}' -Force | Out-Null; ${psLog("Restored freelance feature flag")}`
+				: "") +
+			(hadClaudeFlag
+				? `New-Item -ItemType File -Path '${esc(claudeFlagPath)}' -Force | Out-Null; ${psLog("Restored claude subscription feature flag")}`
 				: "") +
 			`if (Test-Path '${esc(launcherPath)}') { ` +
 				psLog("Launcher found, relaunching app") +

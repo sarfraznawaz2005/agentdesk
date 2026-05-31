@@ -301,6 +301,10 @@ export const rpc = {
   getConnectedProviderModels: () =>
     electroviewRpc.request.getConnectedProviderModels({}),
 
+  /** Check if the Claude Subscription provider type is enabled (requires 'claude' flag file). */
+  getClaudeSubscriptionEnabled: () =>
+    electroviewRpc.request.getClaudeSubscriptionEnabled({}),
+
   /** Check whether a model supports the tool_choice parameter (OpenRouter only). */
   checkModelToolSupport: (params: { providerType: string; apiKey?: string; providerId?: string; modelId: string }) =>
     electroviewRpc.request.checkModelToolSupport(params),

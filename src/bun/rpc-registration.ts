@@ -122,6 +122,7 @@ export const rpc = BrowserView.defineRPC<AgentDeskRPC>({
 			deleteProvider: (params) => providersRpc.deleteProviderHandler(params.id),
 			getConnectedProviderModels: () => providersRpc.getConnectedProviderModelsHandler(),
 			checkModelToolSupport: (params) => providersRpc.checkModelToolSupportHandler(params),
+			getClaudeSubscriptionEnabled: () => providersRpc.getClaudeSubscriptionEnabledHandler(),
 
 			// Projects
 			getProjects: () => projectsRpc.getProjectsList(),

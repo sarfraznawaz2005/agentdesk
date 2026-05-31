@@ -36,7 +36,7 @@ export function buildPMThinkingOptions(budget: string | null, providerType: stri
 	const budgetTokens = THINKING_BUDGET_TOKENS[budget] ?? 8000;
 	const safeMaxTokens = budgetTokens + 1000;
 
-	if (providerType === "anthropic") {
+	if (providerType === "anthropic" || providerType === "claude-subscription") {
 		return {
 			maxTokens: safeMaxTokens,
 			providerOptions: {

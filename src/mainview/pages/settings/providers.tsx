@@ -64,7 +64,7 @@ const EMPTY_FORM: FormData = {
   isDefault: false,
 };
 
-const PROVIDER_TYPE_OPTIONS = [
+const BASE_PROVIDER_TYPE_OPTIONS = [
   { value: "opencode", label: "Free (OpenCode)" },
   { value: "anthropic", label: "Anthropic" },
   { value: "deepseek", label: "DeepSeek" },
@@ -78,11 +78,13 @@ const PROVIDER_TYPE_OPTIONS = [
   { value: "custom", label: "Custom (OpenAI-compatible)" },
 ] as const;
 
+const CLAUDE_SUBSCRIPTION_OPTION = { value: "claude-subscription", label: "Claude Subscription" } as const;
+
 // Provider types that need a base URL
 const BASE_URL_PROVIDERS = ["ollama", "custom"];
 
 // Provider types that do not require an API key from the user
-const NO_KEY_PROVIDERS = ["opencode"];
+const NO_KEY_PROVIDERS = ["opencode", "claude-subscription"];
 
 function isValidUrl(v: string): boolean {
   try {
@@ -114,7 +116,8 @@ function providerTypeBadgeClass(): string {
 }
 
 function providerTypeLabel(providerType: string): string {
-  const match = PROVIDER_TYPE_OPTIONS.find(
+  if (providerType === "claude-subscription") return CLAUDE_SUBSCRIPTION_OPTION.label;
+  const match = BASE_PROVIDER_TYPE_OPTIONS.find(
     (o) => o.value === providerType.toLowerCase()
   );
   return match ? match.label : providerType;
@@ -341,6 +344,17 @@ function ProviderDialog({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [toolChoiceWarning, setToolChoiceWarning] = useState<string | null>(null);
+  const [claudeSubscriptionEnabled, setClaudeSubscriptionEnabled] = useState(false);
+
+  const providerTypeOptions = claudeSubscriptionEnabled
+    ? [...BASE_PROVIDER_TYPE_OPTIONS, CLAUDE_SUBSCRIPTION_OPTION]
+    : BASE_PROVIDER_TYPE_OPTIONS;
+
+  useEffect(() => {
+    rpc.getClaudeSubscriptionEnabled()
+      .then(({ enabled }) => setClaudeSubscriptionEnabled(enabled))
+      .catch(() => {});
+  }, []);
 
   // Reset form whenever the dialog opens or switches between add and edit
   useEffect(() => {
@@ -569,7 +583,7 @@ function ProviderDialog({
                 "disabled:cursor-not-allowed disabled:opacity-50"
               )}
             >
-              {PROVIDER_TYPE_OPTIONS.map((opt) => (
+              {providerTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -580,7 +594,9 @@ function ProviderDialog({
           {/* API Key */}
           {NO_KEY_PROVIDERS.includes(form.providerType) ? (
             <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-              No API key needed — free models are available out of the box. Optionally add your own OpenCode key to unlock paid models.
+              {form.providerType === "claude-subscription"
+                ? "No API key needed — uses Claude Code's stored OAuth credentials automatically."
+                : "No API key needed — free models are available out of the box. Optionally add your own OpenCode key to unlock paid models."}
             </div>
           ) : (
             <div className="grid gap-1.5">

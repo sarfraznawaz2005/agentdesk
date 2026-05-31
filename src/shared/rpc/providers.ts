@@ -60,4 +60,8 @@ export type ProvidersRequests = {
     params: { providerType: string; apiKey?: string; providerId?: string; modelId: string };
     response: { supportsToolChoice: boolean; warning?: string };
   };
+  getClaudeSubscriptionEnabled: {
+    params: Record<string, never>;
+    response: { enabled: boolean };
+  };
 };

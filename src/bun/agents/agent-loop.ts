@@ -126,7 +126,7 @@ function buildThinkingOptions(
 	const budgetTokens = THINKING_BUDGET_TOKENS[budget] ?? 8000;
 	const safeMaxTokens = Math.max(maxTokens ?? 0, budgetTokens + 1000);
 
-	if (providerType === "anthropic" || providerType === "openrouter") {
+	if (providerType === "anthropic" || providerType === "openrouter" || providerType === "claude-subscription") {
 		return {
 			maxTokens: safeMaxTokens,
 			providerOptions: {
