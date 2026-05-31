@@ -195,7 +195,10 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 		// when their availableToPm flag is set (default 1, controlled per-agent
 		// in Settings → Agents). This lets users add custom agents they don't
 		// want the PM to orchestrate (e.g. chat-only assistants).
-		const agentRows = allAgentRows.filter((a) => a.isBuiltin === 1 || a.availableToPm === 1);
+		// general-agent is exclusive to the Playground page — never orchestrated by the PM.
+		const agentRows = allAgentRows.filter(
+			(a) => a.name !== "general-agent" && (a.isBuiltin === 1 || a.availableToPm === 1),
+		);
 
 		if (agentRows.length === 0) return { section: "", agentNames: [] };
 
@@ -672,11 +675,11 @@ async function buildPMMcpSection(): Promise<string> {
 /**
  * Returns a section for sub-agent prompts listing all MCP tool names they have access to.
  */
-export async function buildAgentMcpSection(): Promise<string> {
+export async function buildAgentMcpSection(excludePrefixes: string[] = []): Promise<string> {
 	try {
 		const { getMcpTools } = await import("../mcp/client");
 		const tools = getMcpTools();
-		const names = Object.keys(tools);
+		const names = Object.keys(tools).filter((n) => !excludePrefixes.some((p) => n.startsWith(p)));
 		if (names.length === 0) return "";
 		return [
 			"\n## MCP Tools",
@@ -993,6 +996,28 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		agentRows.length > 0
 			? agentRows[0].systemPrompt
 			: `You are the ${agentName} agent. Complete the task assigned to you thoroughly and accurately.`;
+
+	// Playground General Agent: runs standalone — NOT dispatched by the PM, no kanban task,
+	// it DOES have conversation history, and it cannot delegate (no run_agent). So it must NOT
+	// receive the PM/kanban/cross-agent/decisions communication protocol or the skill-delegation
+	// rules — those are false/misleading here. The Constitution is intentionally omitted too
+	// (the agent's own prompt governs behaviour). It gets only: its base prompt, the user profile,
+	// the skills list (without delegation rules), and the MCP tools list. Workspace context is
+	// appended by the caller (runInlineAgent) via projectContext.
+	if (agentName === "general-agent") {
+		const [userProfile, mcpSection] = await Promise.all([
+			loadUserProfile(),
+			// chrome-devtools_* tools are removed from this agent's toolset, so don't list them either.
+			buildAgentMcpSection(["chrome-devtools_"]),
+		]);
+		const userSection = buildUserSection(userProfile);
+		const skillsSection = buildSkillsDescriptionSection(false); // no agent-routing/delegation rules
+		return [basePrompt, userSection, skillsSection, mcpSection]
+			.filter(Boolean)
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.join("\n\n---\n\n");
+	}
 
 	// Lean prompt path — only for custom agents where the user has opted in.
 	// In this mode the agent receives ONLY its own system prompt + App Context

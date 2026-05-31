@@ -27,6 +27,8 @@ import { initTruncationDir, cleanupTruncationFiles } from "./agents/tools/trunca
 import { initMcpClients, shutdownMcpClients } from "./mcp/client";
 import { startAnnotationServer, shutdownAnnotationServer } from "./annotations/server";
 import { shutdownPreviewWindow } from "./annotations/preview-window";
+import { startPlaygroundServer, shutdownPlaygroundServer } from "./playground/server";
+import { shutdownPlayground } from "./playground/orchestrator";
 import { isFreelanceEnabled } from "./freelance/feature-flag";
 
 const DEV_SERVER_PORT = 5173;
@@ -244,6 +246,9 @@ mainWindow.webview.on("dom-ready", () => {
 			// Annotation server — serves toolbar JS + receives annotations from any browser tab
 			startAnnotationServer();
 
+			// Playground static server — serves the playground temp folder for in-app previews
+			startPlaygroundServer();
+
 			// Freelance poller — deferred to after window is shown so startup is fast
 			if (FREELANCE_ENABLED) {
 				import("./freelance/fetcher" as string)
@@ -260,7 +265,8 @@ mainWindow.webview.on("dom-ready", () => {
 mainWindow.webview.setNavigationRules([
 	"^*",                        // Block all by default
 	"views://*",                 // Allow bundled views
-	"http://localhost:5173*",    // Allow Vite dev server (HMR)
+	"http://localhost:*",        // Allow Vite HMR + Playground static/dev servers (localhost only)
+	"http://127.0.0.1:*",        // Playground preview iframe (static server + agent dev servers)
 ]);
 
 // Debounced save so we don't hammer the filesystem on every pixel change
@@ -314,6 +320,8 @@ Electrobun.events.on("before-quit", () => {
 		await shutdownMcpClients();
 		shutdownPreviewWindow();
 		shutdownAnnotationServer();
+		shutdownPlayground();
+		shutdownPlaygroundServer();
 		closeDatabase();
 	})();
 });

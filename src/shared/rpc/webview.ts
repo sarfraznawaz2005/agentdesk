@@ -280,6 +280,52 @@ export type WebviewSchema = RPCSchema<{
     "freelance.chat.error": { listingId: string; error: string };
     "freelance.chat.stopped": { listingId: string };
 
+    // ── Playground (Artifacts-style page) ──
+    playgroundRunStarted: { message: string };
+    playgroundPart: {
+      part: {
+        id: string;
+        type: "text" | "tool_call" | "tool_result" | "reasoning" | "agent_start" | "agent_end";
+        content: string;
+        toolName?: string;
+        toolInput?: string;
+        toolOutput?: string;
+        toolState?: "pending" | "running" | "success" | "error";
+        sortOrder: number;
+        agentName?: string;
+        timeStart?: string;
+        timeEnd?: string;
+      };
+    };
+    playgroundPartUpdated: {
+      partId: string;
+      updates: {
+        content?: string;
+        toolOutput?: string;
+        toolState?: "pending" | "running" | "success" | "error";
+        timeEnd?: string;
+      };
+    };
+    playgroundAgentStart: { task: string };
+    playgroundAgentComplete: {
+      status: string;
+      summary: string;
+      filesModified: string[];
+      tokensUsed: { prompt: number; completion: number; contextLimit?: number };
+    };
+    playgroundRunComplete: Record<string, never>;
+    playgroundRunError: { error: string };
+    playgroundPreviewReady: {
+      kind: "static" | "devserver" | "file";
+      url: string;
+      title: string;
+      description?: string;
+      createdAt: string;
+    };
+    playgroundRejected: { reason: string; guidance: string; createdAt: string };
+    playgroundReset: Record<string, never>;
+    playgroundFilesChanged: Record<string, never>;
+
     // Council multi-agent discussion events
     councilEvent: {
       sessionId: string;

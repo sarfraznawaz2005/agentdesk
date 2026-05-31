@@ -45,6 +45,7 @@ import * as settingsExportRpc from "./rpc/settings-export";
 
 import * as skillsRpc from "./rpc/skills";
 import * as freelanceRpc from "./rpc/freelance";
+import * as playgroundRpc from "./rpc/playground";
 import * as freelanceChatRpc from "./rpc/freelance-chat";
 import * as freelanceWizardRpc from "./rpc/freelance-wizard";
 import * as resetRpc from "./rpc/reset";
@@ -935,6 +936,16 @@ When enhancing a prompt:
 				answerCouncilQuestion(params.sessionId, params.questionId, params.answer);
 				return { success: true };
 			},
+
+			// ── Playground ──
+			playgroundSend: (params) => playgroundRpc.playgroundSend(params),
+			playgroundStop: () => playgroundRpc.playgroundStop(),
+			newPlayground: () => playgroundRpc.newPlayground(),
+			getPlaygroundState: () => playgroundRpc.getPlaygroundState(),
+			createProjectFromPlayground: () => playgroundRpc.createProjectFromPlayground(),
+			exportPlaygroundZip: () => playgroundRpc.exportPlaygroundZip(),
+			getPlaygroundSource: () => playgroundRpc.getPlaygroundSource(),
+
 			// ── Freelance ──
 			"freelance.getFeatureEnabled": () => freelanceRpc.getFeatureEnabled(),
 			"freelance.getSettings": () => freelanceRpc.getSettings(),

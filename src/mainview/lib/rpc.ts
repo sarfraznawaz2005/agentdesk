@@ -175,6 +175,39 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       councilEvent: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:council-event", { detail: payload }));
       },
+      playgroundRunStarted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-run-started", { detail: payload }));
+      },
+      playgroundPart: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-part", { detail: payload }));
+      },
+      playgroundPartUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-part-updated", { detail: payload }));
+      },
+      playgroundAgentStart: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-agent-start", { detail: payload }));
+      },
+      playgroundAgentComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-agent-complete", { detail: payload }));
+      },
+      playgroundRunComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-run-complete", { detail: payload }));
+      },
+      playgroundRunError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-run-error", { detail: payload }));
+      },
+      playgroundPreviewReady: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-preview-ready", { detail: payload }));
+      },
+      playgroundRejected: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-rejected", { detail: payload }));
+      },
+      playgroundReset: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-reset", { detail: payload }));
+      },
+      playgroundFilesChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-files-changed", { detail: payload }));
+      },
       updateStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:update-status", { detail: payload }));
       },
@@ -1097,6 +1130,32 @@ export const rpc = {
   /** Submit a user answer to a pending PM question in a council session. */
   answerCouncilQuestion: (sessionId: string, questionId: string, answer: string) =>
     electroviewRpc.request.answerCouncilQuestion({ sessionId, questionId, answer }),
+
+  // ---- Playground ----------------------------------------------------------
+
+  /** Send a message to the Playground Agent (streams activity via broadcasts).
+   *  Pass captured preview console messages so the agent can fix runtime errors. */
+  playgroundSend: (message: string, consoleErrors?: string[]) =>
+    electroviewRpc.request.playgroundSend({ message, consoleErrors }),
+
+  /** Abort the in-flight playground run. */
+  playgroundStop: () => electroviewRpc.request.playgroundStop({}),
+
+  /** Wipe the playground (delete temp files + stop dev servers). */
+  newPlayground: () => electroviewRpc.request.newPlayground({}),
+
+  /** Get the current playground state (running / hasFiles / preview) for restore. */
+  getPlaygroundState: () => electroviewRpc.request.getPlaygroundState({}),
+
+  /** Promote the current playground into a real project. */
+  createProjectFromPlayground: () =>
+    electroviewRpc.request.createProjectFromPlayground({}),
+
+  /** Zip the playground files into the Downloads folder. */
+  exportPlaygroundZip: () => electroviewRpc.request.exportPlaygroundZip({}),
+
+  /** Read the playground's raw text source files (for the "View source" dialog). */
+  getPlaygroundSource: () => electroviewRpc.request.getPlaygroundSource({}),
 
   // ---- Freelance -----------------------------------------------------------
 

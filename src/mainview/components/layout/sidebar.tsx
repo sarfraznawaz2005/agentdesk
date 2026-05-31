@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Cpu,
   Briefcase,
+  FlaskConical,
   type LucideIcon,
   icons,
 } from "lucide-react";
@@ -49,6 +50,7 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { label: "Scheduler", icon: Clock, href: "/scheduler" },
   { label: "Analytics", icon: BarChart2, href: "/analytics" },
   { label: "Council", icon: Users, href: "/council" },
+  { label: "Playground", icon: FlaskConical, href: "/playground" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
 

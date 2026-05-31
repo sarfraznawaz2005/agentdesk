@@ -3,6 +3,7 @@ import { z } from "zod";
 import path from "node:path";
 import os from "node:os";
 import { openSync, closeSync } from "node:fs";
+import { spawn } from "node:child_process";
 import type { ToolRegistryEntry } from "./index";
 
 // ---------------------------------------------------------------------------
@@ -18,7 +19,9 @@ interface BackgroundJob {
 	pid: number;
 	logPath: string;
 	startedAt: Date;
-	 
+	/** Resolved working directory the job was spawned in (used for path-scoped cleanup). */
+	cwd: string;
+
 	proc: ReturnType<typeof Bun.spawn>;
 }
 
@@ -94,6 +97,7 @@ const runBackgroundTool = tool({
 				pid: proc.pid,
 				logPath,
 				startedAt: new Date(),
+				cwd: workingDirectory ? path.resolve(workingDirectory) : process.cwd(),
 				proc,
 			};
 
@@ -262,6 +266,48 @@ function formatElapsed(ms: number): string {
 	if (ms < 60_000) return `${(ms / 1_000).toFixed(1)}s`;
 	if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1_000)}s`;
 	return `${Math.floor(ms / 3_600_000)}h ${Math.floor((ms % 3_600_000) / 60_000)}m`;
+}
+
+// ---------------------------------------------------------------------------
+// Process-tree kill (Windows-safe)
+//
+// A background "npm run dev" spawns cmd.exe/bash which in turn spawns node/vite.
+// proc.kill() only signals the top shell, leaving the real server orphaned (and
+// holding its port). On Windows we use `taskkill /T /F` to kill the whole tree;
+// on Unix we SIGTERM then SIGKILL the shell (children typically exit with it).
+// ---------------------------------------------------------------------------
+
+function killProcessTree(pid: number, proc: ReturnType<typeof Bun.spawn>): void {
+	try {
+		if (process.platform === "win32") {
+			spawn("taskkill", ["/pid", String(pid), "/f", "/t"], { stdio: "ignore", windowsHide: true });
+		} else {
+			try { proc.kill(); } catch { /* ignore */ }
+			setTimeout(() => { try { proc.kill(9); } catch { /* ignore */ } }, 300);
+		}
+	} catch { /* already dead */ }
+}
+
+// ---------------------------------------------------------------------------
+// killJobsUnderPath — terminate every running background job whose working
+// directory is within `dir`. Used by the Playground to tear down dev servers
+// it started when the user clicks "New Playground" or on app shutdown.
+// Returns the number of jobs killed.
+// ---------------------------------------------------------------------------
+
+export function killJobsUnderPath(dir: string): number {
+	const prefix = path.resolve(dir).toLowerCase();
+	let killed = 0;
+	for (const [id, job] of jobStore) {
+		if (job.proc.exitCode !== null) continue; // already exited
+		const jobCwd = job.cwd.toLowerCase();
+		if (jobCwd === prefix || jobCwd.startsWith(prefix + path.sep) || jobCwd.startsWith(prefix + "/")) {
+			killProcessTree(job.pid, job.proc);
+			jobStore.delete(id);
+			killed++;
+		}
+	}
+	return killed;
 }
 
 // ---------------------------------------------------------------------------

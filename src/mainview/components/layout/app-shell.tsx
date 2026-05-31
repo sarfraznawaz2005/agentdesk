@@ -78,6 +78,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/analytics": "Analytics",
   "/council": "Council",
   "/freelance": "Freelance",
+  "/playground": "Playground",
   "/settings": "Settings",
   "/plugins": "Plugins",
   "/plugin/db-viewer": "Database Viewer",
@@ -164,6 +165,12 @@ function AppShellContent() {
             }
           }
           setProjectWorkspacePath(path);
+        }).catch(() => {});
+      } else if (location.pathname === "/playground") {
+        // Show a folder icon that opens the playground temp folder (like the Dashboard workspace icon).
+        setHeaderPhrase(null);
+        rpc.getPlaygroundState().then((st) => {
+          if (!ignore) setProjectWorkspacePath(st.path);
         }).catch(() => {});
       } else {
         setHeaderPhrase(null);

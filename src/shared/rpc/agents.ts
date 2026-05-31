@@ -35,7 +35,7 @@ export type AgentsRequests = {
       chatEnabled?: boolean;
       availableToPm?: boolean;
     };
-    response: { success: boolean };
+    response: { success: boolean; error?: string };
   };
   resetAgent: {
     params: { id: string };
@@ -53,7 +53,7 @@ export type AgentsRequests = {
       chatEnabled?: boolean;
       availableToPm?: boolean;
     };
-    response: { success: boolean; id?: string };
+    response: { success: boolean; id?: string; error?: string };
   };
   deleteAgent: {
     params: { id: string };

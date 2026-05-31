@@ -97,6 +97,28 @@ export interface InlineAgentOptions {
 	readOnly?: boolean;
 	/** Max wall-clock duration in ms before stopping. Default: 600_000 (10 min). */
 	timeoutMs?: number;
+	/**
+	 * Prior conversation turns to prepend before the current task. Used by the Playground,
+	 * which stores its history in a JSON file (not the DB) and threads it here for follow-ups.
+	 * Note: once rule-based compaction fires (>70% context) these are folded into a summary.
+	 */
+	priorMessages?: ModelMessage[];
+	/**
+	 * When false, skip ALL messages/message_parts/conversation DB writes — callbacks still
+	 * fire (they drive the UI + any external persistence). Used by the Playground so it does
+	 * not create orphan rows for its ephemeral, JSON-backed conversation. Default: true.
+	 */
+	persistToDb?: boolean;
+	/**
+	 * Extra tools merged into (and overriding) the agent's assembled tool set. Used by the
+	 * Playground to inject its preview/reject tools and an auto-approved run_shell.
+	 */
+	extraTools?: Record<string, Tool>;
+	/**
+	 * Tool names to remove from the assembled set. Used by the Playground to drop tools that
+	 * would block with no UI to satisfy them (e.g. request_human_input).
+	 */
+	excludeTools?: string[];
 }
 
 export interface InlineAgentResult {
@@ -711,6 +733,8 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		providerConfig, abortSignal, callbacks, workspacePath, projectId,
 	} = opts;
 	const task = rawTask || "(no task description provided)";
+	// When false (Playground), skip all DB persistence — callbacks still fire to drive the UI.
+	const persist = opts.persistToDb !== false;
 
 	const messageIds: string[] = [];
 	let sortOrder = 0;
@@ -799,7 +823,10 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	const decisionsTools = workspacePath ? createDecisionsTool(workspacePath) : {};
 	const decisionsToolMap: Record<string, Tool> = {};
 	for (const [k, v] of Object.entries(decisionsTools)) decisionsToolMap[k] = v.tool;
-	let tools: Record<string, Tool> = { ...baseTools, ...trackedFileTools, ...pluginTools, ...mcpTools, ...decisionsToolMap };
+	// extraTools are merged last so they override built-ins (e.g. Playground injects an
+	// auto-approved run_shell + its preview/reject tools). The workspace-cwd wrapper below
+	// still applies to an overridden run_shell, keeping shell scoped to the workspace.
+	let tools: Record<string, Tool> = { ...baseTools, ...trackedFileTools, ...pluginTools, ...mcpTools, ...decisionsToolMap, ...(opts.extraTools ?? {}) };
 
 	// Inject workspace path as default for directory/path tools so agents don't need to guess it
 	if (workspacePath) {
@@ -844,6 +871,16 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		tools = filterReadOnlyTools(tools);
 	}
 
+	// Drop explicitly excluded tools. Names support a trailing "*" for prefix matching
+	// (e.g. Playground removes request_human_input and all chrome-devtools_* MCP tools).
+	if (opts.excludeTools?.length) {
+		const exact = new Set(opts.excludeTools.filter((n) => !n.endsWith("*")));
+		const prefixes = opts.excludeTools.filter((n) => n.endsWith("*")).map((n) => n.slice(0, -1));
+		tools = Object.fromEntries(
+			Object.entries(tools).filter(([k]) => !exact.has(k) && !prefixes.some((p) => k.startsWith(p))),
+		);
+	}
+
 	// When auto-commit is enabled, remove git_commit from agent tools — the
 	// review cycle commits on task completion automatically.
 	try {
@@ -865,22 +902,26 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	// --- 4. Insert agent_start message ---
 	const startMsgId = crypto.randomUUID();
 	const startTime = new Date().toISOString();
-	await db.insert(messages).values({
-		id: startMsgId,
-		conversationId,
-		role: "assistant",
-		agentName,
-		content: `**${agentDisplayName}**`,
-		hasParts: 1,
-		tokenCount: 0,
-		createdAt: new Date().toISOString(),
-	});
+	if (persist) {
+		await db.insert(messages).values({
+			id: startMsgId,
+			conversationId,
+			role: "assistant",
+			agentName,
+			content: `**${agentDisplayName}**`,
+			hasParts: 1,
+			tokenCount: 0,
+			createdAt: new Date().toISOString(),
+		});
+	}
 	messageIds.push(startMsgId);
 
 	// Bump conversation's updatedAt so it sorts to the top of the sidebar
-	db.update(conversations).set({ updatedAt: startTime }).where(eq(conversations.id, conversationId)).catch(() => {});
 	const { broadcastToWebview } = await import("../engine-manager");
-	broadcastToWebview("conversationUpdated", { conversationId, updatedAt: startTime, projectId });
+	if (persist) {
+		db.update(conversations).set({ updatedAt: startTime }).where(eq(conversations.id, conversationId)).catch(() => {});
+		broadcastToWebview("conversationUpdated", { conversationId, updatedAt: startTime, projectId });
+	}
 
 	// Notify frontend so the message bubble appears in chat
 	callbacks.onMessageCreated?.(startMsgId, conversationId, agentName, `**${agentDisplayName}**`);
@@ -894,19 +935,23 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		sortOrder: sortOrder++,
 		timeStart: startTime,
 	};
-	await db.insert(messageParts).values({
-		id: startPart.id,
-		messageId: startPart.messageId,
-		type: startPart.type,
-		content: startPart.content,
-		sortOrder: startPart.sortOrder,
-		timeStart: startPart.timeStart,
-	});
+	if (persist) {
+		await db.insert(messageParts).values({
+			id: startPart.id,
+			messageId: startPart.messageId,
+			type: startPart.type,
+			content: startPart.content,
+			sortOrder: startPart.sortOrder,
+			timeStart: startPart.timeStart,
+		});
+	}
 	callbacks.onPartCreated(startPart);
 	callbacks.onAgentStart(startMsgId, agentName, agentDisplayName, task);
 
-	// --- 5. Build agent messages (fresh context — NO parent history) ---
+	// --- 5. Build agent messages (fresh context + optional prior turns) ---
+	// priorMessages threads multi-turn history (e.g. Playground follow-ups stored in JSON).
 	const agentMessages: ModelMessage[] = [
+		...(opts.priorMessages ?? []),
 		{ role: "user" as const, content: task },
 	];
 
@@ -1110,7 +1155,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						content: reasoning,
 						sortOrder: sortOrder++,
 					};
-					db.insert(messageParts).values({
+					if (persist) db.insert(messageParts).values({
 						id: reasoningPart.id, messageId: reasoningPart.messageId,
 						type: reasoningPart.type, content: reasoningPart.content,
 						sortOrder: reasoningPart.sortOrder,
@@ -1127,7 +1172,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						content: step.text,
 						sortOrder: sortOrder++,
 					};
-					db.insert(messageParts).values({
+					if (persist) db.insert(messageParts).values({
 						id: textPart.id, messageId: textPart.messageId,
 						type: textPart.type, content: textPart.content,
 						sortOrder: textPart.sortOrder,
@@ -1149,7 +1194,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						sortOrder: sortOrder++,
 						timeStart: new Date().toISOString(),
 					};
-					db.insert(messageParts).values({
+					if (persist) db.insert(messageParts).values({
 						id: toolCallPart.id, messageId: toolCallPart.messageId,
 						type: toolCallPart.type, content: toolCallPart.content,
 						toolName: toolCallPart.toolName, toolInput: toolCallPart.toolInput,
@@ -1184,14 +1229,14 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 							toolState: isError ? "error" : "success",
 							timeEnd: endTime,
 						};
-						db.update(messageParts)
+						if (persist) db.update(messageParts)
 							.set({ toolOutput: updates.toolOutput, toolState: updates.toolState, timeEnd: updates.timeEnd })
 							.where(eq(messageParts.id, toolCallPart.id))
 							.catch(() => {});
 						callbacks.onPartUpdated(startMsgId, toolCallPart.id, updates);
 					} else {
 						// No matching result — mark as done to clear spinner
-						db.update(messageParts)
+						if (persist) db.update(messageParts)
 							.set({ toolState: "success", timeEnd: endTime })
 							.where(eq(messageParts.id, toolCallPart.id))
 							.catch(() => {});
@@ -1224,30 +1269,36 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			sortOrder: sortOrder++,
 			timeEnd: endTime,
 		};
-		await db.insert(messageParts).values({
-			id: endPart.id, messageId: endPart.messageId,
-			type: endPart.type, content: endPart.content,
-			sortOrder: endPart.sortOrder, timeEnd: endPart.timeEnd,
-		});
+		if (persist) {
+			await db.insert(messageParts).values({
+				id: endPart.id, messageId: endPart.messageId,
+				type: endPart.type, content: endPart.content,
+				sortOrder: endPart.sortOrder, timeEnd: endPart.timeEnd,
+			});
+		}
 		callbacks.onPartCreated(endPart);
 
 		// Update the message content with summary
 		// tokenCount here reflects content size for context indicator, not total API usage
 		const contentTokenEstimate = Math.ceil(summary.length / 4);
-		await db.update(messages)
-			.set({
-				content: summary,
-				tokenCount: contentTokenEstimate,
-			})
-			.where(eq(messages.id, startMsgId));
+		if (persist) {
+			await db.update(messages)
+				.set({
+					content: summary,
+					tokenCount: contentTokenEstimate,
+				})
+				.where(eq(messages.id, startMsgId));
+		}
 
 		callbacks.onAgentComplete(startMsgId, agentName, "completed", summary, filesModified, { prompt: totalPrompt, completion: totalCompletion });
 
 		// Bump conversation updatedAt at completion so it stays above the PM conversation
 		// when the user navigates away and back (PM touches its own conv after this returns).
 		const completionTime = new Date().toISOString();
-		db.update(conversations).set({ updatedAt: completionTime }).where(eq(conversations.id, conversationId)).catch(() => {});
-		broadcastToWebview("conversationUpdated", { conversationId, updatedAt: completionTime, projectId });
+		if (persist) {
+			db.update(conversations).set({ updatedAt: completionTime }).where(eq(conversations.id, conversationId)).catch(() => {});
+			broadcastToWebview("conversationUpdated", { conversationId, updatedAt: completionTime, projectId });
+		}
 
 		return {
 			status: "completed",
@@ -1308,7 +1359,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			toolState: "error",
 			timeEnd: new Date().toISOString(),
 		};
-		await db.insert(messageParts).values({
+		if (persist) await db.insert(messageParts).values({
 			id: endPart.id, messageId: endPart.messageId,
 			type: endPart.type, content: endPart.content,
 			sortOrder: endPart.sortOrder, toolState: endPart.toolState,
@@ -1317,7 +1368,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		callbacks.onPartCreated(endPart);
 
 		// Update message — tokenCount reflects content size for context indicator
-		await db.update(messages)
+		if (persist) await db.update(messages)
 			.set({ content: summary, tokenCount: Math.ceil(summary.length / 4) })
 			.where(eq(messages.id, startMsgId))
 			.catch(() => {});
@@ -1334,10 +1385,12 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		callbacks.onAgentComplete(startMsgId, agentName, status, summary, filesModified, { prompt: lastPromptTokens, completion: completionTokens });
 
 		const completionTime = new Date().toISOString();
-		db.update(conversations).set({ updatedAt: completionTime }).where(eq(conversations.id, conversationId)).catch(() => {});
-		import("../engine-manager").then(({ broadcastToWebview: bcast }) => {
-			bcast("conversationUpdated", { conversationId, updatedAt: completionTime, projectId });
-		}).catch(() => {});
+		if (persist) {
+			db.update(conversations).set({ updatedAt: completionTime }).where(eq(conversations.id, conversationId)).catch(() => {});
+			import("../engine-manager").then(({ broadcastToWebview: bcast }) => {
+				bcast("conversationUpdated", { conversationId, updatedAt: completionTime, projectId });
+			}).catch(() => {});
+		}
 
 		return {
 			status,

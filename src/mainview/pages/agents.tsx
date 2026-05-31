@@ -369,7 +369,7 @@ function AgentSettingsDialog({
     if (!agent) return;
     setSaving(true);
     try {
-      await rpc.updateAgent({
+      const result = await rpc.updateAgent({
         id: agent.id,
         displayName: displayName || undefined,
         color: color || undefined,
@@ -386,6 +386,10 @@ function AgentSettingsDialog({
         chatEnabled:         agent.isBuiltin ? undefined : chatEnabled,
         availableToPm:       agent.isBuiltin ? undefined : availableToPm,
       });
+      if (!result.success) {
+        toast("error", result.error || "Failed to save agent settings.");
+        return; // keep the modal open so the user can fix the name; finally resets saving
+      }
 
       // Save tool assignments if changed
       if (toolsDirty && toolsSaveRef.current) {
@@ -795,7 +799,7 @@ function CreateAgentDialog({ providers, agents: existingAgents, open, onClose, o
         availableToPm,
       });
       if (!result.success || !result.id) {
-        toast("error", "Failed to create agent.");
+        toast("error", result.error || "Failed to create agent.");
         return;
       }
 

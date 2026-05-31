@@ -192,6 +192,7 @@ src/
 - **Feature Branch Workflow**: PM calls `set_feature_branch` (AI-generates branch name from conversation) before dispatching agents. `autoCommitTask` in `review-cycle.ts` switches to/creates the branch before committing.
 - **Anthropic Prompt Caching**: System prompts include cache control metadata for Anthropic/OpenRouter providers (~90% cheaper on cache hits).
 - **Context Window Management**: Agent loops track `lastPromptTokens / getContextLimit(modelId)`. Progressive compaction tiers at 60/70/85/90% context usage. No iteration cap — agents run until task complete or context truly full.
+- **Playground** (`src/bun/playground/`): An Artifacts-style page (sidebar after Council) where the dedicated `general-agent` (ALL tools/skills/MCP) builds previewable artifacts into an OS-temp folder and renders them live in an in-page `<iframe>`. Reuses `runInlineAgent` via three new options (`priorMessages`, `persistToDb:false`, `extraTools`) — fully decoupled from the PM/kanban/review paths. Conversation persists to JSON in temp (not the DB); activity streams via `agentdesk:playground-*` broadcasts. `orchestrator.ts` runs the agent + injects an auto-approved `run_shell` + the `playground_render_preview`/`playground_reject` tools; `server.ts` is a `Bun.serve` static server (port 4760+) for static artifacts (the agent starts its own dev server for live SPAs). "New Playground" wipes temp + kills its dev servers (`killJobsUnderPath` in `process.ts`); "Create Project" promotes it via `createProjectHandler` + `fs.cpSync`.
 
 ---
 
@@ -246,6 +247,7 @@ Read-only agents (can run in parallel via `run_agents_parallel`): `code-explorer
 | `ui-ux-designer` | UI/UX Designer | No | Interface and experience design |
 | `data-engineer` | Data Engineer | No | Data pipelines and storage |
 | `refactoring-specialist` | Refactoring Specialist | No | Code restructuring and technical debt reduction |
+| `general-agent` | General Agent | No | Exclusive to the Playground page — builds previewable artifacts with ALL tools/skills/MCP. Hidden from the PM (excluded in `prompts.ts`) AND from the Agents page (excluded in `getAgentsList`); never orchestrated. |
 
 ---
 

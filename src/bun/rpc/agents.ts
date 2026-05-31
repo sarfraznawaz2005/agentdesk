@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { agents, agentTools } from "../db/schema";
 import { logAudit } from "../db/audit";
@@ -27,7 +27,8 @@ export interface AgentListItem {
  * Sorted alphabetically by displayName.
  */
 export async function getAgentsList(): Promise<AgentListItem[]> {
-	const rows = await db.select().from(agents);
+	// general-agent is internal to the Playground — never shown/managed in the Agents UI.
+	const rows = (await db.select().from(agents)).filter((row) => row.name !== "general-agent");
 	const mapped = rows.map((row) => ({
 		id: row.id,
 		name: row.name,
@@ -65,7 +66,21 @@ export async function updateAgent(params: {
 	useSystemPromptOnly?: boolean;
 	chatEnabled?: boolean;
 	availableToPm?: boolean;
-}): Promise<{ success: boolean }> {
+}): Promise<{ success: boolean; error?: string }> {
+	// Reject a display-name change that collides (case-insensitive) with a DIFFERENT agent.
+	// (The internal name/slug is immutable after creation, so only displayName can change.)
+	if (params.displayName !== undefined) {
+		const trimmedDisplay = params.displayName.trim();
+		const dupe = await db
+			.select({ id: agents.id })
+			.from(agents)
+			.where(and(sql`lower(${agents.displayName}) = lower(${trimmedDisplay})`, ne(agents.id, params.id)))
+			.limit(1);
+		if (dupe.length > 0) {
+			return { success: false, error: `Another agent already uses the display name "${trimmedDisplay}". Please choose a different one.` };
+		}
+	}
+
 	const updates: Record<string, unknown> = {};
 	// Boolean columns stored as INTEGER 0/1 — convert explicitly for clarity.
 	const BOOL_TO_INT = new Set(["isEnabled", "useSystemPromptOnly", "chatEnabled", "availableToPm"]);
@@ -130,7 +145,28 @@ export async function createAgent(params: {
 	useSystemPromptOnly?: boolean;
 	chatEnabled?: boolean;
 	availableToPm?: boolean;
-}): Promise<{ success: boolean; id?: string }> {
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+	// Reject duplicates (case-insensitive) against ALL agents — including built-in and
+	// hidden ones — so names/display names stay unique across the whole roster.
+	const trimmedName = params.name.trim();
+	const trimmedDisplay = params.displayName.trim();
+	const nameDupe = await db
+		.select({ id: agents.id })
+		.from(agents)
+		.where(sql`lower(${agents.name}) = lower(${trimmedName})`)
+		.limit(1);
+	if (nameDupe.length > 0) {
+		return { success: false, error: `An agent with the name "${trimmedName}" already exists. Please choose a different Name (slug).` };
+	}
+	const displayDupe = await db
+		.select({ id: agents.id })
+		.from(agents)
+		.where(sql`lower(${agents.displayName}) = lower(${trimmedDisplay})`)
+		.limit(1);
+	if (displayDupe.length > 0) {
+		return { success: false, error: `An agent with the display name "${trimmedDisplay}" already exists. Please choose a different Display Name.` };
+	}
+
 	const id = crypto.randomUUID();
 	await db.insert(agents).values({
 		id,

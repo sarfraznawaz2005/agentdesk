@@ -18,6 +18,7 @@ import { SkillsPage } from "./pages/skills";
 import { DbViewerPage } from "./pages/plugin-db-viewer";
 import { CouncilPage } from "./pages/council";
 import { FreelancePage } from "./pages/freelance";
+import { PlaygroundPage } from "./pages/playground";
 
 // Use hash-based history so Electrobun's webview doesn't need a server
 // for navigation. URLs look like: app://index.html#/settings
@@ -106,6 +107,12 @@ const freelanceRoute = createRoute({
   component: FreelancePage,
 });
 
+const playgroundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/playground",
+  component: PlaygroundPage,
+});
+
 const routeTree = rootRoute.addChildren([
   onboardingRoute,
   indexRoute,
@@ -121,6 +128,7 @@ const routeTree = rootRoute.addChildren([
   dbViewerRoute,
   councilRoute,
   freelanceRoute,
+  playgroundRoute,
 ]);
 
 export const router = createRouter({
