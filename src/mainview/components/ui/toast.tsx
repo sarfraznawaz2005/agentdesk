@@ -91,21 +91,34 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   const dismiss = useCallback(() => setExiting(true), []);
 
-  useEffect(() => {
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    clearTimer();
     timerRef.current = setTimeout(dismiss, AUTO_DISMISS_MS);
-    return () => {
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
-    };
-  }, [toast.id, dismiss]);
+  }, [clearTimer, dismiss]);
+
+  useEffect(() => {
+    startTimer();
+    return clearTimer;
+  }, [toast.id, startTimer, clearTimer]);
 
   return (
     <div
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      onClick={dismiss}
+      onMouseEnter={clearTimer}
+      onMouseLeave={startTimer}
       onAnimationEnd={() => { if (exiting) onDismiss(toast.id); }}
       className={cn(
-        "flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg",
+        "flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg cursor-pointer",
         "w-96 max-w-[calc(100vw-2rem)] overflow-hidden",
         container,
         exiting
