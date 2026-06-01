@@ -20,7 +20,7 @@ import {
 } from "../playground/orchestrator";
 import { PLAYGROUND_ROOT, PLAYGROUND_FILES_DIR, PLAYGROUND_COPY_IGNORE, PREVIEW_FILE, DEPLOY_FILE, SERVERS_FILE } from "../playground/paths";
 import { getRunningJobsUnderPath, killJobById, startBackgroundJob } from "../agents/tools/process";
-import type { PlaygroundServerDto } from "../../shared/rpc/playground";
+import type { PlaygroundServerDto, PlaygroundPreviewDto } from "../../shared/rpc/playground";
 import { createProjectHandler, getProject } from "./projects";
 
 // --- playgroundSend (fire-and-forget; streams via broadcasts) ----------------
@@ -302,6 +302,31 @@ export function savePlaygroundFile(params: { path: string; content: string }): {
 		mkdirSync(path.dirname(resolved), { recursive: true });
 		writeFileSync(resolved, params.content, "utf-8");
 		return { success: true };
+	} catch (err) {
+		return { success: false, error: err instanceof Error ? err.message : String(err) };
+	}
+}
+
+// --- setPlaygroundPreviewUrl -------------------------------------------------
+
+/**
+ * Update the `url` field of the current preview manifest. Lets the user point the
+ * live preview at a different address (e.g. correct a dev-server port) from the
+ * Playground page instead of hand-editing preview.json in the temp folder.
+ */
+export function setPlaygroundPreviewUrl(params: { url: string }): {
+	success: boolean;
+	preview?: PlaygroundPreviewDto;
+	error?: string;
+} {
+	const url = params.url?.trim();
+	if (!url) return { success: false, error: "URL is empty." };
+	if (!existsSync(PREVIEW_FILE)) return { success: false, error: "There is no active preview to update." };
+	try {
+		const preview = JSON.parse(readFileSync(PREVIEW_FILE, "utf-8")) as PlaygroundPreviewDto;
+		const updated: PlaygroundPreviewDto = { ...preview, url };
+		writeFileSync(PREVIEW_FILE, JSON.stringify(updated, null, 2), "utf-8");
+		return { success: true, preview: updated };
 	} catch (err) {
 		return { success: false, error: err instanceof Error ? err.message : String(err) };
 	}

@@ -47,6 +47,8 @@ interface PlaygroundState {
   setMainView: (v: "activity" | "preview") => void;
   setDeployedUrl: (url: string | null) => void;
   showPreview: (p: PlaygroundPreviewDto) => void;
+  selectPreview: (p: PlaygroundPreviewDto) => void;
+  setPreviewUrl: (url: string) => void;
   bumpReload: () => void;
   pushConsole: (e: PlaygroundConsoleEntry) => void;
   clearConsole: () => void;
@@ -108,6 +110,28 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       const history = [preview, ...s.history.filter((p) => p.url !== preview.url)].slice(0, MAX_HISTORY);
       // New render → reset captured console so the count reflects this render only.
       return { preview, history, mainView: "preview", reloadNonce: s.reloadNonce + 1, rejection: null, consoleErrors: [] };
+    }),
+
+  // Select an existing history snapshot WITHOUT reordering history — clicking a
+  // tab should just activate it in place, not move it to the front (which would
+  // make the highlight jump to a different position than the one clicked).
+  selectPreview: (preview) =>
+    set((s) => ({ preview, mainView: "preview", reloadNonce: s.reloadNonce + 1, rejection: null, consoleErrors: [] })),
+
+  // Point the active preview at a new URL (user-editable address bar). Updates the
+  // matching history entry in place so the active highlight keeps matching, and
+  // reloads the iframe. The new URL is persisted to disk separately via RPC.
+  setPreviewUrl: (url) =>
+    set((s) => {
+      if (!s.preview) return {};
+      const prevUrl = s.preview.url;
+      const updated = { ...s.preview, url };
+      return {
+        preview: updated,
+        history: s.history.map((h) => (h.url === prevUrl ? updated : h)),
+        reloadNonce: s.reloadNonce + 1,
+        consoleErrors: [],
+      };
     }),
 
   bumpReload: () => set((s) => ({ reloadNonce: s.reloadNonce + 1, consoleErrors: [] })),

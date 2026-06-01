@@ -92,6 +92,11 @@ export type PlaygroundRequests = {
     params: { path: string; content: string };
     response: { success: boolean; error?: string };
   };
+  /** Update the current preview's URL (persists to preview.json so it survives a restart). */
+  setPlaygroundPreviewUrl: {
+    params: { url: string };
+    response: { success: boolean; preview?: PlaygroundPreviewDto; error?: string };
+  };
   /** List background dev servers currently running inside the playground temp folder. */
   getPlaygroundDevServers: {
     params: Record<string, never>;

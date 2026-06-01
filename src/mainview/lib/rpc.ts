@@ -1161,6 +1161,10 @@ export const rpc = {
   savePlaygroundFile: (filePath: string, content: string) =>
     electroviewRpc.request.savePlaygroundFile({ path: filePath, content }),
 
+  /** Update the current preview's URL (persists to preview.json). */
+  setPlaygroundPreviewUrl: (url: string) =>
+    electroviewRpc.request.setPlaygroundPreviewUrl({ url }),
+
   /** List background dev servers currently running in the playground temp folder. */
   getPlaygroundDevServers: () => electroviewRpc.request.getPlaygroundDevServers({}),
 

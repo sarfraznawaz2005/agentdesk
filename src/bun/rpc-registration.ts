@@ -946,6 +946,7 @@ When enhancing a prompt:
 			exportPlaygroundZip: () => playgroundRpc.exportPlaygroundZip(),
 			getPlaygroundSource: () => playgroundRpc.getPlaygroundSource(),
 			savePlaygroundFile: (params) => playgroundRpc.savePlaygroundFile(params),
+			setPlaygroundPreviewUrl: (params) => playgroundRpc.setPlaygroundPreviewUrl(params),
 			getPlaygroundDevServers: () => playgroundRpc.getPlaygroundDevServers(),
 			stopPlaygroundDevServer: (params) => playgroundRpc.stopPlaygroundDevServer(params),
 			startPlaygroundDevServer: (params) => playgroundRpc.startPlaygroundDevServer(params),

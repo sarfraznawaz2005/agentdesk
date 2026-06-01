@@ -28,6 +28,7 @@ import {
   Globe,
   Copy,
   Play,
+  Link2,
 } from "lucide-react";
 import type { PlaygroundServerDto } from "../../shared/rpc/playground";
 import { useHeaderActions } from "@/lib/header-context";
@@ -42,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
-import { MessageParts, type MessagePartData } from "@/components/chat/message-parts";
+import { MessageParts, AGENT_BADGE_COLORS, type MessagePartData } from "@/components/chat/message-parts";
 import { CodeBlock } from "@/components/chat/code-block";
 import { usePlaygroundStore } from "@/stores/playground-store";
 import { rpc } from "@/lib/rpc";
@@ -169,6 +170,8 @@ export function PlaygroundPage() {
   const [previewDevice, setPreviewDevice] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const [devServers, setDevServers] = useState<PlaygroundServerDto[]>([]);
   const [deploying, setDeploying] = useState(false);
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [urlDraft, setUrlDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // ---- event wiring -------------------------------------------------------
@@ -199,13 +202,24 @@ export function PlaygroundPage() {
       s.onAgentComplete(d.status, d.summary, d.tokensUsed);
     };
     const onRunComplete = () => {
-      usePlaygroundStore.getState().onRunComplete();
+      const st = usePlaygroundStore.getState();
+      st.onRunComplete();
       rpc.getPlaygroundDevServers().then((r) => setDevServers(r.servers)).catch(() => {});
+      // Always notify so the user learns the run is done from any tab. The error
+      // path already toasts in onRunError (with the real message), so skip here.
+      if (!st.error) {
+        if (st.rejection) toast("info", "Playground Agent couldn't build this — see the chat for details");
+        else if (st.lastStatus === "failed") toast("error", "Playground Agent couldn't finish the request");
+        else toast("success", "Playground Agent finished");
+      }
     };
     const onRunError = (e: Event) => {
       const d = (e as CustomEvent).detail as { error: string };
-      // Inline red error + Retry (matches the dashboard PM chat widget) — no transient toast.
-      usePlaygroundStore.getState().onRunError(d?.error || "The AI provider returned an error.");
+      const msg = d?.error || "The AI provider returned an error.";
+      // Inline red error + Retry stays in the Chat tab (matches the dashboard PM chat widget).
+      // Also toast it so the failure is visible when the user is waiting on the Preview tab.
+      usePlaygroundStore.getState().onRunError(msg);
+      toast("error", msg);
     };
     const onPreviewReady = (e: Event) => {
       const d = (e as CustomEvent).detail as Parameters<typeof s.showPreview>[0];
@@ -303,6 +317,22 @@ export function PlaygroundPage() {
     rpc.playgroundStop().catch(() => {});
   }, []);
 
+  // Apply a user-edited preview URL: reload the iframe immediately (store) and
+  // persist the change to preview.json so it survives a restart.
+  const applyPreviewUrl = useCallback(() => {
+    const url = urlDraft.trim();
+    if (!url) return;
+    usePlaygroundStore.getState().setPreviewUrl(url);
+    setEditingUrl(false);
+    rpc.setPlaygroundPreviewUrl(url).then((res) => {
+      if (!res.success) toast("error", res.error || "Could not save the preview URL");
+    }).catch(() => {});
+  }, [urlDraft]);
+
+  // Exit URL-edit mode whenever the active preview changes (e.g. a new render or
+  // switching history snapshots) so a stale draft never lingers.
+  useEffect(() => { setEditingUrl(false); }, [store.preview?.url]);
+
   // Send a predefined template prompt immediately (mirrors the main chat quick-starts).
   const runPrompt = useCallback((text: string) => { sendMessage(text); }, [sendMessage]);
 
@@ -393,6 +423,22 @@ export function PlaygroundPage() {
   useHeaderActions(
     () => (
       <>
+        {/* Animated agent indicator — shown only while the Playground Agent is working.
+            Absolutely centered across the whole navbar (the header is `relative`), so it
+            stays centered regardless of the title/buttons and never shifts them. */}
+        {store.running && (
+          <span className={cn(
+            "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap",
+            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ring-1",
+            AGENT_BADGE_COLORS["playground-agent"] ?? "bg-muted text-muted-foreground ring-border",
+          )}>
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
+            </span>
+            Playground Agent
+          </span>
+        )}
         <Tip content="Clear all files and start a fresh playground" side="bottom">
           <Button
             variant="outline"
@@ -470,11 +516,45 @@ export function PlaygroundPage() {
 
         {showPreviewPane && preview && (
           <>
-            <Tip content={preview.title} side="bottom">
-              <span className="ml-1 truncate text-xs font-medium text-foreground">
-                {preview.title}
-              </span>
-            </Tip>
+            {editingUrl ? (
+              <form
+                className="ml-1 flex items-center gap-1"
+                onSubmit={(e) => { e.preventDefault(); applyPreviewUrl(); }}
+              >
+                <input
+                  autoFocus
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Escape") setEditingUrl(false); }}
+                  placeholder="http://localhost:3000"
+                  spellCheck={false}
+                  className="w-80 rounded border border-input bg-background px-2 py-1 font-mono text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
+                />
+                <Tip content="Apply URL & reload" side="bottom">
+                  <Button type="submit" variant="ghost" size="sm" disabled={!urlDraft.trim()}>
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                </Tip>
+                <Tip content="Cancel" side="bottom">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingUrl(false)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </Tip>
+              </form>
+            ) : (
+              <>
+                <Tip content={preview.title} side="bottom">
+                  <span className="ml-1 max-w-[280px] truncate text-xs font-medium text-foreground">
+                    {preview.title}
+                  </span>
+                </Tip>
+                <Tip content={`Edit preview URL — ${preview.url}`} side="bottom">
+                  <Button variant="ghost" size="sm" onClick={() => { setUrlDraft(preview.url); setEditingUrl(true); }}>
+                    <Link2 className="h-3.5 w-3.5" />
+                  </Button>
+                </Tip>
+              </>
+            )}
             <span className="flex-1" />
             {/* Device width switcher */}
             <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5">
@@ -573,32 +653,21 @@ export function PlaygroundPage() {
           </>
         )}
 
-        {/* Token usage — only on the Chat view, pinned far right, bold, in thousands (k). */}
-        {!showPreviewPane && store.tokens && (
-          <>
-            <span className="flex-1" />
-            <Tip content="Tokens used this run" side="bottom">
-              <span className="text-sm font-bold text-muted-foreground">
-                {((store.tokens.prompt + store.tokens.completion) / 1000).toFixed(1)}k tokens
-              </span>
-            </Tip>
-          </>
-        )}
       </div>
 
       {/* Snapshot history strip */}
       {store.history.length > 1 && showPreviewPane && (
         <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-muted/30 px-4 py-1.5 shrink-0">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">History</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70">History</span>
           {store.history.map((h, i) => (
             <Tip key={h.url + i} content={h.title} side="bottom">
               <button
-                onClick={() => store.showPreview(h)}
+                onClick={() => store.selectPreview(h)}
                 className={cn(
                   "shrink-0 rounded border px-2 py-0.5 text-[11px] transition-colors",
                   store.preview?.url === h.url
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground",
+                    ? "border-primary bg-primary/10 font-medium text-foreground"
+                    : "border-border text-foreground/80 hover:border-foreground/30 hover:text-foreground",
                 )}
               >
                 {h.title.length > 22 ? h.title.slice(0, 22) + "…" : h.title}

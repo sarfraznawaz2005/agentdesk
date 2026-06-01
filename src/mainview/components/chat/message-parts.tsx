@@ -53,6 +53,7 @@ const AGENT_COLORS: Record<string, string> = {
 	"data-engineer": "border-l-lime-400",
 	"refactoring-specialist": "border-l-yellow-400",
 	"code-explorer": "border-l-sky-400",
+	"playground-agent": "border-l-orange-400",
 };
 
 function getAgentBorderColor(agentName?: string): string {
@@ -143,6 +144,7 @@ export const AGENT_BADGE_COLORS: Record<string, string> = {
 	"data-engineer": "bg-lime-50 text-lime-700 ring-lime-300",
 	"refactoring-specialist": "bg-yellow-50 text-yellow-700 ring-yellow-300",
 	"code-explorer": "bg-sky-50 text-sky-700 ring-sky-300",
+	"playground-agent": "bg-orange-50 text-orange-700 ring-orange-300",
 };
 
 export function getAgentBadgeColor(agentName?: string): string {
