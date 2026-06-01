@@ -14,7 +14,7 @@ import {
   Terminal,
   FlaskConical,
   Loader2,
-  ListTree,
+  MessageSquare,
   Eye,
   Code2,
   AlertTriangle,
@@ -452,8 +452,8 @@ export function PlaygroundPage() {
               store.mainView === "activity" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <ListTree className="h-3.5 w-3.5" />
-            Activity
+            <MessageSquare className="h-3.5 w-3.5" />
+            Chat
           </button>
           <button
             onClick={() => hasPreview && store.setMainView("preview")}
@@ -573,7 +573,7 @@ export function PlaygroundPage() {
           </>
         )}
 
-        {/* Token usage — only on the Activity view, pinned far right, bold, in thousands (k). */}
+        {/* Token usage — only on the Chat view, pinned far right, bold, in thousands (k). */}
         {!showPreviewPane && store.tokens && (
           <>
             <span className="flex-1" />
@@ -752,36 +752,38 @@ export function PlaygroundPage() {
         )}
       </div>
 
-      {/* Chat input */}
-      <div className="border-t border-border bg-background p-3 shrink-0">
-        <div className="flex items-end gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            rows={1}
-            placeholder={store.running ? "Playground Agent is working…" : "Describe what you want to build…"}
-            disabled={store.running}
-            className="max-h-40 min-h-[44px] flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring disabled:opacity-60"
-          />
-          {store.running ? (
-            <Button variant="destructive" size="lg" onClick={handleStop} className="h-11">
-              <Square className="h-4 w-4 fill-current" />
-              Stop
-            </Button>
-          ) : (
-            <Button size="lg" onClick={handleSend} disabled={!input.trim()} className="h-11">
-              <Send className="h-4 w-4" />
-              Send
-            </Button>
-          )}
+      {/* Chat input — only on the Chat tab, hidden while the Preview pane is showing */}
+      {!showPreviewPane && (
+        <div className="border-t border-border bg-background p-3 shrink-0">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              rows={1}
+              placeholder={store.running ? "Playground Agent is working…" : "Describe what you want to build…"}
+              disabled={store.running}
+              className="max-h-40 min-h-[44px] flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring disabled:opacity-60"
+            />
+            {store.running ? (
+              <Button variant="destructive" size="lg" onClick={handleStop} className="h-11">
+                <Square className="h-4 w-4 fill-current" />
+                Stop
+              </Button>
+            ) : (
+              <Button size="lg" onClick={handleSend} disabled={!input.trim()} className="h-11">
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* New Playground confirm */}
       <Dialog open={confirmNew} onOpenChange={setConfirmNew}>
