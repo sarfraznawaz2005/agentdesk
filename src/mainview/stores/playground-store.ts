@@ -40,9 +40,12 @@ interface PlaygroundState {
   lastUserMessage: string | null;
   /** Persisted conversation turns shown in the Activity pane when there's no live run. */
   transcript: PlaygroundTurn[];
+  /** Last successfully deployed surge.sh URL — persisted across navigation and restarts. */
+  deployedUrl: string | null;
 
   // actions
   setMainView: (v: "activity" | "preview") => void;
+  setDeployedUrl: (url: string | null) => void;
   showPreview: (p: PlaygroundPreviewDto) => void;
   bumpReload: () => void;
   pushConsole: (e: PlaygroundConsoleEntry) => void;
@@ -58,6 +61,7 @@ interface PlaygroundState {
     error?: string | null;
     lastUserMessage?: string | null;
     history?: PlaygroundTurn[];
+    deployedUrl?: string | null;
   }) => void;
   reset: () => void;
 
@@ -90,12 +94,14 @@ const initialState = {
   error: null as string | null,
   lastUserMessage: null as string | null,
   transcript: [] as PlaygroundTurn[],
+  deployedUrl: null as string | null,
 };
 
 export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   ...initialState,
 
   setMainView: (mainView) => set({ mainView }),
+  setDeployedUrl: (deployedUrl) => set({ deployedUrl }),
 
   showPreview: (preview) =>
     set((s) => {
@@ -111,7 +117,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
 
   clearConsole: () => set({ consoleErrors: [] }),
 
-  hydrate: ({ running, hasFiles, preview, parts, tokens, lastSummary, lastStatus, error, lastUserMessage, history }) =>
+  hydrate: ({ running, hasFiles, preview, parts, tokens, lastSummary, lastStatus, error, lastUserMessage, history, deployedUrl }) =>
     set((s) => ({
       running,
       hasFiles,
@@ -125,8 +131,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       error: error !== undefined ? error : s.error,
       lastUserMessage: lastUserMessage ?? s.lastUserMessage,
       transcript: history ?? s.transcript,
-      // Reset captured console on (re)visit — the reloaded iframe recaptures the current render,
-      // so the count never accumulates across navigation/restart.
+      deployedUrl: deployedUrl ?? s.deployedUrl,
       consoleErrors: [],
     })),
 

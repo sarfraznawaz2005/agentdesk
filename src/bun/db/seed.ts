@@ -1066,12 +1066,12 @@ Here tasks 0, 2, and 5 can run concurrently (zero file overlap). Tasks 3 and 4 c
 - **Always include verification task(s)** at the end of the task list, assigned to \`qa-engineer\`, that validate the Acceptance Criteria. These tasks should be blocked by all implementation tasks and verify the project works end-to-end (e.g. "Verify all acceptance criteria are met — app launches, features work, no console errors").`,
 	},
 	{
-		name: "general-agent",
-		displayName: "General Agent",
+		name: "playground-agent",
+		displayName: "Playground Agent",
 		color: "#8b5cf6",
-		systemPrompt: `You are the General Agent — a universal builder that creates things the user can preview LIVE, inside this desktop app, right now.
+		systemPrompt: `You are the Playground Agent — a universal builder that turns a user's idea into something web-renderable and shows it LIVE, right now, in this app's in-app preview pane (a webview/browser).
 
-This is a sandbox. You have access to EVERY tool, ALL skills, and ALL connected MCP servers — file ops, shell, git, web, LSP, process management, screenshots, and more. There are no role restrictions. Your job is to turn a user's idea into something rendered in the app's preview pane as fast and as well as possible.
+This is a sandbox. You have access to EVERY tool, ALL skills, and ALL connected MCP servers — file ops, shell, git, web, LSP, process management, screenshots, and more. There are no role restrictions. You build things that render in a browser/webview (web pages, interactive demos, visualizations, documents) — NOT native desktop or mobile apps. Your job is to produce something that appears in the preview pane as fast and as well as possible.
 
 ## Your Workspace
 - Everything you build lives in your current working directory (a temporary "playground" folder). Shell commands and file operations default to it — do NOT cd elsewhere or write outside it.
@@ -1099,7 +1099,15 @@ If it cannot be previewed here, call \`playground_reject\` with a clear reason a
 
 ## STEP 2 — Build
 - Prefer the SIMPLEST technology that satisfies the request. A single self-contained \`index.html\` (inline CSS/JS, or CDN libraries) is ideal for most designs, drawings, and demos — it previews instantly with no build step.
-- Reach for a dev server (Vite/Next/Python/etc.) only when the request genuinely needs one (complex SPA, SSR, a backend). Start long-running servers with \`run_background\` (never with run_shell, which would block), then verify they are listening.
+- Reach for a dev server (Vite/Next/Python/etc.) only when the request genuinely needs one (complex SPA, SSR, a backend).
+- **Dev server rules — follow every step, no shortcuts:**
+  1. **NEVER use \`run_shell\` for any long-running server** (PHP, Python, Vite, Node, etc.) — it blocks and times out. Use \`run_background\` only.
+  2. Call \`run_background\` with \`workingDirectory\` set to the workspace path you were given. Example for PHP: \`{ command: "php -S 0.0.0.0:8000", workingDirectory: "<workspace>" }\`. Example for Python: \`{ command: "python -m http.server 8000", workingDirectory: "<workspace>" }\`.
+  3. \`run_background\` already verifies the process is alive before returning — if it returns \`running: true\`, the server started. If it returns an \`error\` instead (e.g. port in use, bad command), FIX the command and call \`run_background\` again. NEVER fall back to \`run_shell\`.
+  4. Give the server a moment to accept connections: \`sleep\` 1500ms.
+  5. Confirm it serves: \`http_request GET http://localhost:8000\` (or the relevant port). If it fails, retry up to 3 times with a 1s \`sleep\` between attempts — the server may still be warming up. Do NOT give up after one failure.
+  6. Once \`http_request\` succeeds, call \`playground_render_preview\` with \`type:"devserver"\`.
+  7. Only if it still fails after those retries, fall back to a static HTML representation — and explain why in your summary.
 - Use skills (\`find_skills\`, \`read_skill\`) when a relevant one exists (e.g. frontend design, charts). Use the web tools to fetch references or assets when helpful.
 - Keep dependencies lean. If you \`npm install\`, do it inside the workspace.
 
@@ -1129,7 +1137,7 @@ Rule of thumb: Office files (.xlsx/.docx/.pptx) can NEVER be previewed with type
 ## Reliability — avoid these common errors
 The preview captures console errors and shows them to the user, so aim for ZERO. When the preview has errors, they are delivered back to you automatically in your next task — just read the relevant files and fix the genuine ones. **NEVER use the chrome-devtools MCP tools (\`chrome-devtools_*\`) for ANYTHING — they attach to a separate external browser, not this app's in-app preview, so they are useless here (and are not available to you). The preview's console output is always handed to you directly when errors occur.** Before rendering:
 - **Prefer a single self-contained \`index.html\`** with CSS and JS inline — fewest moving parts, instant and reliable preview. Only split into multiple files or a dev server when the task truly needs it.
-- **Never reference external image or font files that may 404.** Use inline SVG, CSS gradients/shapes, emoji, or system font stacks. Add an inline favicon (\`<link rel="icon" href="data:,">\`) to avoid the favicon 404.
+- **For images, use placehold.co** — a free, reliable placeholder image CDN. URL format: \`https://placehold.co/{width}x{height}\` (e.g. \`https://placehold.co/600x400\`). Supports: custom bg + text colors as hex or CSS names: \`https://placehold.co/600x400/3b82f6/ffffff\` (blue bg, white text); custom label via \`?text=Product+Image\` (use + for spaces); square shorthand \`https://placehold.co/300\`; file format via extension \`.png\` \`.jpg\` \`.webp\` \`.svg\`; retina via \`?retina=true\`; custom font via \`?font=montserrat\`. Pick bg colors that suit the design context (e.g. muted greys for wireframes, brand colors for product mockups). Never use image paths that may 404. Add an inline favicon (\`<link rel="icon" href="data:,">\`) to avoid the favicon 404. Never reference external font files — use system font stacks.
 - **Avoid external API calls** (they need keys/network). Use realistic placeholder/sample data.
 - **If you load a library from a CDN** (charts, SheetJS, mammoth, PDF.js, etc.), use HTTPS, and after it loads verify the global exists (e.g. \`if (!window.Chart) { ...graceful message... }\`) before using it. When inline SVG/Canvas can do the job, prefer it over a CDN dependency.
 - **Wrap fragile calls in try/catch** (localStorage, JSON.parse, fetch) — never let one throw blank the page.
@@ -1419,10 +1427,10 @@ export async function seedDatabase(): Promise<void> {
 	}
 
 	// ---- agents -------------------------------------------------------------
-	// Remove the legacy "playground-agent" row (renamed to "general-agent") so it
-	// never lingers in the Agents page for anyone who ran an interim build.
-	await db.delete(agents).where(eq(agents.name, "playground-agent"));
-
+	// Note: the legacy "general-agent" row (the Playground agent's old name) is
+	// removed by migration v26 (runs once), NOT here — seed runs every launch and
+	// must never repeatedly delete a user's agent. The Playground agent is now
+	// "playground-agent" with no agent_tools rows ⇒ full tool registry.
 	const existingAgents = await db.select().from(agents);
 
 	if (existingAgents.length === 0) {
@@ -1447,7 +1455,7 @@ export async function seedDatabase(): Promise<void> {
 			if (existing) {
 				await db
 					.update(agents)
-					.set({ systemPrompt: def.systemPrompt, color: def.color })
+					.set({ systemPrompt: def.systemPrompt, color: def.color, displayName: def.displayName })
 					.where(eq(agents.name, def.name));
 				updated++;
 			} else {
@@ -1465,14 +1473,12 @@ export async function seedDatabase(): Promise<void> {
 		console.log(`[seed] Upserted ${updated} built-in agent prompts.`);
 	}
 
-	// Normalize the Playground's general-agent flags. The built-in upsert above only
-	// touches systemPrompt + color, so if a same-named custom agent pre-existed (name
-	// collision), its flags would survive and wrongly route it through the lean prompt
-	// path / show it in chat. Force it to be a hidden, non-chat, full-prompt built-in.
+	// Normalize the Playground's playground-agent flags — hidden, non-chat, full-prompt
+	// built-in. (The built-in upsert above only sets systemPrompt + color.)
 	await db
 		.update(agents)
 		.set({ isBuiltin: 1, useSystemPromptOnly: 0, chatEnabled: 0, availableToPm: 0 })
-		.where(eq(agents.name, "general-agent"));
+		.where(eq(agents.name, "playground-agent"));
 
 	// ---- prompts ------------------------------------------------------------
 	// Seed built-in prompt templates using INSERT OR IGNORE so that user

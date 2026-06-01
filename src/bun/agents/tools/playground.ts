@@ -110,6 +110,15 @@ const renderPreviewTool = tool({
 					`playground_render_preview with type:"static". You can leave the original file in the workspace as a download.`
 				);
 			}
+			// Server-side scripts cannot be executed by the browser — they'd download or show blank.
+			if (/\.(php|py|rb|pl|aspx?|jsp|cgi|cfm|lua)$/i.test(file)) {
+				return (
+					`Error: "${file}" is a server-side script that the browser cannot execute. ` +
+					`Instead, either: (1) start a local dev server that runs the script (php -S localhost:PORT, python -m http.server, etc.) ` +
+					`and use type:"devserver", or (2) build a self-contained index.html that demonstrates the same output and use type:"static". ` +
+					`If the runtime is not installed on this machine, option 2 is the safest choice.`
+				);
+			}
 			// PDFs can't be shown by navigating the iframe to them (WebView2 blocks the native
 			// PDF viewer), so route them through the server's PDF.js viewer.
 			previewUrl = /\.pdf$/i.test(file)

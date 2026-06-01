@@ -1157,6 +1157,24 @@ export const rpc = {
   /** Read the playground's raw text source files (for the "View source" dialog). */
   getPlaygroundSource: () => electroviewRpc.request.getPlaygroundSource({}),
 
+  /** Write an edited source file back to the playground directory (triggers hot-reload). */
+  savePlaygroundFile: (filePath: string, content: string) =>
+    electroviewRpc.request.savePlaygroundFile({ path: filePath, content }),
+
+  /** List background dev servers currently running in the playground temp folder. */
+  getPlaygroundDevServers: () => electroviewRpc.request.getPlaygroundDevServers({}),
+
+  /** Stop a specific playground dev server. */
+  stopPlaygroundDevServer: (jobId: string) =>
+    electroviewRpc.request.stopPlaygroundDevServer({ jobId }),
+
+  /** Restart a stopped playground dev server by its command. */
+  startPlaygroundDevServer: (command: string) =>
+    electroviewRpc.request.startPlaygroundDevServer({ command }),
+
+  /** Deploy the current static playground to surge.sh and return the live URL. */
+  deployPlayground: () => electroviewRpc.request.deployPlayground({}),
+
   // ---- Freelance -----------------------------------------------------------
 
   /** Check if the freelance feature is enabled. */

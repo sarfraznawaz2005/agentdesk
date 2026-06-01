@@ -304,8 +304,8 @@ export async function runPlayground(userMessage: string, consoleErrors?: string[
 
 		const result = await runInlineAgent({
 			conversationId: PLAYGROUND_CONVERSATION_ID,
-			agentName: "general-agent",
-			agentDisplayName: "General Agent",
+			agentName: "playground-agent",
+			agentDisplayName: "Playground Agent",
 			task: taskForAgent,
 			projectContext,
 			providerConfig: config,

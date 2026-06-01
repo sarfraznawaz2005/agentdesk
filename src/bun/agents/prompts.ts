@@ -195,9 +195,9 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 		// when their availableToPm flag is set (default 1, controlled per-agent
 		// in Settings → Agents). This lets users add custom agents they don't
 		// want the PM to orchestrate (e.g. chat-only assistants).
-		// general-agent is exclusive to the Playground page — never orchestrated by the PM.
+		// playground-agent is exclusive to the Playground page — never orchestrated by the PM.
 		const agentRows = allAgentRows.filter(
-			(a) => a.name !== "general-agent" && (a.isBuiltin === 1 || a.availableToPm === 1),
+			(a) => a.name !== "playground-agent" && (a.isBuiltin === 1 || a.availableToPm === 1),
 		);
 
 		if (agentRows.length === 0) return { section: "", agentNames: [] };
@@ -1004,7 +1004,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	// (the agent's own prompt governs behaviour). It gets only: its base prompt, the user profile,
 	// the skills list (without delegation rules), and the MCP tools list. Workspace context is
 	// appended by the caller (runInlineAgent) via projectContext.
-	if (agentName === "general-agent") {
+	if (agentName === "playground-agent") {
 		const [userProfile, mcpSection] = await Promise.all([
 			loadUserProfile(),
 			// chrome-devtools_* tools are removed from this agent's toolset, so don't list them either.

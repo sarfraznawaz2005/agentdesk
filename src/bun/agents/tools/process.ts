@@ -2,8 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import path from "node:path";
 import os from "node:os";
-import { openSync, closeSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import type { ToolRegistryEntry } from "./index";
 
 // ---------------------------------------------------------------------------
@@ -22,7 +21,9 @@ interface BackgroundJob {
 	/** Resolved working directory the job was spawned in (used for path-scoped cleanup). */
 	cwd: string;
 
-	proc: ReturnType<typeof Bun.spawn>;
+	// node:child_process ChildProcess — detached + unref'd so it never blocks
+	// Bun's event loop (critical for long-running servers like PHP/Python).
+	proc: ChildProcess;
 }
 
 const jobStore = new Map<string, BackgroundJob>();
@@ -46,6 +47,99 @@ function pruneOldJobs(): void {
 // run_background
 // ---------------------------------------------------------------------------
 
+export interface StartJobResult {
+	jobId?: string;
+	pid?: number;
+	logPath?: string;
+	label?: string;
+	startedAt?: string;
+	running?: boolean;
+	error?: string;
+	output?: string;
+}
+
+/**
+ * Spawn a long-running background process, then confirm it's actually alive.
+ * Shared by the run_background tool and the Playground "restart server" RPC.
+ *
+ * CRITICAL — stdio:"ignore" (NOT inherited file descriptors). Passing fd handles
+ * in stdio forces libuv to spawn with bInheritHandles=TRUE on Windows, which leaks
+ * EVERY inheritable parent handle into the child — including the keep-alive TCP
+ * socket the AI SDK holds open to the model provider. A long-running child (PHP/
+ * Python/Vite dev server) then keeps a duplicate of that socket open, so when the
+ * provider closes the connection the parent never receives EOF and the NEXT
+ * streamed model call hangs until it times out. stdio:"ignore" lets libuv spawn
+ * with no inherited handles; output is captured by redirecting inside the shell
+ * command instead. detached is only safe on Unix (on Windows it gives the child
+ * its own console, which detaches the grandchild's stderr and breaks the redirect).
+ */
+export async function startBackgroundJob(opts: {
+	command: string;
+	workingDirectory?: string;
+	label?: string;
+}): Promise<StartJobResult> {
+	const { command, workingDirectory } = opts;
+	const label = opts.label ?? command.slice(0, 60);
+
+	pruneOldJobs();
+
+	const id = crypto.randomUUID().slice(0, 8);
+	const logPath = path.join(os.tmpdir(), `aidesk-job-${id}.log`);
+	const isWin = process.platform === "win32";
+
+	const proc = spawn(`${command} > "${logPath}" 2>&1`, {
+		cwd: workingDirectory,
+		stdio: "ignore",
+		shell: true,
+		windowsHide: true,
+		detached: !isWin,
+	});
+	proc.unref();
+
+	// spawn failures (shell missing, bad cwd) surface ASYNChronously via 'error',
+	// not as a throw — without this listener Node would treat it as unhandled.
+	let spawnError: string | null = null;
+	let exited: { code: number | null; signal: string | null } | null = null;
+	proc.once("error", (e) => { spawnError = e instanceof Error ? e.message : String(e); });
+	proc.once("exit", (code, signal) => { exited = { code, signal }; });
+
+	const job: BackgroundJob = {
+		id,
+		label,
+		command,
+		pid: proc.pid ?? 0,
+		logPath,
+		startedAt: new Date(),
+		cwd: workingDirectory ? path.resolve(workingDirectory) : process.cwd(),
+		proc,
+	};
+
+	jobStore.set(id, job);
+
+	// Liveness probe: wait briefly, then confirm the process is still alive. This
+	// turns the instant return (which the model mistakes for failure and then wrongly
+	// retries with run_shell) into an authoritative, accurate result.
+	await Bun.sleep(600);
+
+	if (spawnError) {
+		jobStore.delete(id);
+		return { error: `Failed to start: ${spawnError}` };
+	}
+	if (exited) {
+		const e = exited as { code: number | null; signal: string | null };
+		let logTail = "";
+		try { logTail = (await Bun.file(logPath).text()).slice(-500); } catch { /* ignore */ }
+		jobStore.delete(id);
+		return {
+			error: `The command exited immediately (code ${e.code}${e.signal ? `, signal ${e.signal}` : ""}) instead of staying alive. ` +
+				`For a server, check the port isn't already in use and the command is correct.`,
+			output: logTail || "(no output captured)",
+		};
+	}
+
+	return { jobId: id, pid: proc.pid ?? 0, logPath, label, startedAt: job.startedAt.toISOString(), running: true };
+}
+
 const runBackgroundTool = tool({
 	description:
 		"Spawn a shell command as a background process and return immediately. " +
@@ -64,52 +158,25 @@ const runBackgroundTool = tool({
 			.optional()
 			.describe("Human-readable label for this job (e.g. 'docker build', 'npm install')"),
 	}),
-	execute: async ({ command, workingDirectory, label = command.slice(0, 60) }): Promise<string> => {
+	execute: async ({ command, workingDirectory, label }): Promise<string> => {
 		try {
-			pruneOldJobs();
-
-			const id = crypto.randomUUID().slice(0, 8);
-			const logPath = path.join(os.tmpdir(), `aidesk-job-${id}.log`);
-
-			// Open a single fd and pass it to both stdout and stderr so they share
-			// the same file position — equivalent to "2>&1" but without shell redirection,
-			// which is unreliable on Windows (Bun quotes array args, turning > literal).
-			const logFd = openSync(logPath, "w");
-
-			const shellArgs: string[] =
-				process.platform === "win32"
-					? ["cmd", "/c", command]
-					: ["bash", "-c", command];
-
-			const proc = Bun.spawn(shellArgs, {
-				cwd: workingDirectory,
-				stdout: logFd,
-				stderr: logFd,
-			});
-
-			// Close our copy of the fd once the process exits — the child holds its own.
-			proc.exited.finally(() => { try { closeSync(logFd); } catch { /* ignore */ } });
-
-			const job: BackgroundJob = {
-				id,
-				label,
-				command,
-				pid: proc.pid,
-				logPath,
-				startedAt: new Date(),
-				cwd: workingDirectory ? path.resolve(workingDirectory) : process.cwd(),
-				proc,
-			};
-
-			jobStore.set(id, job);
-
+			const r = await startBackgroundJob({ command, workingDirectory, label });
+			if (r.error) {
+				return JSON.stringify({
+					error: `${r.error} Do NOT retry with run_shell — fix the command and call run_background again.`,
+					command,
+					...(r.output ? { output: r.output } : {}),
+				});
+			}
 			return JSON.stringify({
-				jobId: id,
-				pid: proc.pid,
-				logPath,
-				label,
-				startedAt: job.startedAt.toISOString(),
-				message: `Job started. Use check_process("${id}") to monitor it.`,
+				jobId: r.jobId,
+				pid: r.pid,
+				logPath: r.logPath,
+				label: r.label,
+				startedAt: r.startedAt,
+				running: true,
+				message: `Server/process is running (pid ${r.pid}) and confirmed alive. This is the correct tool — do NOT also start it with run_shell. ` +
+					`Next: verify it serves with http_request, then call playground_render_preview.`,
 			});
 		} catch (err) {
 			return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
@@ -207,7 +274,9 @@ const killProcessTool = tool({
 		}
 
 		try {
-			job.proc.kill();
+			// Kill the whole tree — with shell:true the tracked process is the shell and
+			// the real server is its child, so a plain kill would orphan it (holding the port).
+			killProcessTree(job.pid, job.proc);
 			// Give it a moment then report
 			await Bun.sleep(200);
 			return JSON.stringify({
@@ -277,13 +346,17 @@ function formatElapsed(ms: number): string {
 // on Unix we SIGTERM then SIGKILL the shell (children typically exit with it).
 // ---------------------------------------------------------------------------
 
-function killProcessTree(pid: number, proc: ReturnType<typeof Bun.spawn>): void {
+function killProcessTree(pid: number, proc: ChildProcess): void {
 	try {
 		if (process.platform === "win32") {
 			spawn("taskkill", ["/pid", String(pid), "/f", "/t"], { stdio: "ignore", windowsHide: true });
 		} else {
-			try { proc.kill(); } catch { /* ignore */ }
-			setTimeout(() => { try { proc.kill(9); } catch { /* ignore */ } }, 300);
+			// Unix jobs are spawned detached (own process group led by `pid`), so signal
+			// the whole group with a negative pid to take down the shell + its children.
+			try { process.kill(-pid, "SIGTERM"); } catch { try { proc.kill("SIGTERM"); } catch { /* ignore */ } }
+			setTimeout(() => {
+				try { process.kill(-pid, "SIGKILL"); } catch { try { proc.kill("SIGKILL"); } catch { /* ignore */ } }
+			}, 300);
 		}
 	} catch { /* already dead */ }
 }
@@ -308,6 +381,55 @@ export function killJobsUnderPath(dir: string): number {
 		}
 	}
 	return killed;
+}
+
+// ---------------------------------------------------------------------------
+// getRunningJobsUnderPath — list running jobs whose cwd is within `dir`
+// Used by the Playground to surface active dev servers in the UI.
+// ---------------------------------------------------------------------------
+
+export interface RunningJobInfo {
+	id: string;
+	label: string;
+	command: string;
+	cwd: string;
+	pid: number;
+	startedAt: string;
+	elapsedHuman: string;
+}
+
+export function getRunningJobsUnderPath(dir: string): RunningJobInfo[] {
+	const prefix = path.resolve(dir).toLowerCase();
+	const results: RunningJobInfo[] = [];
+	for (const job of jobStore.values()) {
+		if (job.proc.exitCode !== null) continue;
+		const jobCwd = job.cwd.toLowerCase();
+		if (jobCwd === prefix || jobCwd.startsWith(prefix + path.sep) || jobCwd.startsWith(prefix + "/")) {
+			const elapsedMs = Date.now() - job.startedAt.getTime();
+			results.push({
+				id: job.id,
+				label: job.label,
+				command: job.command,
+				cwd: job.cwd,
+				pid: job.pid,
+				startedAt: job.startedAt.toISOString(),
+				elapsedHuman: formatElapsed(elapsedMs),
+			});
+		}
+	}
+	return results.sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
+}
+
+// ---------------------------------------------------------------------------
+// killJobById — terminate a single job by id (uses process-tree kill)
+// ---------------------------------------------------------------------------
+
+export function killJobById(id: string): boolean {
+	const job = jobStore.get(id);
+	if (!job || job.proc.exitCode !== null) return false;
+	killProcessTree(job.pid, job.proc);
+	jobStore.delete(id);
+	return true;
 }
 
 // ---------------------------------------------------------------------------

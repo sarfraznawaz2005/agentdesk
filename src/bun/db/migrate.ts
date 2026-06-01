@@ -25,6 +25,7 @@ import * as v22 from "./migrations/v22_freelance-seed-keywords";
 import * as v23 from "./migrations/v23_agent-custom-flags";
 import * as v24 from "./migrations/v24_agent-available-to-pm";
 import * as v25 from "./migrations/v25_redisable-db-viewer-plugin";
+import * as v26 from "./migrations/v26_remove-legacy-general-agent";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -74,6 +75,7 @@ const migrations: Migration[] = [
 	{ version: 23, name: v23.name, run: v23.run },
 	{ version: 24, name: v24.name, run: v24.run },
 	{ version: 25, name: v25.name, run: v25.run },
+	{ version: 26, name: v26.name, run: v26.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;

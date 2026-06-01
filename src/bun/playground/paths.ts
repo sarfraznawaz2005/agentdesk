@@ -21,6 +21,9 @@ export const PLAYGROUND_FILES_DIR = path.join(PLAYGROUND_ROOT, "files");
 export const PLAYGROUND_META_DIR = path.join(PLAYGROUND_ROOT, ".playground");
 export const CONVERSATION_FILE = path.join(PLAYGROUND_META_DIR, "conversation.json");
 export const PREVIEW_FILE = path.join(PLAYGROUND_META_DIR, "preview.json");
+export const DEPLOY_FILE = path.join(PLAYGROUND_META_DIR, "deploy.json");
+/** Persisted dev servers the playground has started (so they survive an app restart as "stopped"). */
+export const SERVERS_FILE = path.join(PLAYGROUND_META_DIR, "servers.json");
 
 /** Directory/file names that must never be copied into a created project. */
 export const PLAYGROUND_COPY_IGNORE = new Set([

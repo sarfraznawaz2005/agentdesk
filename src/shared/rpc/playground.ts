@@ -1,5 +1,15 @@
 // RPC contract for the Playground feature.
 
+export interface PlaygroundServerDto {
+  id: string;          // live job id when running; "" when stopped
+  label: string;
+  command: string;     // used to restart a stopped server
+  status: "running" | "stopped";
+  pid?: number;
+  startedAt?: string;
+  elapsedHuman?: string;
+}
+
 export interface PlaygroundPreviewDto {
   kind: "static" | "devserver" | "file";
   url: string;
@@ -59,6 +69,7 @@ export type PlaygroundRequests = {
       lastUserMessage: string | null;
       path: string;
       history: { role: "user" | "assistant"; content: string }[];
+      deployedUrl: string | null;
     };
   };
   /** Promote the current playground into a real project (AI-named, files copied). */
@@ -75,5 +86,30 @@ export type PlaygroundRequests = {
   getPlaygroundSource: {
     params: Record<string, never>;
     response: { files: { path: string; content: string }[] };
+  };
+  /** Write an edited source file back to the playground directory (triggers hot-reload). */
+  savePlaygroundFile: {
+    params: { path: string; content: string };
+    response: { success: boolean; error?: string };
+  };
+  /** List background dev servers currently running inside the playground temp folder. */
+  getPlaygroundDevServers: {
+    params: Record<string, never>;
+    response: { servers: PlaygroundServerDto[] };
+  };
+  /** Stop a specific playground dev server by job id. */
+  stopPlaygroundDevServer: {
+    params: { jobId: string };
+    response: { ok: boolean };
+  };
+  /** Restart a stopped playground dev server by its command (re-runs it). */
+  startPlaygroundDevServer: {
+    params: { command: string };
+    response: { ok: boolean; error?: string };
+  };
+  /** Deploy the current static playground to surge.sh and return the live URL. */
+  deployPlayground: {
+    params: Record<string, never>;
+    response: { success: boolean; url?: string; error?: string };
   };
 };

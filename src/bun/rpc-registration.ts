@@ -945,6 +945,11 @@ When enhancing a prompt:
 			createProjectFromPlayground: () => playgroundRpc.createProjectFromPlayground(),
 			exportPlaygroundZip: () => playgroundRpc.exportPlaygroundZip(),
 			getPlaygroundSource: () => playgroundRpc.getPlaygroundSource(),
+			savePlaygroundFile: (params) => playgroundRpc.savePlaygroundFile(params),
+			getPlaygroundDevServers: () => playgroundRpc.getPlaygroundDevServers(),
+			stopPlaygroundDevServer: (params) => playgroundRpc.stopPlaygroundDevServer(params),
+			startPlaygroundDevServer: (params) => playgroundRpc.startPlaygroundDevServer(params),
+			deployPlayground: () => playgroundRpc.deployPlayground(),
 
 			// ── Freelance ──
 			"freelance.getFeatureEnabled": () => freelanceRpc.getFeatureEnabled(),
