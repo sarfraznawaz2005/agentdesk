@@ -394,7 +394,12 @@ export function PlaygroundPage() {
     () => (
       <>
         <Tip content="Clear all files and start a fresh playground" side="bottom">
-          <Button variant="outline" size="sm" onClick={() => setConfirmNew(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmNew(true)}
+            className="border-green-600 bg-green-600 text-white hover:bg-green-700 hover:text-white dark:border-green-500 dark:bg-green-600 dark:hover:bg-green-700"
+          >
             <Plus className="h-3.5 w-3.5" />
             New Playground
           </Button>
