@@ -43,14 +43,14 @@ interface SidebarProps {
 
 const BASE_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { label: "Playground", icon: FlaskConical, href: "/playground" },
   { label: "Inbox", icon: Inbox, href: "/inbox" },
   { label: "Agents", icon: Bot, href: "/agents" },
   { label: "Skills", icon: Sparkles, href: "/skills" },
   { label: "Prompts", icon: BookOpen, href: "/prompts" },
   { label: "Scheduler", icon: Clock, href: "/scheduler" },
-  { label: "Analytics", icon: BarChart2, href: "/analytics" },
   { label: "Council", icon: Users, href: "/council" },
-  { label: "Playground", icon: FlaskConical, href: "/playground" },
+  { label: "Analytics", icon: BarChart2, href: "/analytics" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
