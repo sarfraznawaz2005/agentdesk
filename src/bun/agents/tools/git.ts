@@ -5,6 +5,7 @@ import { db } from "../../db";
 import { settings } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import { runGit } from "../../lib/git-runner";
+import { resolveGitHubToken } from "../../rpc/github-api";
 
 // ---------------------------------------------------------------------------
 // Helper: read git settings and format commit message
@@ -419,7 +420,7 @@ const gitLogTool = tool({
 const gitPrTool = tool({
 	description:
 		"Create or list GitHub Pull Requests via the GitHub REST API. " +
-		"Requires a GitHub token stored in settings (category: git, key: githubToken). " +
+		"Uses the configured GitHub token (the global token from Settings → GitHub, or a project's custom token if set). " +
 		"The repo owner/name is inferred from the remote URL automatically.",
 	inputSchema: z.object({
 		workspacePath: z.string().describe("Absolute path to the git repository root"),
@@ -445,11 +446,12 @@ const gitPrTool = tool({
 	}),
 	execute: async ({ workspacePath, action, title, body, head, base }, { abortSignal }): Promise<string> => {
 		try {
-			// Read GitHub token from settings
-			const token = await getGitSetting("githubToken");
+			// Resolve the GitHub token the same way as the rest of the app:
+			// per-project custom token (resolved via workspace) → global github_pat → legacy.
+			const token = await resolveGitHubToken({ workspacePath });
 			if (!token) {
 				return JSON.stringify({
-					error: "GitHub token not configured. Add it in Settings → Git → GitHub Token.",
+					error: "GitHub token not configured. Add it in Settings → GitHub.",
 				});
 			}
 

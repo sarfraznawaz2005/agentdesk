@@ -5,6 +5,7 @@
 import { db } from "../db";
 import { settings, projects } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import { runGit } from "../lib/git-runner";
 
 async function getGitHubPAT(): Promise<string | null> {
 	const rows = await db
@@ -15,6 +16,121 @@ async function getGitHubPAT(): Promise<string | null> {
 	const raw = rows[0]?.value;
 	if (!raw) return null;
 	try { return JSON.parse(raw); } catch { return raw; }
+}
+
+/**
+ * Per-project custom GitHub token, stored via saveProjectSetting under
+ * `project:<projectId>:githubToken` (category "project"). Used when a project
+ * opts into a custom token instead of the global default.
+ */
+async function getProjectGitHubToken(projectId: string): Promise<string | null> {
+	const rows = await db
+		.select({ value: settings.value })
+		.from(settings)
+		.where(eq(settings.key, `project:${projectId}:githubToken`))
+		.limit(1);
+	const raw = rows[0]?.value;
+	if (!raw) return null;
+	try { return JSON.parse(raw); } catch { return raw; }
+}
+
+/**
+ * Legacy fallback — the token the old git_pr tool used to read
+ * (key "githubToken", category "git"). Kept so existing users who configured it
+ * there keep working after the key was unified onto github_pat.
+ */
+async function getLegacyGitToken(): Promise<string | null> {
+	const rows = await db
+		.select({ value: settings.value })
+		.from(settings)
+		.where(and(eq(settings.key, "githubToken"), eq(settings.category, "git")))
+		.limit(1);
+	const raw = rows[0]?.value;
+	if (!raw) return null;
+	try { return JSON.parse(raw); } catch { return raw; }
+}
+
+/** Resolve the project that owns a given workspace path (exact match). */
+async function getProjectIdByWorkspace(workspacePath: string): Promise<string | null> {
+	const rows = await db
+		.select({ id: projects.id })
+		.from(projects)
+		.where(eq(projects.workspacePath, workspacePath))
+		.limit(1);
+	return rows[0]?.id ?? null;
+}
+
+/**
+ * Resolve a GitHub token using a single, consistent order so every caller
+ * authenticates the same way:
+ *   1. per-project custom token (if the project opted into one),
+ *   2. the global `github_pat` (what Settings → GitHub saves),
+ *   3. the legacy `githubToken`/`git` setting (back-compat).
+ *
+ * Pass `projectId` directly when known, or `workspacePath` to resolve it.
+ */
+export async function resolveGitHubToken(
+	opts?: { projectId?: string; workspacePath?: string },
+): Promise<string | null> {
+	let projectId = opts?.projectId ?? null;
+	if (!projectId && opts?.workspacePath) {
+		projectId = await getProjectIdByWorkspace(opts.workspacePath);
+	}
+	if (projectId) {
+		const projectToken = await getProjectGitHubToken(projectId);
+		if (projectToken) return projectToken;
+	}
+	const globalToken = await getGitHubPAT();
+	if (globalToken) return globalToken;
+	return await getLegacyGitToken();
+}
+
+/** Replace every occurrence of a secret with *** so it never appears in output/logs. */
+function redactToken(text: string, token: string): string {
+	if (!token) return text;
+	return text.split(token).join("***");
+}
+
+/**
+ * Push a single branch to origin authenticated with a resolved GitHub token,
+ * WITHOUT persisting the token to git config or logging it. Built for autonomous
+ * flows (e.g. Issue Fixer) where no human is present to approve a push.
+ *
+ * Safety contract:
+ *  - Pushes ONLY the explicitly-named branch (refspec `branch:branch`). There is
+ *    no "default to current branch", so it cannot accidentally push a checked-out
+ *    base branch. Callers MUST pass a dedicated feature branch, never the
+ *    base/working branch (also enforced by the Issue Fixer shell guard + orchestrator).
+ *  - The token is passed only in an ephemeral push URL argument; it is never
+ *    written via `git remote set-url`/`git config`, and any error text is redacted.
+ */
+export async function pushBranchAuthenticated(opts: {
+	workspacePath: string;
+	branch: string;
+	projectId?: string;
+	abortSignal?: AbortSignal;
+}): Promise<{ ok: boolean; error?: string }> {
+	const { workspacePath, branch, projectId, abortSignal } = opts;
+	if (!branch || !branch.trim()) return { ok: false, error: "No branch specified" };
+
+	const token = await resolveGitHubToken({ projectId, workspacePath });
+	if (!token) return { ok: false, error: "GitHub token not configured" };
+
+	const remote = await runGit(["remote", "get-url", "origin"], workspacePath, abortSignal);
+	if (remote.exitCode !== 0 || !remote.stdout.trim()) {
+		return { ok: false, error: "Could not read origin remote URL" };
+	}
+	// Accept both https and ssh (scp-like) GitHub remotes.
+	const m = remote.stdout.trim().match(/github\.com[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
+	if (!m) return { ok: false, error: `origin is not a GitHub URL: ${remote.stdout.trim()}` };
+	const [, owner, repo] = m;
+
+	const authUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+	const res = await runGit(["push", authUrl, `${branch}:${branch}`], workspacePath, abortSignal);
+	if (res.exitCode !== 0) {
+		return { ok: false, error: redactToken(res.stderr || res.stdout || "git push failed", token) };
+	}
+	return { ok: true };
 }
 
 export async function githubFetch(
