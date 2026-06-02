@@ -1388,7 +1388,9 @@ export async function seedDatabase(): Promise<void> {
 				mcpServers: {
 					"chrome-devtools": {
 						command: "npx",
-						args: ["-y", "chrome-devtools-mcp@latest"],
+						// --no-performance-crux / --no-usage-statistics opt out of sending data to
+						// Google's CrUX API and usage analytics (also silences the stderr notices).
+						args: ["-y", "chrome-devtools-mcp@latest", "--no-performance-crux", "--no-usage-statistics"],
 						disabled: false,
 					},
 				},

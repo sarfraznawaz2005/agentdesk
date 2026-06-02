@@ -80,17 +80,215 @@ function toPartData(p: {
   };
 }
 
+// Random pick helper for templates whose prompt should vary on each click.
+const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+// Ingredients for a randomized landing-page prompt — so clicking "Landing page"
+// produces a fresh industry, color palette, and aesthetic every time instead of
+// always defaulting to the same coffee-shop look.
+const LANDING_INDUSTRIES = [
+  "a personal finance & budgeting app",
+  "an electric bike brand",
+  "a meal-kit delivery service",
+  "a meditation & sleep app",
+  "a project management SaaS for remote teams",
+  "an online language-learning platform",
+  "a sustainable fashion label",
+  "a home-fitness equipment brand",
+  "a developer API & observability tool",
+  "an indoor plants & gardening shop",
+  "a travel-planning app",
+  "a pet care & vet-booking service",
+  "an online music-production course",
+  "a smart-home security system",
+  "a freelance design marketplace",
+  "an AI writing assistant",
+  "a boutique hotel chain",
+  "a kids' STEM toys brand",
+  "an EV charging network",
+  "a cold-brew tea subscription",
+] as const;
+
+const LANDING_PALETTES = [
+  "deep indigo and violet with an electric cyan accent",
+  "warm terracotta, cream, and charcoal",
+  "forest green and sand with a gold accent",
+  "midnight navy with a vibrant coral accent",
+  "soft pastel lavender and mint over white",
+  "monochrome slate with a single neon-lime accent",
+  "a sunset orange-to-pink gradient with deep plum",
+  "crisp white and black with a bold electric-blue accent",
+  "muted earthy olive and rust",
+  "dark mode: near-black with teal and magenta neon accents",
+  "warm peach and burgundy",
+  "ocean teal and aqua with a sandy neutral",
+] as const;
+
+const LANDING_STYLES = [
+  "minimalist with generous whitespace and large editorial typography",
+  "modern glassmorphism with soft blurred cards",
+  "bold and vibrant with large gradient shapes",
+  "clean corporate with crisp cards and subtle shadows",
+  "playful and rounded with friendly micro-interactions",
+  "sleek dark-mode with glowing accents",
+] as const;
+
+function buildLandingPagePrompt(): string {
+  const industry = pick(LANDING_INDUSTRIES);
+  const palette = pick(LANDING_PALETTES);
+  const style = pick(LANDING_STYLES);
+  return (
+    `Build a sleek, modern, professional landing page for ${industry} as a single self-contained index.html (all CSS and JS inline). ` +
+    "Sections: a sticky nav bar; a hero with headline, subheadline, and a primary call-to-action button; a 3-column features section with inline-SVG icons; " +
+    "a 3-tier pricing section with the middle plan highlighted; a short testimonial; and a footer. " +
+    `Visual direction — aesthetic: ${style}; color palette: ${palette}. Commit fully to this palette across backgrounds, accents, and buttons (do not fall back to a generic blue). ` +
+    "Write realistic copy specific to this product. Use strong typography, generous spacing, and subtle hover/scroll animations. " +
+    "Do NOT reference external image or font files — use inline SVG, CSS gradients/shapes, or emoji. Ensure zero console errors and that it looks great on first load."
+  );
+}
+
+// Ingredients for a randomized interactive-chart prompt.
+const CHART_DATASETS = [
+  "quarterly revenue (Q1–Q4) for a sample year",
+  "monthly active users over the last 6 months",
+  "website traffic by acquisition channel (Organic, Direct, Social, Referral, Email)",
+  "app downloads by platform (iOS, Android, Web, Desktop)",
+  "weekly sales for the last 8 weeks",
+  "customer satisfaction (CSAT) by quarter",
+  "support tickets by category",
+  "marketing spend vs. conversions by month",
+] as const;
+
+const CHART_TYPES = ["bar chart", "line chart", "area chart", "horizontal bar chart"] as const;
+
+const CHART_PALETTES = [
+  "a single bold accent color on a clean light background",
+  "a cool blue-to-teal palette",
+  "a warm orange-and-amber palette",
+  "a purple-and-pink palette",
+  "a green-and-lime palette on a dark background",
+  "a multi-hue categorical palette",
+] as const;
+
+function buildChartPrompt(): string {
+  const dataset = pick(CHART_DATASETS);
+  const type = pick(CHART_TYPES);
+  const palette = pick(CHART_PALETTES);
+  return (
+    `Create a single self-contained index.html showing a responsive, interactive ${type} of ${dataset} (realistic sample data). ` +
+    "Include a title, axis labels, value labels, gridlines, and a hover tooltip showing the exact value, plus a subtle grow/draw animation on load. " +
+    `Use ${palette}. ` +
+    "Render it with inline SVG or Canvas — do NOT depend on an external charting library/CDN — so it always renders. Clean modern styling, zero console errors."
+  );
+}
+
+// Ingredients for a randomized analytics-dashboard prompt.
+const DASHBOARD_DOMAINS = [
+  "a SaaS product (signups, MRR, churn, active users)",
+  "an e-commerce store (revenue, orders, conversion rate, average order value)",
+  "a marketing team (traffic, leads, click-through rate, campaign ROI)",
+  "a fitness app (workouts logged, active members, calories, retention)",
+  "a fintech wallet (transactions, volume, new accounts, fraud alerts)",
+  "a content platform (views, watch time, subscribers, engagement)",
+  "a support team (tickets, response time, CSAT, backlog)",
+  "a logistics operation (shipments, on-time rate, fleet usage, delays)",
+] as const;
+
+const DASHBOARD_THEMES = [
+  "a dark-mode palette with a vivid accent",
+  "a clean light palette with soft shadows",
+  "a muted neutral palette with one bold accent color",
+  "a colorful palette with gradient KPI cards",
+] as const;
+
+function buildDashboardPrompt(): string {
+  const domain = pick(DASHBOARD_DOMAINS);
+  const theme = pick(DASHBOARD_THEMES);
+  return (
+    `Design a modern analytics dashboard mockup for ${domain} as a single self-contained index.html. ` +
+    "Include a top bar, a row of 4 KPI cards (label, large number, and an up/down delta), a line chart and a bar chart (inline SVG/Canvas with sample data — no external libraries), and a recent-activity table. " +
+    `Use a responsive grid layout, ${theme}, subtle shadows and hover states, and placeholder data only. Inline assets only; ensure zero console errors.`
+  );
+}
+
+// Ingredients for a randomized PDF-invoice prompt.
+const INVOICE_BUSINESSES = [
+  { company: "a web design studio", currency: "USD ($)" },
+  { company: "a freelance photographer", currency: "EUR (€)" },
+  { company: "a landscaping company", currency: "GBP (£)" },
+  { company: "a software consultancy", currency: "USD ($)" },
+  { company: "a catering service", currency: "CAD ($)" },
+  { company: "a marketing agency", currency: "AUD ($)" },
+  { company: "an interior design firm", currency: "EUR (€)" },
+  { company: "a printing & signage shop", currency: "USD ($)" },
+] as const;
+
+const INVOICE_ACCENTS = [
+  "a navy-and-slate accent",
+  "a deep-green accent",
+  "a burgundy accent",
+  "a charcoal-and-gold accent",
+  "a teal accent",
+] as const;
+
+function buildInvoicePrompt(): string {
+  const biz = pick(INVOICE_BUSINESSES);
+  const accent = pick(INVOICE_ACCENTS);
+  return (
+    `Generate a clean, professional one-page PDF invoice for ${biz.company} and preview it. ` +
+    `Use ${biz.currency} for all amounts and ${accent} for headers and rules. ` +
+    "Include: a company header area, an 'Invoice' title with invoice number and dates, bill-to and bill-from blocks, a line-items table (description, qty, unit price, amount), subtotal, tax, and total, plus payment terms and a thank-you note. " +
+    "Use realistic sample data appropriate to the business. Use the pdf skill if helpful, save the .pdf into the workspace, and call playground_render_preview with type 'file' pointing at it."
+  );
+}
+
+// Ingredients for a randomized mini paint-app prompt (pure Canvas).
+const PAINT_THEMES = [
+  "a clean light theme with an indigo accent",
+  "a dark theme with a cyan accent",
+  "a warm cream theme with a terracotta accent",
+  "a minimal monochrome theme with a single lime accent",
+] as const;
+
+function buildPaintPrompt(): string {
+  const theme = pick(PAINT_THEMES);
+  return (
+    "Build a polished mini paint / drawing app as a single self-contained index.html with Canvas and vanilla JS (no build step, no external files). " +
+    "Features: smooth freehand brush drawing; an adjustable brush-size slider; a color picker plus a row of preset color swatches; an eraser; an undo button backed by a history stack; a clear-canvas button; and a 'Download PNG' button that exports the drawing. " +
+    `Style it with ${theme}, a tidy toolbar, and a large drawing surface that fills the remaining space. ` +
+    "Support both mouse and touch/pointer input, preserve the drawing on window resize (don't wipe the canvas), and ensure zero console errors."
+  );
+}
+
+// Ingredients for a randomized interactive map prompt (Leaflet via CDN).
+const MAP_LOCATIONS = [
+  { place: "Tokyo, Japan", coords: "[35.6762, 139.6503]", zoom: 12, theme: "famous landmarks (e.g., Tokyo Tower, Senso-ji Temple, Shibuya Crossing)" },
+  { place: "Paris, France", coords: "[48.8566, 2.3522]", zoom: 13, theme: "iconic sights (e.g., the Eiffel Tower, the Louvre, Notre-Dame)" },
+  { place: "New York City, USA", coords: "[40.7128, -74.006]", zoom: 12, theme: "landmarks (e.g., Central Park, Times Square, the Statue of Liberty)" },
+  { place: "London, UK", coords: "[51.5074, -0.1278]", zoom: 12, theme: "landmarks (e.g., Big Ben, Tower Bridge, the London Eye)" },
+  { place: "San Francisco, USA", coords: "[37.7749, -122.4194]", zoom: 12, theme: "sights (e.g., the Golden Gate Bridge, Alcatraz, Fisherman's Wharf)" },
+  { place: "Rome, Italy", coords: "[41.9028, 12.4964]", zoom: 13, theme: "ancient sights (e.g., the Colosseum, the Pantheon, the Trevi Fountain)" },
+  { place: "Sydney, Australia", coords: "[-33.8688, 151.2093]", zoom: 12, theme: "sights (e.g., the Opera House, the Harbour Bridge, Bondi Beach)" },
+] as const;
+
+function buildMapPrompt(): string {
+  const loc = pick(MAP_LOCATIONS);
+  return (
+    "Build an interactive map as a single self-contained index.html using Leaflet loaded from a pinned CDN " +
+    "(CSS https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css and JS https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js) with OpenStreetMap tiles. " +
+    `Center the map on ${loc.place} at ${loc.coords} (zoom ~${loc.zoom}) and add 5–6 markers for ${loc.theme}, ` +
+    "each opening a styled popup with a title and a short description on click. Add a small title/legend overlay, make the map fill the viewport, " +
+    "verify the L (Leaflet) global loaded before using it, handle resize, and ensure zero console errors."
+  );
+}
+
 // Predefined message templates shown in the empty state (mirrors the main chat's
-// quick-starts: a short label, with the full prompt sent on click).
-const PLAYGROUND_TEMPLATES: { label: string; prompt: string }[] = [
+// quick-starts: a short label, with the full prompt sent on click). `prompt` may
+// be a function so a template can produce a fresh, randomized prompt per click.
+const PLAYGROUND_TEMPLATES: { label: string; prompt: string | (() => string) }[] = [
   {
     label: "Landing page",
-    prompt:
-      "Build a sleek, modern landing page for a coffee subscription startup as a single self-contained index.html (all CSS and JS inline). " +
-      "Sections: a sticky nav bar; a hero with headline, subheadline, and a primary call-to-action button; a 3-column features section with inline-SVG icons; " +
-      "a 3-tier pricing section with the middle plan highlighted; a short testimonial; and a footer. " +
-      "Use a refined color palette, strong typography, generous spacing, and subtle hover/scroll animations. " +
-      "Do NOT reference external image or font files — use inline SVG, CSS gradients/shapes, or emoji. Ensure zero console errors and that it looks great on first load.",
+    prompt: buildLandingPagePrompt,
   },
   {
     label: "Interactive to-do app",
@@ -101,36 +299,16 @@ const PLAYGROUND_TEMPLATES: { label: string; prompt: string }[] = [
       "Clean modern styling, a friendly empty state, and keyboard accessibility. Attach event listeners after the DOM is ready and ensure zero console errors.",
   },
   {
-    label: "Animated drawing",
-    prompt:
-      "Create a single self-contained index.html with a smoothly animated solar-system scene: the sun at the center and several planets orbiting at different speeds and radii, each a distinct color with a subtle glow, over a dark starfield. " +
-      "Use inline SVG or Canvas with requestAnimationFrame for the animation, make it responsive to the window size, and use only inline assets (no external files). Ensure zero console errors.",
+    label: "Paint app",
+    prompt: buildPaintPrompt,
   },
   {
     label: "Interactive chart",
-    prompt:
-      "Create a single self-contained index.html showing a responsive, interactive bar chart of quarterly revenue for 2024 (realistic sample data for Q1–Q4). " +
-      "Include a title, axis labels, value labels, gridlines, and a hover tooltip showing the exact value, plus a subtle bar-grow animation on load. " +
-      "Render it with inline SVG or Canvas — do NOT depend on an external charting library/CDN — so it always renders. Clean modern styling, zero console errors.",
+    prompt: buildChartPrompt,
   },
   {
-    label: "Music visualizer",
-    prompt:
-      "Build a stunning real-time music visualizer as a single self-contained index.html using only the Web Audio API and Canvas — no external libraries. " +
-      "Architecture: create an AudioContext with an AnalyserNode (fftSize 256). Drive it with a purely synthetic source: " +
-      "layer 3–4 OscillatorNodes (a bass sub ~60 Hz, a mid ~220 Hz, a high ~880 Hz, and a slow LFO modulating the gain) " +
-      "connected through GainNodes so the sound is musical and dynamic rather than a flat drone. Add a BiquadFilterNode for warmth. " +
-      "Start the AudioContext only on the first user click (required by browsers). " +
-      "Visualization: fill the full viewport canvas. Draw two layers simultaneously: " +
-      "(1) a radial frequency ring — 128 bars radiating outward from the center, length proportional to frequency amplitude, " +
-      "colored with a smooth hue rotation (hsl based on bar index + time) so the ring pulses with shifting rainbow colors; " +
-      "(2) an oscilloscope waveform line drawn as a glowing stroke through the center of the canvas. " +
-      "Add a soft particle system: spawn 2–3 small glowing circles per frame at random angles on the ring perimeter, " +
-      "drift them outward and fade them out over ~60 frames. " +
-      "Background: deep black with a subtle radial gradient vignette. " +
-      "Show a centered 'Click to start' overlay before the first interaction, then hide it. " +
-      "Add a Play/Pause toggle button (bottom center, semi-transparent). " +
-      "Animate with requestAnimationFrame. Handle window resize. Ensure zero console errors on first load.",
+    label: "Interactive map",
+    prompt: buildMapPrompt,
   },
   {
     label: "Mermaid diagram",
@@ -142,17 +320,11 @@ const PLAYGROUND_TEMPLATES: { label: string; prompt: string }[] = [
   },
   {
     label: "Analytics dashboard",
-    prompt:
-      "Design a modern analytics dashboard mockup as a single self-contained index.html. " +
-      "Include a top bar, a row of 4 KPI cards (label, large number, and an up/down delta), a line chart and a bar chart (inline SVG/Canvas with sample data — no external libraries), and a recent-activity table. " +
-      "Use a responsive grid layout, a dark-mode-friendly palette, subtle shadows and hover states, and placeholder data only. Inline assets only; ensure zero console errors.",
+    prompt: buildDashboardPrompt,
   },
   {
     label: "PDF invoice",
-    prompt:
-      "Generate a clean, professional one-page PDF invoice file and preview it. " +
-      "Include: a company header area, an 'Invoice' title with invoice number and dates, bill-to and bill-from blocks, a line-items table (description, qty, unit price, amount), subtotal, tax, and total, plus payment terms and a thank-you note. " +
-      "Use realistic sample data. Use the pdf skill if helpful, save the .pdf into the workspace, and call playground_render_preview with type 'file' pointing at it.",
+    prompt: buildInvoicePrompt,
   },
 ];
 
@@ -1197,7 +1369,7 @@ function EmptyState({ running, onSend }: { running: boolean; onSend: (prompt: st
           <button
             key={t.label}
             type="button"
-            onClick={() => onSend(t.prompt)}
+            onClick={() => onSend(typeof t.prompt === "function" ? t.prompt() : t.prompt)}
             className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {t.label}
