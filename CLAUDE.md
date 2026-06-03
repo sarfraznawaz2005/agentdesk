@@ -108,7 +108,7 @@ src/
 │   │   ├── skills.ts          # Skills discovery + refresh RPCs
 │   │   ├── lsp.ts             # LSP server management RPCs
 │   │   ├── analytics.ts / audit.ts / automation.ts  # Analytics, audit log, automation RPCs
-│   │   ├── github-issues.ts / github-api.ts / webhooks.ts / branch-strategy.ts  # GitHub RPCs
+│   │   ├── github-issues.ts / github-api.ts / branch-strategy.ts  # GitHub RPCs (github-issues.ts: issue↔kanban two-way sync)
 │   │   ├── pulls.ts           # Pull request RPCs
 │   │   ├── notifications.ts   # Notification preference RPCs
 │   │   ├── dashboard.ts / search.ts / providers.ts / prompts.ts  # Misc RPCs
@@ -136,6 +136,15 @@ src/
 │   │   └── registry.ts        # In-memory SkillRegistry, dual-dir loading (bundled + user)
 │   ├── discord/          # Discord bot
 │   │   └── bot.ts             # DiscordBot — discord.js client wrapper (used by DiscordAdapter)
+│   ├── issue-fixer/      # Issue Fixer — autonomous GitHub-issue → branch/PR resolution
+│   │   ├── poller.ts          # 60s tick; polls enabled projects' issues/comments at their interval
+│   │   ├── triggers.ts        # agentdesk-* keyword/label + authorization matching; dedup/cooldown/cursor
+│   │   ├── orchestrator.ts    # per-project queue; runs the issue-fixer agent → branch/test/commit/push/PR (never merges)
+│   │   ├── prompts.ts         # intent keywords + dynamic per-run task builder
+│   │   ├── shell-guard.ts     # guarded auto-shell denylist (no merge/force-push/base-branch push)
+│   │   ├── github.ts          # GitHub API client (issues/comments/PR comments, create PR, post comments)
+│   │   ├── config.ts          # issue_fixer_config + issue_fix_runs persistence
+│   │   └── notify.ts          # success/failure summaries to all connected channels
 │   ├── engine-manager.ts # Creates + caches AgentEngine per project; global abort tracking
 │   ├── rpc-registration.ts  # Registers all RPC handlers with Electrobun
 │   └── index.ts          # Main Bun process entry point
@@ -153,8 +162,9 @@ src/
 │   │   ├── activity/          # Context panel (docs tab, files tab)
 │   │   ├── notes/             # Full Docs page (notes-tab.tsx — list + markdown preview)
 │   │   ├── kanban/            # Kanban board, columns, cards, task detail modal, stats bar
-│   │   ├── git/               # Branch list, commit log, diff viewer, PR management, conflicts,
-│   │   │                      #   GitHub issues, webhooks, branch strategy
+│   │   ├── git/               # Branch list, commit log, diff viewer, PR management,
+│   │   │                      #   conflicts (view + abort + "Resolve with AI" → seeds a PM chat),
+│   │   │                      #   GitHub issues (issue↔kanban link/create/auto-close), branch strategy
 │   │   ├── deploy/            # Deploy tab
 │   │   ├── modals/            # new-project-modal.tsx, startup-health-dialog.tsx
 │   │   ├── layout/            # app-shell.tsx, sidebar.tsx, topnav.tsx
@@ -193,6 +203,7 @@ src/
 - **Anthropic Prompt Caching**: System prompts include cache control metadata for Anthropic/OpenRouter providers (~90% cheaper on cache hits).
 - **Context Window Management**: Agent loops track `lastPromptTokens / getContextLimit(modelId)`. Progressive compaction tiers at 60/70/85/90% context usage. No iteration cap — agents run until task complete or context truly full.
 - **Playground** (`src/bun/playground/`): An Artifacts-style page (sidebar after Council) where the dedicated `playground-agent` (display name "Playground Agent"; ALL tools/skills/MCP — it has NO `agent_tools` rows, so `getToolsForAgent` returns the full registry) builds previewable artifacts into an OS-temp folder and renders them live in an in-page `<iframe>`. Reuses `runInlineAgent` via three new options (`priorMessages`, `persistToDb:false`, `extraTools`) — fully decoupled from the PM/kanban/review paths. Conversation persists to JSON in temp (not the DB); activity streams via `agentdesk:playground-*` broadcasts. `orchestrator.ts` runs the agent + injects an auto-approved `run_shell` + the `playground_render_preview`/`playground_reject` tools; `server.ts` is a `Bun.serve` static server (port 4760+) for static artifacts (the agent starts its own dev server for live SPAs). Dev servers the agent starts are persisted to `.playground/servers.json` (command + cwd) so that after an app restart — which kills them — they reappear in the toolbar "Servers" strip as **stopped** with a ▶ start button (`startPlaygroundDevServer` re-runs them via the shared `startBackgroundJob` in `process.ts`, then reloads the devserver preview iframe). Explicitly stopping a server (✕) removes it from `servers.json`. "New Playground" wipes temp + kills its dev servers (`killJobsUnderPath` in `process.ts`); "Create Project" promotes it via `createProjectHandler` + `fs.cpSync`.
+- **Issue Fixer** (`src/bun/issue-fixer/`): Per-project autonomous GitHub issue resolution. A 60s poller (`poller.ts`, started in `index.ts`) polls each enabled project's GitHub issues + comments (outbound — no inbound webhooks, NAT-safe) at its configured interval. A trigger fires only when an `agentdesk-*` keyword matches an issue **title** or an authorized **comment** (never the body), or an `agentdesk-*` **label** is present, AND the actor is authorized (OWNER/MEMBER/COLLABORATOR, or label-gated) — see `triggers.ts`. The dedicated hidden `issue-fixer` agent (full registry incl. chrome-devtools MCP + git tools + guarded auto-shell; `request_human_input`/`git_push`/`git_pr` excluded) runs via `runInlineAgent` (`orchestrator.ts`, sequential per-project queue, registers an agent controller so it shows on the dashboard card) — **no PM, no kanban, no approval card**. The orchestrator deterministically creates an `issue-fix/<n>-<slug>` branch, runs the agent, runs the test/build gate, commits, pushes (token-authenticated via `pushBranchAuthenticated`), and opens a PR (`Fixes #N`, draft if tests fail or autonomy=draft). **It NEVER merges — humans merge** (enforced in the agent prompt, by excluding `git_pr`/`git_push`/`git_reset`/`git_cherry_pick`/`git_branch`/kanban-write tools, and by `shell-guard.ts`'s denylist which blocks merges, force-push, base-branch push, and all destructive/undo commands — `reset`/`clean`/`restore`/`checkout`/`switch`/`branch -D`/`push --delete`/history-rewrite/recursive `rm`). Runs require a clean working tree (never stashes the user's changes), reuse an existing branch on re-trigger (never `-B` reset), and skip empty PRs. A maintainer's `agentdesk-*` comment on the agent's PR updates that PR's branch (PR-feedback loop). Config + run history live in `issue_fixer_config` / `issue_fix_runs` (surfaced as the **Git → Issue Fixer** sub-tab, which itself has three sub-tabs — Activity / History / Configuration — with the config form in Configuration; live Activity + History stream via `agentdesk:issuefixer-*` broadcasts). Summaries go to all connected channels on success+failure (`notify.ts`). Intent keywords: `agentdesk-fix/feature/test/docs/refactor/review` (`prompts.ts`).
 
 ---
 
@@ -207,7 +218,8 @@ src/
 `whatsapp_sessions` · `notification_preferences` · `inbox_rules` ·
 `cron_jobs` · `cron_job_history` · `automation_rules` ·
 `pull_requests` · `pr_comments` · `webhook_configs` · `webhook_events` ·
-`github_issues` · `branch_strategies` · `cost_budgets` · `audit_log`
+`github_issues` · `branch_strategies` · `cost_budgets` · `audit_log` ·
+`issue_fixer_config` · `issue_fix_runs`
 
 **Raw SQL migrations** (created by migration files, not in schema.ts):
 
@@ -248,6 +260,7 @@ Read-only agents (can run in parallel via `run_agents_parallel`): `code-explorer
 | `data-engineer` | Data Engineer | No | Data pipelines and storage |
 | `refactoring-specialist` | Refactoring Specialist | No | Code restructuring and technical debt reduction |
 | `playground-agent` | Playground Agent | No | Exclusive to the Playground page — builds previewable artifacts with ALL tools/skills/MCP (no `agent_tools` rows ⇒ full registry). Hidden from the PM (excluded in `prompts.ts`) AND from the Agents page (excluded in `getAgentsList`); never orchestrated. Internal name was `general-agent` but collided with users' own custom agents, so it was renamed; migration v26 deletes the legacy `general-agent` row once on upgrade. |
+| `issue-fixer` | Issue Fixer | No | Exclusive to the per-project **Issue Fixer** feature — autonomously resolves GitHub issues and opens PRs. ALL tools/skills/MCP incl. chrome-devtools + git tools (no `agent_tools` rows ⇒ full registry); `request_human_input`/`git_push`/`git_pr` excluded at run time. Hidden from the PM (`prompts.ts`) AND the Agents page (`getAgentsList`); never orchestrated. Inserted idempotently by `seed.ts` (no migration needed — new name, no collision). NEVER merges. |
 
 ---
 

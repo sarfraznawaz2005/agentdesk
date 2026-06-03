@@ -27,7 +27,6 @@ import * as inboxRulesRpc from "./rpc/inbox-rules";
 import * as cronRpc from "./rpc/cron";
 import * as automationRpc from "./rpc/automation";
 import * as pullsRpc from "./rpc/pulls";
-import * as webhooksRpc from "./rpc/webhooks";
 import * as githubIssuesRpc from "./rpc/github-issues";
 import { validateGithubToken } from "./rpc/github-api";
 import * as branchStrategyRpc from "./rpc/branch-strategy";
@@ -46,6 +45,7 @@ import * as settingsExportRpc from "./rpc/settings-export";
 import * as skillsRpc from "./rpc/skills";
 import * as freelanceRpc from "./rpc/freelance";
 import * as playgroundRpc from "./rpc/playground";
+import * as issueFixerRpc from "./rpc/issue-fixer";
 import * as freelanceChatRpc from "./rpc/freelance-chat";
 import * as freelanceWizardRpc from "./rpc/freelance-wizard";
 import * as resetRpc from "./rpc/reset";
@@ -318,12 +318,6 @@ export const rpc = BrowserView.defineRPC<AgentDeskRPC>({
 			addPrComment: (params) => pullsRpc.addPrComment(params),
 			deletePrComment: (params) => pullsRpc.deletePrComment(params.id),
 			generatePrDescription: (params) => pullsRpc.generatePrDescription(params.projectId, params.sourceBranch, params.targetBranch),
-			// ── Webhook Configs ──
-			getWebhookConfigs: (params) => webhooksRpc.getWebhookConfigs(params.projectId),
-			saveWebhookConfig: (params) => webhooksRpc.saveWebhookConfig(params),
-			deleteWebhookConfig: (params) => webhooksRpc.deleteWebhookConfig(params.id),
-			getWebhookEvents: (params) => webhooksRpc.getWebhookEvents(params.projectId, params.eventType, params.limit),
-			pollGithubEvents: (params) => webhooksRpc.pollGithubEvents(params.projectId),
 			// ── GitHub Issues ──
 			getGithubIssues: (params) => githubIssuesRpc.getGithubIssues(params.projectId, params.state),
 			syncGithubIssues: (params) => githubIssuesRpc.syncGithubIssues(params.projectId),
@@ -951,6 +945,16 @@ When enhancing a prompt:
 			stopPlaygroundDevServer: (params) => playgroundRpc.stopPlaygroundDevServer(params),
 			startPlaygroundDevServer: (params) => playgroundRpc.startPlaygroundDevServer(params),
 			deployPlayground: () => playgroundRpc.deployPlayground(),
+
+			// ── Issue Fixer ──
+			getIssueFixerConfig: (params) => issueFixerRpc.getIssueFixerConfig(params),
+			saveIssueFixerConfig: (params) => issueFixerRpc.saveIssueFixerConfig(params),
+			listIssueFixRuns: (params) => issueFixerRpc.listIssueFixRuns(params),
+			getIssueFixRun: (params) => issueFixerRpc.getIssueFixRun(params),
+			pollIssueFixerNow: (params) => issueFixerRpc.pollIssueFixerNow(params),
+			cancelIssueFixRun: (params) => issueFixerRpc.cancelIssueFixRun(params),
+			triggerIssueFixManually: (params) => issueFixerRpc.triggerIssueFixManually(params),
+			getIssueFixerKeywordCatalog: () => issueFixerRpc.getIssueFixerKeywordCatalog(),
 
 			// ── Freelance ──
 			"freelance.getFeatureEnabled": () => freelanceRpc.getFeatureEnabled(),

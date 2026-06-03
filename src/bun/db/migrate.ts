@@ -26,6 +26,7 @@ import * as v23 from "./migrations/v23_agent-custom-flags";
 import * as v24 from "./migrations/v24_agent-available-to-pm";
 import * as v25 from "./migrations/v25_redisable-db-viewer-plugin";
 import * as v26 from "./migrations/v26_remove-legacy-general-agent";
+import * as v27 from "./migrations/v27_issue-fixer-tables";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -76,6 +77,7 @@ const migrations: Migration[] = [
 	{ version: 24, name: v24.name, run: v24.run },
 	{ version: 25, name: v25.name, run: v25.run },
 	{ version: 26, name: v26.name, run: v26.run },
+	{ version: 27, name: v27.name, run: v27.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -143,6 +145,15 @@ export function runMigrations(): void {
 }
 
 function ensureRuntimeSchema(): void {
+	// Defensive: ensure the Issue Fixer tables exist even if migration v27 was skipped
+	// (e.g. user_version raced ahead of the actual schema, or a dev DB was pulled between
+	// branches). v27.run() is CREATE TABLE IF NOT EXISTS — idempotent and cheap.
+	try {
+		v27.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: issue-fixer tables failed:", err);
+	}
+
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;
 	if (agentCols.length === 0) return; // agents table not created yet — nothing to backfill
 

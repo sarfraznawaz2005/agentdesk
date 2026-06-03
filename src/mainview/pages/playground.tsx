@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
-import { MessageParts, AGENT_BADGE_COLORS, type MessagePartData } from "@/components/chat/message-parts";
+import { MessageParts, type MessagePartData } from "@/components/chat/message-parts";
 import { CodeBlock } from "@/components/chat/code-block";
 import { usePlaygroundStore } from "@/stores/playground-store";
 import { rpc } from "@/lib/rpc";
@@ -377,13 +377,9 @@ export function PlaygroundPage() {
       const st = usePlaygroundStore.getState();
       st.onRunComplete();
       rpc.getPlaygroundDevServers().then((r) => setDevServers(r.servers)).catch(() => {});
-      // Always notify so the user learns the run is done from any tab. The error
-      // path already toasts in onRunError (with the real message), so skip here.
-      if (!st.error) {
-        if (st.rejection) toast("info", "Playground Agent couldn't build this — see the chat for details");
-        else if (st.lastStatus === "failed") toast("error", "Playground Agent couldn't finish the request");
-        else toast("success", "Playground Agent finished");
-      }
+      // No completion toast — the spinner on the Chat tab signals working/done. Failures
+      // still surface inline in the chat (error block / rejection card), and a hard
+      // provider error additionally toasts via onRunError.
     };
     const onRunError = (e: Event) => {
       const d = (e as CustomEvent).detail as { error: string };
@@ -595,22 +591,7 @@ export function PlaygroundPage() {
   useHeaderActions(
     () => (
       <>
-        {/* Animated agent indicator — shown only while the Playground Agent is working.
-            Absolutely centered across the whole navbar (the header is `relative`), so it
-            stays centered regardless of the title/buttons and never shifts them. */}
-        {store.running && (
-          <span className={cn(
-            "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap",
-            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ring-1",
-            AGENT_BADGE_COLORS["playground-agent"] ?? "bg-muted text-muted-foreground ring-border",
-          )}>
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
-            </span>
-            Playground Agent
-          </span>
-        )}
+        {/* The "working" state is shown by the spinner on the Chat tab — no header badge. */}
         <Tip content="Clear all files and start a fresh playground" side="bottom">
           <Button
             variant="outline"
@@ -672,6 +653,7 @@ export function PlaygroundPage() {
           >
             <MessageSquare className="h-3.5 w-3.5" />
             Chat
+            {store.running && <Loader2 className="h-3 w-3 animate-spin" />}
           </button>
           <button
             onClick={() => hasPreview && store.setMainView("preview")}

@@ -3,7 +3,7 @@
  */
 import { db } from "../db";
 import { githubIssues, kanbanTasks } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { githubFetch, getProjectGithubRepo, getGithubConfigError } from "./github-api";
 
 // Priority → GitHub label mapping
@@ -20,7 +20,12 @@ export async function getGithubIssues(projectId: string, state?: string) {
 	const conditions = state
 		? and(eq(githubIssues.projectId, projectId), eq(githubIssues.state, state))
 		: eq(githubIssues.projectId, projectId);
-	const rows = await db.select().from(githubIssues).where(conditions);
+	// Newest issues first (highest issue number) across Open/Closed/All filters.
+	const rows = await db
+		.select()
+		.from(githubIssues)
+		.where(conditions)
+		.orderBy(desc(githubIssues.githubIssueNumber));
 	return rows.map((r) => ({
 		id: r.id,
 		projectId: r.projectId,
@@ -143,6 +148,15 @@ export async function createGithubIssueFromTask(
 	const task = tasks[0];
 	if (!task) return { success: false, error: "Task not found" };
 
+	// Guard against duplicates: if this task already has a linked issue, return it
+	// instead of opening another one.
+	const alreadyLinked = (
+		await db.select().from(githubIssues).where(eq(githubIssues.taskId, taskId)).limit(1)
+	)[0];
+	if (alreadyLinked) {
+		return { success: true, issueNumber: alreadyLinked.githubIssueNumber };
+	}
+
 	const priorityLabel = PRIORITY_LABELS[task.priority] ?? null;
 	const labels = priorityLabel ? [priorityLabel] : [];
 
@@ -187,7 +201,8 @@ export async function createGithubIssueFromTask(
 
 // ── Link issue to task ────────────────────────────────────────────────────────
 
-export async function linkIssueToTask(issueId: string, taskId: string) {
+export async function linkIssueToTask(issueId: string, taskId: string | null) {
+	// taskId === null unlinks the issue.
 	await db
 		.update(githubIssues)
 		.set({ taskId })

@@ -326,6 +326,51 @@ export type WebviewSchema = RPCSchema<{
     playgroundReset: Record<string, never>;
     playgroundFilesChanged: Record<string, never>;
 
+    // ── Issue Fixer ──
+    issueFixerRunStarted: {
+      projectId: string;
+      runId: string;
+      issueNumber: number;
+      issueTitle: string;
+      intent: string;
+    };
+    issueFixerPart: {
+      projectId: string;
+      runId: string;
+      part: {
+        id: string;
+        type: "text" | "tool_call" | "tool_result" | "reasoning" | "agent_start" | "agent_end";
+        content: string;
+        toolName?: string;
+        toolInput?: string;
+        toolOutput?: string;
+        toolState?: "pending" | "running" | "success" | "error";
+        sortOrder: number;
+        agentName?: string;
+        timeStart?: string;
+        timeEnd?: string;
+      };
+    };
+    issueFixerPartUpdated: {
+      projectId: string;
+      runId: string;
+      partId: string;
+      updates: {
+        content?: string;
+        toolOutput?: string;
+        toolState?: "pending" | "running" | "success" | "error";
+        timeEnd?: string;
+      };
+    };
+    issueFixerRunComplete: {
+      projectId: string;
+      runId: string;
+      status: string;
+      prNumber: number | null;
+      prUrl: string | null;
+    };
+    issueFixerRunError: { projectId: string; runId: string; error: string };
+
     // Council multi-agent discussion events
     councilEvent: {
       sessionId: string;

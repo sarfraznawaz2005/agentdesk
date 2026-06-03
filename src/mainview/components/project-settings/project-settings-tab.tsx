@@ -35,7 +35,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Copy, Eye, EyeOff } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -913,139 +912,6 @@ function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
 }
 
 // ---------------------------------------------------------------------------
-// IntegrationsTab
-// ---------------------------------------------------------------------------
-
-interface IntegrationsTabProps {
-  projectId: string;
-  initialSettings: Record<string, string>;
-}
-
-function IntegrationsTab({ projectId, initialSettings }: IntegrationsTabProps) {
-  const webhookUrl = `${window.location.origin}/api/webhooks/github/${projectId}`;
-
-  const [webhookSecret, setWebhookSecret] = useState<string>(
-    initialSettings.webhookSecret ?? "",
-  );
-  const [showSecret, setShowSecret] = useState(false);
-
-  // Generate and persist webhook secret if not already set
-  useEffect(() => {
-    if (!initialSettings.webhookSecret) {
-      const generated = crypto.randomUUID();
-      setWebhookSecret(generated); // eslint-disable-line react-hooks/set-state-in-effect
-      rpc.saveProjectSetting(projectId, "webhookSecret", generated).catch(() => {
-        toast("error", "Failed to save webhook secret.");
-      });
-    }
-  }, [projectId, initialSettings.webhookSecret]);
-
-  function copyToClipboard(value: string, label: string) {
-    navigator.clipboard.writeText(value).then(
-      () => toast("success", `${label} copied to clipboard.`),
-      () => toast("error", `Failed to copy ${label}.`),
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* GitHub Webhook */}
-      <Card>
-        <CardHeader>
-          <CardTitle>GitHub Webhook</CardTitle>
-          <CardDescription>
-            Configure GitHub to send events to this project via webhook.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <FieldRow
-            id="webhook-url"
-            label="Webhook URL"
-            description="Add this URL as a GitHub webhook payload URL for your repository."
-          >
-            <div className="flex items-center gap-2 w-full max-w-xs">
-              <Input
-                id="webhook-url"
-                value={webhookUrl}
-                readOnly
-                className="font-mono text-xs"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => copyToClipboard(webhookUrl, "Webhook URL")}
-                aria-label="Copy webhook URL"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </FieldRow>
-
-          <Separator />
-
-          <FieldRow
-            id="webhook-secret"
-            label="Webhook Secret"
-            description="Use this secret in GitHub's webhook configuration to verify requests."
-          >
-            <div className="flex items-center gap-2 w-full max-w-xs">
-              <Input
-                id="webhook-secret"
-                type={showSecret ? "text" : "password"}
-                value={webhookSecret}
-                readOnly
-                className="font-mono text-xs"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowSecret((prev) => !prev)}
-                aria-label={showSecret ? "Hide webhook secret" : "Show webhook secret"}
-              >
-                {showSecret ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => copyToClipboard(webhookSecret, "Webhook secret")}
-                aria-label="Copy webhook secret"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </FieldRow>
-
-          <Separator />
-
-          <FieldRow
-            id="github-auth-status"
-            label="GitHub Status"
-            description="Whether GitHub integration is configured for this project."
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "size-2.5 rounded-full",
-                  webhookSecret ? "bg-green-500" : "bg-yellow-500",
-                )}
-              />
-              <span className="text-sm text-muted-foreground">
-                {webhookSecret ? "Webhook configured" : "Pending setup"}
-              </span>
-            </div>
-          </FieldRow>
-        </CardContent>
-      </Card>
-
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // ProjectSettingsTab — the exported component
 // ---------------------------------------------------------------------------
 
@@ -1121,7 +987,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
           <TabsList>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="ai">AI</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="pt-4">
@@ -1135,13 +1000,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
             <AiTab
               projectId={projectId}
               providers={providers}
-              initialSettings={projectSettings}
-            />
-          </TabsContent>
-
-          <TabsContent value="integrations" className="pt-4">
-            <IntegrationsTab
-              projectId={projectId}
               initialSettings={projectSettings}
             />
           </TabsContent>

@@ -86,6 +86,18 @@ const MD_COMPONENTS = {
 
 const LS_SESSION_KEY = "dashboard-pm-sessionId-v1";
 const LS_MESSAGES_KEY = "dashboard-pm-messages-v1";
+const LS_UNREAD_KEY = "dashboard-pm-unread-v1";
+
+function loadPersistedUnread(): boolean {
+  try { return localStorage.getItem(LS_UNREAD_KEY) === "1"; } catch { return false; }
+}
+
+function persistUnread(v: boolean) {
+  try {
+    if (v) localStorage.setItem(LS_UNREAD_KEY, "1");
+    else localStorage.removeItem(LS_UNREAD_KEY);
+  } catch { /* ignore */ }
+}
 
 function loadPersistedSession(): { sessionId: string; messages: ChatMessage[] } {
   try {
@@ -133,6 +145,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   const [lastSent, setLastSent] = useState("");
   const [toolCalls, setToolCalls] = useState<Array<{ id: string; toolName: string; isSkill: boolean }>>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Unread = a reply arrived while the panel was closed. Cleared on open.
+  const [unread, setUnread] = useState(false);
+  const openRef = useRef(open);
 
   // Initialise from localStorage once on mount
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -145,7 +160,16 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     const { sessionId: sid, messages: msgs } = loadPersistedSession();
     sessionId.current = sid;
     setMessages(msgs);
+    setUnread(loadPersistedUnread());
   }, []);
+
+  // Keep a ref of `open` so the (mount-time) stream listeners read the current value.
+  useEffect(() => { openRef.current = open; }, [open]);
+
+  // Opening the panel marks everything read.
+  useEffect(() => {
+    if (open) { setUnread(false); persistUnread(false); }
+  }, [open]);
 
   // Persist messages to localStorage whenever they change (skip while streaming to reduce writes)
   const messagesRef = useRef<ChatMessage[]>(messages);
@@ -217,6 +241,8 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
       });
       setToolCalls([]);
       setIsStreaming(false);
+      // A reply finished while the panel was closed → flag it as unread.
+      if (!openRef.current) { setUnread(true); persistUnread(true); }
     };
 
     const onError = (e: Event) => {
@@ -231,6 +257,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
         return next;
       });
       setIsStreaming(false);
+      if (!openRef.current) { setUnread(true); persistUnread(true); }
     };
 
     window.addEventListener("agentdesk:dashboard-pm-chunk", onChunk);
@@ -399,6 +426,8 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     persistSessionId(newSid);
     try { localStorage.removeItem(LS_MESSAGES_KEY); } catch { /* ignore */ }
     setMessages([]);
+    setUnread(false);
+    persistUnread(false);
   };
 
   if (!visible) return null;
@@ -411,7 +440,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
           type="button"
           onClick={() => setOpen(true)}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-full",
+            "relative flex items-center gap-2 px-4 py-2.5 rounded-full",
             "bg-primary text-primary-foreground shadow-lg",
             "hover:bg-primary/90 transition-colors duration-150",
             "text-sm font-medium whitespace-nowrap",
@@ -419,6 +448,12 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
         >
           <MessageSquare className="h-4 w-4" aria-hidden="true" />
           Chat with PM
+          {unread && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3" aria-label="New reply">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-background" />
+            </span>
+          )}
         </button>
       )}
 

@@ -621,3 +621,20 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 | `working` | Worker agent (via `move_task`) | Agent has claimed and started the task |
 | `review` | Worker agent (via `move_task`) | Agent finished; `review-cycle.ts` auto-spawns code-reviewer |
 | `done` | `review-cycle.ts` (via `submit_review(approved)`) | Review passed (or max rounds exceeded — force-done with warning note) |
+
+---
+
+## Issue Fixer (autonomous GitHub-issue resolution)
+
+A per-project feature, fully decoupled from the PM/kanban/approval flow (like the Playground). Code lives in `src/bun/issue-fixer/`.
+
+**Trigger → fix flow:**
+
+1. **Poll** (`poller.ts`, 60s tick started in `index.ts`) — for each *enabled* project whose interval has elapsed, fetch open issues + issue/PR comments since the stored cursor via the GitHub REST API (outbound only — no inbound webhooks, NAT-safe + private).
+2. **Gate** (`triggers.ts`) — fire only when an `agentdesk-*` keyword matches the issue **title** or an authorized **comment** (never the body), or an `agentdesk-*` **label** is present, AND the actor is authorized (`OWNER`/`MEMBER`/`COLLABORATOR`, or label-gated). Dedup, cooldown, and max-per-hour are enforced; the cursor prevents retroactively processing old issues.
+3. **Run** (`orchestrator.ts`, sequential per-project queue) — `createRun` + `registerAgentController` (so it counts on the dashboard card); checkout/pull base; create `issue-fix/<n>-<slug>` branch (or the PR head branch for the feedback loop); comment "🤖 working…"; run the hidden **`issue-fixer`** agent via `runInlineAgent` (full registry + chrome-devtools MCP + git tools + guarded auto-shell; `request_human_input`/`git_push`/`git_pr` excluded; `persistToDb:false`); test/build gate; commit; **token-authenticated push** (`pushBranchAuthenticated`); open a PR (`Fixes #N`, draft if tests fail or autonomy=draft); comment "✅ done — PR #M"; notify all connected channels (success+failure).
+4. **PR-feedback loop** — a maintainer's `agentdesk-*` comment on the agent's PR re-runs the agent on that PR's branch.
+
+**Strict rule: the agent NEVER merges** PRs or branches, and cannot run destructive git — enforced three ways: the agent's system prompt; excluding tools (`git_pr`/`git_push`/`git_reset`/`git_cherry_pick`/`git_branch` + kanban writes; no `git_merge` exists); and `shell-guard.ts`'s denylist (blocks `git merge`/`rebase`/`gh pr merge`, force-push, base-branch + remote-ref deletion, and all undo/destructive commands — `reset`/`clean`/`restore`/`checkout`/`switch`/`branch -D`/`filter-branch`/`reflog`/`stash drop|clear`/recursive `rm`). Other safety: runs require a clean working tree (fail, never stash), reuse an existing branch on re-trigger (never `-B` reset), detect the base branch from `origin/HEAD` when unset, skip empty PRs, and mark crash-interrupted runs failed on restart. Concurrency: serialized polling (reentrancy-guarded) + sequential runs per project, parallel across projects (each project = its own repo/workspace) with a per-poll `maxPerHour` budget.
+
+**Config + visibility:** Project Settings → **Issue Fixer** tab (enable, poll interval, `agentdesk-*` keywords/labels, authorization mode, autonomy, test command, custom instructions, cooldown/max-per-hour, GitHub token source: global vs per-project). A project **Issue Fixer** tab shows live **Activity** (streamed via `agentdesk:issuefixer-*`) + **History** (`issue_fix_runs`). Two GitHub-auth fixes underpin this: token resolution unified on `github_pat` with a per-project override (`resolveGitHubToken`), and autonomous push auth (`pushBranchAuthenticated`).

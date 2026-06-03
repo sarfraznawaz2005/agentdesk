@@ -242,9 +242,14 @@ function onStreamComplete(e: Event): void {
     const existingIdx = prev.messages.findIndex((m) => m.id === messageId);
     let updatedMessages: Message[];
     if (existingIdx >= 0) {
-      // Bump createdAt to now so the PM's final response sorts AFTER any agent
-      // messages it spawned (agents ran between T1 and completion time).
-      const updated = { ...prev.messages[existingIdx], content: finalContent, tokenCount: usage.completionTokens, metadata: resolveMetadata(prev.messages[existingIdx].metadata), createdAt: new Date().toISOString() };
+      // Preserve the placeholder's original createdAt (set when the PM streamed its
+      // first token — before it dispatched any agent). This keeps the PM message in
+      // the chronological slot where it was first shown, so a sub-agent that starts
+      // AFTER this PM segment sorts BELOW it (latest at the bottom) rather than the PM
+      // retroactively jumping under the agent it just spawned. A PM continuation after
+      // an agent is a separate message with a later timestamp, so it still sorts below
+      // the agent. (Matches onStreamReset's "preserve its early timestamp" intent.)
+      const updated = { ...prev.messages[existingIdx], content: finalContent, tokenCount: usage.completionTokens, metadata: resolveMetadata(prev.messages[existingIdx].metadata) };
       updatedMessages = prev.messages.map((m, i) => i === existingIdx ? updated : m);
     } else {
       // PM placeholder wasn't in the array (no tokens were streamed before tool call).

@@ -21,6 +21,7 @@ import type { CouncilRequests } from "./council";
 import type { UpdaterRequests } from "./updater";
 import type { FreelanceRequests, FreelanceListingDto, FreelanceChatMessageDto } from "./freelance";
 import type { PlaygroundRequests, PlaygroundPreviewDto } from "./playground";
+import type { IssueFixerRequests, IssueFixerConfigDto, IssueFixRunDto } from "./issue-fixer";
 import type { WebviewSchema } from "./webview";
 
 type BunRequests =
@@ -44,7 +45,8 @@ type BunRequests =
   & CouncilRequests
   & UpdaterRequests
   & FreelanceRequests
-  & PlaygroundRequests;
+  & PlaygroundRequests
+  & IssueFixerRequests;
 
 export type AgentDeskRPC = {
   bun: RPCSchema<{
@@ -81,5 +83,8 @@ export type {
   FreelanceChatMessageDto,
   PlaygroundRequests,
   PlaygroundPreviewDto,
+  IssueFixerRequests,
+  IssueFixerConfigDto,
+  IssueFixRunDto,
   WebviewSchema,
 };

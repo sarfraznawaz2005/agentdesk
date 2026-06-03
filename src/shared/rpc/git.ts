@@ -180,27 +180,6 @@ export type GitRequests = {
     response: { deleted: string[]; errors: string[] };
   };
 
-  // Webhooks & GitHub
-  getWebhookConfigs: {
-    params: { projectId: string };
-    response: Array<{ id: string; projectId: string; name: string; events: string[]; enabled: boolean; lastPollAt: string | null; createdAt: string }>;
-  };
-  saveWebhookConfig: {
-    params: { id?: string; projectId: string; name: string; events: string[]; enabled?: boolean };
-    response: { id: string };
-  };
-  deleteWebhookConfig: {
-    params: { id: string };
-    response: { success: boolean };
-  };
-  getWebhookEvents: {
-    params: { projectId: string; eventType?: string; limit?: number };
-    response: Array<{ id: string; projectId: string; eventType: string; title: string; payload: Record<string, unknown>; status: string; processedAt: string | null; createdAt: string }>;
-  };
-  pollGithubEvents: {
-    params: { projectId: string };
-    response: { fetched: number; error?: string };
-  };
   getGithubIssues: {
     params: { projectId: string; state?: string };
     response: Array<{ id: string; projectId: string; githubIssueNumber: number; taskId: string | null; title: string; body: string | null; state: string; labels: string[]; githubCreatedAt: string | null; syncedAt: string }>;
@@ -214,7 +193,7 @@ export type GitRequests = {
     response: { success: boolean; issueNumber?: number; error?: string };
   };
   linkIssueToTask: {
-    params: { issueId: string; taskId: string };
+    params: { issueId: string; taskId: string | null };
     response: { success: boolean };
   };
   validateGithubToken: {

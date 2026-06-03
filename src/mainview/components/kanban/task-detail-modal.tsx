@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useKanbanStore, type KanbanTask } from "../../stores/kanban-store";
 import type { KanbanColumn } from "../../stores/kanban-store";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { rpc } from "@/lib/rpc";
+import { toast } from "@/components/ui/toast";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -153,6 +155,10 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
   // Delete confirmation dialog state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  // Linked GitHub issue (number only) — null = none linked yet.
+  const [ghIssueNumber, setGhIssueNumber] = useState<number | null>(null);
+  const [ghBusy, setGhBusy] = useState(false);
+
   // Sync local state whenever the task changes (different task opened)
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -162,6 +168,16 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
     setImportantNotes(task.importantNotes ?? "");
     setDueDate(task.dueDate ?? "");
     setCriteria(parseCriteria(task.acceptanceCriteria));
+    // Surface any GitHub issue already linked to this task (best-effort; silently
+    // ignored when GitHub isn't configured for the project).
+    setGhIssueNumber(null);
+    rpc
+      .getGithubIssues(task.projectId)
+      .then((issues) => {
+        const linked = issues.find((i) => i.taskId === task.id);
+        setGhIssueNumber(linked ? linked.githubIssueNumber : null);
+      })
+      .catch(() => {});
   }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -241,6 +257,21 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
   function confirmDelete() {
     void deleteTask(t.id);
     onClose();
+  }
+
+  async function createGithubIssue() {
+    setGhBusy(true);
+    try {
+      const res = await rpc.createGithubIssueFromTask(t.id, t.projectId);
+      if (res.success && res.issueNumber) {
+        setGhIssueNumber(res.issueNumber);
+        toast("success", `GitHub issue #${res.issueNumber} created from this task.`);
+      } else {
+        toast("error", res.error ?? "Failed to create GitHub issue.");
+      }
+    } finally {
+      setGhBusy(false);
+    }
   }
 
   // ------------------------------------------------------------------
@@ -528,9 +559,26 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
           </div>
 
           {/* ----------------------------------------------------------------
-              Footer — delete action
+              Footer — GitHub issue link + delete action
           ---------------------------------------------------------------- */}
-          <div className="px-6 pb-6 pt-2 border-t border-border flex justify-end">
+          <div className="px-6 pb-6 pt-2 border-t border-border flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {ghIssueNumber != null ? (
+                <Badge variant="secondary" className="text-xs">
+                  Linked · GitHub Issue #{ghIssueNumber}
+                </Badge>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={createGithubIssue}
+                  disabled={ghBusy}
+                  className="text-xs"
+                >
+                  {ghBusy ? "Creating…" : "Create GitHub Issue"}
+                </Button>
+              )}
+            </div>
             <Button
               variant="destructive"
               size="sm"

@@ -195,9 +195,9 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 		// when their availableToPm flag is set (default 1, controlled per-agent
 		// in Settings → Agents). This lets users add custom agents they don't
 		// want the PM to orchestrate (e.g. chat-only assistants).
-		// playground-agent is exclusive to the Playground page — never orchestrated by the PM.
+		// playground-agent and issue-fixer are page-exclusive built-ins — never orchestrated by the PM.
 		const agentRows = allAgentRows.filter(
-			(a) => a.name !== "playground-agent" && (a.isBuiltin === 1 || a.availableToPm === 1),
+			(a) => a.name !== "playground-agent" && a.name !== "issue-fixer" && (a.isBuiltin === 1 || a.availableToPm === 1),
 		);
 
 		if (agentRows.length === 0) return { section: "", agentNames: [] };
@@ -1004,11 +1004,15 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	// (the agent's own prompt governs behaviour). It gets only: its base prompt, the user profile,
 	// the skills list (without delegation rules), and the MCP tools list. Workspace context is
 	// appended by the caller (runInlineAgent) via projectContext.
-	if (agentName === "playground-agent") {
+	// The Issue Fixer runs the same standalone way as the Playground agent (no PM/kanban/
+	// delegation/constitution), EXCEPT it keeps the chrome-devtools tools (to reproduce
+	// browser/UI issues), so those are NOT excluded from its MCP section.
+	if (agentName === "playground-agent" || agentName === "issue-fixer") {
+		// Playground hides chrome-devtools_* from its toolset; Issue Fixer keeps them.
+		const excludeMcpPrefixes = agentName === "playground-agent" ? ["chrome-devtools_"] : [];
 		const [userProfile, mcpSection] = await Promise.all([
 			loadUserProfile(),
-			// chrome-devtools_* tools are removed from this agent's toolset, so don't list them either.
-			buildAgentMcpSection(["chrome-devtools_"]),
+			buildAgentMcpSection(excludeMcpPrefixes),
 		]);
 		const userSection = buildUserSection(userProfile);
 		const skillsSection = buildSkillsDescriptionSection(false); // no agent-routing/delegation rules

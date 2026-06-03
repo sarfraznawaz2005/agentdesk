@@ -54,6 +54,7 @@ const AGENT_COLORS: Record<string, string> = {
 	"refactoring-specialist": "border-l-yellow-400",
 	"code-explorer": "border-l-sky-400",
 	"playground-agent": "border-l-orange-400",
+	"issue-fixer": "border-l-red-500",
 };
 
 function getAgentBorderColor(agentName?: string): string {
@@ -145,6 +146,7 @@ export const AGENT_BADGE_COLORS: Record<string, string> = {
 	"refactoring-specialist": "bg-yellow-50 text-yellow-700 ring-yellow-300",
 	"code-explorer": "bg-sky-50 text-sky-700 ring-sky-300",
 	"playground-agent": "bg-orange-50 text-orange-700 ring-orange-300",
+	"issue-fixer": "bg-red-50 text-red-700 ring-red-300",
 };
 
 export function getAgentBadgeColor(agentName?: string): string {
@@ -294,7 +296,7 @@ const AgentEndBlock = memo(function AgentEndBlock({
 	);
 });
 
-const TextBlock = memo(function TextBlock({ content }: { content: string }) {
+export const TextBlock = memo(function TextBlock({ content }: { content: string }) {
 	const mdComponents = useMemo(() => ({
 		p: ({ children }: { children: React.ReactNode }) => (
 			<p className="text-sm text-foreground italic leading-relaxed mb-1.5 last:mb-0">{children}</p>

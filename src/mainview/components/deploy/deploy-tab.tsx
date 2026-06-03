@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { RefreshCw, Plus, Trash2, Rocket, ExternalLink, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { RefreshCw, Plus, Trash2, Rocket, ExternalLink, Clock, CheckCircle, XCircle, Loader2, ChevronRight } from "lucide-react";
 import { rpc } from "../../lib/rpc";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -51,6 +51,7 @@ export function DeployTab({ projectId }: DeployTabProps) {
   const [loading, setLoading] = useState(false);
   const [deploying, setDeploying] = useState<string | null>(null);
   const [expandedEnv, setExpandedEnv] = useState<string | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
   // Deploy confirmation dialog state
   const [confirmDeploy, setConfirmDeploy] = useState<Environment | null>(null);
@@ -274,6 +275,16 @@ export function DeployTab({ projectId }: DeployTabProps) {
                 onChange={(e) => setFormData({ ...formData, command: e.target.value })}
                 placeholder="e.g., npm run deploy"
               />
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                Runs <span className="font-medium">locally</span> in the project folder via your shell, and must be{" "}
+                <span className="font-medium">non-interactive</span> (no password/confirmation prompts — use SSH keys,
+                {" "}<code className="bg-muted px-1 rounded">--force</code>,{" "}
+                <code className="bg-muted px-1 rounded">--no-interaction</code>,{" "}
+                <code className="bg-muted px-1 rounded">GIT_TERMINAL_PROMPT=0</code>). It should push to your server
+                (deploy hook, Deployer, rsync+ssh, or <code className="bg-muted px-1 rounded">git push</code>) — a bare{" "}
+                <code className="bg-muted px-1 rounded">php artisan …</code> only affects your local app. Tip: point it at a
+                committed <code className="bg-muted px-1 rounded">deploy.sh</code>.
+              </p>
             </div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1">URL (optional)</label>
@@ -423,29 +434,48 @@ export function DeployTab({ projectId }: DeployTabProps) {
               {historyByEnv[env.id]?.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No deployments yet.</p>
               ) : (
-                <div className="space-y-2">
-                  {historyByEnv[env.id]?.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between py-2 border-b last:border-0"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "flex items-center gap-1 px-2 py-0.5 rounded text-xs text-white",
-                          statusColors[item.status]
-                        )}>
-                          {statusIcons[item.status]}
-                          {item.status}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDuration(item.durationMs)}
-                        </span>
+                <div className="space-y-1">
+                  {historyByEnv[env.id]?.map((item) => {
+                    const isOpen = expandedHistoryId === item.id;
+                    return (
+                      <div key={item.id} className="border-b last:border-0">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedHistoryId(isOpen ? null : item.id)}
+                          className="w-full flex items-center justify-between py-2 text-left hover:bg-muted/30 rounded"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "flex items-center gap-1 px-2 py-0.5 rounded text-xs text-white",
+                              statusColors[item.status]
+                            )}>
+                              {statusIcons[item.status]}
+                              {item.status}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDuration(item.durationMs)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(item.createdAt)}
+                            </span>
+                            {item.logOutput && (
+                              <ChevronRight className={cn("w-3 h-3 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
+                            )}
+                          </div>
+                        </button>
+                        {isOpen && item.logOutput && (
+                          <pre className="text-xs font-mono whitespace-pre-wrap break-words bg-muted/40 rounded p-2 mb-2 max-h-72 overflow-auto">
+                            {item.logOutput}
+                          </pre>
+                        )}
+                        {isOpen && !item.logOutput && (
+                          <p className="text-xs text-muted-foreground pb-2">No log output recorded for this deploy.</p>
+                        )}
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(item.createdAt)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

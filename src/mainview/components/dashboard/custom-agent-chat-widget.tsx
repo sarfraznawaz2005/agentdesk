@@ -83,6 +83,18 @@ const MD_COMPONENTS = {
 
 function sessionStorageKey(agentName: string)  { return `dashboard-agent-session-${agentName}-v1`; }
 function messagesStorageKey(agentName: string) { return `dashboard-agent-messages-${agentName}-v1`; }
+function unreadStorageKey(agentName: string)   { return `dashboard-agent-unread-${agentName}-v1`; }
+
+function loadPersistedUnread(agentName: string): boolean {
+  try { return localStorage.getItem(unreadStorageKey(agentName)) === "1"; } catch { return false; }
+}
+
+function persistUnread(agentName: string, v: boolean) {
+  try {
+    if (v) localStorage.setItem(unreadStorageKey(agentName), "1");
+    else localStorage.removeItem(unreadStorageKey(agentName));
+  } catch { /* ignore */ }
+}
 
 function loadPersistedSession(agentName: string): { sessionId: string; messages: ChatMessage[] } {
   const sKey = sessionStorageKey(agentName);
@@ -134,6 +146,9 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   const [toolCalls, setToolCalls] = useState<Array<{ id: string; toolName: string; isSkill: boolean }>>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Unread = a reply arrived while the panel was closed. Cleared on open.
+  const [unread, setUnread] = useState(false);
+  const openRef = useRef(open);
 
   const sessionId    = useRef("");
   const initialised  = useRef(false);
@@ -161,7 +176,17 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     // One-time hydration from localStorage on mount — intentional setState in effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(msgs);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUnread(loadPersistedUnread(agentName));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep a ref of `open` so the stream listeners read the current value.
+  useEffect(() => { openRef.current = open; }, [open]);
+
+  // Opening the panel marks everything read.
+  useEffect(() => {
+    if (open) { setUnread(false); persistUnread(agentName, false); }
+  }, [open, agentName]);
 
   // Close on outside click
   useEffect(() => {
@@ -222,6 +247,8 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       });
       setToolCalls([]);
       setIsStreaming(false);
+      // A reply finished while the panel was closed → flag it as unread.
+      if (!openRef.current) { setUnread(true); persistUnread(agentName, true); }
     };
 
     const onError = (e: Event) => {
@@ -237,6 +264,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
         return next;
       });
       setIsStreaming(false);
+      if (!openRef.current) { setUnread(true); persistUnread(agentName, true); }
     };
 
     window.addEventListener("agentdesk:dashboard-agent-chunk",     onChunk);
@@ -384,6 +412,8 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     persistSessionId(agentName, newSid);
     try { localStorage.removeItem(messagesStorageKey(agentName)); } catch { /* ignore */ }
     setMessages([]);
+    setUnread(false);
+    persistUnread(agentName, false);
   };
 
   if (!visible) return null;
@@ -397,7 +427,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
           onClick={() => setOpen(true)}
           style={{ backgroundColor: color }}
           className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-full",
+            "relative flex items-center gap-2 px-4 py-2.5 rounded-full",
             "text-white shadow-lg whitespace-nowrap",
             "hover:brightness-110 transition-[filter,transform] duration-150",
             "text-sm font-medium",
@@ -405,6 +435,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
         >
           <MessageSquare className="h-4 w-4" aria-hidden="true" />
           {displayName}
+          {unread && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3" aria-label="New reply">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-background" />
+            </span>
+          )}
         </button>
       )}
 

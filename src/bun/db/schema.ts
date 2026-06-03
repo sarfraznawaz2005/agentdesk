@@ -509,6 +509,66 @@ export const githubIssues = sqliteTable("github_issues", {
 });
 
 // ---------------------------------------------------------------------------
+// issue_fixer_config — per-project Issue Fixer configuration (one row/project)
+// ---------------------------------------------------------------------------
+export const issueFixerConfig = sqliteTable("issue_fixer_config", {
+	projectId: text("project_id").primaryKey().references(() => projects.id),
+	enabled: integer("enabled").notNull().default(0),
+	// JSON array of agentdesk-* trigger keywords
+	keywords: text("keywords").notNull().default("[]"),
+	// JSON array of agentdesk-* trigger labels
+	labels: text("labels").notNull().default("[]"),
+	// "collab" | "label" | "both"
+	authMode: text("auth_mode").notNull().default("both"),
+	pollIntervalMin: integer("poll_interval_min").notNull().default(60),
+	// "branch_pr" | "draft"
+	autonomy: text("autonomy").notNull().default("branch_pr"),
+	testCommand: text("test_command"),
+	customInstructions: text("custom_instructions"),
+	// "global" | "custom" (custom token stored in settings as project:<id>:githubToken)
+	tokenSource: text("token_source").notNull().default("global"),
+	cooldownSec: integer("cooldown_sec").notNull().default(0),
+	maxPerHour: integer("max_per_hour").notNull().default(5),
+	// JSON array of channel ids to notify on success/failure
+	notifyChannels: text("notify_channels").notNull().default("[]"),
+	// ISO timestamp — only issues/comments at or after this are considered
+	cursorAt: text("cursor_at"),
+	lastPolledAt: text("last_polled_at"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// issue_fix_runs — history/log of Issue Fixer runs
+// ---------------------------------------------------------------------------
+export const issueFixRuns = sqliteTable("issue_fix_runs", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	issueNumber: integer("issue_number").notNull(),
+	issueTitle: text("issue_title").notNull().default(""),
+	issueUrl: text("issue_url"),
+	// "title" | "comment" | "pr_comment" | "label"
+	triggerType: text("trigger_type").notNull(),
+	triggerKeyword: text("trigger_keyword"),
+	// GitHub comment id for comment/pr_comment triggers (null for title/label) — used for dedup
+	triggerCommentId: text("trigger_comment_id"),
+	intent: text("intent").notNull(),
+	author: text("author"),
+	authorized: integer("authorized").notNull().default(0),
+	// "queued" | "fixing" | "testing" | "pushing" | "pr_created" | "pr_updated" | "failed" | "ignored" | "cancelled"
+	status: text("status").notNull().default("queued"),
+	branchName: text("branch_name"),
+	prNumber: integer("pr_number"),
+	prUrl: text("pr_url"),
+	testPassed: integer("test_passed"), // nullable boolean (0/1)
+	conversationId: text("conversation_id"),
+	summary: text("summary"),
+	error: text("error"),
+	startedAt: text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	finishedAt: text("finished_at"),
+});
+
+// ---------------------------------------------------------------------------
 // branch_strategies — per-project branching model configuration
 // ---------------------------------------------------------------------------
 export const branchStrategies = sqliteTable("branch_strategies", {

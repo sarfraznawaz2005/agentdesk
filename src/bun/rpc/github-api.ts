@@ -85,6 +85,24 @@ export async function resolveGitHubToken(
 	return await getLegacyGitToken();
 }
 
+/**
+ * `git -c ...` args that authenticate GitHub HTTPS remote operations with a token
+ * WITHOUT invoking any credential helper. This prevents Git Credential Manager from
+ * popping its interactive "Select an account" GUI during autonomous fetch/pull/ls-remote.
+ *   - `credential.helper=` (empty) clears the configured helper list (no GCM) for this command.
+ *   - the per-host extraheader supplies Basic auth from the token.
+ * Use by prefixing git args: runGit([...gitAuthArgs(token), "fetch", "origin"], cwd).
+ */
+export function gitAuthArgs(token: string): string[] {
+	const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
+	return [
+		"-c",
+		"credential.helper=",
+		"-c",
+		`http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`,
+	];
+}
+
 /** Replace every occurrence of a secret with *** so it never appears in output/logs. */
 function redactToken(text: string, token: string): string {
 	if (!token) return text;

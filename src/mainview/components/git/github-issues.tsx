@@ -4,13 +4,34 @@ import { rpc } from "../../lib/rpc";
 import { Tip } from "@/components/ui/tooltip";
 
 type GhIssue = Awaited<ReturnType<typeof rpc.getGithubIssues>>[number];
+type TaskLite = Awaited<ReturnType<typeof rpc.getKanbanTasks>>[number];
 
 interface GithubIssuesProps {
   projectId: string;
 }
 
-function IssueCard({ issue }: { issue: GhIssue }) {
+function IssueCard({
+  issue,
+  tasks,
+  onChanged,
+}: {
+  issue: GhIssue;
+  tasks: TaskLite[];
+  onChanged: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [linking, setLinking] = useState(false);
+
+  async function onSelectTask(taskId: string) {
+    setLinking(true);
+    try {
+      await rpc.linkIssueToTask(issue.id, taskId || null); // "" ⇒ unlink
+      onChanged();
+    } finally {
+      setLinking(false);
+    }
+  }
+
   return (
     <div className="border rounded-lg hover:bg-muted/30 transition-colors">
       <button
@@ -48,6 +69,21 @@ function IssueCard({ issue }: { issue: GhIssue }) {
           <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words border-t pt-2">{issue.body}</p>
         </div>
       )}
+      {/* Link this issue to a kanban task (selecting "Not linked" unlinks it). */}
+      <div className="flex items-center gap-2 px-3 py-1.5 border-t">
+        <span className="text-xs text-muted-foreground shrink-0">Kanban task:</span>
+        <select
+          value={issue.taskId ?? ""}
+          onChange={(e) => onSelectTask(e.target.value)}
+          disabled={linking || tasks.length === 0}
+          className="text-xs px-2 py-1 rounded border bg-background max-w-[60%] truncate disabled:opacity-50"
+        >
+          <option value="">{tasks.length === 0 ? "No tasks yet" : "— Not linked —"}</option>
+          {tasks.map((tk) => (
+            <option key={tk.id} value={tk.id}>{tk.title}</option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
@@ -60,6 +96,7 @@ function stateColor(state: string) {
 
 export function GithubIssues({ projectId }: GithubIssuesProps) {
   const [issues, setIssues] = useState<GhIssue[]>([]);
+  const [tasks, setTasks] = useState<TaskLite[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState("open");
@@ -76,6 +113,11 @@ export function GithubIssues({ projectId }: GithubIssuesProps) {
   }, [projectId, filter]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Kanban tasks for the issue↔task link picker.
+  useEffect(() => {
+    rpc.getKanbanTasks(projectId).then(setTasks).catch(() => {});
+  }, [projectId]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -144,7 +186,9 @@ export function GithubIssues({ projectId }: GithubIssuesProps) {
       )}
 
       <div className="space-y-1.5">
-        {issues.map((issue) => <IssueCard key={issue.id} issue={issue} />)}
+        {issues.map((issue) => (
+          <IssueCard key={issue.id} issue={issue} tasks={tasks} onChanged={refresh} />
+        ))}
       </div>
     </div>
   );

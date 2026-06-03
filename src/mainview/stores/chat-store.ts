@@ -74,6 +74,8 @@ interface ChatState {
   stopGeneration: (projectId: string) => Promise<void>;
   stopAgent: (projectId: string, agentName: string) => Promise<void>;
   createConversation: (projectId: string) => Promise<string>;
+  /** Create a fresh conversation, seed it with a user message, and send it to the PM. Returns the new conversation id. */
+  startConversationWithMessage: (projectId: string, content: string) => Promise<string>;
   deleteConversation: (id: string) => Promise<void>;
   clearMessages: (conversationId: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
@@ -177,6 +179,29 @@ export const useChatStore = create<ChatState>((set) => ({
       }));
     }
     return result.id;
+  },
+
+  startConversationWithMessage: async (projectId: string, content: string) => {
+    const id = await useChatStore.getState().createConversation(projectId);
+    useChatStore.getState().setActiveConversation(id);
+    // Load existing messages first (empty for a fresh conversation, or a reused empty
+    // one) so the optimistic message we append below isn't clobbered by a later load.
+    await useChatStore.getState().loadMessages(id);
+    const userMsg = {
+      id: `temp-${Date.now()}`,
+      conversationId: id,
+      role: "user",
+      agentId: null,
+      agentName: null,
+      content,
+      metadata: null,
+      tokenCount: 0,
+      hasParts: 0,
+      createdAt: new Date().toISOString(),
+    };
+    set((prev) => ({ messages: [...prev.messages, userMsg] }));
+    await useChatStore.getState().sendMessage(projectId, id, content);
+    return id;
   },
 
   deleteConversation: async (id: string) => {

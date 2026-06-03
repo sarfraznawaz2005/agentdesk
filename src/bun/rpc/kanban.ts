@@ -6,6 +6,7 @@ import { eventBus } from "../scheduler";
 import { broadcastToWebview } from "../engine-manager";
 import { sendDesktopNotification } from "../notifications/desktop";
 import { broadcastTaskDoneNotification } from "../channels/manager";
+import { closeGithubIssueForTask } from "./github-issues";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,6 +218,9 @@ export async function moveKanbanTask(
 				.limit(1)
 				.then((rows) => broadcastTaskDoneNotification(current.title ?? id, rows[0]?.name ?? undefined))
 				.catch(() => {});
+			// Close any linked GitHub issue (best-effort; no-op if none is linked or GitHub
+			// isn't configured). Every done-transition funnels through moveKanbanTask.
+			closeGithubIssueForTask(id, current.projectId).catch(() => {});
 		}
 	}
 

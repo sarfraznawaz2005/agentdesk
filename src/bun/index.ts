@@ -13,6 +13,7 @@ import { initPlugins } from "./plugins";
 import { skillRegistry } from "./skills/registry";
 import { setTaskExecutorEngine, initCronScheduler, shutdownCronScheduler, initAutomationEngine, shutdownAutomationEngine } from "./scheduler";
 import { registerAdapter, initChannelManager, shutdownChannelManager, getChannelStatuses } from "./channels";
+import { startIssueFixerPolling, stopIssueFixerPolling } from "./issue-fixer/poller";
 import { DiscordAdapter } from "./channels/discord-adapter";
 import { WhatsAppAdapter } from "./channels/whatsapp-adapter";
 import { EmailAdapter } from "./channels/email-adapter";
@@ -158,6 +159,12 @@ try {
 	if (deleted.changes > 0) console.log(`[startup] Cleaned up ${deleted.changes} orphaned workflow settings`);
 } catch { /* non-critical */ }
 
+// Mark deploys left "running" by a previous crash/restart as failed (no perpetual spinner).
+try {
+	const { reconcileStuckDeploys } = await import("./rpc/deploy");
+	await reconcileStuckDeploys();
+} catch { /* non-critical */ }
+
 await syncWorkspaceFolders();
 
 // Initialise truncation directory for tool output overflow + cleanup old files
@@ -171,6 +178,9 @@ setTaskExecutorEngine(getOrCreateEngine);
 await initCronScheduler();
 setSchedulerRunning(true);
 initAutomationEngine();
+
+// Issue Fixer — outbound polling of GitHub issues/comments for enabled projects.
+startIssueFixerPolling();
 
 // Re-sync workspace folders whenever the global workspace path changes
 onSettingChange("global_workspace_path", () => {
@@ -317,6 +327,7 @@ Electrobun.events.on("before-quit", () => {
 		await shutdownChannelManager();
 		shutdownCronScheduler();
 		shutdownAutomationEngine();
+		stopIssueFixerPolling();
 		await shutdownMcpClients();
 		shutdownPreviewWindow();
 		shutdownAnnotationServer();

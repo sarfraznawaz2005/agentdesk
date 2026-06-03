@@ -27,8 +27,10 @@ export interface AgentListItem {
  * Sorted alphabetically by displayName.
  */
 export async function getAgentsList(): Promise<AgentListItem[]> {
-	// playground-agent is internal to the Playground — never shown/managed in the Agents UI.
-	const rows = (await db.select().from(agents)).filter((row) => row.name !== "playground-agent");
+	// playground-agent and issue-fixer are page-exclusive built-ins — never shown/managed in the Agents UI.
+	const rows = (await db.select().from(agents)).filter(
+		(row) => row.name !== "playground-agent" && row.name !== "issue-fixer",
+	);
 	const mapped = rows.map((row) => ({
 		id: row.id,
 		name: row.name,

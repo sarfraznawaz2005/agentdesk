@@ -14,6 +14,7 @@
 
 import { Electroview } from "electrobun/view";
 import type { AgentDeskRPC } from "../../shared/rpc";
+import type { IssueFixerConfigDto } from "../../shared/rpc/issue-fixer";
 
 // ---------------------------------------------------------------------------
 // Webview-side RPC definition
@@ -207,6 +208,21 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       playgroundFilesChanged: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:playground-files-changed", { detail: payload }));
+      },
+      issueFixerRunStarted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-run-started", { detail: payload }));
+      },
+      issueFixerPart: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-part", { detail: payload }));
+      },
+      issueFixerPartUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-part-updated", { detail: payload }));
+      },
+      issueFixerRunComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-run-complete", { detail: payload }));
+      },
+      issueFixerRunError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-run-error", { detail: payload }));
       },
       updateStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:update-status", { detail: payload }));
@@ -933,18 +949,6 @@ export const rpc = {
   generatePrDescription: (projectId: string, sourceBranch: string, targetBranch: string) =>
     electroviewRpc.request.generatePrDescription({ projectId, sourceBranch, targetBranch }),
 
-  // ── Webhook Configs ──
-  getWebhookConfigs: (projectId: string) =>
-    electroviewRpc.request.getWebhookConfigs({ projectId }),
-  saveWebhookConfig: (params: { id?: string; projectId: string; name: string; events: string[]; enabled?: boolean }) =>
-    electroviewRpc.request.saveWebhookConfig(params),
-  deleteWebhookConfig: (id: string) =>
-    electroviewRpc.request.deleteWebhookConfig({ id }),
-  getWebhookEvents: (projectId: string, eventType?: string, limit?: number) =>
-    electroviewRpc.request.getWebhookEvents({ projectId, eventType, limit }),
-  pollGithubEvents: (projectId: string) =>
-    electroviewRpc.request.pollGithubEvents({ projectId }),
-
   // ── GitHub Issues ──
   getGithubIssues: (projectId: string, state?: string) =>
     electroviewRpc.request.getGithubIssues({ projectId, state }),
@@ -952,7 +956,7 @@ export const rpc = {
     electroviewRpc.request.syncGithubIssues({ projectId }),
   createGithubIssueFromTask: (taskId: string, projectId: string) =>
     electroviewRpc.request.createGithubIssueFromTask({ taskId, projectId }),
-  linkIssueToTask: (issueId: string, taskId: string) =>
+  linkIssueToTask: (issueId: string, taskId: string | null) =>
     electroviewRpc.request.linkIssueToTask({ issueId, taskId }),
   validateGithubToken: (token: string) =>
     electroviewRpc.request.validateGithubToken({ token }),
@@ -1178,6 +1182,41 @@ export const rpc = {
 
   /** Deploy the current static playground to surge.sh and return the live URL. */
   deployPlayground: () => electroviewRpc.request.deployPlayground({}),
+
+  // ---- Issue Fixer ---------------------------------------------------------
+
+  /** Fetch the Issue Fixer config for a project (null if never configured). */
+  getIssueFixerConfig: (projectId: string) =>
+    electroviewRpc.request.getIssueFixerConfig({ projectId }),
+
+  /** Save (upsert) the Issue Fixer config for a project. */
+  saveIssueFixerConfig: (
+    projectId: string,
+    config: Partial<Omit<IssueFixerConfigDto, "projectId">>,
+  ) => electroviewRpc.request.saveIssueFixerConfig({ projectId, config }),
+
+  /** List Issue Fixer run history for a project. */
+  listIssueFixRuns: (projectId: string, limit?: number) =>
+    electroviewRpc.request.listIssueFixRuns({ projectId, limit }),
+
+  /** Fetch a single Issue Fixer run by id. */
+  getIssueFixRun: (id: string) => electroviewRpc.request.getIssueFixRun({ id }),
+
+  /** Poll this project's GitHub issues/comments immediately. */
+  pollIssueFixerNow: (projectId: string) =>
+    electroviewRpc.request.pollIssueFixerNow({ projectId }),
+
+  /** Cancel the in-flight Issue Fixer run. */
+  cancelIssueFixRun: (runId: string) =>
+    electroviewRpc.request.cancelIssueFixRun({ runId }),
+
+  /** Manually queue an Issue Fixer run for a specific issue. */
+  triggerIssueFixManually: (projectId: string, issueNumber: number) =>
+    electroviewRpc.request.triggerIssueFixManually({ projectId, issueNumber }),
+
+  /** Get the predefined agentdesk-* keyword catalog for the settings UI. */
+  getIssueFixerKeywordCatalog: () =>
+    electroviewRpc.request.getIssueFixerKeywordCatalog({}),
 
   // ---- Freelance -----------------------------------------------------------
 
