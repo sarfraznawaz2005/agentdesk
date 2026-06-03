@@ -10,13 +10,13 @@ import {
 	Select,
 	SelectContent,
 	SelectItem,
-	SelectSeparator,
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
 import { rpc } from "@/lib/rpc";
+import { cn } from "@/lib/utils";
 
 interface Project {
 	id: string;
@@ -253,6 +253,25 @@ export function DashboardPage() {
 		return counts;
 	}, [projects]);
 
+	// Clickable status filter badges — each acts like a filter chip. `base` is the
+	// resting color, `hover` darkens it on hover, `ring` highlights the selected one.
+	const statusBadges: {
+		value: StatusFilter;
+		label: string;
+		count: number;
+		ariaLabel: string;
+		base: string;
+		hover: string;
+		ring: string;
+	}[] = [
+		{ value: "all", label: "Total", count: projects.length, ariaLabel: "Show all projects", base: "border border-border text-muted-foreground", hover: "hover:bg-muted", ring: "ring-foreground/30" },
+		{ value: "active", label: "Active", count: projectStats.active, ariaLabel: "Filter by active projects", base: "bg-green-500/10 text-green-600 dark:text-green-400", hover: "hover:bg-green-500/20", ring: "ring-green-500/50" },
+		{ value: "paused", label: "Paused", count: projectStats.paused, ariaLabel: "Filter by paused projects", base: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400", hover: "hover:bg-yellow-500/20", ring: "ring-yellow-500/50" },
+		{ value: "completed", label: "Completed", count: projectStats.completed, ariaLabel: "Filter by completed projects", base: "bg-blue-500/10 text-blue-600 dark:text-blue-400", hover: "hover:bg-blue-500/20", ring: "ring-blue-500/50" },
+		{ value: "archived", label: "Archived", count: projectStats.archived, ariaLabel: "Filter by archived projects", base: "bg-muted text-muted-foreground", hover: "hover:bg-muted-foreground/15", ring: "ring-foreground/30" },
+		{ value: "deleted", label: "Deleted", count: projectStats.deleted, ariaLabel: "Filter by deleted projects", base: "bg-red-500/10 text-red-600 dark:text-red-400", hover: "hover:bg-red-500/20", ring: "ring-red-500/50" },
+	];
+
 	useHeaderActions(
 		() => (
 			<Button onClick={() => setModalOpen(true)}>
@@ -270,42 +289,29 @@ export function DashboardPage() {
 				<div className="flex flex-col gap-3">
 				<div className="flex flex-wrap items-center gap-3">
 					<div className="flex items-center gap-2 flex-1">
-						<span className="text-[13px] font-medium px-3 h-8 flex items-center rounded-md border border-border text-muted-foreground">
-							{projects.length} Total
-						</span>
-						<span className="text-[13px] font-medium px-3 h-8 flex items-center rounded-md bg-green-500/10 text-green-600 dark:text-green-400">
-							{projectStats.active} Active
-						</span>
-						<span className="text-[13px] font-medium px-3 h-8 flex items-center rounded-md bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-							{projectStats.paused} Paused
-						</span>
-						<span className="text-[13px] font-medium px-3 h-8 flex items-center rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
-							{projectStats.completed} Completed
-						</span>
-						<span className="text-[13px] font-medium px-3 h-8 flex items-center rounded-md bg-muted text-muted-foreground">
-							{projectStats.archived} Archived
-						</span>
-						<span className="text-[13px] font-medium px-3 h-8 flex items-center rounded-md bg-red-500/10 text-red-600 dark:text-red-400">
-							{projectStats.deleted} Deleted
-						</span>
+						{statusBadges.map((badge) => {
+							const selected = statusFilter === badge.value;
+							return (
+								<button
+									key={badge.value}
+									type="button"
+									onClick={() => setStatusFilter(badge.value)}
+									aria-pressed={selected}
+									aria-label={badge.ariaLabel}
+									className={cn(
+										"cursor-pointer text-[13px] font-medium px-3 h-8 flex items-center rounded-md select-none",
+										"transition-all duration-100 active:scale-95",
+										"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+										badge.base,
+										badge.hover,
+										selected && `ring-2 ring-inset ${badge.ring}`,
+									)}
+								>
+									{badge.count} {badge.label}
+								</button>
+							);
+						})}
 					</div>
-					<Select
-						value={statusFilter}
-						onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-					>
-						<SelectTrigger className="w-36">
-							<SelectValue placeholder="Status" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All</SelectItem>
-							<SelectItem value="active">Active</SelectItem>
-							<SelectItem value="paused">Paused</SelectItem>
-							<SelectItem value="completed">Completed</SelectItem>
-							<SelectSeparator />
-							<SelectItem value="archived">Archived</SelectItem>
-							<SelectItem value="deleted">Deleted</SelectItem>
-						</SelectContent>
-					</Select>
 					<Select
 						value={sortKey}
 						onValueChange={(v) => setSortKey(v as SortKey)}
