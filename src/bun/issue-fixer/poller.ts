@@ -97,10 +97,17 @@ async function tick(): Promise<void> {
 	}
 }
 
+/** Outcome of a single poll — lets the manual "Poll now" surface an accurate toast. */
+export interface PollResult {
+	reason: "disabled" | "no-credentials" | "primed" | "polled";
+	enqueued: number;
+	ignored: number;
+}
+
 /** Poll a single project once. Exported so the RPC `pollNow` can trigger it on demand. */
-export async function pollProject(projectId: string): Promise<void> {
+export async function pollProject(projectId: string): Promise<PollResult> {
 	const config = await getIssueFixerConfig(projectId);
-	if (!config || !config.enabled) return;
+	if (!config || !config.enabled) return { reason: "disabled", enqueued: 0, ignored: 0 };
 
 	const proj = (await db.select().from(projects).where(eq(projects.id, projectId)).limit(1))[0];
 	const parsed = proj?.githubUrl ? parseGithubUrl(proj.githubUrl) : null;
@@ -109,14 +116,14 @@ export async function pollProject(projectId: string): Promise<void> {
 
 	if (!parsed || !token) {
 		await setLastPolled(projectId, nowIso);
-		return;
+		return { reason: "no-credentials", enqueued: 0, ignored: 0 };
 	}
 
 	// First poll after enabling: just set the cursor so old issues aren't processed.
 	if (!config.cursorAt) {
 		await setCursor(projectId, nowIso);
 		await setLastPolled(projectId, nowIso);
-		return;
+		return { reason: "primed", enqueued: 0, ignored: 0 };
 	}
 
 	const triggerConfig: TriggerConfig = {
@@ -138,18 +145,25 @@ export async function pollProject(projectId: string): Promise<void> {
 		remaining: Math.max(0, config.maxPerHour - (await runsInLastHour(projectId, Date.now()))),
 	};
 
+	let enqueued = 0;
+	let ignored = 0;
+	const tally = (o: MatchOutcome) => {
+		if (o === "enqueued") enqueued++;
+		else if (o === "ignored") ignored++;
+	};
+
 	// Issues — title/label triggers.
 	for (const issue of issues) {
 		const match = matchIssue(issue, triggerConfig);
 		if (!match) continue;
 		const issueComments = comments.filter((c) => c.issueNumber === issue.number).map((c) => c.body);
-		await handleMatch(projectId, match, {
+		tally(await handleMatch(projectId, match, {
 			issueNumber: issue.number,
 			issueTitle: issue.title,
 			issueBody: issue.body,
 			issueUrl: issue.htmlUrl,
 			comments: issueComments,
-		}, budget);
+		}, budget));
 	}
 
 	// Comments — keyword triggers (issue comments AND PR conversation comments).
@@ -157,11 +171,12 @@ export async function pollProject(projectId: string): Promise<void> {
 		const match = matchComment(comment, triggerConfig);
 		if (!match) continue;
 		const ctx = await buildCommentContext(owner, repo, comment, token);
-		await handleMatch(projectId, match, ctx, budget);
+		tally(await handleMatch(projectId, match, ctx, budget));
 	}
 
 	await setCursor(projectId, nowIso);
 	await setLastPolled(projectId, nowIso);
+	return { reason: "polled", enqueued, ignored };
 }
 
 interface IssueCtx {
@@ -188,14 +203,16 @@ async function buildCommentContext(
 	};
 }
 
+type MatchOutcome = "enqueued" | "ignored" | "skipped";
+
 async function handleMatch(
 	projectId: string,
 	match: TriggerMatch,
 	ctx: IssueCtx,
 	budget: { remaining: number },
-): Promise<void> {
+): Promise<MatchOutcome> {
 	// Dedup first — never re-process the same trigger.
-	if (await alreadyProcessed(projectId, match.issueNumber, match.triggerCommentId)) return;
+	if (await alreadyProcessed(projectId, match.issueNumber, match.triggerCommentId)) return "skipped";
 
 	// Unauthorized actor — record as ignored for visibility, then stop.
 	if (!match.authorized) {
@@ -212,12 +229,12 @@ async function handleMatch(
 			authorized: false,
 			status: "ignored",
 		});
-		return;
+		return "ignored";
 	}
 
 	// Max-per-hour budget only. Cooldown is enforced as a pre-run DELAY in the orchestrator
 	// (not a drop here), so a burst of matches in one poll is never silently lost.
-	if (budget.remaining <= 0) return;
+	if (budget.remaining <= 0) return "skipped";
 	budget.remaining -= 1;
 	const input: IssueFixInput = {
 		projectId,
@@ -236,4 +253,5 @@ async function handleMatch(
 		prNumber: match.triggerType === "pr_comment" ? match.issueNumber : null,
 	};
 	void enqueueIssueFix(input);
+	return "enqueued";
 }

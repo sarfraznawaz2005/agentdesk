@@ -70,9 +70,20 @@ export async function getActiveIssueFixRun(params: { projectId: string }): Promi
 	return { run: getLiveRun(params.projectId) as ActiveIssueFixRunDto | null };
 }
 
-export async function pollIssueFixerNow(params: { projectId: string }): Promise<{ ok: boolean }> {
-	await pollProject(params.projectId).catch((e) => console.error("[issue-fixer] pollNow failed:", e));
-	return { ok: true };
+export async function pollIssueFixerNow(params: { projectId: string }): Promise<{
+	ok: boolean;
+	reason?: "disabled" | "no-credentials" | "primed" | "polled";
+	enqueued?: number;
+	ignored?: number;
+	error?: string;
+}> {
+	try {
+		const r = await pollProject(params.projectId);
+		return { ok: true, reason: r.reason, enqueued: r.enqueued, ignored: r.ignored };
+	} catch (e) {
+		console.error("[issue-fixer] pollNow failed:", e);
+		return { ok: false, error: e instanceof Error ? e.message : String(e) };
+	}
 }
 
 export async function cancelIssueFixRun(params: { runId: string }): Promise<{ ok: boolean }> {

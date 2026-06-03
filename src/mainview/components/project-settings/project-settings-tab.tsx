@@ -66,7 +66,6 @@ interface AiForm {
   modelOverride: string;
   thinkingBudget: string;
   shellApprovalMode: string;
-  allowedShellPatterns: string;
   sessionSummarizationThreshold: string;
   contextWindowLimit: string;
   agentKnowledge: string;
@@ -93,7 +92,6 @@ const AI_FORM_DEFAULTS: AiForm = {
   modelOverride: "",
   thinkingBudget: "medium",
   shellApprovalMode: "ask",
-  allowedShellPatterns: "",
   sessionSummarizationThreshold: "200000",
   contextWindowLimit: "1000000",
   agentKnowledge: "true",
@@ -626,9 +624,6 @@ function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
       initialSettings.thinkingBudget ?? AI_FORM_DEFAULTS.thinkingBudget,
     shellApprovalMode:
       initialSettings.shellApprovalMode ?? AI_FORM_DEFAULTS.shellApprovalMode,
-    allowedShellPatterns:
-      initialSettings.allowedShellPatterns ??
-      AI_FORM_DEFAULTS.allowedShellPatterns,
     sessionSummarizationThreshold:
       initialSettings.sessionSummarizationThreshold ??
       AI_FORM_DEFAULTS.sessionSummarizationThreshold,
@@ -776,25 +771,6 @@ function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
                 <SelectItem value="auto">Auto-Approve</SelectItem>
               </SelectContent>
             </Select>
-          </FieldRow>
-
-          <Separator />
-
-          <FieldRow
-            id="ai-shell-patterns"
-            label="Allowed Shell Patterns"
-            description="Glob/regex patterns for commands that may run without approval (one per line)."
-          >
-            <Textarea
-              id="ai-shell-patterns"
-              value={form.allowedShellPatterns}
-              onChange={(e) =>
-                handleChange("allowedShellPatterns", e.target.value)
-              }
-              placeholder={"git status\nbun run *\nnpm test"}
-              rows={4}
-              className="font-mono text-xs"
-            />
           </FieldRow>
 
           <Separator />

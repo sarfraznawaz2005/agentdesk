@@ -371,6 +371,41 @@ export type WebviewSchema = RPCSchema<{
     };
     issueFixerRunError: { projectId: string; runId: string; error: string };
 
+    // ── Remote Sync (SFTP/FTP) ──
+    remoteSyncRunStarted: {
+      projectId: string;
+      runId: string;
+      direction: "pull" | "push";
+      totalFiles: number;
+    };
+    remoteSyncProgress: {
+      projectId: string;
+      runId: string;
+      direction: "pull" | "push";
+      file: string;
+      status: "start" | "ok" | "error";
+      index: number;
+      total: number;
+      error?: string;
+    };
+    remoteSyncRunComplete: {
+      projectId: string;
+      runId: string;
+      direction: "pull" | "push";
+      status: string;
+      okFiles: number;
+      failedFiles: number;
+      bytes: number;
+      summary: string;
+    };
+    remoteSyncRunError: { projectId: string; runId: string; error: string };
+    remoteSyncLog: {
+      projectId: string;
+      level: "info" | "warn" | "error";
+      message: string;
+      at: string;
+    };
+
     // Per-project unread agent activity changed (recorded or marked seen).
     activityUpdated: { projectId: string; location: string };
 

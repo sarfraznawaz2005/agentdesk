@@ -14,6 +14,7 @@ import { skillRegistry } from "./skills/registry";
 import { setTaskExecutorEngine, initCronScheduler, shutdownCronScheduler, initAutomationEngine, shutdownAutomationEngine } from "./scheduler";
 import { registerAdapter, initChannelManager, shutdownChannelManager, getChannelStatuses } from "./channels";
 import { startIssueFixerPolling, stopIssueFixerPolling } from "./issue-fixer/poller";
+import { failInterruptedRuns as failInterruptedRemoteSyncRuns } from "./remote-sync/config";
 import { DiscordAdapter } from "./channels/discord-adapter";
 import { WhatsAppAdapter } from "./channels/whatsapp-adapter";
 import { EmailAdapter } from "./channels/email-adapter";
@@ -166,6 +167,10 @@ initAutomationEngine();
 
 // Issue Fixer — outbound polling of GitHub issues/comments for enabled projects.
 startIssueFixerPolling();
+
+// Remote Sync — mark any sync runs interrupted by a crash/restart as failed so
+// they don't appear permanently "running" in the Activity history.
+void failInterruptedRemoteSyncRuns().catch((e) => console.error("[remote-sync] failInterruptedRuns:", e));
 
 // Re-sync workspace folders whenever the global workspace path changes
 onSettingChange("global_workspace_path", () => {

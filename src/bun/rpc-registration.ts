@@ -46,6 +46,7 @@ import * as skillsRpc from "./rpc/skills";
 import * as freelanceRpc from "./rpc/freelance";
 import * as playgroundRpc from "./rpc/playground";
 import * as issueFixerRpc from "./rpc/issue-fixer";
+import * as remoteSyncRpc from "./rpc/remote-sync";
 import * as activityRpc from "./rpc/activity";
 import * as freelanceChatRpc from "./rpc/freelance-chat";
 import * as freelanceWizardRpc from "./rpc/freelance-wizard";
@@ -293,6 +294,7 @@ export const rpc = BrowserView.defineRPC<AgentDeskRPC>({
 			// Git
 			getGitStatus: (params) => gitRpc.getGitStatus(params.projectId),
 			getGitBranches: (params) => gitRpc.getGitBranches(params.projectId),
+			getCurrentBranch: (params) => gitRpc.getCurrentBranch(params.projectId),
 			getGitLog: (params) => gitRpc.getGitLog(params.projectId, params.limit),
 			getGitDiff: (params) => gitRpc.getGitDiff(params.projectId, params.file),
 			getCommitFiles: (params) => gitRpc.getCommitFiles(params.projectId, params.hash),
@@ -957,6 +959,17 @@ When enhancing a prompt:
 			cancelIssueFixRun: (params) => issueFixerRpc.cancelIssueFixRun(params),
 			triggerIssueFixManually: (params) => issueFixerRpc.triggerIssueFixManually(params),
 			getIssueFixerKeywordCatalog: () => issueFixerRpc.getIssueFixerKeywordCatalog(),
+			getRemoteSyncConfig: (params) => remoteSyncRpc.getRemoteSyncConfig(params),
+			saveRemoteSyncConfig: (params) => remoteSyncRpc.saveRemoteSyncConfig(params),
+			revealRemoteSyncSecret: (params) => remoteSyncRpc.revealRemoteSyncSecret(params),
+			testRemoteConnection: (params) => remoteSyncRpc.testRemoteConnection(params),
+			browseRemoteDir: (params) => remoteSyncRpc.browseRemoteDir(params),
+			startRemotePull: (params) => remoteSyncRpc.startRemotePull(params),
+			computeRemotePushDiff: (params) => remoteSyncRpc.computeRemotePushDiff(params),
+			getRemotePushFileDiff: (params) => remoteSyncRpc.getRemotePushFileDiff(params),
+			startRemotePush: (params) => remoteSyncRpc.startRemotePush(params),
+			listRemoteSyncRuns: (params) => remoteSyncRpc.listRemoteSyncRuns(params),
+			cancelRemoteSync: (params) => remoteSyncRpc.cancelRemoteSync(params),
 			// ── Unread activity ──
 			getUnreadActivity: () => activityRpc.getUnreadActivity(),
 			markActivitySeen: (params) => activityRpc.markActivitySeen(params),

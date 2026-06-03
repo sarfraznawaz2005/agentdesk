@@ -87,7 +87,16 @@ export type IssueFixerRequests = {
 	/** Poll this project's GitHub issues/comments immediately (out of band). */
 	pollIssueFixerNow: {
 		params: { projectId: string };
-		response: { ok: boolean };
+		response: {
+			ok: boolean;
+			/** Why the poll ended the way it did (drives the manual "Poll now" toast). */
+			reason?: "disabled" | "no-credentials" | "primed" | "polled";
+			/** Matching issues/comments queued for fixing. */
+			enqueued?: number;
+			/** Matches skipped because the author wasn't authorized. */
+			ignored?: number;
+			error?: string;
+		};
 	};
 	/** Cancel the in-flight run (aborts the agent + marks the run failed). */
 	cancelIssueFixRun: {

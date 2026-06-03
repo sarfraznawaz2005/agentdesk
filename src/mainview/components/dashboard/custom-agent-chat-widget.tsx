@@ -177,7 +177,6 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     // One-time hydration from localStorage on mount — intentional setState in effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(msgs);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUnread(loadPersistedUnread(agentName));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -186,7 +185,11 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
 
   // Opening the panel marks everything read.
   useEffect(() => {
-    if (open) { setUnread(false); persistUnread(agentName, false); }
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUnread(false);
+      persistUnread(agentName, false);
+    }
   }, [open, agentName]);
 
   // Close on outside click

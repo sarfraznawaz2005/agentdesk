@@ -179,6 +179,10 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 		error: null,
 	});
 
+	// The branch the user's working copy was on before the run — restored when the run ends
+	// so we never silently leave them sitting on the agent's issue-fix branch.
+	let originalBranch = "";
+
 	try {
 		// Enforce the cooldown as a pacing delay (never drops a trigger): if a previous run
 		// finished less than cooldownSec ago, wait out the remainder before starting.
@@ -204,6 +208,9 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 		if (pre.stdout.trim()) {
 			throw new Error("Workspace has uncommitted changes — Issue Fixer needs a clean working tree.");
 		}
+		// Remember the branch the user is on so we can return their working copy to it when done.
+		const ob = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], workspacePath, abort.signal);
+		originalBranch = ob.exitCode === 0 ? ob.stdout.trim() : "";
 		// Authenticate all remote git ops with the token + NO credential helper, so Git
 		// Credential Manager never pops its interactive GUI during autonomous runs.
 		const authArgs = gitAuthArgs(token);
@@ -502,6 +509,35 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 			});
 		}
 	} finally {
+		// Return the user's working copy to the branch it started on. The fix is preserved on the
+		// issue-fix branch (committed + pushed + PR), so this only affects the LOCAL checkout.
+		// Runs with NO abort signal so it still executes after a user Stop.
+		//
+		// On the success path the orchestrator committed everything before this point, so the tree
+		// is clean and the switch is trivial. A FAILED run can leave the agent's partial edits
+		// uncommitted/untracked — and those are guaranteed to be from THIS run (a clean tree was
+		// required at start). A plain `git checkout` would CARRY those changes onto the user's
+		// branch, so we first stash them (labelled + recoverable via `git stash list`), leaving the
+		// original branch pristine and guaranteeing the switch succeeds.
+		if (originalBranch && originalBranch !== "HEAD") {
+			try {
+				const cur = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], workspacePath);
+				const onDifferentBranch =
+					cur.exitCode === 0 && cur.stdout.trim() !== "" && cur.stdout.trim() !== originalBranch;
+				if (onDifferentBranch) {
+					const dirty = (await runGit(["status", "--porcelain"], workspacePath)).stdout.trim() !== "";
+					if (dirty) {
+						await runGit(
+							["stash", "push", "--include-untracked", "-m", `agentdesk-issue-fixer: incomplete run for #${input.issueNumber}`],
+							workspacePath,
+						);
+					}
+					await runGit(["checkout", originalBranch], workspacePath);
+				}
+			} catch {
+				/* last resort — leave the checkout as-is rather than risk disturbing the tree */
+			}
+		}
 		unregisterAgentController(input.projectId, abort);
 	}
 }

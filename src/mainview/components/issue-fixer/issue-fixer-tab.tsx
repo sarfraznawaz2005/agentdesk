@@ -7,6 +7,8 @@ import { Loader2, ExternalLink, RefreshCw, Square } from "lucide-react";
 import { useIssueFixerStore, initIssueFixerListeners, type IssueFixerPart } from "@/stores/issue-fixer-store";
 import { MessageParts, TextBlock, type MessagePartData } from "@/components/chat/message-parts";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
 import { IssueFixerSettingsTab } from "@/components/issue-fixer/issue-fixer-settings";
 import { useUnreadStore, hasUnread } from "@/stores/unread-store";
 import { UnreadDot } from "@/components/ui/unread-dot";
@@ -151,8 +153,25 @@ export function IssueFixerProjectTab({ projectId }: { projectId: string }) {
 	const pollNow = useCallback(async () => {
 		setPolling(true);
 		try {
-			await rpc.pollIssueFixerNow(projectId);
+			const res = await rpc.pollIssueFixerNow(projectId);
 			await loadRuns();
+			if (!res.ok) {
+				toast("error", res.error ?? "Poll failed.");
+			} else if (res.reason === "no-credentials") {
+				toast("error", "Set a GitHub repository URL and token first.");
+			} else if (res.reason === "primed") {
+				toast("info", "Now watching this repository for new agentdesk-* issues.");
+			} else if ((res.enqueued ?? 0) > 0) {
+				const n = res.enqueued ?? 0;
+				toast("success", `Found ${n} matching issue${n === 1 ? "" : "s"} — fixing now.`);
+			} else if ((res.ignored ?? 0) > 0) {
+				const n = res.ignored ?? 0;
+				toast("info", `Found ${n} match${n === 1 ? "" : "es"} from an unauthorized author — ignored.`);
+			} else {
+				toast("info", "No new issues found.");
+			}
+		} catch {
+			toast("error", "Poll failed.");
 		} finally {
 			setPolling(false);
 		}
@@ -319,49 +338,50 @@ export function IssueFixerProjectTab({ projectId }: { projectId: string }) {
 							</div>
 						)}
 
-						{selected && (
-							<div className="mt-4 rounded-lg border border-border bg-card p-4">
-								<div className="mb-2 flex items-center justify-between">
-									<h3 className="text-sm font-semibold">
-										#{selected.issueNumber} — {selected.issueTitle}
-									</h3>
-									<Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
-										Close
-									</Button>
-								</div>
-								<dl className="space-y-1 text-xs text-muted-foreground">
-									<div>Status: <Badge variant={statusVariant(selected.status)}>{selected.status}</Badge></div>
-									<div>Intent: {selected.intent}</div>
-									<div>Trigger: {selected.triggerType}{selected.triggerKeyword ? ` (${selected.triggerKeyword})` : ""}</div>
-									<div>Author: {selected.author ?? "—"} {selected.authorized ? "" : "(unauthorized — ignored)"}</div>
-									<div>Branch: {selected.branchName ?? "—"}</div>
-									{selected.branchName && selected.testPassed != null && (
-										<div>Tests: {selected.testPassed ? "passed" : "failed"}</div>
-									)}
-									{selected.prUrl && (
-										<div>
-											PR:{" "}
-											<a
-												href={selected.prUrl}
-												onClick={(e) => {
-													e.preventDefault();
-													if (selected.prUrl) rpc.openExternalUrl(selected.prUrl).catch(() => {});
-												}}
-												className="cursor-pointer text-primary hover:underline"
-											>
-												#{selected.prNumber}
-											</a>
-										</div>
-									)}
-								</dl>
-								{selected.summary && (
-									<div className="mt-2 max-h-72 overflow-auto rounded bg-muted/30 p-3 text-sm">
-										<TextBlock content={selected.summary} />
-									</div>
+						<Dialog open={!!selected} onOpenChange={(o) => { if (!o) setSelected(null); }}>
+							<DialogContent className="max-w-2xl">
+								{selected && (
+									<>
+										<DialogHeader>
+											<DialogTitle className="text-base">
+												#{selected.issueNumber} — {selected.issueTitle}
+											</DialogTitle>
+										</DialogHeader>
+										<dl className="space-y-1 text-xs text-muted-foreground">
+											<div>Status: <Badge variant={statusVariant(selected.status)}>{selected.status}</Badge></div>
+											<div>Intent: {selected.intent}</div>
+											<div>Trigger: {selected.triggerType}{selected.triggerKeyword ? ` (${selected.triggerKeyword})` : ""}</div>
+											<div>Author: {selected.author ?? "—"} {selected.authorized ? "" : "(unauthorized — ignored)"}</div>
+											<div>Branch: {selected.branchName ?? "—"}</div>
+											{selected.branchName && selected.testPassed != null && (
+												<div>Tests: {selected.testPassed ? "passed" : "failed"}</div>
+											)}
+											{selected.prUrl && (
+												<div>
+													PR:{" "}
+													<a
+														href={selected.prUrl}
+														onClick={(e) => {
+															e.preventDefault();
+															if (selected.prUrl) rpc.openExternalUrl(selected.prUrl).catch(() => {});
+														}}
+														className="cursor-pointer text-primary hover:underline"
+													>
+														#{selected.prNumber}
+													</a>
+												</div>
+											)}
+										</dl>
+										{selected.summary && (
+											<div className="max-h-[55vh] overflow-auto rounded bg-muted/30 p-3 text-sm">
+												<TextBlock content={selected.summary} />
+											</div>
+										)}
+										{selected.error && <p className="text-xs text-destructive">{selected.error}</p>}
+									</>
 								)}
-								{selected.error && <p className="mt-2 text-xs text-destructive">{selected.error}</p>}
-							</div>
-						)}
+							</DialogContent>
+						</Dialog>
 					</TabsContent>
 
 					{/* Configuration — the per-project Issue Fixer settings (moved here from Project Settings). */}

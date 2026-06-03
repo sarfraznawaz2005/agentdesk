@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Plus, X } from "lucide-react";
+import { AlertTriangle, Plus, X, Github } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -160,7 +160,6 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
   const [ghBusy, setGhBusy] = useState(false);
 
   // Sync local state whenever the task changes (different task opened)
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
@@ -179,7 +178,6 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
       })
       .catch(() => {});
   }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!task) return null;
 
@@ -357,6 +355,27 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
                     </option>
                   ))}
                 </select>
+
+                {/* GitHub issue link/create — pushed to the far right of the status row. */}
+                <div className="ml-auto">
+                  {ghIssueNumber != null ? (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      <Github className="h-3 w-3" />
+                      Issue #{ghIssueNumber}
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={createGithubIssue}
+                      disabled={ghBusy || description.trim() === ""}
+                      title={description.trim() === "" ? "Add a description first — it becomes the issue body." : undefined}
+                      className="h-7 gap-1 border border-zinc-700 bg-zinc-900 text-xs text-white hover:bg-zinc-800"
+                    >
+                      <Github className="h-3.5 w-3.5" />
+                      {ghBusy ? "Creating…" : "Create GitHub Issue"}
+                    </Button>
+                  )}
+                </div>
               </div>
               {doneBlockMessage && (
                 <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
@@ -523,13 +542,13 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
                 )}
               </Section>
 
-              {/* Due date */}
+              {/* Due date — native date picker (calendar) */}
               <Section label="Due Date">
                 <Input
+                  type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   onBlur={saveDueDate}
-                  placeholder="e.g. 2026-03-15"
                   className="bg-card border-border text-sm h-8"
                   aria-label="Due date"
                 />
@@ -559,26 +578,9 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
           </div>
 
           {/* ----------------------------------------------------------------
-              Footer — GitHub issue link + delete action
+              Footer — delete action (GitHub issue control lives on the Status row)
           ---------------------------------------------------------------- */}
-          <div className="px-6 pb-6 pt-2 border-t border-border flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {ghIssueNumber != null ? (
-                <Badge variant="secondary" className="text-xs">
-                  Linked · GitHub Issue #{ghIssueNumber}
-                </Badge>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={createGithubIssue}
-                  disabled={ghBusy}
-                  className="text-xs"
-                >
-                  {ghBusy ? "Creating…" : "Create GitHub Issue"}
-                </Button>
-              )}
-            </div>
+          <div className="px-6 pb-6 pt-2 border-t border-border flex items-center justify-end gap-2">
             <Button
               variant="destructive"
               size="sm"

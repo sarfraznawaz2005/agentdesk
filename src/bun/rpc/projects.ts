@@ -8,6 +8,7 @@ import { projects, settings } from "../db/schema";
 import { logAudit } from "../db/audit";
 import { clearContextLimitCache } from "../providers/models";
 import { runGit } from "../lib/git-runner";
+import { gitAuthArgs, resolveGitHubToken } from "./github-api";
 
 export interface ProjectListItem {
 	id: string;
@@ -187,7 +188,15 @@ export async function createProjectHandler(
 			}
 		}
 
-		const cloneArgs = ["clone", url, workspacePath];
+		// Auto-authenticate cloning a GitHub HTTPS repo with the configured token (inline header,
+		// credential helper disabled) so a private repo clones without a credential prompt and
+		// without storing an `x-access-token` account. No-op for SSH/non-GitHub URLs or no token.
+		let cloneAuth: string[] = [];
+		if (/^https:\/\/github\.com\//i.test(url)) {
+			const token = await resolveGitHubToken({});
+			if (token) cloneAuth = gitAuthArgs(token);
+		}
+		const cloneArgs = [...cloneAuth, "clone", url, workspacePath];
 		if (branch) cloneArgs.push("--branch", branch);
 
 		const { exitCode, stderr } = await runGit(cloneArgs, resolve(workspacePath, ".."));

@@ -2,6 +2,7 @@ import { db } from "../db";
 import { projects } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { runGit } from "../lib/git-runner";
+import { githubAuthPrefix } from "./github-api";
 
 async function getProject(projectId: string) {
 	const rows = await db.select({ workspacePath: projects.workspacePath, githubUrl: projects.githubUrl }).from(projects).where(eq(projects.id, projectId)).limit(1);
@@ -31,6 +32,28 @@ export async function getGitStatus(projectId: string) {
 		file: line.slice(2).trimStart(),
 	}));
 	return { files };
+}
+
+/**
+ * The live current branch (actual checked-out HEAD), for the navbar indicator. Fast and
+ * fully tolerant: returns { branch: null } for a non-git/missing workspace rather than throwing,
+ * so a polling caller can't error. Detached HEAD → "detached@<shortsha>".
+ */
+export async function getCurrentBranch(projectId: string): Promise<{ branch: string | null }> {
+	try {
+		const cwd = await getWorkspacePath(projectId);
+		const res = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
+		if (res.exitCode !== 0) return { branch: null };
+		const name = res.stdout.trim();
+		if (!name) return { branch: null };
+		if (name === "HEAD") {
+			const sha = await runGit(["rev-parse", "--short", "HEAD"], cwd);
+			return { branch: sha.exitCode === 0 && sha.stdout.trim() ? `detached@${sha.stdout.trim()}` : "detached" };
+		}
+		return { branch: name };
+	} catch {
+		return { branch: null };
+	}
 }
 
 export async function getGitBranches(projectId: string) {
@@ -99,7 +122,8 @@ export async function gitPush(projectId: string) {
 	const cwd = await getWorkspacePath(projectId);
 	const remoteErr = await ensureRemote(projectId, cwd);
 	if (remoteErr) return { success: false, error: remoteErr };
-	const { exitCode, stdout, stderr } = await runGit(["push", "--set-upstream", "origin", "HEAD"], cwd);
+	const auth = await githubAuthPrefix({ workspacePath: cwd, projectId });
+	const { exitCode, stdout, stderr } = await runGit([...auth, "push", "--set-upstream", "origin", "HEAD"], cwd);
 	// git push writes progress to stderr even on success; combine both for display
 	const output = [stdout, stderr].filter(Boolean).join("\n").trim() || "Push complete.";
 	return { success: exitCode === 0, output: exitCode === 0 ? output : undefined, error: exitCode !== 0 ? output : undefined };
@@ -109,10 +133,11 @@ export async function gitPull(projectId: string, remoteBranch?: string) {
 	const cwd = await getWorkspacePath(projectId);
 	const remoteErr = await ensureRemote(projectId, cwd);
 	if (remoteErr) return { success: false, error: remoteErr };
+	const auth = await githubAuthPrefix({ workspacePath: cwd, projectId });
 
 	// Explicit remote branch supplied (user answered the branch prompt)
 	if (remoteBranch) {
-		const { exitCode, stdout, stderr } = await runGit(["pull", "origin", remoteBranch], cwd);
+		const { exitCode, stdout, stderr } = await runGit([...auth, "pull", "origin", remoteBranch], cwd);
 		if (exitCode === 0) {
 			// Persist the tracking relationship so future pulls work without prompting
 			await runGit(["branch", `--set-upstream-to=origin/${remoteBranch}`], cwd);
@@ -121,7 +146,7 @@ export async function gitPull(projectId: string, remoteBranch?: string) {
 		return { success: exitCode === 0, output: exitCode === 0 ? output : undefined, error: exitCode !== 0 ? output : undefined };
 	}
 
-	const { exitCode, stdout, stderr } = await runGit(["pull"], cwd);
+	const { exitCode, stdout, stderr } = await runGit([...auth, "pull"], cwd);
 
 	// No upstream tracking — ask the user which remote branch to pull from
 	if (exitCode !== 0 && stderr.includes("no tracking information")) {

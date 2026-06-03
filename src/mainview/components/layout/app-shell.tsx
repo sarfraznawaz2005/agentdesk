@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation, useParams } from "@tanstack/react-router";
 import { Sidebar } from "./sidebar";
 import { TopNav } from "./topnav";
+import { ProjectBranchBadge } from "./project-branch-badge";
 import { Toaster, toast } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "../command-palette";
@@ -282,6 +283,7 @@ function AppShellContent() {
           workspacePath={projectWorkspacePath ?? undefined}
           dataPath={location.pathname.split("/").filter(Boolean)[0] === "settings" ? dataPath ?? undefined : undefined}
           phrase={headerPhrase ?? undefined}
+          afterTitle={projectId ? <ProjectBranchBadge projectId={projectId} /> : undefined}
         >
           {headerActions}
           {projectId && <ProjectSwitcher currentProjectId={projectId} />}

@@ -8,6 +8,12 @@ export type GitRequests = {
     params: { projectId: string };
     response: { branches: Array<{ name: string; isCurrent: boolean; isRemote: boolean }> };
   };
+  /** Live current branch (actual checked-out HEAD). null = not a git repo. Fast + non-blocking;
+   *  for the navbar branch indicator. Detached HEAD returns "detached@<shortsha>". */
+  getCurrentBranch: {
+    params: { projectId: string };
+    response: { branch: string | null };
+  };
   getGitLog: {
     params: { projectId: string; limit?: number };
     response: { commits: Array<{ hash: string; author: string; message: string; date: string }> };

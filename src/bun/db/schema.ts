@@ -694,3 +694,82 @@ export const projectActivity = sqliteTable("project_activity", {
 	lastActivityAt: text("last_activity_at"),
 	lastSeenAt:     text("last_seen_at"),
 });
+
+// ---------------------------------------------------------------------------
+// remote_sync_config — per-project SFTP/FTP connection + selection (Remote tab)
+// ---------------------------------------------------------------------------
+// One row per project. Credentials (password / private key / passphrase) are
+// stored ENCRYPTED at rest (AES-256-GCM) — the master key lives in a file under
+// userData, separate from this SQLite DB. See src/bun/remote-sync/crypto.ts.
+export const remoteSyncConfig = sqliteTable("remote_sync_config", {
+	projectId:      text("project_id").primaryKey().references(() => projects.id),
+	enabled:        integer("enabled").notNull().default(0),
+	// "sftp" | "ftp" | "ftps"
+	protocol:       text("protocol").notNull().default("sftp"),
+	host:           text("host").notNull().default(""),
+	port:           integer("port").notNull().default(22),
+	username:       text("username").notNull().default(""),
+	// "password" | "key"  (key applies to SFTP only)
+	authType:       text("auth_type").notNull().default("password"),
+	// Encrypted blobs ("enc:v1:…"); empty string when unset.
+	passwordEnc:    text("password_enc").notNull().default(""),
+	privateKeyEnc:  text("private_key_enc").notNull().default(""),
+	passphraseEnc:  text("passphrase_enc").notNull().default(""),
+	// Remote directory that selected paths are relative to (e.g. /var/www/app).
+	remoteBasePath: text("remote_base_path").notNull().default("/"),
+	// Optional subfolder under the project workspace to land files in ("" = root).
+	localSubdir:    text("local_subdir").notNull().default(""),
+	// JSON array of { path: string (relative to base), type: "dir" | "file" }.
+	selections:     text("selections").notNull().default("[]"),
+	// FTPS only: 1 = reject invalid/self-signed TLS certs; 0 = tolerate them.
+	rejectUnauthorized: integer("reject_unauthorized").notNull().default(0),
+	// SFTP only: pinned server host-key fingerprint ("SHA256:…"), trust-on-first-use.
+	hostKeyFingerprint: text("host_key_fingerprint"),
+	// JSON array of glob exclude patterns applied to pull + push (e.g. "node_modules", "*.log").
+	excludePatterns: text("exclude_patterns").notNull().default("[]"),
+	lastPulledAt:   text("last_pulled_at"),
+	lastPushedAt:   text("last_pushed_at"),
+	createdAt:      text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt:      text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// remote_sync_items — local↔remote manifest (drives push diff detection)
+// ---------------------------------------------------------------------------
+// One row per file synced for a project. Records the remote size/mtime and the
+// local content hash captured at the last pull/push, so a Push can show exactly
+// what changed and upload only modified/new files.
+export const remoteSyncItems = sqliteTable("remote_sync_items", {
+	id:           text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId:    text("project_id").notNull().references(() => projects.id),
+	// Path relative to remote_base_path (POSIX separators).
+	remotePath:   text("remote_path").notNull(),
+	// Path relative to the project workspace (POSIX separators).
+	localPath:    text("local_path").notNull(),
+	size:         integer("size").notNull().default(0),
+	// Remote mtime (epoch ms) recorded at last sync; null if unknown.
+	remoteMtime:  integer("remote_mtime"),
+	// SHA-256 of the local file content at last sync (hex).
+	sha256:       text("sha256").notNull().default(""),
+	lastSyncedAt: text("last_synced_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// remote_sync_runs — history/log of remote-sync operations (Activity tab)
+// ---------------------------------------------------------------------------
+export const remoteSyncRuns = sqliteTable("remote_sync_runs", {
+	id:          text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId:   text("project_id").notNull().references(() => projects.id),
+	// "pull" | "push" | "test"
+	direction:   text("direction").notNull(),
+	// "running" | "success" | "error" | "partial" | "cancelled"
+	status:      text("status").notNull().default("running"),
+	totalFiles:  integer("total_files").notNull().default(0),
+	okFiles:     integer("ok_files").notNull().default(0),
+	failedFiles: integer("failed_files").notNull().default(0),
+	bytes:       integer("bytes").notNull().default(0),
+	summary:     text("summary"),
+	error:       text("error"),
+	startedAt:   text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	finishedAt:  text("finished_at"),
+});

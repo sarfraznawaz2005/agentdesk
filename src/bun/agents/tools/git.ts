@@ -5,6 +5,7 @@ import { db } from "../../db";
 import { settings } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import { runGit } from "../../lib/git-runner";
+import { githubAuthPrefix } from "../../rpc/github-api";
 import { resolveGitHubToken } from "../../rpc/github-api";
 
 // ---------------------------------------------------------------------------
@@ -321,7 +322,10 @@ const gitPullTool = tool({
 			if (remote) args.push(remote);
 			if (branch) args.push(branch);
 
-			const { stdout, stderr, exitCode } = await runGit(args, workspacePath, abortSignal);
+			// Auto-authenticate GitHub HTTPS remotes (header + helper disabled) so the pull
+			// never triggers a credential prompt or stores an account. No-op otherwise.
+			const auth = await githubAuthPrefix({ workspacePath, abortSignal });
+			const { stdout, stderr, exitCode } = await runGit([...auth, ...args], workspacePath, abortSignal);
 			return JSON.stringify({ exitCode, stdout, stderr });
 		} catch (err) {
 			return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
@@ -347,7 +351,9 @@ const gitFetchTool = tool({
 	execute: async ({ workspacePath, remote = "origin" }, { abortSignal }): Promise<string> => {
 		try {
 			const args = remote === "--all" ? ["fetch", "--all"] : ["fetch", remote];
-			const { stdout, stderr, exitCode } = await runGit(args, workspacePath, abortSignal);
+			// Auto-authenticate GitHub HTTPS remotes (header + helper disabled) — no prompt, no stored account.
+			const auth = await githubAuthPrefix({ workspacePath, abortSignal });
+			const { stdout, stderr, exitCode } = await runGit([...auth, ...args], workspacePath, abortSignal);
 			return JSON.stringify({ exitCode, stdout, stderr });
 		} catch (err) {
 			return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });

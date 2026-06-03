@@ -127,7 +127,9 @@ export function GitTab({ projectId }: GitTabProps) {
             }`}
           >
             {tab.label}
-            {tab.id === "issue-fixer" && issueFixerUnread && <UnreadDot />}
+            {/* Suppress the dot on the Issue Fixer sub-tab while it's the active sub-tab —
+                the History inner-tab dot still indicates the unseen activity. */}
+            {tab.id === "issue-fixer" && issueFixerUnread && subTab !== "issue-fixer" && <UnreadDot />}
           </button>
         ))}
         {subTab === "overview" && (

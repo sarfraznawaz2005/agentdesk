@@ -5,6 +5,7 @@ import { KanbanBoard } from "../components/kanban/kanban-board";
 import { TaskDetailModal } from "../components/kanban/task-detail-modal";
 import { GitTab } from "../components/git/git-tab";
 import { DeployTab } from "../components/deploy/deploy-tab";
+import { RemoteSyncTab } from "../components/remote-sync/remote-sync-tab";
 import { NotesTab } from "../components/notes/notes-tab";
 import { ProjectSettingsTab } from "../components/project-settings/project-settings-tab";
 import { useChatStore } from "../stores/chat-store";
@@ -13,11 +14,11 @@ import { useUnreadStore, hasUnread, hasUnreadPrefix } from "../stores/unread-sto
 import { UnreadDot } from "../components/ui/unread-dot";
 import { cn } from "../lib/utils";
 import { rpc } from "../lib/rpc";
-import { FileText, Settings, Puzzle } from "lucide-react";
+import { FileText, Settings, Puzzle, ServerCog, MessageSquare, LayoutGrid, GitBranch, Rocket } from "lucide-react";
 import { Tip } from "../components/ui/tooltip";
 import { AGENT_BADGE_COLORS } from "../components/chat/message-parts";
 
-type ProjectTab = "chat" | "kanban" | "git" | "deploy" | "notes" | "settings" | string;
+type ProjectTab = "chat" | "kanban" | "git" | "deploy" | "remote" | "notes" | "settings" | string;
 
 interface PluginTab {
   id: string;
@@ -166,12 +167,11 @@ export function ProjectPage() {
     );
   }
 
-  const handleCreateTask = (column: KanbanColumn) => {
-    createTask({
-      projectId,
-      title: "New task",
-      column,
-    });
+  const handleCreateTask = async (column: KanbanColumn) => {
+    // Create the card, then immediately open its detail dialog so the user can fill it in
+    // without having to click the freshly-created card.
+    const id = await createTask({ projectId, title: "New task", column });
+    if (id) selectTask(id);
   };
 
   return (
@@ -187,18 +187,20 @@ export function ProjectPage() {
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
+          <MessageSquare className="w-3.5 h-3.5" />
           Chat
           {chatUnread && <UnreadDot />}
         </button>
         <button
           onClick={() => setActiveTab("kanban")}
           className={cn(
-            "px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
             activeTab === "kanban"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
+          <LayoutGrid className="w-3.5 h-3.5" />
           Kanban
         </button>
         <button
@@ -222,19 +224,35 @@ export function ProjectPage() {
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
+          <GitBranch className="w-3.5 h-3.5" />
           Git
-          {gitUnread && <UnreadDot />}
+          {/* Cascade dot — but not while the user is already viewing this tab (the leaf stays
+              unread; the deeper Issue Fixer/History dots still guide them in). */}
+          {gitUnread && activeTab !== "git" && <UnreadDot />}
         </button>
         <button
           onClick={() => setActiveTab("deploy")}
           className={cn(
-            "px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
             activeTab === "deploy"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
+          <Rocket className="w-3.5 h-3.5" />
           Deploy
+        </button>
+        <button
+          onClick={() => setActiveTab("remote")}
+          className={cn(
+            "flex items-center gap-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activeTab === "remote"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <ServerCog className="w-3.5 h-3.5" />
+          Remote
         </button>
         <button
           onClick={() => setActiveTab("settings")}
@@ -327,6 +345,7 @@ export function ProjectPage() {
         )}
         {activeTab === "git" && <GitTab projectId={projectId} />}
         {activeTab === "deploy" && <DeployTab projectId={projectId} />}
+        {activeTab === "remote" && <RemoteSyncTab projectId={projectId} />}
         {activeTab === "notes" && <NotesTab projectId={projectId} />}
         {activeTab === "settings" && (
           <ProjectSettingsTab projectId={projectId} />

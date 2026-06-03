@@ -131,7 +131,7 @@ const initialState = {
 // Store
 // ---------------------------------------------------------------------------
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>()((set, get) => ({
   ...initialState,
 
   // ---- Conversations -------------------------------------------------------
@@ -182,11 +182,11 @@ export const useChatStore = create<ChatState>((set) => ({
   },
 
   startConversationWithMessage: async (projectId: string, content: string) => {
-    const id = await useChatStore.getState().createConversation(projectId);
-    useChatStore.getState().setActiveConversation(id);
+    const id = await get().createConversation(projectId);
+    get().setActiveConversation(id);
     // Load existing messages first (empty for a fresh conversation, or a reused empty
     // one) so the optimistic message we append below isn't clobbered by a later load.
-    await useChatStore.getState().loadMessages(id);
+    await get().loadMessages(id);
     const userMsg = {
       id: `temp-${Date.now()}`,
       conversationId: id,
@@ -200,7 +200,7 @@ export const useChatStore = create<ChatState>((set) => ({
       createdAt: new Date().toISOString(),
     };
     set((prev) => ({ messages: [...prev.messages, userMsg] }));
-    await useChatStore.getState().sendMessage(projectId, id, content);
+    await get().sendMessage(projectId, id, content);
     return id;
   },
 
@@ -229,7 +229,7 @@ export const useChatStore = create<ChatState>((set) => ({
   },
 
   retryLastMessage: async (projectId: string, conversationId: string) => {
-    const state = useChatStore.getState();
+    const state = get();
     const msgs = state.messages;
 
     // Remove trailing error messages (ephemeral, not in DB) and find the
@@ -260,7 +260,7 @@ export const useChatStore = create<ChatState>((set) => ({
     set((s) => ({ messages: s.messages.filter((m) => !idsToRemove.includes(m.id)) }));
 
     // Resend the user message content
-    await useChatStore.getState().sendMessage(projectId, conversationId, userMsg.content);
+    await get().sendMessage(projectId, conversationId, userMsg.content);
   },
 
   branchConversation: async (projectId: string, conversationId: string, upToMessageId: string) => {

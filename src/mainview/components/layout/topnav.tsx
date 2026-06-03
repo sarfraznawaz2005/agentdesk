@@ -10,10 +10,12 @@ interface TopNavProps {
   /** When set, shows a button that opens the app's data directory in the file explorer. */
   dataPath?: string;
   phrase?: string;
+  /** Rendered immediately after the title + folder buttons (e.g. the live branch badge). */
+  afterTitle?: ReactNode;
   children?: ReactNode;
 }
 
-export function TopNav({ title, workspacePath, dataPath, phrase, children }: TopNavProps) {
+export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, children }: TopNavProps) {
   return (
     <header
       className={cn(
@@ -55,6 +57,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, children }: Top
             </button>
           </Tip>
         )}
+        {afterTitle}
       </div>
       {phrase && (
         <span

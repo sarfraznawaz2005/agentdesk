@@ -103,6 +103,30 @@ export function gitAuthArgs(token: string): string[] {
 	];
 }
 
+/**
+ * Prefix for a network git op (push/fetch/pull) that authenticates a GitHub HTTPS remote
+ * automatically — via an inline header with the credential helper DISABLED — so the op never
+ * prompts (no Git Credential Manager "Select an account") and never stores a credential.
+ *
+ * Returns `[]` (i.e. unchanged behaviour) when: origin isn't an HTTPS github.com remote (SSH
+ * uses keys and won't prompt; non-GitHub remotes can't use our token), or no token is configured.
+ * Use by prefixing: runGit([...(await githubAuthPrefix({ workspacePath, projectId })), "push", …]).
+ */
+export async function githubAuthPrefix(opts: {
+	workspacePath: string;
+	projectId?: string;
+	abortSignal?: AbortSignal;
+}): Promise<string[]> {
+	try {
+		const remote = await runGit(["remote", "get-url", "origin"], opts.workspacePath, opts.abortSignal);
+		if (remote.exitCode !== 0 || !/^https:\/\/github\.com\//i.test(remote.stdout.trim())) return [];
+		const token = await resolveGitHubToken({ projectId: opts.projectId, workspacePath: opts.workspacePath });
+		return token ? gitAuthArgs(token) : [];
+	} catch {
+		return [];
+	}
+}
+
 /** Replace every occurrence of a secret with *** so it never appears in output/logs. */
 function redactToken(text: string, token: string): string {
 	if (!token) return text;
@@ -119,8 +143,11 @@ function redactToken(text: string, token: string): string {
  *    no "default to current branch", so it cannot accidentally push a checked-out
  *    base branch. Callers MUST pass a dedicated feature branch, never the
  *    base/working branch (also enforced by the Issue Fixer shell guard + orchestrator).
- *  - The token is passed only in an ephemeral push URL argument; it is never
- *    written via `git remote set-url`/`git config`, and any error text is redacted.
+ *  - The token is supplied via an ephemeral inline auth header (`gitAuthArgs`) with the
+ *    credential helper DISABLED — never embedded in the push URL and never written via
+ *    `git remote set-url`/`git config`. An embedded-credential URL with an active helper makes
+ *    git store an `x-access-token` account in the user's credential manager (causing
+ *    "Select an account" prompts on their own pushes). Error text is redacted.
  */
 export async function pushBranchAuthenticated(opts: {
 	workspacePath: string;
@@ -143,8 +170,18 @@ export async function pushBranchAuthenticated(opts: {
 	if (!m) return { ok: false, error: `origin is not a GitHub URL: ${remote.stdout.trim()}` };
 	const [, owner, repo] = m;
 
-	const authUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
-	const res = await runGit(["push", authUrl, `${branch}:${branch}`], workspacePath, abortSignal);
+	// Authenticate the push WITHOUT embedding credentials in the URL and WITH the credential
+	// helper disabled (gitAuthArgs). Embedding `x-access-token:<token>@github.com` while Git
+	// Credential Manager is active makes git STORE an `x-access-token` account in the user's
+	// credential store — which then pollutes their GCM and triggers a "Select an account"
+	// prompt on their OWN pushes. Supplying auth via an inline header (and disabling the
+	// helper) leaves no stored credential behind.
+	const pushUrl = `https://github.com/${owner}/${repo}.git`;
+	const res = await runGit(
+		[...gitAuthArgs(token), "push", pushUrl, `${branch}:${branch}`],
+		workspacePath,
+		abortSignal,
+	);
 	if (res.exitCode !== 0) {
 		return { ok: false, error: redactToken(res.stderr || res.stdout || "git push failed", token) };
 	}

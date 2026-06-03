@@ -15,6 +15,7 @@
 import { Electroview } from "electrobun/view";
 import type { AgentDeskRPC } from "../../shared/rpc";
 import type { IssueFixerConfigDto } from "../../shared/rpc/issue-fixer";
+import type { RemoteSyncConfigInput } from "../../shared/rpc/remote-sync";
 
 // ---------------------------------------------------------------------------
 // Webview-side RPC definition
@@ -223,6 +224,21 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       issueFixerRunError: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-run-error", { detail: payload }));
+      },
+      remoteSyncRunStarted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:remotesync-run-started", { detail: payload }));
+      },
+      remoteSyncProgress: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:remotesync-progress", { detail: payload }));
+      },
+      remoteSyncRunComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:remotesync-run-complete", { detail: payload }));
+      },
+      remoteSyncRunError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:remotesync-run-error", { detail: payload }));
+      },
+      remoteSyncLog: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:remotesync-log", { detail: payload }));
       },
       activityUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:activity-updated", { detail: payload }));
@@ -637,6 +653,7 @@ export const rpc = {
 
   getGitStatus: (projectId: string) => electroviewRpc.request.getGitStatus({ projectId }),
   getGitBranches: (projectId: string) => electroviewRpc.request.getGitBranches({ projectId }),
+  getCurrentBranch: (projectId: string) => electroviewRpc.request.getCurrentBranch({ projectId }),
   getGitLog: (projectId: string, limit?: number) => electroviewRpc.request.getGitLog({ projectId, limit }),
   getGitDiff: (projectId: string, file?: string) => electroviewRpc.request.getGitDiff({ projectId, file }),
   getCommitFiles: (projectId: string, hash: string) => electroviewRpc.request.getCommitFiles({ projectId, hash }),
@@ -1224,6 +1241,52 @@ export const rpc = {
   /** Get the predefined agentdesk-* keyword catalog for the settings UI. */
   getIssueFixerKeywordCatalog: () =>
     electroviewRpc.request.getIssueFixerKeywordCatalog({}),
+
+  // ---- Remote Sync (SFTP/FTP) ---------------------------------------------
+
+  /** Fetch the Remote Sync config for a project (null if never configured). */
+  getRemoteSyncConfig: (projectId: string) =>
+    electroviewRpc.request.getRemoteSyncConfig({ projectId }),
+
+  /** Save (upsert) the Remote Sync config. Secrets are encrypted server-side. */
+  saveRemoteSyncConfig: (projectId: string, input: RemoteSyncConfigInput) =>
+    electroviewRpc.request.saveRemoteSyncConfig({ projectId, input }),
+
+  /** Decrypt and return saved secrets for viewing/editing (explicit reveal). */
+  revealRemoteSyncSecret: (projectId: string) =>
+    electroviewRpc.request.revealRemoteSyncSecret({ projectId }),
+
+  /** Test the saved connection by listing the remote base path. */
+  testRemoteConnection: (projectId: string) =>
+    electroviewRpc.request.testRemoteConnection({ projectId }),
+
+  /** List a single remote directory (lazy tree expansion). */
+  browseRemoteDir: (projectId: string, remoteDir: string) =>
+    electroviewRpc.request.browseRemoteDir({ projectId, remoteDir }),
+
+  /** Start downloading all selected files/folders (async; streams progress). */
+  startRemotePull: (projectId: string) =>
+    electroviewRpc.request.startRemotePull({ projectId }),
+
+  /** Compute which local files would be uploaded (new/modified/deleted). */
+  computeRemotePushDiff: (projectId: string) =>
+    electroviewRpc.request.computeRemotePushDiff({ projectId }),
+
+  /** Local + server content for one file, for a diff preview. */
+  getRemotePushFileDiff: (projectId: string, remotePath: string) =>
+    electroviewRpc.request.getRemotePushFileDiff({ projectId, remotePath }),
+
+  /** Start uploading the given remote paths back to the server. */
+  startRemotePush: (projectId: string, remotePaths: string[]) =>
+    electroviewRpc.request.startRemotePush({ projectId, remotePaths }),
+
+  /** List Remote Sync operation history for a project. */
+  listRemoteSyncRuns: (projectId: string, limit?: number) =>
+    electroviewRpc.request.listRemoteSyncRuns({ projectId, limit }),
+
+  /** Cancel the in-flight pull/push for a project. */
+  cancelRemoteSync: (projectId: string) =>
+    electroviewRpc.request.cancelRemoteSync({ projectId }),
 
   // ---- Unread activity -----------------------------------------------------
 

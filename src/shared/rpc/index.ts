@@ -22,6 +22,14 @@ import type { UpdaterRequests } from "./updater";
 import type { FreelanceRequests, FreelanceListingDto, FreelanceChatMessageDto } from "./freelance";
 import type { PlaygroundRequests, PlaygroundPreviewDto } from "./playground";
 import type { IssueFixerRequests, IssueFixerConfigDto, IssueFixRunDto } from "./issue-fixer";
+import type {
+  RemoteSyncRequests,
+  RemoteSyncConfigDto,
+  RemoteSyncConfigInput,
+  RemoteSyncRunDto,
+  RemoteEntryDto,
+  PushDiffEntry,
+} from "./remote-sync";
 import type { ActivityRequests, UnreadActivityEntry } from "./activity";
 import type { WebviewSchema } from "./webview";
 
@@ -48,6 +56,7 @@ type BunRequests =
   & FreelanceRequests
   & PlaygroundRequests
   & IssueFixerRequests
+  & RemoteSyncRequests
   & ActivityRequests;
 
 export type AgentDeskRPC = {
@@ -88,6 +97,12 @@ export type {
   IssueFixerRequests,
   IssueFixerConfigDto,
   IssueFixRunDto,
+  RemoteSyncRequests,
+  RemoteSyncConfigDto,
+  RemoteSyncConfigInput,
+  RemoteSyncRunDto,
+  RemoteEntryDto,
+  PushDiffEntry,
   ActivityRequests,
   UnreadActivityEntry,
   WebviewSchema,

@@ -28,6 +28,8 @@ import * as v25 from "./migrations/v25_redisable-db-viewer-plugin";
 import * as v26 from "./migrations/v26_remove-legacy-general-agent";
 import * as v27 from "./migrations/v27_issue-fixer-tables";
 import * as v28 from "./migrations/v28_project-activity";
+import * as v29 from "./migrations/v29_remote-sync-tables";
+import * as v30 from "./migrations/v30_remote-sync-security-excludes";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -80,6 +82,8 @@ const migrations: Migration[] = [
 	{ version: 26, name: v26.name, run: v26.run },
 	{ version: 27, name: v27.name, run: v27.run },
 	{ version: 28, name: v28.name, run: v28.run },
+	{ version: 29, name: v29.name, run: v29.run },
+	{ version: 30, name: v30.name, run: v30.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -154,6 +158,22 @@ function ensureRuntimeSchema(): void {
 		v27.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: issue-fixer tables failed:", err);
+	}
+
+	// Defensive: ensure the Remote Sync tables exist even if migration v29 was skipped.
+	// v29.run() is CREATE TABLE IF NOT EXISTS — idempotent and cheap.
+	try {
+		v29.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: remote-sync tables failed:", err);
+	}
+
+	// Defensive: ensure the v30 columns (TLS verify, host-key pin, excludes) exist.
+	// v30.run() guards each ADD COLUMN with a PRAGMA check — idempotent.
+	try {
+		v30.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: remote-sync security/excludes columns failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;
