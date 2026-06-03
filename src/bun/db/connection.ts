@@ -6,6 +6,10 @@ import { join } from "path";
 
 const DB_FILENAME = "agentdesk.db";
 
+/** Absolute path to the SQLite DB file. Exported so the background vacuum worker
+ *  (a separate Bun thread with its own connection) can open the same database. */
+export const dbFilePath = join(Utils.paths.userData, DB_FILENAME);
+
 // ---------------------------------------------------------------------------
 // Standalone DB error logger — writes to error.log without importing from
 // error-logger.ts (which depends on audit.ts → sqlite = circular).
@@ -108,8 +112,7 @@ function openDatabase(): Database {
 		mkdirSync(userDataDir, { recursive: true });
 	}
 
-	const dbPath = join(userDataDir, DB_FILENAME);
-	const raw = new Database(dbPath);
+	const raw = new Database(dbFilePath);
 
 	// Enable WAL mode for better concurrent read performance
 	raw.exec("PRAGMA journal_mode = WAL");

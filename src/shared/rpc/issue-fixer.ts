@@ -46,6 +46,20 @@ export interface IssueFixerKeywordDto {
 	description: string;
 }
 
+/** In-memory snapshot of the latest run for a project (mirrors the frontend store). */
+export interface ActiveIssueFixRunDto {
+	runId: string;
+	issueNumber: number;
+	issueTitle: string;
+	intent: string;
+	status: string;
+	running: boolean;
+	parts: Record<string, unknown>[];
+	prNumber: number | null;
+	prUrl: string | null;
+	error: string | null;
+}
+
 export type IssueFixerRequests = {
 	getIssueFixerConfig: {
 		params: { projectId: string };
@@ -62,6 +76,13 @@ export type IssueFixerRequests = {
 	getIssueFixRun: {
 		params: { id: string };
 		response: { run: IssueFixRunDto | null };
+	};
+	/** Current/most-recent live run snapshot (in-memory) so the Activity tab can hydrate
+	 *  on mount — covers runs whose start/part broadcasts the webview missed (e.g. the
+	 *  startup poll firing before the UI attached its listeners). */
+	getActiveIssueFixRun: {
+		params: { projectId: string };
+		response: { run: ActiveIssueFixRunDto | null };
 	};
 	/** Poll this project's GitHub issues/comments immediately (out of band). */
 	pollIssueFixerNow: {

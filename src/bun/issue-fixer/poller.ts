@@ -40,8 +40,32 @@ export function startIssueFixerPolling(): void {
 	timer = setInterval(() => {
 		void tick();
 	}, 60_000);
-	// Kick once shortly after startup too.
-	void tick();
+	// On startup, poll EVERY enabled project once immediately — regardless of each
+	// project's interval gate — so any pending agentdesk-* issues are picked up right
+	// away (in addition to the normal interval poll + manual "Poll now"). Fire-and-forget
+	// so it never blocks app startup.
+	void pollAllEnabledOnce();
+}
+
+/**
+ * Poll every enabled project exactly once, ignoring the per-project interval gate.
+ * Used as the startup kick. Reuses the same overlap guard as the interval tick.
+ */
+export async function pollAllEnabledOnce(): Promise<void> {
+	if (ticking) return;
+	ticking = true;
+	try {
+		const configs = await listEnabledConfigs();
+		for (const c of configs) {
+			await pollProject(c.projectId).catch((e) =>
+				console.error(`[issue-fixer] startup poll ${c.projectId} failed:`, e),
+			);
+		}
+	} catch (e) {
+		console.error("[issue-fixer] startup poll failed:", e);
+	} finally {
+		ticking = false;
+	}
 }
 
 export function stopIssueFixerPolling(): void {

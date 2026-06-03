@@ -677,3 +677,20 @@ export const freelanceChatMessages = sqliteTable("freelance_chat_messages", {
 	content:   text("content").notNull(),
 	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// ---------------------------------------------------------------------------
+// project_activity — per-project "unread agent activity" tracking
+// ---------------------------------------------------------------------------
+// One row per (project, location). `location` is a leaf UI spot where an agent
+// produced work, e.g. "chat" or "issue-fixer:history". Unread when
+// lastActivityAt > lastSeenAt. The backend bumps lastActivityAt on agent
+// completion; the frontend bumps lastSeenAt when the user opens that view.
+// A UNIQUE(project_id, location) index (created in migration v28) backs the
+// upserts. Drives the unread dots on dashboard cards and project tabs.
+export const projectActivity = sqliteTable("project_activity", {
+	id:             text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId:      text("project_id").notNull(),
+	location:       text("location").notNull(),
+	lastActivityAt: text("last_activity_at"),
+	lastSeenAt:     text("last_seen_at"),
+});

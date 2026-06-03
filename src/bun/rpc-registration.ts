@@ -46,6 +46,7 @@ import * as skillsRpc from "./rpc/skills";
 import * as freelanceRpc from "./rpc/freelance";
 import * as playgroundRpc from "./rpc/playground";
 import * as issueFixerRpc from "./rpc/issue-fixer";
+import * as activityRpc from "./rpc/activity";
 import * as freelanceChatRpc from "./rpc/freelance-chat";
 import * as freelanceWizardRpc from "./rpc/freelance-wizard";
 import * as resetRpc from "./rpc/reset";
@@ -951,10 +952,14 @@ When enhancing a prompt:
 			saveIssueFixerConfig: (params) => issueFixerRpc.saveIssueFixerConfig(params),
 			listIssueFixRuns: (params) => issueFixerRpc.listIssueFixRuns(params),
 			getIssueFixRun: (params) => issueFixerRpc.getIssueFixRun(params),
+			getActiveIssueFixRun: (params) => issueFixerRpc.getActiveIssueFixRun(params),
 			pollIssueFixerNow: (params) => issueFixerRpc.pollIssueFixerNow(params),
 			cancelIssueFixRun: (params) => issueFixerRpc.cancelIssueFixRun(params),
 			triggerIssueFixManually: (params) => issueFixerRpc.triggerIssueFixManually(params),
 			getIssueFixerKeywordCatalog: () => issueFixerRpc.getIssueFixerKeywordCatalog(),
+			// ── Unread activity ──
+			getUnreadActivity: () => activityRpc.getUnreadActivity(),
+			markActivitySeen: (params) => activityRpc.markActivitySeen(params),
 
 			// ── Freelance ──
 			"freelance.getFeatureEnabled": () => freelanceRpc.getFeatureEnabled(),

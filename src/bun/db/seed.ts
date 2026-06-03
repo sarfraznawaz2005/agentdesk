@@ -4,6 +4,44 @@ import { settings, agents, prompts, agentTools, aiProviders } from "./schema";
 import { sqlite } from "./connection";
 
 // ---------------------------------------------------------------------------
+// Built-in agent prompt change-detection
+// ---------------------------------------------------------------------------
+// The built-in agent prompts are re-upserted on launch so upgrades pick up improved
+// prompts. Doing that unconditionally cost ~22 DB writes every start. We now hash the
+// bundled defs and only re-upsert when the hash changes (stored in `settings`). A
+// missing hash (existing users on first upgrade to this build) forces one upsert, then
+// it settles — so behaviour is unchanged for existing + new users, just faster.
+const BUILTIN_PROMPTS_HASH_KEY = "_builtin_agent_prompts_hash";
+
+function fnv1a(s: string): string {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < s.length; i++) {
+		h ^= s.charCodeAt(i);
+		h = Math.imul(h, 0x01000193);
+	}
+	return (h >>> 0).toString(16);
+}
+
+function hashAgentDefs(
+	defs: ReadonlyArray<{ name: string; displayName: string; color: string; systemPrompt: string }>,
+): string {
+	return fnv1a(JSON.stringify(defs.map((d) => [d.name, d.displayName, d.color, d.systemPrompt])));
+}
+
+async function loadBuiltinPromptsHash(): Promise<string | null> {
+	const row = (await db.select({ value: settings.value }).from(settings).where(eq(settings.key, BUILTIN_PROMPTS_HASH_KEY)).limit(1))[0];
+	if (!row) return null;
+	try { return JSON.parse(row.value) as string; } catch { return row.value; }
+}
+
+async function saveBuiltinPromptsHash(hash: string): Promise<void> {
+	await db
+		.insert(settings)
+		.values({ key: BUILTIN_PROMPTS_HASH_KEY, value: JSON.stringify(hash), category: "system" })
+		.onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(hash), updatedAt: new Date().toISOString() } });
+}
+
+// ---------------------------------------------------------------------------
 // Default settings
 // ---------------------------------------------------------------------------
 const defaultSettings = [
@@ -1461,6 +1499,7 @@ export async function seedDatabase(): Promise<void> {
 	// must never repeatedly delete a user's agent. The Playground agent is now
 	// "playground-agent" with no agent_tools rows ⇒ full tool registry.
 	const existingAgents = await db.select().from(agents);
+	const currentPromptsHash = hashAgentDefs(defaultAgentDefs);
 
 	if (existingAgents.length === 0) {
 		// First launch — insert all agents
@@ -1475,31 +1514,39 @@ export async function seedDatabase(): Promise<void> {
 
 		await db.insert(agents).values(rows);
 		console.log(`[seed] Inserted ${rows.length} default agents.`);
+		await saveBuiltinPromptsHash(currentPromptsHash);
 	} else {
-		// Existing DB — upsert system prompts for built-in agents so that
-		// upgrades pick up improved prompts without losing custom agents.
-		let updated = 0;
-		for (const def of defaultAgentDefs) {
-			const existing = existingAgents.find((a) => a.name === def.name);
-			if (existing) {
-				await db
-					.update(agents)
-					.set({ systemPrompt: def.systemPrompt, color: def.color, displayName: def.displayName })
-					.where(eq(agents.name, def.name));
-				updated++;
-			} else {
-				await db.insert(agents).values({
-					id: crypto.randomUUID(),
-					name: def.name,
-					displayName: def.displayName,
-					color: def.color,
-					systemPrompt: def.systemPrompt,
-					isBuiltin: 1,
-				});
-				updated++;
+		// Existing DB — only re-upsert built-in prompts when the bundled defs actually
+		// changed (e.g. an app upgrade). Skips ~22 DB writes on the common (unchanged)
+		// launch. Never touches custom agents.
+		const storedHash = await loadBuiltinPromptsHash();
+		if (storedHash === currentPromptsHash) {
+			console.log("[seed] Built-in agent prompts unchanged — skipping upsert.");
+		} else {
+			let updated = 0;
+			for (const def of defaultAgentDefs) {
+				const existing = existingAgents.find((a) => a.name === def.name);
+				if (existing) {
+					await db
+						.update(agents)
+						.set({ systemPrompt: def.systemPrompt, color: def.color, displayName: def.displayName })
+						.where(eq(agents.name, def.name));
+					updated++;
+				} else {
+					await db.insert(agents).values({
+						id: crypto.randomUUID(),
+						name: def.name,
+						displayName: def.displayName,
+						color: def.color,
+						systemPrompt: def.systemPrompt,
+						isBuiltin: 1,
+					});
+					updated++;
+				}
 			}
+			console.log(`[seed] Upserted ${updated} built-in agent prompts.`);
+			await saveBuiltinPromptsHash(currentPromptsHash);
 		}
-		console.log(`[seed] Upserted ${updated} built-in agent prompts.`);
 	}
 
 	// Normalize the Playground's playground-agent flags — hidden, non-chat, full-prompt

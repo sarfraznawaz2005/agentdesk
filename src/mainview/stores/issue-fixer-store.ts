@@ -31,6 +31,8 @@ interface IssueFixerStore {
 	/** Live state of the most recent run, keyed by projectId. */
 	byProject: Record<string, IssueFixerRunState>;
 	reset: (projectId: string) => void;
+	/** Seed the store from a backend snapshot (Activity tab hydration on mount). */
+	hydrate: (projectId: string, snapshot: IssueFixerRunState) => void;
 }
 
 export const useIssueFixerStore = create<IssueFixerStore>((set) => ({
@@ -40,6 +42,22 @@ export const useIssueFixerStore = create<IssueFixerStore>((set) => ({
 			const { [projectId]: _removed, ...rest } = s.byProject;
 			void _removed;
 			return { byProject: rest };
+		}),
+	hydrate: (projectId, snap) =>
+		set((s) => {
+			const cur = s.byProject[projectId];
+			// If a live run for the same run is already at least as current (broadcasts
+			// may be ahead of the snapshot), keep its parts and just reconcile terminal
+			// fields. Otherwise the snapshot is authoritative — adopt it.
+			if (cur && cur.runId === snap.runId && cur.parts.length >= snap.parts.length) {
+				return {
+					byProject: {
+						...s.byProject,
+						[projectId]: { ...cur, status: snap.status, running: snap.running, prNumber: snap.prNumber, prUrl: snap.prUrl, error: snap.error },
+					},
+				};
+			}
+			return { byProject: { ...s.byProject, [projectId]: snap } };
 		}),
 }));
 

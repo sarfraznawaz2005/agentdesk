@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { UnreadDot } from "@/components/ui/unread-dot";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -435,12 +436,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
         >
           <MessageSquare className="h-4 w-4" aria-hidden="true" />
           {displayName}
-          {unread && (
-            <span className="absolute -top-1 -right-1 flex h-3 w-3" aria-label="New reply">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-background" />
-            </span>
-          )}
+          {unread && <UnreadDot className="absolute -top-1 -right-1" />}
         </button>
       )}
 

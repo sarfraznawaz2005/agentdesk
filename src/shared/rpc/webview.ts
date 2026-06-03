@@ -371,6 +371,9 @@ export type WebviewSchema = RPCSchema<{
     };
     issueFixerRunError: { projectId: string; runId: string; error: string };
 
+    // Per-project unread agent activity changed (recorded or marked seen).
+    activityUpdated: { projectId: string; location: string };
+
     // Council multi-agent discussion events
     councilEvent: {
       sessionId: string;

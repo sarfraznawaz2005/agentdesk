@@ -147,25 +147,10 @@ if (FREELANCE_ENABLED) {
 // Register Windows uninstaller entry (no-op on non-Windows / dev builds)
 registerWindowsUninstaller().catch(() => {});
 
-maybeRunStartupMaintenance();
+// Periodic WAL checkpoint timer — cheap to schedule. Heavier one-shot DB maintenance
+// (PRAGMA optimize / full VACUUM), workspace sync, and one-off cleanups are deferred to
+// the background block (post dom-ready) so they never block the window from appearing.
 startWalCheckpointTimer();
-
-// Cleanup orphaned workflow:* settings keys from removed WorkflowEngine
-try {
-	const { like } = await import("drizzle-orm");
-	const { settings: settingsTable } = await import("./db/schema");
-	const { db: database } = await import("./db");
-	const deleted = database.delete(settingsTable).where(like(settingsTable.key, "workflow:%")).run() as unknown as { changes: number };
-	if (deleted.changes > 0) console.log(`[startup] Cleaned up ${deleted.changes} orphaned workflow settings`);
-} catch { /* non-critical */ }
-
-// Mark deploys left "running" by a previous crash/restart as failed (no perpetual spinner).
-try {
-	const { reconcileStuckDeploys } = await import("./rpc/deploy");
-	await reconcileStuckDeploys();
-} catch { /* non-critical */ }
-
-await syncWorkspaceFolders();
 
 // Initialise truncation directory for tool output overflow + cleanup old files
 initTruncationDir(Utils.paths.userData);
@@ -211,6 +196,31 @@ const mainWindow = new BrowserWindow({
 // Assign the module-level ref so engine callbacks can send RPC messages
 setMainWindowRef(mainWindow);
 
+// Deferred startup jobs — scheduled AFTER the window is created so they never block it
+// from appearing (moved off the synchronous critical path): workspace folder sync,
+// stuck-deploy reconcile, and orphaned-settings cleanup run on the next tick; the heavier
+// DB maintenance (PRAGMA optimize / periodic full VACUUM, which is synchronous) is pushed
+// out ~20s so a VACUUM never competes with the initial UI/agent load.
+setTimeout(() => {
+	syncWorkspaceFolders().catch((e) => console.error("[startup] workspace sync:", e));
+	import("./rpc/deploy")
+		.then(({ reconcileStuckDeploys }) => reconcileStuckDeploys())
+		.catch(() => {});
+	void (async () => {
+		try {
+			const { like } = await import("drizzle-orm");
+			const { settings: settingsTable } = await import("./db/schema");
+			const { db: database } = await import("./db");
+			const deleted = database.delete(settingsTable).where(like(settingsTable.key, "workflow:%")).run() as unknown as { changes: number };
+			if (deleted.changes > 0) console.log(`[startup] Cleaned up ${deleted.changes} orphaned workflow settings`);
+		} catch { /* non-critical */ }
+	})();
+}, 0);
+
+setTimeout(() => {
+	try { maybeRunStartupMaintenance(); } catch (e) { console.error("[maintenance] startup:", e); }
+}, 20_000);
+
 // Maximize once the webview DOM is ready so the layout fills the full window.
 // All background services (plugins, channels, scheduler, MCP) are also started
 // here so the window appears immediately without waiting for network/disk I/O.
@@ -237,7 +247,9 @@ mainWindow.webview.on("dom-ready", () => {
 			registerAdapter("discord", () => new DiscordAdapter());
 			registerAdapter("whatsapp", () => new WhatsAppAdapter());
 			registerAdapter("email", () => new EmailAdapter());
-			await initChannelManager(getOrCreateEngine);
+			// Fire-and-forget so a slow channel (e.g. WhatsApp reconnect) never holds up MCP
+			// or the local servers below.
+			initChannelManager(getOrCreateEngine).catch((e) => console.error("[channels] init:", e));
 
 			// Wire Discord status getter after channel manager is ready
 			setDiscordStatusGetter(() => {
@@ -250,8 +262,12 @@ mainWindow.webview.on("dom-ready", () => {
 				return { status: "disconnected" as const };
 			});
 
-			// MCP clients
-			initMcpClients().catch((err) => console.error("[mcp] Init error:", err));
+			// MCP clients — delayed ~10s so spawning external MCP servers (e.g. chrome-devtools
+			// launching Chrome) doesn't compete with the initial UI load. MCP tools are only
+			// needed once an agent uses one, which never happens in the first seconds.
+			setTimeout(() => {
+				initMcpClients().catch((err) => console.error("[mcp] Init error:", err));
+			}, 10_000);
 
 			// Annotation server — serves toolbar JS + receives annotations from any browser tab
 			startAnnotationServer();

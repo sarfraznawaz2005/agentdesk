@@ -22,6 +22,7 @@ import { createGuardedShellTool } from "./shell-guard";
 import { getDefaultModel } from "../providers/models";
 import { getIssueFixerConfig, createRun, updateRun, mostRecentFinishedAt } from "./config";
 import { notifyIssueFixResult } from "./notify";
+import { recordActivity } from "../rpc/activity";
 import type { ProviderConfig } from "../providers/types";
 
 export interface IssueFixInput {
@@ -43,6 +44,29 @@ export interface IssueFixInput {
 
 // Sequential queue per project (avoids git conflicts on the same workspace).
 const projectQueues = new Map<string, Promise<unknown>>();
+
+// In-memory snapshot of the latest run per project, mirroring what the frontend
+// issue-fixer store builds from broadcasts. Lets the Activity tab HYDRATE on mount
+// (pull) so a run triggered before the webview attached its broadcast listeners
+// (e.g. the startup poll) still shows up — and isn't rendered as a bogus "#0" card.
+export interface LiveRunSnapshot {
+	runId: string;
+	issueNumber: number;
+	issueTitle: string;
+	intent: string;
+	status: string;
+	running: boolean;
+	parts: Record<string, unknown>[];
+	prNumber: number | null;
+	prUrl: string | null;
+	error: string | null;
+}
+const liveRuns = new Map<string, LiveRunSnapshot>();
+
+/** Latest run snapshot for a project (running or just-finished), or null. */
+export function getLiveRun(projectId: string): LiveRunSnapshot | null {
+	return liveRuns.get(projectId) ?? null;
+}
 
 export function enqueueIssueFix(input: IssueFixInput): Promise<void> {
 	const prev = projectQueues.get(input.projectId) ?? Promise.resolve();
@@ -142,6 +166,18 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 		issueTitle: input.issueTitle,
 		intent: input.intent,
 	});
+	liveRuns.set(input.projectId, {
+		runId,
+		issueNumber: input.issueNumber,
+		issueTitle: input.issueTitle,
+		intent: input.intent,
+		status: "fixing",
+		running: true,
+		parts: [],
+		prNumber: null,
+		prUrl: null,
+		error: null,
+	});
 
 	try {
 		// Enforce the cooldown as a pacing delay (never drops a trigger): if a previous run
@@ -234,20 +270,30 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 			`All file operations and shell commands default here. Do all work on \`${branch}\`.`;
 
 		const callbacks: InlineAgentCallbacks = {
-			onPartCreated: (part) =>
-				broadcastToWebview("issueFixerPart", { projectId: input.projectId, runId, part: serializePart(part) }),
-			onPartUpdated: (_mid, partId, updates) =>
-				broadcastToWebview("issueFixerPartUpdated", {
-					projectId: input.projectId,
-					runId,
-					partId,
-					updates: {
-						content: updates.content,
-						toolOutput: updates.toolOutput,
-						toolState: updates.toolState,
-						timeEnd: updates.timeEnd,
-					},
-				}),
+			onPartCreated: (part) => {
+				const sp = serializePart(part);
+				const lr = liveRuns.get(input.projectId);
+				if (lr) {
+					const i = lr.parts.findIndex((p) => (p as { id?: string }).id === sp.id);
+					if (i >= 0) lr.parts[i] = sp;
+					else lr.parts.push(sp);
+				}
+				broadcastToWebview("issueFixerPart", { projectId: input.projectId, runId, part: sp });
+			},
+			onPartUpdated: (_mid, partId, updates) => {
+				const patch = {
+					content: updates.content,
+					toolOutput: updates.toolOutput,
+					toolState: updates.toolState,
+					timeEnd: updates.timeEnd,
+				};
+				const lr = liveRuns.get(input.projectId);
+				if (lr) {
+					const p = lr.parts.find((x) => (x as { id?: string }).id === partId) as Record<string, unknown> | undefined;
+					if (p) for (const [k, v] of Object.entries(patch)) if (v !== undefined) p[k] = v;
+				}
+				broadcastToWebview("issueFixerPartUpdated", { projectId: input.projectId, runId, partId, updates: patch });
+			},
 			onTextDelta: () => {},
 			onAgentStart: () => {},
 			onAgentComplete: () => {},
@@ -401,6 +447,15 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 			prNumber,
 			prUrl,
 		});
+		const lrDone = liveRuns.get(input.projectId);
+		if (lrDone) {
+			lrDone.status = finalStatus;
+			lrDone.running = false;
+			lrDone.prNumber = prNumber;
+			lrDone.prUrl = prUrl;
+		}
+		// Flag unread activity on the Auto Issues Fixer → History tab.
+		recordActivity(input.projectId, "issue-fixer:history").catch(() => {});
 		await notifyIssueFixResult({
 			ok: true,
 			projectId: input.projectId,
@@ -429,9 +484,14 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 				prNumber: null,
 				prUrl: null,
 			});
+			const lrCancel = liveRuns.get(input.projectId);
+			if (lrCancel) { lrCancel.status = "cancelled"; lrCancel.running = false; }
 		} else {
 			await updateRun(runId, { status: "failed", error: msg, finishedAt: new Date().toISOString() });
 			broadcastToWebview("issueFixerRunError", { projectId: input.projectId, runId, error: msg });
+			const lrFail = liveRuns.get(input.projectId);
+			if (lrFail) { lrFail.status = "failed"; lrFail.running = false; lrFail.error = msg; }
+			recordActivity(input.projectId, "issue-fixer:history").catch(() => {});
 			await notifyIssueFixResult({
 				ok: false,
 				projectId: input.projectId,

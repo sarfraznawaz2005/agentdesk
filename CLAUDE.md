@@ -219,7 +219,7 @@ src/
 `cron_jobs` · `cron_job_history` · `automation_rules` ·
 `pull_requests` · `pr_comments` · `webhook_configs` · `webhook_events` ·
 `github_issues` · `branch_strategies` · `cost_budgets` · `audit_log` ·
-`issue_fixer_config` · `issue_fix_runs`
+`issue_fixer_config` · `issue_fix_runs` · `project_activity`
 
 **Raw SQL migrations** (created by migration files, not in schema.ts):
 
@@ -323,6 +323,7 @@ bun run db:studio    # Open Drizzle Studio (DB browser)
 - Follow established principles such as DRY, KISS, SOLID, etc. for coding tasks.
 - Always create todos before implementations.
 - Always keep `CLAUDE.md` and `workflow.md` updated if they deviates from current code.
+- Always ask questions if you have any confusion or better suggestions even if they differ with user.
 - This app has EXISTING users, so any features implemented or changes need to ensure it works not only for new users but also existing users.
 
 ---

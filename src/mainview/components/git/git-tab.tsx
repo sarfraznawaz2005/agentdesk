@@ -10,6 +10,8 @@ import { PullRequests } from "./pull-requests";
 import { ConflictResolver } from "./conflict-resolver";
 import { GithubIssues } from "./github-issues";
 import { IssueFixerProjectTab } from "../issue-fixer/issue-fixer-tab";
+import { useUnreadStore, hasUnreadPrefix } from "../../stores/unread-store";
+import { UnreadDot } from "@/components/ui/unread-dot";
 
 type GitSubTab = "overview" | "pull-requests" | "conflicts" | "issues" | "issue-fixer";
 
@@ -34,6 +36,8 @@ export function GitTab({ projectId }: GitTabProps) {
   const [pullBranchDialog, setPullBranchDialog] = useState<{ currentBranch: string } | null>(null);
   const [pullBranchInput, setPullBranchInput] = useState("");
   const [subTab, setSubTab] = useState<GitSubTab>("overview");
+  // Unread agent activity under Auto Issues Fixer (cleared at its History inner tab).
+  const issueFixerUnread = useUnreadStore(hasUnreadPrefix(projectId, "issue-fixer"));
 
   // Auto-commit settings state
   const [autoCommitEnabled, setAutoCommitEnabled] = useState(false);
@@ -116,13 +120,14 @@ export function GitTab({ projectId }: GitTabProps) {
           <button
             key={tab.id}
             onClick={() => setSubTab(tab.id)}
-            className={`text-xs px-3 py-1.5 rounded-t border-b-2 transition-colors whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-t border-b-2 transition-colors whitespace-nowrap ${
               subTab === tab.id
                 ? "border-primary text-foreground font-medium"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab.label}
+            {tab.id === "issue-fixer" && issueFixerUnread && <UnreadDot />}
           </button>
         ))}
         {subTab === "overview" && (

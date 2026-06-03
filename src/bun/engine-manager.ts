@@ -8,6 +8,7 @@ import { chunkMessage } from "./channels/chunker";
 import { setShellApprovalHandler, resetShellAutoApprove } from "./agents/tools/shell";
 import { sqlite } from "./db/connection";
 import { updateAgentResponse } from "./rpc/inbox";
+import { recordActivity } from "./rpc/activity";
 import { sendDesktopNotification } from "./notifications/desktop";
 
 // ---------------------------------------------------------------------------
@@ -458,6 +459,10 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					usage,
 				});
 
+				// Flag the project's main chat as having unread agent activity (the PM
+				// produced a reply). Cleared when the user views the Chat tab.
+				if (usage.content) recordActivity(projectId, "chat").catch(() => {});
+
 				// Relay PM response to source channel if message came from a channel
 				const eng = engines.get(projectId);
 				if (eng && usage.content) {
@@ -514,6 +519,8 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 			},
 			onAgentInlineComplete: (conversationId, messageId, agentName, status, summary, tokensUsed) => {
 				broadcastToWebview("agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
+				// A sub-agent finished work in the main chat (skip user-cancelled runs).
+				if (status !== "cancelled") recordActivity(projectId, "chat").catch(() => {});
 			},
 			onPartCreated: (conversationId, part) => {
 				broadcastToWebview("partCreated", {

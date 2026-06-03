@@ -12,12 +12,12 @@ import {
 	type IssueFixRunRow,
 } from "../issue-fixer/config";
 import { pollProject } from "../issue-fixer/poller";
-import { enqueueIssueFix } from "../issue-fixer/orchestrator";
+import { enqueueIssueFix, getLiveRun } from "../issue-fixer/orchestrator";
 import { PREDEFINED_KEYWORDS } from "../issue-fixer/prompts";
 import { getIssue } from "../issue-fixer/github";
 import { resolveGitHubToken, parseGithubUrl } from "./github-api";
 import { abortAgentByName } from "../engine-manager";
-import type { IssueFixRunDto, IssueFixerConfigDto } from "../../shared/rpc/issue-fixer";
+import type { IssueFixRunDto, IssueFixerConfigDto, ActiveIssueFixRunDto } from "../../shared/rpc/issue-fixer";
 
 function mapRun(r: IssueFixRunRow): IssueFixRunDto {
 	return {
@@ -64,6 +64,10 @@ export async function listIssueFixRuns(params: { projectId: string; limit?: numb
 export async function getIssueFixRun(params: { id: string }): Promise<{ run: IssueFixRunDto | null }> {
 	const row = await getRun(params.id);
 	return { run: row ? mapRun(row) : null };
+}
+
+export async function getActiveIssueFixRun(params: { projectId: string }): Promise<{ run: ActiveIssueFixRunDto | null }> {
+	return { run: getLiveRun(params.projectId) as ActiveIssueFixRunDto | null };
 }
 
 export async function pollIssueFixerNow(params: { projectId: string }): Promise<{ ok: boolean }> {

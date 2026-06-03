@@ -224,6 +224,9 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       issueFixerRunError: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-run-error", { detail: payload }));
       },
+      activityUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:activity-updated", { detail: payload }));
+      },
       updateStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:update-status", { detail: payload }));
       },
@@ -1202,6 +1205,10 @@ export const rpc = {
   /** Fetch a single Issue Fixer run by id. */
   getIssueFixRun: (id: string) => electroviewRpc.request.getIssueFixRun({ id }),
 
+  /** Current/most-recent live run snapshot for the Activity tab to hydrate on mount. */
+  getActiveIssueFixRun: (projectId: string) =>
+    electroviewRpc.request.getActiveIssueFixRun({ projectId }),
+
   /** Poll this project's GitHub issues/comments immediately. */
   pollIssueFixerNow: (projectId: string) =>
     electroviewRpc.request.pollIssueFixerNow({ projectId }),
@@ -1217,6 +1224,16 @@ export const rpc = {
   /** Get the predefined agentdesk-* keyword catalog for the settings UI. */
   getIssueFixerKeywordCatalog: () =>
     electroviewRpc.request.getIssueFixerKeywordCatalog({}),
+
+  // ---- Unread activity -----------------------------------------------------
+
+  /** All (projectId, location) pairs with unseen agent activity. */
+  getUnreadActivity: () =>
+    electroviewRpc.request.getUnreadActivity({}),
+
+  /** Mark a (projectId, location) as seen — clears its unread dot. */
+  markActivitySeen: (projectId: string, location: string) =>
+    electroviewRpc.request.markActivitySeen({ projectId, location }),
 
   // ---- Freelance -----------------------------------------------------------
 

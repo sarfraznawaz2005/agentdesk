@@ -22,6 +22,7 @@ import type { UpdaterRequests } from "./updater";
 import type { FreelanceRequests, FreelanceListingDto, FreelanceChatMessageDto } from "./freelance";
 import type { PlaygroundRequests, PlaygroundPreviewDto } from "./playground";
 import type { IssueFixerRequests, IssueFixerConfigDto, IssueFixRunDto } from "./issue-fixer";
+import type { ActivityRequests, UnreadActivityEntry } from "./activity";
 import type { WebviewSchema } from "./webview";
 
 type BunRequests =
@@ -46,7 +47,8 @@ type BunRequests =
   & UpdaterRequests
   & FreelanceRequests
   & PlaygroundRequests
-  & IssueFixerRequests;
+  & IssueFixerRequests
+  & ActivityRequests;
 
 export type AgentDeskRPC = {
   bun: RPCSchema<{
@@ -86,5 +88,7 @@ export type {
   IssueFixerRequests,
   IssueFixerConfigDto,
   IssueFixRunDto,
+  ActivityRequests,
+  UnreadActivityEntry,
   WebviewSchema,
 };

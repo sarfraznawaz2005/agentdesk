@@ -8,6 +8,8 @@ import { useIssueFixerStore, initIssueFixerListeners, type IssueFixerPart } from
 import { MessageParts, TextBlock, type MessagePartData } from "@/components/chat/message-parts";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { IssueFixerSettingsTab } from "@/components/issue-fixer/issue-fixer-settings";
+import { useUnreadStore, hasUnread } from "@/stores/unread-store";
+import { UnreadDot } from "@/components/ui/unread-dot";
 import type { IssueFixRunDto, IssueFixerConfigDto } from "../../../shared/rpc/issue-fixer";
 
 /** Map a streamed Issue Fixer part to the shape MessageParts renders (tool-call cards + markdown). */
@@ -45,6 +47,9 @@ export function IssueFixerProjectTab({ projectId }: { projectId: string }) {
 	const [tab, setTab] = useState("activity");
 	const [polling, setPolling] = useState(false);
 	const [confirmStop, setConfirmStop] = useState(false);
+	// Unread completed-run activity surfaced on the History inner tab.
+	const historyUnread = useUnreadStore(hasUnread(projectId, "issue-fixer:history"));
+	const markSeen = useUnreadStore((s) => s.markSeen);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	// Whether the activity log is "stuck" to the bottom. Starts true so a fresh run
 	// auto-scrolls; flips false when the user scrolls up to read, true again when they
@@ -54,6 +59,37 @@ export function IssueFixerProjectTab({ projectId }: { projectId: string }) {
 	useEffect(() => {
 		initIssueFixerListeners();
 	}, []);
+
+	// Hydrate the live run from the backend's in-memory snapshot on mount. Covers runs
+	// whose start/part broadcasts the webview missed (e.g. the startup poll firing before
+	// listeners attached) — without this the Activity tab shows nothing or a bogus "#0" card.
+	useEffect(() => {
+		rpc
+			.getActiveIssueFixRun(projectId)
+			.then((res) => {
+				if (res.run) {
+					useIssueFixerStore.getState().hydrate(projectId, {
+						runId: res.run.runId,
+						issueNumber: res.run.issueNumber,
+						issueTitle: res.run.issueTitle,
+						intent: res.run.intent,
+						status: res.run.status,
+						running: res.run.running,
+						parts: res.run.parts as unknown as IssueFixerPart[],
+						prNumber: res.run.prNumber,
+						prUrl: res.run.prUrl,
+						error: res.run.error,
+					});
+				}
+			})
+			.catch(() => {});
+	}, [projectId]);
+
+	// Opening the History tab marks its completed-run activity read (and clears it
+	// immediately if a run finishes while History is the active inner tab).
+	useEffect(() => {
+		if (tab === "history" && historyUnread) markSeen(projectId, "issue-fixer:history");
+	}, [tab, historyUnread, projectId, markSeen]);
 
 	const onActivityScroll = useCallback(() => {
 		const el = scrollRef.current;
@@ -149,7 +185,10 @@ export function IssueFixerProjectTab({ projectId }: { projectId: string }) {
 						<TabsTrigger value="activity">
 							Activity {run?.running && <Loader2 className="ml-1 h-3 w-3 animate-spin" />}
 						</TabsTrigger>
-						<TabsTrigger value="history">History</TabsTrigger>
+						<TabsTrigger value="history" className="inline-flex items-center gap-1.5">
+							History
+							{historyUnread && <UnreadDot />}
+						</TabsTrigger>
 						<TabsTrigger value="configuration">Configuration</TabsTrigger>
 					</TabsList>
 

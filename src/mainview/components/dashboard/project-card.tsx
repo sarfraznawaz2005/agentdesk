@@ -19,6 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
+import { useUnreadStore, hasAnyUnread } from "@/stores/unread-store";
+import { UnreadDot } from "@/components/ui/unread-dot";
 
 interface Project {
   id: string;
@@ -69,6 +71,8 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
   const navigate = useNavigate();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [confirmPermanentDeleteOpen, setConfirmPermanentDeleteOpen] = useState(false);
+  // Unread agent activity anywhere in this project (chat, issue fixer, …).
+  const unread = useUnreadStore(hasAnyUnread(project.id));
 
   const isDeleted = project.status === "deleted";
 
@@ -121,6 +125,7 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
               <h3 className="text-sm font-semibold leading-snug line-clamp-1 min-w-0">
                 {project.name}{collapsed && hasTasks && ` (${taskPct}%)`}
               </h3>
+              {unread && !isDeleted && <UnreadDot />}
             </div>
             <div className="shrink-0 -mt-0.5 -mr-1.5" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>

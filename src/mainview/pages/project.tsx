@@ -9,6 +9,8 @@ import { NotesTab } from "../components/notes/notes-tab";
 import { ProjectSettingsTab } from "../components/project-settings/project-settings-tab";
 import { useChatStore } from "../stores/chat-store";
 import { useKanbanStore, type KanbanColumn } from "../stores/kanban-store";
+import { useUnreadStore, hasUnread, hasUnreadPrefix } from "../stores/unread-store";
+import { UnreadDot } from "../components/ui/unread-dot";
 import { cn } from "../lib/utils";
 import { rpc } from "../lib/rpc";
 import { FileText, Settings, Puzzle } from "lucide-react";
@@ -28,6 +30,12 @@ export function ProjectPage() {
   const { projectId } = useParams({ strict: false });
   const [activeTab, setActiveTab] = useState<ProjectTab>("chat");
   const [pluginTabs, setPluginTabs] = useState<PluginTab[]>([]);
+  // Unread agent-activity dots (per-tab). `chat` clears as soon as the Chat tab is
+  // active; the git/issue-fixer dots only clear at their leaf (History inner tab).
+  const chatUnread = useUnreadStore(hasUnread(projectId ?? "", "chat"));
+  const gitUnread = useUnreadStore(hasUnreadPrefix(projectId ?? "", "issue-fixer"));
+  const markSeen = useUnreadStore((s) => s.markSeen);
+  const markCardSeen = useUnreadStore((s) => s.markCardSeen);
   // Tracks which projectId's conversations are fully loaded in the store.
   // Using a project-scoped ID (not a plain boolean) prevents Effect 2 from
   // firing with stale conversationsLoaded=true while conversations are still
@@ -70,6 +78,19 @@ export function ProjectPage() {
     window.addEventListener("agentdesk:switch-tab", handler);
     return () => window.removeEventListener("agentdesk:switch-tab", handler);
   }, []);
+
+  // Opening a project acknowledges its dashboard-card dot (so the user isn't forced
+  // to open every unread leaf to clear the card). The per-tab/leaf dots persist
+  // until each is opened; only NEW activity after this re-lights the card.
+  useEffect(() => {
+    if (projectId) markCardSeen(projectId);
+  }, [projectId, markCardSeen]);
+
+  // Viewing the Chat tab marks its agent activity read — on open, and immediately
+  // if new activity streams in while it's the active tab (no need to read it).
+  useEffect(() => {
+    if (activeTab === "chat" && chatUnread && projectId) markSeen(projectId, "chat");
+  }, [activeTab, chatUnread, projectId, markSeen]);
 
   // Load conversations on mount / project change
   useEffect(() => {
@@ -160,13 +181,14 @@ export function ProjectPage() {
         <button
           onClick={() => setActiveTab("chat")}
           className={cn(
-            "px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
             activeTab === "chat"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           Chat
+          {chatUnread && <UnreadDot />}
         </button>
         <button
           onClick={() => setActiveTab("kanban")}
@@ -194,13 +216,14 @@ export function ProjectPage() {
         <button
           onClick={() => setActiveTab("git")}
           className={cn(
-            "px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
             activeTab === "git"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           Git
+          {gitUnread && <UnreadDot />}
         </button>
         <button
           onClick={() => setActiveTab("deploy")}

@@ -17,6 +17,9 @@ import { ProjectSwitcher } from "./project-switcher";
 // Side-effect import: attaches the Issue Fixer live-run listeners at app startup so runs
 // stream into the store regardless of which tab/page is open (matches the chat store).
 import "@/stores/issue-fixer-store";
+// Side-effect import: loads + listens for per-project unread agent-activity so the
+// dashboard cards and project tabs show unread dots regardless of the current page.
+import "@/stores/unread-store";
 
 const DASHBOARD_PHRASES = [
   "What are we building today?",

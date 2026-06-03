@@ -1,5 +1,6 @@
 import { eq, like, sql } from "drizzle-orm";
 import { mkdirSync, existsSync, readdirSync, statSync, readFileSync, symlinkSync, lstatSync, rmSync, readlinkSync, unlinkSync } from "fs";
+import { readdir } from "fs/promises";
 import { join, relative, resolve, basename } from "path";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
@@ -901,8 +902,8 @@ export async function syncWorkspaceFolders(): Promise<{ synced: number }> {
 
 		if (!globalWorkspace || !existsSync(globalWorkspace)) return { synced: 0 };
 
-		// Get all folders in the global workspace
-		const entries = readdirSync(globalWorkspace, { withFileTypes: true });
+		// Get all folders in the global workspace (async so a large workspace never blocks).
+		const entries = await readdir(globalWorkspace, { withFileTypes: true });
 		const folders = entries
 			.filter((e) => e.isDirectory() && !e.name.startsWith("."))
 			.map((e) => ({ name: e.name, path: join(globalWorkspace, e.name) }));
