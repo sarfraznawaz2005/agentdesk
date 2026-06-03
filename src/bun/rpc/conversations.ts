@@ -246,13 +246,35 @@ export interface MessageListItem {
 	tokenCount: number;
 	hasParts: number;
 	createdAt: string;
+	seq: number;
 }
 
+// Explicit column selection that also exposes the implicit SQLite rowid as
+// `seq` — the monotonic insertion-order key we sort by. rowid is assigned when
+// a row is first inserted (and never on UPDATE), so it reflects TRUE insertion
+// order even though `createdAt` gets mutated later (e.g. the PM message's
+// timestamp is bumped after its sub-agents run). Ordering by rowid keeps a PM
+// message above the sub-agents it spawned on reload. Works for existing data
+// with no migration, since every historical row already has a rowid.
+const messageSelection = {
+	id: messages.id,
+	conversationId: messages.conversationId,
+	role: messages.role,
+	agentId: messages.agentId,
+	agentName: messages.agentName,
+	content: messages.content,
+	metadata: messages.metadata,
+	tokenCount: messages.tokenCount,
+	hasParts: messages.hasParts,
+	createdAt: messages.createdAt,
+	seq: sql<number>`${messages}.rowid`,
+};
+
 /**
- * Return messages for a conversation ordered by createdAt ASC.
+ * Return messages for a conversation ordered by insertion order (rowid ASC).
  *
- * Uses SQL-level cursor pagination via `WHERE created_at < ? LIMIT ?`
- * instead of fetching all rows and slicing in JS.
+ * Cursor pagination uses the message's rowid (`seq`) rather than createdAt, so
+ * the cursor is stable even when timestamps collide or are later mutated.
  */
 export async function getMessages(
 	conversationId: string,
@@ -260,32 +282,36 @@ export async function getMessages(
 	before?: string,
 ): Promise<MessageListItem[]> {
 	if (before) {
-		// Resolve cursor timestamp
+		// Resolve the cursor message's rowid
 		const cursorRows = await db
-			.select({ createdAt: messages.createdAt })
+			.select({ seq: sql<number>`${messages}.rowid` })
 			.from(messages)
 			.where(eq(messages.id, before));
 
 		if (cursorRows.length > 0) {
-			const cursorTimestamp = cursorRows[0].createdAt;
-			// Use raw SQL with the composite index for efficient cursor pagination
-			const rows = sqlite.prepare(`
-				SELECT * FROM messages
-				WHERE conversation_id = ? AND created_at < ?
-				ORDER BY created_at DESC
-				LIMIT ?
-			`).all(conversationId, cursorTimestamp, limit) as Array<typeof messages.$inferSelect>;
+			const cursorSeq = cursorRows[0].seq;
+			const rows = await db
+				.select(messageSelection)
+				.from(messages)
+				.where(
+					and(
+						eq(messages.conversationId, conversationId),
+						sql`${messages}.rowid < ${cursorSeq}`,
+					),
+				)
+				.orderBy(desc(sql`${messages}.rowid`))
+				.limit(limit);
 
-			// Reverse to get ASC order
+			// Reverse to get ASC (insertion) order
 			return rows.reverse().map(mapMessage);
 		}
 	}
 
 	const rows = await db
-		.select()
+		.select(messageSelection)
 		.from(messages)
 		.where(eq(messages.conversationId, conversationId))
-		.orderBy(asc(messages.createdAt))
+		.orderBy(asc(sql`${messages}.rowid`))
 		.limit(limit);
 
 	return rows.map(mapMessage);
@@ -311,12 +337,13 @@ export async function branchConversation(
 
 	const source = sourceRows[0];
 
-	// Fetch all messages in order
+	// Fetch all messages in true insertion order (rowid) so the copied rows are
+	// re-inserted in the same order and the branch gets a consistent ordering.
 	const allMessages = await db
 		.select()
 		.from(messages)
 		.where(eq(messages.conversationId, conversationId))
-		.orderBy(asc(messages.createdAt));
+		.orderBy(asc(sql`${messages}.rowid`));
 
 	// Slice up to and including the target message
 	const pivotIndex = allMessages.findIndex((m) => m.id === upToMessageId);
@@ -416,7 +443,7 @@ function mapConversation(row: typeof conversations.$inferSelect): ConversationLi
 	};
 }
 
-function mapMessage(row: typeof messages.$inferSelect): MessageListItem {
+function mapMessage(row: typeof messages.$inferSelect & { seq: number }): MessageListItem {
 	return {
 		id: row.id,
 		conversationId: row.conversationId,
@@ -428,5 +455,6 @@ function mapMessage(row: typeof messages.$inferSelect): MessageListItem {
 		tokenCount: row.tokenCount,
 		hasParts: row.hasParts,
 		createdAt: row.createdAt,
+		seq: row.seq,
 	};
 }

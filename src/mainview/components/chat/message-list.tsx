@@ -109,7 +109,17 @@ export function MessageList({
         if (meta?.type === "agent_report") return false;
       } catch { /* ignore parse errors */ }
       return true;
-    }).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    }).sort((a, b) => {
+      // Order by the DB insertion-order key (seq/rowid) when both messages are
+      // persisted — this keeps a PM message above the sub-agents it spawned on
+      // reload, regardless of createdAt collisions/mutations. Live/optimistic
+      // messages have no seq yet; treat them as newest (sorted last) and break
+      // ties between them by arrival time (createdAt).
+      const sa = a.seq ?? Number.MAX_SAFE_INTEGER;
+      const sb = b.seq ?? Number.MAX_SAFE_INTEGER;
+      if (sa !== sb) return sa - sb;
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }),
     [messages],
   );
 

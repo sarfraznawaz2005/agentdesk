@@ -26,6 +26,11 @@ export interface Message {
   tokenCount: number;
   hasParts: number;
   createdAt: string;
+  // Monotonic insertion-order key from the DB (SQLite rowid). Present on
+  // persisted messages loaded from the backend; undefined for in-flight
+  // live/optimistic messages, which are ordered after persisted ones by
+  // arrival order (see message-list sort).
+  seq?: number;
 }
 
 export interface ActiveInlineAgent {

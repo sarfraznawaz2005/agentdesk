@@ -70,6 +70,10 @@ export type ConversationsRequests = {
       tokenCount: number;
       hasParts: number;
       createdAt: string;
+      // Monotonic insertion-order key (SQLite rowid). Used to order messages
+      // on reload so PM messages and the sub-agents they spawn keep their true
+      // insertion order regardless of wall-clock createdAt collisions/mutations.
+      seq: number;
     }>;
   };
   sendMessage: {
