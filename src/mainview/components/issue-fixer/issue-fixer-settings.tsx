@@ -22,6 +22,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tip } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { IssueFixerConfigDto } from "../../../shared/rpc/issue-fixer";
 
@@ -42,6 +44,58 @@ const POLL_OPTIONS = [
 
 type FormState = Omit<IssueFixerConfigDto, "projectId" | "cursorAt" | "lastPolledAt">;
 
+/** Renders a labelled list of options for a help tooltip. */
+function OptionHelp({ intro, items }: { intro: string; items: { name: string; desc: string }[] }) {
+	return (
+		<div className="space-y-1.5">
+			<p>{intro}</p>
+			<ul className="space-y-1">
+				{items.map((it) => (
+					<li key={it.name}>
+						<span className="font-semibold">{it.name}</span> — {it.desc}
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
+const AUTH_HELP = (
+	<OptionHelp
+		intro="Controls who is allowed to start an Issue Fixer run."
+		items={[
+			{
+				name: "Collaborators (keywords) or label",
+				desc: "A repo owner, member, or collaborator can trigger with a keyword, OR anyone can trigger by adding an agentdesk-* label. Most permissive.",
+			},
+			{
+				name: "Collaborators only (keywords)",
+				desc: "Only owners/members/collaborators can trigger, and only via keywords. Labels are ignored.",
+			},
+			{
+				name: "Label-gated only",
+				desc: "A run starts only when an agentdesk-* label is present, regardless of who applied it. Keywords are ignored. Most restrictive.",
+			},
+		]}
+	/>
+);
+
+const AUTONOMY_HELP = (
+	<OptionHelp
+		intro="How far the agent goes on its own. It never merges — you always review and merge."
+		items={[
+			{
+				name: "Branch + PR (no merge)",
+				desc: "Creates a branch, commits the fix, and opens a normal pull request for your review.",
+			},
+			{
+				name: "Dry-run / Draft PR",
+				desc: "Opens the PR as a draft (also used automatically when the test/build gate fails), signalling it is not ready to merge.",
+			},
+		]}
+	/>
+);
+
 const DEFAULT_FORM: FormState = {
 	enabled: false,
 	keywords: ["agentdesk-fix"],
@@ -57,11 +111,35 @@ const DEFAULT_FORM: FormState = {
 	notifyChannels: [],
 };
 
-function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+function Row({
+	label,
+	description,
+	help,
+	children,
+}: {
+	label: string;
+	description?: string;
+	/** Optional rich explanation surfaced via a help icon next to the label. */
+	help?: React.ReactNode;
+	children: React.ReactNode;
+}) {
 	return (
 		<div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[260px_1fr]">
 			<div className="space-y-1">
-				<Label>{label}</Label>
+				<div className="flex items-center gap-1.5">
+					<Label>{label}</Label>
+					{help && (
+						<Tip content={help} side="right">
+							<button
+								type="button"
+								aria-label={`What does "${label}" mean?`}
+								className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
+							>
+								<HelpCircle className="h-3.5 w-3.5" />
+							</button>
+						</Tip>
+					)}
+				</div>
 				{description && <p className="text-xs text-muted-foreground">{description}</p>}
 			</div>
 			<div className="w-full max-w-md">{children}</div>
@@ -305,7 +383,7 @@ export function IssueFixerSettingsTab({
 						</div>
 					</Row>
 					<Separator />
-					<Row label="Authorization" description="Who may trigger a run.">
+					<Row label="Authorization" description="Who may trigger a run." help={AUTH_HELP}>
 						<Select value={form.authMode} onValueChange={(v) => update("authMode", v as FormState["authMode"])}>
 							<SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
 							<SelectContent>
@@ -323,7 +401,7 @@ export function IssueFixerSettingsTab({
 					<CardTitle>Behaviour</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-5">
-					<Row label="Autonomy" description="branch + PR is the safe default. Never auto-merges.">
+					<Row label="Autonomy" description="branch + PR is the safe default. Never auto-merges." help={AUTONOMY_HELP}>
 						<Select value={form.autonomy} onValueChange={(v) => update("autonomy", v as FormState["autonomy"])}>
 							<SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
 							<SelectContent>
