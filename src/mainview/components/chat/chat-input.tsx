@@ -641,14 +641,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
       {/* MCP servers dialog */}
       <Dialog open={mcpDialogOpen} onOpenChange={setMcpDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Server className="w-4 h-4" />
               MCP Servers
             </DialogTitle>
           </DialogHeader>
-          <ul className="space-y-3 mt-1">
+          <ul className="space-y-3 mt-1 min-w-0">
             {Object.entries(mcpServers).map(([name, cfg]) => {
               const status = mcpLiveStatus[name] ?? (cfg.disabled ? "disabled" : "failed");
               const isLoading = mcpActionLoading === name;

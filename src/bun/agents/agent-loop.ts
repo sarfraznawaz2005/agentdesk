@@ -48,6 +48,60 @@ function logAgent(line: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Tool-result error classification
+// ---------------------------------------------------------------------------
+
+/**
+ * Tools whose output is file/match CONTENT that can legitimately start with
+ * "Error" or contain an `error` field (e.g. a log file, a grep hit). For these
+ * we trust only the SDK's own tool-error channel, never the string heuristics.
+ */
+const CONTENT_RESULT_TOOLS = new Set(["read_file", "search_content", "search_files"]);
+
+/**
+ * Heuristically decide whether a tool's string result represents a failure.
+ *
+ * Tools in this codebase return errors as strings (they catch and return rather
+ * than throw), in several shapes:
+ *   - a leading "Error …" / "Failed …" / "Blocked …" message,
+ *   - a `"success":false` envelope,
+ *   - a JSON `{ "error": "<message>" }` / `{ "valid": false }` envelope,
+ *   - run_shell's `{ "exitCode": null, … }` (command blocked / denied / never ran).
+ *
+ * The model always sees the raw result text regardless of this verdict — this
+ * only drives the ✓/✗ (and red styling) shown to the human in the UI. Kept
+ * conservative to avoid false-flagging successful output.
+ */
+export function toolResultIsError(toolName: string, resultStr: string): boolean {
+	if (CONTENT_RESULT_TOOLS.has(toolName)) return false;
+	if (/^\s*(error|failed|blocked)\b/i.test(resultStr)) return true;
+
+	// Prefer a structured verdict from the top-level JSON envelope. When the
+	// result parses cleanly as an object we decide from its OWN fields and stop —
+	// we never scan a nested response body, so e.g. http_request returning a
+	// remote payload that happens to contain `"success":false` is NOT mis-flagged.
+	const trimmed = resultStr.trimStart();
+	if (trimmed.startsWith("{")) {
+		try {
+			const o = JSON.parse(resultStr) as Record<string, unknown>;
+			if (o && typeof o === "object") {
+				if (o.success === true) return false;
+				if (o.success === false) return true;
+				if (typeof o.error === "string" && o.error.trim() !== "") return true;
+				if (o.valid === false) return true;
+				// run_shell: a null exitCode means the command never ran
+				// (blocked, denied, or spawn failure) — that is a failure.
+				if ("exitCode" in o && o.exitCode === null) return true;
+				return false; // parsed cleanly as a non-error envelope — trust it
+			}
+		} catch { /* partial/truncated JSON — fall through to the heuristic below */ }
+	}
+
+	// Non-JSON / unparseable result: last-resort substring heuristic.
+	return resultStr.includes('"success":false');
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -1216,8 +1270,11 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 							? (trAny.error instanceof Error ? trAny.error.message : String(trAny.error ?? "Tool execution failed"))
 							: (trAny.output ?? trAny.result);
 						const resultStr = typeof trOutput === "string" ? trOutput : JSON.stringify(trOutput);
-						const isError = isToolError || resultStr.startsWith("Error:") || resultStr.startsWith("ERROR:")
-							|| resultStr.includes('"success":false');
+						// Tools return errors as strings (they catch rather than throw), in several
+						// shapes — leading "Error/Failed/Blocked", "success":false, or a JSON
+						// { error: "..." } envelope. toolResultIsError() covers them all (and excludes
+						// read/search whose content can legitimately start with "Error").
+						const isError = isToolError || toolResultIsError(tc.toolName, resultStr);
 						// Image tools return large base64 payloads — give them a much higher limit
 						// so the frontend can render the actual image instead of truncated JSON.
 						const isImageTool = tc.toolName === "read_image"

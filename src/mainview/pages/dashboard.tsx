@@ -304,7 +304,9 @@ export function DashboardPage() {
 										"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 										badge.base,
 										badge.hover,
-										selected && `ring-2 ring-inset ${badge.ring}`,
+										// "Total" (all) is the default view — don't show a selected
+										// border for it; only the colored status chips get a ring.
+										selected && badge.value !== "all" && `ring-2 ring-inset ${badge.ring}`,
 									)}
 								>
 									{badge.count} {badge.label}

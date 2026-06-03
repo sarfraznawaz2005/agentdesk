@@ -36,6 +36,7 @@ import { notesTools } from "../agents/tools/notes";
 import { systemTools } from "../agents/tools/system";
 import { skillRegistry } from "../skills/registry";
 import { broadcastToWebview } from "../engine-manager";
+import { buildUserProfileSection, loadUserTimezone } from "../agents/prompts";
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -50,14 +51,7 @@ const activeAborts = new Map<string, AbortController>();
 
 async function buildDashboardSystemPrompt(): Promise<string> {
 	// Read user's global timezone from settings
-	let userTimezone = "UTC";
-	try {
-		const rows = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, "timezone")).limit(1);
-		if (rows.length > 0) {
-			const raw = rows[0].value;
-			try { userTimezone = JSON.parse(raw) || "UTC"; } catch { userTimezone = raw || "UTC"; }
-		}
-	} catch { /* fallthrough */ }
+	const userTimezone = await loadUserTimezone();
 
 	const now = new Date();
 	const localTime = now.toLocaleString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: userTimezone });
@@ -93,6 +87,12 @@ For relative time requests ("remind me in 5 minutes", "alert me at 3pm"):
 For \`taskType: "pm_prompt"\` or \`"agent_task"\`, a projectId is required — ask the user which project if not specified.
 
 Be concise and helpful. Use tools to get accurate data rather than guessing.`;
+
+	// User profile (name + email + timezone-derived city) — same block the PM uses
+	const userSection = await buildUserProfileSection();
+	if (userSection) {
+		prompt += `\n\n${userSection}`;
+	}
 
 	// Append compact skills listing if any are installed
 	const skills = skillRegistry.getAll();

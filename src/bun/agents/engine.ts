@@ -24,7 +24,7 @@ import { isTransientError, getBackoffDelay } from "./safety";
 import { logPrompt } from "./prompt-logger";
 import { eventBus } from "../scheduler";
 import type { AgentActivityEvent } from "./types";
-import type { InlineAgentCallbacks, MessagePart } from "./agent-loop";
+import { toolResultIsError, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
 import {
 	getPluginTools,
 	THINKING_BUDGET_TOKENS,
@@ -585,7 +585,12 @@ export class AgentEngine {
 						for (const tr of stepAny.toolResults ?? []) {
 							if (tr.toolName === "run_agent" || tr.toolName === "run_agents_parallel") continue;
 							if (STATUS_CHECK_TOOLS.has(tr.toolName)) continue;
-							emitActivity("tool_result", { toolName: tr.toolName, result: tr.output ?? tr.result });
+							const trResult = tr.output ?? tr.result;
+							// Shared inline-agent error detection (agent-loop.ts): handles "Error …"
+							// strings, "success":false, and JSON { error: "…" } envelopes alike.
+							const resultStr = typeof trResult === "string" ? trResult : JSON.stringify(trResult);
+							const isError = toolResultIsError(tr.toolName, resultStr);
+							emitActivity("tool_result", { toolName: tr.toolName, result: trResult, isError });
 						}
 					},
 				});

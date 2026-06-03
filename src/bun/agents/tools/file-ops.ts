@@ -26,6 +26,43 @@ function formatDiagnosticsSuffix(diagnostics: string[]): string {
 	if (diagnostics.length === 0) return "";
 	return `\n\nLSP Diagnostics (${diagnostics.length}):\n${diagnostics.join("\n")}`;
 }
+
+/**
+ * Guards content-writing tools against a missing `content` argument.
+ *
+ * Some models emit a `write_file`/`append_file` tool-call *shell* (just the
+ * `path`) and omit the large `content` body — then realise their mistake and
+ * retry, looping on the same file. Without this guard the tool would crash on
+ * `content.length` (undefined) or silently write the string "undefined", and
+ * the model would receive no actionable signal.
+ *
+ * Returns an error string (starting with "Error:") when content is absent, or
+ * null when it is a valid string. An empty string ("") is allowed — writing an
+ * intentionally empty file is legitimate; only a *missing* content is rejected.
+ */
+function requireContent(toolName: string, content: unknown, filePath: string): string | null {
+	if (typeof content === "string") return null;
+	return (
+		`Error: ${toolName} was called for "${filePath}" without a "content" argument. ` +
+		`The full file body must be included in the SAME tool call — do not send the path alone. ` +
+		`Re-send ${toolName} with the complete content.`
+	);
+}
+
+/**
+ * Same rationale as {@link requireContent} but for an arbitrary required string
+ * argument (e.g. an edit's `new_text`, a `patch` body). Models occasionally emit
+ * a tool-call shell and omit the large body argument; this returns an actionable
+ * error instead of letting `undefined` silently corrupt the edit.
+ */
+function requireArg(toolName: string, argName: string, value: unknown, filePath: string): string | null {
+	if (typeof value === "string") return null;
+	return (
+		`Error: ${toolName} was called for "${filePath}" without a "${argName}" argument. ` +
+		`Include "${argName}" in the SAME tool call — do not send the path alone. ` +
+		`Re-send ${toolName} with all required arguments.`
+	);
+}
 import { createIgnoreFilter, extendIgnoreFilter, isPathIgnored, type IgnoreFilter } from "./ignore";
 
 // ---------------------------------------------------------------------------
@@ -81,7 +118,7 @@ const readFileParams = z.object({
 });
 const writeFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to write"),
-	content: z.string().describe("The text content to write to the file"),
+	content: z.string().describe("REQUIRED — the full text content to write to the file. Always include the complete file body in this same tool call; never omit it or send the path alone."),
 });
 const editFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to edit"),
@@ -100,7 +137,7 @@ const multiEditFileParams = z.object({
 });
 const appendFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to append to"),
-	content: z.string().describe("The text to append"),
+	content: z.string().describe("REQUIRED — the text to append. Always include this in the same tool call; never send the path alone."),
 });
 const patchFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to patch"),
@@ -172,6 +209,8 @@ const writeFileTool = tool({
 	inputSchema: writeFileParams,
 	execute: async (args): Promise<string> => {
 		try {
+			const contentErr = requireContent("write_file", args.content, args.path);
+			if (contentErr) return contentErr;
 			const resolvedPath = validatePath(args.path);
 			const parentDir = path.dirname(resolvedPath);
 
@@ -228,6 +267,9 @@ const editFileTool = tool({
 	inputSchema: editFileParams,
 	execute: async (args): Promise<string> => {
 		try {
+			const argErr = requireArg("edit_file", "old_text", args.old_text, args.path)
+				?? requireArg("edit_file", "new_text", args.new_text, args.path);
+			if (argErr) return argErr;
 			const resolvedPath = validatePath(args.path);
 			const original = await Bun.file(resolvedPath).text();
 
@@ -473,6 +515,8 @@ const appendFileTool = tool({
 	inputSchema: appendFileParams,
 	execute: async (args): Promise<string> => {
 		try {
+			const contentErr = requireContent("append_file", args.content, args.path);
+			if (contentErr) return contentErr;
 			const resolvedPath = validatePath(args.path);
 			const parentDir = path.dirname(resolvedPath);
 			await mkdir(parentDir, { recursive: true });
@@ -505,6 +549,9 @@ const multiEditFileTool = tool({
 
 			for (let i = 0; i < args.edits.length; i++) {
 				const { old_text, new_text } = args.edits[i];
+				if (typeof old_text !== "string" || typeof new_text !== "string") {
+					return `Error in edit ${i + 1}/${args.edits.length} for "${resolvedPath}": missing old_text/new_text — include both in the same tool call.`;
+				}
 				if (!content.includes(old_text)) {
 					return `Error in edit ${i + 1}/${args.edits.length}: old_text not found in "${resolvedPath}":\n${old_text.slice(0, 200)}`;
 				}
@@ -645,6 +692,8 @@ const patchFileTool = tool({
 	inputSchema: patchFileParams,
 	execute: async (args): Promise<string> => {
 		try {
+			const argErr = requireArg("patch_file", "patch", args.patch, args.path);
+			if (argErr) return argErr;
 			const resolvedPath = validatePath(args.path);
 			const original = await Bun.file(resolvedPath).text();
 			const fileLines = original.split("\n");
@@ -958,6 +1007,8 @@ export function createTrackedFileTools(
 		inputSchema: writeFileParams,
 		execute: async (args) => {
 			try {
+				const contentErr = requireContent("write_file", args.content, args.path);
+				if (contentErr) return contentErr;
 				const resolvedPath = vp(args.path);
 				const parentDir = path.dirname(resolvedPath);
 				await mkdir(parentDir, { recursive: true });
@@ -979,6 +1030,9 @@ export function createTrackedFileTools(
 		inputSchema: editFileParams,
 		execute: async (args) => {
 			try {
+				const argErr = requireArg("edit_file", "old_text", args.old_text, args.path)
+					?? requireArg("edit_file", "new_text", args.new_text, args.path);
+				if (argErr) return argErr;
 				const resolvedPath = vp(args.path);
 
 				const freshness = tracker.checkFreshness(resolvedPath);
@@ -1018,6 +1072,9 @@ export function createTrackedFileTools(
 				let content = await Bun.file(resolvedPath).text();
 				for (let i = 0; i < args.edits.length; i++) {
 					const { old_text, new_text } = args.edits[i];
+					if (typeof old_text !== "string" || typeof new_text !== "string") {
+						return `Error in edit ${i + 1}/${args.edits.length} for "${resolvedPath}": missing old_text/new_text — include both in the same tool call.`;
+					}
 					if (!content.includes(old_text)) {
 						return `Error in edit ${i + 1}/${args.edits.length}: old_text not found in "${resolvedPath}":\n${old_text.slice(0, 200)}`;
 					}
@@ -1038,6 +1095,8 @@ export function createTrackedFileTools(
 		inputSchema: patchFileParams,
 		execute: async (args) => {
 			try {
+				const argErr = requireArg("patch_file", "patch", args.patch, args.path);
+				if (argErr) return argErr;
 				const resolvedPath = vp(args.path);
 
 				const freshness = tracker.checkFreshness(resolvedPath);
@@ -1088,6 +1147,8 @@ export function createTrackedFileTools(
 		inputSchema: appendFileParams,
 		execute: async (args) => {
 			try {
+				const contentErr = requireContent("append_file", args.content, args.path);
+				if (contentErr) return contentErr;
 				const resolvedPath = vp(args.path);
 				const parentDir = path.dirname(resolvedPath);
 				await mkdir(parentDir, { recursive: true });

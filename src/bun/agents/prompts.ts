@@ -25,13 +25,40 @@ async function loadConstitution(): Promise<string> {
 	}
 }
 
-async function loadUserProfile(): Promise<{ name: string; email: string }> {
+/** Read the user's configured IANA timezone (e.g. "Asia/Karachi"); defaults to "UTC". */
+export async function loadUserTimezone(): Promise<string> {
+	try {
+		const rows = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, "timezone")).limit(1);
+		if (rows.length > 0) {
+			const raw = rows[0].value;
+			try { return JSON.parse(raw) || "UTC"; } catch { return raw || "UTC"; }
+		}
+	} catch { /* fallthrough */ }
+	return "UTC";
+}
+
+/**
+ * Derive a human city name from an IANA timezone:
+ *   "Asia/Karachi" → "Karachi", "America/New_York" → "New York",
+ *   "America/Argentina/Buenos_Aires" → "Buenos Aires".
+ * Returns "" for "UTC", "Etc/*" zones, or anything without a city component.
+ */
+export function cityFromTimezone(tz: string | undefined | null): string {
+	if (!tz) return "";
+	const trimmed = tz.trim();
+	if (!trimmed || trimmed.toUpperCase() === "UTC" || !trimmed.includes("/")) return "";
+	const segments = trimmed.split("/");
+	if (segments[0] === "Etc") return "";
+	return (segments[segments.length - 1] ?? "").replace(/_/g, " ").trim();
+}
+
+async function loadUserProfile(): Promise<{ name: string; email: string; city: string }> {
 	const rows = await db
 		.select({ key: settings.key, value: settings.value })
 		.from(settings)
 		.where(eq(settings.category, "user"));
 
-	const profile = { name: "", email: "" };
+	const profile = { name: "", email: "", city: "" };
 	for (const row of rows) {
 		try {
 			const val = JSON.parse(row.value) as string;
@@ -42,17 +69,26 @@ async function loadUserProfile(): Promise<{ name: string; email: string }> {
 			if (row.key === "user_email") profile.email = row.value;
 		}
 	}
+	// City is derived from the timezone setting (stored outside the "user" category).
+	profile.city = cityFromTimezone(await loadUserTimezone());
 	return profile;
 }
 
-function buildUserSection(profile: { name: string; email: string }): string {
-	if (!profile.name && !profile.email) return "";
+function buildUserSection(profile: { name: string; email: string; city?: string }): string {
+	if (!profile.name && !profile.email && !profile.city) return "";
 	const parts = ["## User Profile", ""];
 	if (profile.name) parts.push(`- **Name**: ${profile.name}`);
 	if (profile.email) parts.push(`- **Email**: ${profile.email}`);
+	if (profile.city) parts.push(`- **City**: ${profile.city}`);
 	parts.push("");
 	parts.push("Address the user by their name in communications. Use their email when sending emails on their behalf or when they need to be contacted via email.");
 	return parts.join("\n");
+}
+
+/** Public helper so other prompt builders (e.g. dashboard widgets) can reuse the
+ *  exact same `## User Profile` block (name + email + timezone-derived city). */
+export async function buildUserProfileSection(): Promise<string> {
+	return buildUserSection(await loadUserProfile());
 }
 
 // ---------------------------------------------------------------------------
@@ -778,14 +814,7 @@ export async function getPMSystemPrompt(
 	} catch { /* ignore */ }
 
 	// Read user's timezone for current time display and scheduler guidance
-	let userTimezone = "UTC";
-	try {
-		const tzRows = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, "timezone")).limit(1);
-		if (tzRows.length > 0) {
-			const raw = tzRows[0].value;
-			try { userTimezone = JSON.parse(raw) || "UTC"; } catch { userTimezone = raw || "UTC"; }
-		}
-	} catch { /* fallthrough */ }
+	const userTimezone = await loadUserTimezone();
 	const now = new Date();
 	const today = now.toLocaleDateString("en-CA", { timeZone: userTimezone }); // YYYY-MM-DD
 	const currentTime = now.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: userTimezone });
@@ -1035,14 +1064,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		// Slim App Context for lean mode: time/date only — drop app version and
 		// timezone-scheduler hint since custom agents in lean mode aren't
 		// expected to drive cron jobs or rely on a specific app build.
-		let userTimezone = "UTC";
-		try {
-			const tzRows = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, "timezone")).limit(1);
-			if (tzRows.length > 0) {
-				const raw = tzRows[0].value;
-				try { userTimezone = JSON.parse(raw) || "UTC"; } catch { userTimezone = raw || "UTC"; }
-			}
-		} catch { /* ignore */ }
+		const userTimezone = await loadUserTimezone();
 		const now = new Date();
 		const today = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		const currentTime = now.toLocaleString("en-US", {
@@ -1052,10 +1074,14 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		});
 		const appContext = `## App Context\n\n- **Current time**: ${currentTime}\n- **Today's date**: ${today}`;
 
-		// Slim User Profile for lean mode: name only — drop email and the
+		// Slim User Profile for lean mode: name + city — drop email and the
 		// email-usage hint.
-		const userSection = userProfile.name
-			? `## User Profile\n\n- **Name**: ${userProfile.name}\n\nAddress the user by their name in communications.`
+		const userProfileLines = [
+			userProfile.name ? `- **Name**: ${userProfile.name}` : "",
+			userProfile.city ? `- **City**: ${userProfile.city}` : "",
+		].filter(Boolean);
+		const userSection = userProfileLines.length > 0
+			? `## User Profile\n\n${userProfileLines.join("\n")}\n\nAddress the user by their name in communications.`
 			: "";
 
 		const skillsSection = buildSkillsDescriptionSection(false);
