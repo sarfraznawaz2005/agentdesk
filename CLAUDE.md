@@ -3,6 +3,8 @@
 > This file is the **map**, not the manual. It orients AI agents quickly and
 > points to the deeper sources of truth. Keep it short and current.
 
+**Before starting any task, read and follow .agent-atlas/index.json — a codebase navigation layer providing domain docs, a keyword→file:line concepts index, conventions, and constraints.**
+
 ---
 
 ## What Is This Project?
@@ -306,6 +308,7 @@ bun run db:studio    # Open Drizzle Studio (DB browser)
 
 ## Critical Rules
 
+- **Before starting any task, read and follow .agent-atlas/index.json — a codebase navigation layer providing domain docs, a keyword→file:line concepts index, conventions, and constraints.**
 - **PM is the sole orchestrator.** It handles planning, approval, task creation, and agent dispatch directly — no separate workflow engine.
 - **Kanban task flow is enforced**: backlog → working → review → done. Agents cannot skip columns.
 - **Code review is automatic**: When a task moves to "review", `review-cycle.ts` spawns a code-reviewer.
