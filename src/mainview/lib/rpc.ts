@@ -410,6 +410,14 @@ export const rpc = {
     workingBranch?: string;
   }) => electroviewRpc.request.updateProject(params),
 
+  /** Whether the project's workspace already contains a `.git` directory. */
+  getProjectRepoState: (projectId: string) =>
+    electroviewRpc.request.getProjectRepoState({ projectId }),
+
+  /** Clone the project's configured GitHub URL into its (empty) workspace path. */
+  cloneProjectRepo: (projectId: string) =>
+    electroviewRpc.request.cloneProjectRepo({ projectId }),
+
   /** Cascade-delete a project and all its data. */
   deleteProjectCascade: (id: string) =>
     electroviewRpc.request.deleteProjectCascade({ id }),

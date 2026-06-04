@@ -1049,8 +1049,8 @@
 - `FieldRowProps` (line 106)
 - `DeleteConfirmDialogProps` (line 131)
 - `GeneralTabProps` (line 283)
-- `AiTabProps` (line 613)
-- `ProjectSettingsTabProps` (line 894)
+- `AiTabProps` (line 679)
+- `ProjectSettingsTabProps` (line 960)
 
 **Functions:**
 - `FieldRow` (line 113)
@@ -1059,13 +1059,13 @@
 - `ResetConfirmDialog` (line 223)
 - `handleConfirm` (line 234)
 - `GeneralTab` (line 288)
-- `handleChange` (line 317)
-- `handleBrowse` (line 325)
-- `onResult` (line 329)
-- `AiTab` (line 619)
-- `handleChange` (line 643)
-- `ProjectSettingsTab` (line 898)
-- `load` (line 909)
+- `handleChange` (line 337)
+- `handleBrowse` (line 345)
+- `onResult` (line 349)
+- `AiTab` (line 685)
+- `handleChange` (line 709)
+- `ProjectSettingsTab` (line 964)
+- `load` (line 975)
 
 
 ### `src/mainview/components/remote-sync/connection-form.tsx`

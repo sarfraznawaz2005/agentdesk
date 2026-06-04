@@ -87,4 +87,14 @@ export type ProjectsRequests = {
     params: Record<string, never>;
     response: { synced: number };
   };
+  /** Whether the project's workspace already contains a `.git` directory. */
+  getProjectRepoState: {
+    params: { projectId: string };
+    response: { hasGit: boolean };
+  };
+  /** Clone the project's configured GitHub URL into its (empty) workspace path. */
+  cloneProjectRepo: {
+    params: { projectId: string };
+    response: { success: boolean; error?: string };
+  };
 };

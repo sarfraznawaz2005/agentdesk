@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 200
-**Symbols:** 1564
+**Symbols:** 1566
 
 ## Files
 
@@ -2129,7 +2129,7 @@
 **Functions:**
 - `onSettingChange` (line 63)
 - `withErrorToast` (line 72)
-- `walk` (line 546)
+- `walk` (line 548)
 
 **Exports:**
 - `rpc` (line 89)
@@ -2665,29 +2665,31 @@
 - `CreateProjectParams` (line 60)
 
 **Types:**
-- `StmtCache` (line 431)
+- `StmtCache` (line 508)
 
 **Functions:**
 - `getProjectsList` (line 30)
 - `createProjectHandler` (line 80)
-- `deleteProjectHandler` (line 248)
-- `cleanupProjectWorkspaceFolder` (line 262)
-- `permanentDeleteProjectHandler` (line 313)
-- `getProject` (line 368)
-- `updateProject` (line 388)
-- `buildStmts` (line 434)
-- `getStmts` (line 466)
-- `deleteProjectCascade` (line 475)
-- `resetProjectData` (line 524)
-- `saveProjectSetting` (line 557)
-- `getProjectSettings` (line 587)
-- `detectVerifyCommand` (line 606)
-- `exists` (line 623)
-- `readJson` (line 624)
-- `listWorkspaceFiles` (line 748)
-- `readWorkspaceFile` (line 820)
-- `readWorkspaceImageFile` (line 859)
-- `syncWorkspaceFolders` (line 899)
+- `getProjectRepoState` (line 251)
+- `cloneProjectRepo` (line 268)
+- `deleteProjectHandler` (line 325)
+- `cleanupProjectWorkspaceFolder` (line 339)
+- `permanentDeleteProjectHandler` (line 390)
+- `getProject` (line 445)
+- `updateProject` (line 465)
+- `buildStmts` (line 511)
+- `getStmts` (line 543)
+- `deleteProjectCascade` (line 552)
+- `resetProjectData` (line 601)
+- `saveProjectSetting` (line 634)
+- `getProjectSettings` (line 664)
+- `detectVerifyCommand` (line 683)
+- `exists` (line 700)
+- `readJson` (line 701)
+- `listWorkspaceFiles` (line 825)
+- `readWorkspaceFile` (line 897)
+- `readWorkspaceImageFile` (line 936)
+- `syncWorkspaceFolders` (line 976)
 
 
 ### `src/bun/rpc/prompts.ts`

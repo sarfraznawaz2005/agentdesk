@@ -2954,19 +2954,25 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 368,
+      "line": 251,
+      "symbol": "getProjectRepoState",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 445,
       "symbol": "getProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 466,
+      "line": 543,
       "symbol": "getStmts",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 587,
+      "line": 664,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -5538,13 +5544,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 248,
+      "line": 325,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 313,
+      "line": 390,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
@@ -6327,6 +6333,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 251,
+      "symbol": "getProjectRepoState",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/chat/message-list.tsx",
       "line": 20,
       "symbol": "getDerivedStateFromError",
@@ -6780,13 +6792,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 820,
+      "line": 897,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 859,
+      "line": 936,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -7210,7 +7222,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 909,
+      "line": 975,
       "symbol": "load",
       "type": "function"
     },
@@ -7386,7 +7398,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 557,
+      "line": 634,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
@@ -8080,7 +8092,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 557,
+      "line": 634,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
@@ -8214,13 +8226,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 317,
+      "line": 337,
       "symbol": "handleChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 643,
+      "line": 709,
       "symbol": "handleChange",
       "type": "function"
     },
@@ -8674,7 +8686,7 @@
     },
     {
       "file": "src/bun/rpc-registration.ts",
-      "line": 546,
+      "line": 548,
       "symbol": "walk",
       "type": "function"
     }
@@ -10424,55 +10436,67 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 248,
+      "line": 251,
+      "symbol": "getProjectRepoState",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 268,
+      "symbol": "cloneProjectRepo",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 325,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 262,
+      "line": 339,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 313,
+      "line": 390,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 368,
+      "line": 445,
       "symbol": "getProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 388,
+      "line": 465,
       "symbol": "updateProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 475,
+      "line": 552,
       "symbol": "deleteProjectCascade",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 524,
+      "line": 601,
       "symbol": "resetProjectData",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 557,
+      "line": 634,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 587,
+      "line": 664,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -10568,13 +10592,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 894,
+      "line": 960,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 898,
+      "line": 964,
       "symbol": "ProjectSettingsTab",
       "type": "function"
     },
@@ -12381,6 +12405,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 251,
+      "symbol": "getProjectRepoState",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 268,
+      "symbol": "cloneProjectRepo",
+      "type": "function"
+    },
+    {
       "file": "tests/helpers/git.ts",
       "line": 13,
       "symbol": "initGitRepo",
@@ -12672,31 +12708,31 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 262,
+      "line": 339,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 748,
+      "line": 825,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 820,
+      "line": 897,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 859,
+      "line": 936,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 899,
+      "line": 976,
       "symbol": "syncWorkspaceFolders",
       "type": "function"
     },
@@ -16960,7 +16996,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 859,
+      "line": 936,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -18422,7 +18458,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 748,
+      "line": 825,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
@@ -18562,7 +18598,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 388,
+      "line": 465,
       "symbol": "updateProject",
       "type": "function"
     },
@@ -19320,7 +19356,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 434,
+      "line": 511,
       "symbol": "buildStmts",
       "type": "function"
     },
@@ -19640,7 +19676,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 748,
+      "line": 825,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
@@ -21132,7 +21168,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 624,
+      "line": 701,
       "symbol": "readJson",
       "type": "function"
     },
@@ -21638,7 +21674,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 329,
+      "line": 349,
       "symbol": "onResult",
       "type": "function"
     },
@@ -22040,19 +22076,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 624,
+      "line": 701,
       "symbol": "readJson",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 820,
+      "line": 897,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 859,
+      "line": 936,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -23010,7 +23046,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 606,
+      "line": 683,
       "symbol": "detectVerifyCommand",
       "type": "function"
     },
@@ -23306,7 +23342,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 899,
+      "line": 976,
       "symbol": "syncWorkspaceFolders",
       "type": "function"
     },
@@ -24758,7 +24794,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 524,
+      "line": 601,
       "symbol": "resetProjectData",
       "type": "function"
     },
@@ -25864,19 +25900,19 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 317,
+      "line": 337,
       "symbol": "handleChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 325,
+      "line": 345,
       "symbol": "handleBrowse",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 643,
+      "line": 709,
       "symbol": "handleChange",
       "type": "function"
     },
@@ -27150,7 +27186,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 431,
+      "line": 508,
       "symbol": "StmtCache",
       "type": "type"
     }
@@ -31430,7 +31466,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 431,
+      "line": 508,
       "symbol": "StmtCache",
       "type": "type"
     }
@@ -31776,7 +31812,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 524,
+      "line": 601,
       "symbol": "resetProjectData",
       "type": "function"
     },
@@ -32002,7 +32038,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 587,
+      "line": 664,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -32056,13 +32092,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 894,
+      "line": 960,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 898,
+      "line": 964,
       "symbol": "ProjectSettingsTab",
       "type": "function"
     },
@@ -34968,19 +35004,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 248,
+      "line": 325,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 313,
+      "line": 390,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 475,
+      "line": 552,
       "symbol": "deleteProjectCascade",
       "type": "function"
     },
@@ -37876,7 +37912,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 262,
+      "line": 339,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
@@ -38550,7 +38586,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 623,
+      "line": 700,
       "symbol": "exists",
       "type": "function"
     }
@@ -38798,25 +38834,25 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 613,
+      "line": 679,
       "symbol": "AiTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 619,
+      "line": 685,
       "symbol": "AiTab",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 894,
+      "line": 960,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 898,
+      "line": 964,
       "symbol": "ProjectSettingsTab",
       "type": "function"
     },
@@ -40766,7 +40802,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 325,
+      "line": 345,
       "symbol": "handleBrowse",
       "type": "function"
     },
@@ -41792,7 +41828,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 262,
+      "line": 339,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
@@ -43456,7 +43492,7 @@
   "permanent": [
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 313,
+      "line": 390,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
@@ -43464,28 +43500,6 @@
       "file": "src/mainview/pages/dashboard.tsx",
       "line": 201,
       "symbol": "handlePermanentDeleteProject",
-      "type": "function"
-    }
-  ],
-  "stmts": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 434,
-      "symbol": "buildStmts",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 466,
-      "symbol": "getStmts",
-      "type": "function"
-    }
-  ],
-  "cascade": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 475,
-      "symbol": "deleteProjectCascade",
       "type": "function"
     }
   ],
@@ -43498,7 +43512,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 606,
+      "line": 683,
       "symbol": "detectVerifyCommand",
       "type": "function"
     },
@@ -43506,22 +43520,6 @@
       "file": "src/mainview/components/chat/tool-call-card.tsx",
       "line": 489,
       "symbol": "detectLanguageFromContent",
-      "type": "function"
-    }
-  ],
-  "verify": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 606,
-      "symbol": "detectVerifyCommand",
-      "type": "function"
-    }
-  ],
-  "folders": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 899,
-      "symbol": "syncWorkspaceFolders",
       "type": "function"
     }
   ],
@@ -44290,13 +44288,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 613,
+      "line": 679,
       "symbol": "AiTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 894,
+      "line": 960,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
@@ -44799,14 +44797,6 @@
       "line": 54,
       "symbol": "getModelPrice",
       "type": "function"
-    }
-  ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 301,
-      "symbol": "electroview",
-      "type": "export"
     }
   ],
   "stored": [
@@ -52191,6 +52181,60 @@
       "line": 553,
       "symbol": "normalizeNewlines",
       "type": "function"
+    }
+  ],
+  "clone": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 268,
+      "symbol": "cloneProjectRepo",
+      "type": "function"
+    }
+  ],
+  "stmts": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 511,
+      "symbol": "buildStmts",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 543,
+      "symbol": "getStmts",
+      "type": "function"
+    }
+  ],
+  "cascade": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 552,
+      "symbol": "deleteProjectCascade",
+      "type": "function"
+    }
+  ],
+  "verify": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 683,
+      "symbol": "detectVerifyCommand",
+      "type": "function"
+    }
+  ],
+  "folders": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 976,
+      "symbol": "syncWorkspaceFolders",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 301,
+      "symbol": "electroview",
+      "type": "export"
     }
   ]
 }

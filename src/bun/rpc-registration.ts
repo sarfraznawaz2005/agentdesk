@@ -162,6 +162,8 @@ export const rpc = BrowserView.defineRPC<AgentDeskRPC>({
 			readWorkspaceImageFile: (params) =>
 				projectsRpc.readWorkspaceImageFile(params.projectId, params.filePath),
 			syncWorkspaceFolders: () => projectsRpc.syncWorkspaceFolders(),
+			getProjectRepoState: (params) => projectsRpc.getProjectRepoState(params.projectId),
+			cloneProjectRepo: (params) => projectsRpc.cloneProjectRepo(params.projectId),
 
 			// Conversations
 			getConversations: (params) =>

@@ -243,6 +243,83 @@ export async function createProjectHandler(
 }
 
 /**
+ * Report whether a project's workspace already contains a `.git` directory.
+ * Used by the settings UI to decide whether to offer a "Clone" action next to
+ * the GitHub URL. Tolerant — returns { hasGit: false } for missing projects or
+ * paths rather than throwing.
+ */
+export async function getProjectRepoState(projectId: string): Promise<{ hasGit: boolean }> {
+	try {
+		const rows = await db.select({ workspacePath: projects.workspacePath })
+			.from(projects).where(eq(projects.id, projectId)).limit(1);
+		if (rows.length === 0) return { hasGit: false };
+		return { hasGit: existsSync(join(rows[0].workspacePath, ".git")) };
+	} catch {
+		return { hasGit: false };
+	}
+}
+
+/**
+ * Clone a project's configured GitHub URL into its workspace path. Mirrors the
+ * clone performed during project creation (auth via inline token header, optional
+ * branch), but as a standalone action for projects that gained a URL afterwards.
+ * Refuses if the workspace is already a git repo or is non-empty.
+ */
+export async function cloneProjectRepo(projectId: string): Promise<{ success: boolean; error?: string }> {
+	const rows = await db.select({
+		workspacePath: projects.workspacePath,
+		githubUrl: projects.githubUrl,
+		workingBranch: projects.workingBranch,
+	}).from(projects).where(eq(projects.id, projectId)).limit(1);
+	if (rows.length === 0) return { success: false, error: "Project not found." };
+
+	const { workspacePath, workingBranch } = rows[0];
+	const url = rows[0].githubUrl?.trim();
+	if (!url) return { success: false, error: "No GitHub repository URL is set for this project." };
+
+	// Already a git repo — nothing to clone.
+	if (existsSync(join(workspacePath, ".git"))) {
+		return { success: false, error: "This workspace is already a git repository." };
+	}
+
+	// git clone needs an empty target dir (a stray .git was excluded above).
+	if (existsSync(workspacePath)) {
+		const entries = readdirSync(workspacePath).filter((e) => e !== ".git");
+		if (entries.length > 0) {
+			return { success: false, error: `Workspace is not empty: ${workspacePath}. Cloning requires an empty folder.` };
+		}
+	}
+
+	// Ensure the parent exists so `git clone` can create/use the target dir.
+	try { mkdirSync(resolve(workspacePath, ".."), { recursive: true }); } catch { /* may already exist */ }
+
+	const branch = workingBranch?.trim();
+
+	// Auto-authenticate a GitHub HTTPS clone with the configured token (inline header,
+	// credential helper disabled) — no-op for SSH/non-GitHub URLs or when no token is set.
+	let cloneAuth: string[] = [];
+	if (/^https:\/\/github\.com\//i.test(url)) {
+		const token = await resolveGitHubToken({});
+		if (token) cloneAuth = gitAuthArgs(token);
+	}
+	const cloneArgs = [...cloneAuth, "clone", url, workspacePath];
+	if (branch) cloneArgs.push("--branch", branch);
+
+	const { exitCode, stderr } = await runGit(cloneArgs, resolve(workspacePath, ".."));
+	if (exitCode !== 0) {
+		return { success: false, error: `git clone failed: ${stderr}` };
+	}
+
+	// If a branch was requested but the clone landed on the remote default, check it out now.
+	if (branch) {
+		await runGit(["checkout", branch], workspacePath).catch(() => {});
+	}
+
+	logAudit({ action: "project.clone", entityType: "project", entityId: projectId, details: { url } });
+	return { success: true };
+}
+
+/**
  * Delete a project by ID.
  */
 export async function deleteProjectHandler(

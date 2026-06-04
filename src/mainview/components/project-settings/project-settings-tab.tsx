@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Download } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -300,6 +300,9 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [browsingDir, setBrowsingDir] = useState(false);
+  // null = repo state not yet known (loading); true/false once resolved.
+  const [hasGit, setHasGit] = useState<boolean | null>(null);
+  const [cloning, setCloning] = useState(false);
 
   // Keep form in sync if project prop changes (e.g. after a save)
   useEffect(() => {
@@ -313,6 +316,23 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
     });
     setDirty(false);
   }, [project]);
+
+  // Detect whether the workspace is already a git repo, to decide whether to
+  // offer a "Clone" action next to the GitHub URL.
+  useEffect(() => {
+    let cancelled = false;
+    rpc
+      .getProjectRepoState(project.id)
+      .then((r) => {
+        if (!cancelled) setHasGit(r.hasGit);
+      })
+      .catch(() => {
+        if (!cancelled) setHasGit(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id]);
 
   function handleChange<K extends keyof GeneralForm>(
     key: K,
@@ -343,39 +363,68 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
     });
   }
 
+  // Persist the form without UI chrome (no success toast). Returns whether it
+  // succeeded so callers can chain follow-up actions (e.g. clone after save).
+  const saveForm = useCallback(async (): Promise<boolean> => {
+    const res = await rpc.updateProject({
+      id: project.id,
+      name: form.name,
+      description: form.description || undefined,
+      status: form.status,
+      workspacePath: form.workspacePath,
+      githubUrl: form.githubUrl || undefined,
+      workingBranch: form.workingBranch || undefined,
+    });
+    if (!res.success) {
+      toast("error", res.error ?? "Failed to save project settings.");
+      return false;
+    }
+    onProjectUpdated({
+      ...project,
+      name: form.name,
+      description: form.description || null,
+      status: form.status,
+      workspacePath: form.workspacePath,
+      githubUrl: form.githubUrl || null,
+      workingBranch: form.workingBranch || null,
+    });
+    setDirty(false);
+    return true;
+  }, [form, project, onProjectUpdated]);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const res = await rpc.updateProject({
-        id: project.id,
-        name: form.name,
-        description: form.description || undefined,
-        status: form.status,
-        workspacePath: form.workspacePath,
-        githubUrl: form.githubUrl || undefined,
-        workingBranch: form.workingBranch || undefined,
-      });
-      if (!res.success) {
-        toast("error", res.error ?? "Failed to save project settings.");
-        return;
-      }
-      onProjectUpdated({
-        ...project,
-        name: form.name,
-        description: form.description || null,
-        status: form.status,
-        workspacePath: form.workspacePath,
-        githubUrl: form.githubUrl || null,
-        workingBranch: form.workingBranch || null,
-      });
-      setDirty(false);
-      toast("success", "Project settings saved.");
+      if (await saveForm()) toast("success", "Project settings saved.");
     } catch {
       toast("error", "Failed to save project settings.");
     } finally {
       setSaving(false);
     }
-  }, [form, project, onProjectUpdated]);
+  }, [saveForm]);
+
+  const handleClone = useCallback(async () => {
+    setCloning(true);
+    try {
+      // Persist any unsaved edits first so the clone uses the latest URL/branch
+      // (cloneProjectRepo reads the persisted values from the DB).
+      if (dirty && !(await saveForm())) return;
+
+      const res = await rpc.cloneProjectRepo(project.id);
+      if (!res.success) {
+        toast("error", res.error ?? "Clone failed.");
+        return;
+      }
+      setHasGit(true);
+      toast("success", "Repository cloned into the workspace.");
+      // Refresh the branch indicator and file tree now that a repo exists.
+      window.dispatchEvent(new CustomEvent("agentdesk:stream-complete"));
+    } catch {
+      toast("error", "Clone failed.");
+    } finally {
+      setCloning(false);
+    }
+  }, [dirty, saveForm, project.id]);
 
   const handleDelete = useCallback(async () => {
     await rpc.deleteProjectCascade(project.id);
@@ -502,12 +551,29 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
             label="GitHub Repository URL"
             description="Optional link to the remote repository."
           >
-            <Input
-              id="proj-github-url"
-              value={form.githubUrl}
-              onChange={(e) => handleChange("githubUrl", e.target.value)}
-              placeholder="https://github.com/org/repo"
-            />
+            <div className="flex gap-2 w-full">
+              <Input
+                id="proj-github-url"
+                value={form.githubUrl}
+                onChange={(e) => handleChange("githubUrl", e.target.value)}
+                placeholder="https://github.com/org/repo"
+                className="flex-1"
+              />
+              {/* Clone is only offered when a URL is set and the workspace isn't
+                  already a git repo (hasGit === false, i.e. resolved & negative). */}
+              {form.githubUrl.trim() && hasGit === false && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClone}
+                  disabled={cloning}
+                  className="shrink-0"
+                >
+                  <Download aria-hidden="true" />
+                  {cloning ? "Cloning…" : "Clone"}
+                </Button>
+              )}
+            </div>
           </FieldRow>
 
           <Separator />
