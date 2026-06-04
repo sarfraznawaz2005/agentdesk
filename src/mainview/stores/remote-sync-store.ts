@@ -24,6 +24,11 @@ interface RemoteSyncStore {
 	runByProject: Record<string, RemoteSyncRunState | undefined>;
 	logsByProject: Record<string, RemoteSyncLogLine[]>;
 	clearLogs: (projectId: string) => void;
+	/** Seed a "connecting" run as soon as a pull/push is dispatched, so the Activity tab
+	 *  shows a live indicator immediately instead of "No sync running" until the first
+	 *  progress broadcast (which only arrives after the server connection is made). The
+	 *  real `run-started` broadcast (same runId) replaces this shortly after. */
+	beginConnecting: (projectId: string, runId: string, direction: "pull" | "push") => void;
 }
 
 export const useRemoteSyncStore = create<RemoteSyncStore>((set) => ({
@@ -31,6 +36,25 @@ export const useRemoteSyncStore = create<RemoteSyncStore>((set) => ({
 	logsByProject: {},
 	clearLogs: (projectId) =>
 		set((s) => ({ logsByProject: { ...s.logsByProject, [projectId]: [] } })),
+	beginConnecting: (projectId, runId, direction) =>
+		set((s) => ({
+			runByProject: {
+				...s.runByProject,
+				[projectId]: {
+					runId,
+					direction,
+					running: true,
+					total: 0,
+					done: 0,
+					ok: 0,
+					failed: 0,
+					currentFile: null,
+					status: "connecting",
+					summary: null,
+					error: null,
+				},
+			},
+		})),
 }));
 
 const MAX_LOGS = 300;

@@ -116,7 +116,9 @@ export async function triggerIssueFixManually(params: {
 		issueTitle: issue.title,
 		issueBody: issue.body,
 		issueUrl: issue.htmlUrl,
-		intent: "fix",
+		// Manual "fix this issue" is really "do whatever the issue asks" — use the
+		// generic task intent so the agent infers the right kind of work itself.
+		intent: "task",
 		triggerType: "manual",
 		triggerKeyword: null,
 		triggerCommentId: `manual:${Date.now()}`,

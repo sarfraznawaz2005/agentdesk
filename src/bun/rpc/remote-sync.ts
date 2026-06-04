@@ -10,6 +10,7 @@ import {
 	testConnection as engineTest,
 	browseRemoteDir as engineBrowse,
 	pull as enginePull,
+	computePullConflicts as enginePullConflicts,
 	computePushDiff as engineDiff,
 	getPushFileDiff as engineFileDiff,
 	push as enginePush,
@@ -22,6 +23,7 @@ import type {
 	RemoteSyncRunDto,
 	RemoteEntryDto,
 	PushDiffEntry,
+	PullConflictEntry,
 } from "../../shared/rpc/remote-sync";
 
 export async function getRemoteSyncConfig(params: { projectId: string }): Promise<{ config: RemoteSyncConfigDto | null }> {
@@ -61,6 +63,12 @@ export async function browseRemoteDir(params: {
 	remoteDir: string;
 }): Promise<{ entries: RemoteEntryDto[]; error?: string }> {
 	return engineBrowse(params.projectId, params.remoteDir);
+}
+
+export async function computeRemotePullConflicts(params: {
+	projectId: string;
+}): Promise<{ conflicts: PullConflictEntry[]; error?: string }> {
+	return enginePullConflicts(params.projectId);
 }
 
 export async function startRemotePull(params: {

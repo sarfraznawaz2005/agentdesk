@@ -642,6 +642,77 @@ export async function computePushDiff(
 	return { entries, scanned: localRelSet.size };
 }
 
+// --- pull conflict preflight (overwrite guard) ------------------------------
+// Before a Pull overwrites local files, find the ones that would lose un-pushed
+// work: a tracked file (in the manifest) whose CURRENT local content differs from
+// what we recorded at the last sync. Those are edits the user made locally and has
+// not pushed — Pull would silently clobber them. Files that are untouched since the
+// last sync (local SHA == manifest SHA), or never synced before, are NOT flagged
+// (re-downloading them is harmless / they aren't a lost-work case). This needs no
+// remote round-trip — it's a pure local-vs-manifest comparison.
+
+export interface PullConflictEntry {
+	remotePath: string;
+	localPath: string;
+	/** Local file size (bytes). */
+	size: number;
+}
+
+export async function computePullConflicts(
+	projectId: string,
+): Promise<{ conflicts: PullConflictEntry[]; error?: string }> {
+	let cfg: ResolvedRemoteConfig | null;
+	try {
+		cfg = await resolveRemoteConfig(projectId);
+	} catch (e) {
+		return { conflicts: [], error: e instanceof Error ? e.message : String(e) };
+	}
+	if (!cfg) return { conflicts: [], error: "No connection configured." };
+	if (!cfg.selections.length) return { conflicts: [] };
+	const workspacePath = await getWorkspacePath(projectId);
+	if (!workspacePath) return { conflicts: [], error: "Project workspace path not found." };
+
+	const manifest = await getManifest(projectId);
+	const manifestByRemote = new Map(manifest.map((m) => [m.remotePath, m]));
+	const exclude = makeExcluder(cfg.excludePatterns);
+
+	// Local files currently under the selected paths (base-relative). Explicit file
+	// selections are always included; excludes only prune within directory walks.
+	const localRelSet = new Set<string>();
+	const localRoot = join(workspacePath, ...cfg.localSubdir.split("/").filter(Boolean));
+	for (const sel of cfg.selections) {
+		if (sel.type === "file") {
+			if (isSafeRel(sel.path)) localRelSet.add(sel.path);
+		} else {
+			const found: string[] = [];
+			await walkLocal(localRoot, sel.path, found, exclude);
+			found.forEach((f) => localRelSet.add(f));
+		}
+	}
+
+	const conflicts: PullConflictEntry[] = [];
+	for (const rel of localRelSet) {
+		const known = manifestByRemote.get(rel);
+		if (!known) continue; // never synced before — not an un-pushed-edit case
+		let size: number;
+		let sha: string;
+		try {
+			const localAbs = toLocalAbs(workspacePath, cfg.localSubdir, rel);
+			const stat = await fsp.stat(localAbs);
+			size = stat.size;
+			sha = await hashFile(localAbs);
+		} catch {
+			continue; // vanished between walk and stat — nothing to overwrite
+		}
+		if (known.sha256 !== sha) {
+			conflicts.push({ remotePath: rel, localPath: toLocalRel(cfg.localSubdir, rel), size });
+		}
+	}
+
+	conflicts.sort((a, b) => a.remotePath.localeCompare(b.remotePath));
+	return { conflicts };
+}
+
 // --- per-file diff (push preview) -------------------------------------------
 
 const MAX_DIFF_BYTES = 512 * 1024;

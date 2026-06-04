@@ -7,7 +7,7 @@
 // that the orchestrator passes to runInlineAgent.
 // ---------------------------------------------------------------------------
 
-export type IssueIntent = "fix" | "feature" | "test" | "docs" | "refactor" | "review";
+export type IssueIntent = "task" | "fix" | "feature" | "test" | "docs" | "refactor" | "review";
 
 export interface IntentKeyword {
 	keyword: string; // always lower-case, agentdesk- prefixed
@@ -23,6 +23,7 @@ export const KEYWORD_PREFIX = "agentdesk-";
  * results in a branch + PR — there are no analysis/answer-only intents.
  */
 export const PREDEFINED_KEYWORDS: IntentKeyword[] = [
+	{ keyword: "agentdesk-task", intent: "task", description: "Generic task — do exactly what the issue/comment describes (could be a fix, feature, refactor, docs, review — anything)." },
 	{ keyword: "agentdesk-fix", intent: "fix", description: "Diagnose and fix the reported bug/error." },
 	{ keyword: "agentdesk-feature", intent: "feature", description: "Implement the described feature." },
 	{ keyword: "agentdesk-test", intent: "test", description: "Add or repair tests." },
@@ -38,6 +39,7 @@ export function intentForKeyword(keyword: string): IssueIntent | null {
 }
 
 const INTENT_DIRECTIVES: Record<IssueIntent, string> = {
+	task: "Read the request carefully and do exactly what it asks — it may be a bug fix, a new feature, a refactor, documentation, tests, a review, or anything else. Infer the right kind of work from the request itself, then carry it out end-to-end. Add or update tests if the repo has a test setup.",
 	fix: "Reproduce the problem, find the root cause, and implement the minimal correct fix.",
 	feature: "Implement the described feature end-to-end. Add tests if the repo has a test setup.",
 	test: "Add or repair tests covering the described behavior. Do not change production behavior.",

@@ -11,10 +11,24 @@ import {
 	initRemoteSyncListeners,
 	type RemoteSyncRunState,
 } from "@/stores/remote-sync-store";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertTriangle } from "lucide-react";
 import { RemoteConnectionForm } from "./connection-form";
 import { RemoteTree } from "./remote-tree";
 import { PushDiffDialog } from "./push-diff-dialog";
-import type { RemoteSyncConfigDto, RemoteSelection, RemoteSyncRunDto } from "../../../shared/rpc/remote-sync";
+import type {
+	RemoteSyncConfigDto,
+	RemoteSelection,
+	RemoteSyncRunDto,
+	PullConflictEntry,
+} from "../../../shared/rpc/remote-sync";
 
 function selectionsEqual(a: RemoteSelection[], b: RemoteSelection[]): boolean {
 	if (a.length !== b.length) return false;
@@ -39,11 +53,17 @@ function ProgressView({ run }: { run: RemoteSyncRunState }) {
 					{run.direction === "pull" ? "Download" : "Upload"}
 				</Badge>
 				{run.running && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-				<span className="font-medium">
-					{run.done}/{run.total} files
-				</span>
-				<span className="text-emerald-600 dark:text-emerald-400">{run.ok} ok</span>
-				{run.failed > 0 && <span className="text-destructive">{run.failed} failed</span>}
+				{run.running && run.total === 0 ? (
+					<span className="font-medium text-muted-foreground">Connecting…</span>
+				) : (
+					<>
+						<span className="font-medium">
+							{run.done}/{run.total} files
+						</span>
+						<span className="text-emerald-600 dark:text-emerald-400">{run.ok} ok</span>
+						{run.failed > 0 && <span className="text-destructive">{run.failed} failed</span>}
+					</>
+				)}
 			</div>
 			<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
 				<div
@@ -68,6 +88,9 @@ export function RemoteSyncTab({ projectId }: { projectId: string }) {
 	const [subTab, setSubTab] = useState("files");
 	const [pushOpen, setPushOpen] = useState(false);
 	const [savingSel, setSavingSel] = useState(false);
+	const [pullConflicts, setPullConflicts] = useState<PullConflictEntry[] | null>(null);
+	const [checkingPull, setCheckingPull] = useState(false);
+	const [checkingPush, setCheckingPush] = useState(false);
 
 	const run = useRemoteSyncStore((s) => s.runByProject[projectId]);
 	const logs = useRemoteSyncStore((s) => s.logsByProject[projectId]);
@@ -103,16 +126,22 @@ export function RemoteSyncTab({ projectId }: { projectId: string }) {
 		void loadRuns();
 	}, [loadConfig, loadRuns]);
 
-	// Refresh history when a run finishes.
+	// Refresh history when a run finishes; surface a failed run (e.g. the connection
+	// dropped mid-operation) as a toast so the user isn't left watching a stalled bar.
 	useEffect(() => {
-		const h = () => void loadRuns();
-		window.addEventListener("agentdesk:remotesync-run-complete", h);
-		window.addEventListener("agentdesk:remotesync-run-error", h);
-		return () => {
-			window.removeEventListener("agentdesk:remotesync-run-complete", h);
-			window.removeEventListener("agentdesk:remotesync-run-error", h);
+		const onDone = () => void loadRuns();
+		const onErr = (e: Event) => {
+			const d = (e as CustomEvent<{ projectId: string; error?: string }>).detail;
+			if (d?.projectId === projectId) toast("error", d.error ?? "Remote sync failed.");
+			void loadRuns();
 		};
-	}, [loadRuns]);
+		window.addEventListener("agentdesk:remotesync-run-complete", onDone);
+		window.addEventListener("agentdesk:remotesync-run-error", onErr);
+		return () => {
+			window.removeEventListener("agentdesk:remotesync-run-complete", onDone);
+			window.removeEventListener("agentdesk:remotesync-run-error", onErr);
+		};
+	}, [loadRuns, projectId]);
 
 	// Auto-scroll the log to the bottom as lines stream in.
 	useEffect(() => {
@@ -136,23 +165,77 @@ export function RemoteSyncTab({ projectId }: { projectId: string }) {
 		}
 	}, [projectId, selections]);
 
-	const onPull = useCallback(async () => {
-		// Persist the current selection first so the backend pulls exactly what's shown.
+	const doStartPull = useCallback(async () => {
 		try {
-			if (selectionDirty) {
-				const res = await rpc.saveRemoteSyncConfig(projectId, { selections });
-				setConfig(res.config);
-			}
 			const res = await rpc.startRemotePull(projectId);
 			if (!res.ok) {
 				toast("error", res.error ?? "Could not start download.");
 				return;
 			}
+			if (res.runId) useRemoteSyncStore.getState().beginConnecting(projectId, res.runId, "pull");
 			setSubTab("activity");
 		} catch {
 			toast("error", "Could not start download.");
 		}
-	}, [projectId, selections, selectionDirty]);
+	}, [projectId]);
+
+	const onPull = useCallback(async () => {
+		setCheckingPull(true);
+		try {
+			// Persist the current selection first so the backend pulls exactly what's shown
+			// (and the conflict preflight examines the same set).
+			if (selectionDirty) {
+				const res = await rpc.saveRemoteSyncConfig(projectId, { selections });
+				setConfig(res.config);
+			}
+			// Establish the connection up front: the button shows a spinner while we connect,
+			// and a clear toast fires if the server is unreachable — instead of a silent gap
+			// followed by a failure buried in the activity log.
+			const test = await rpc.testRemoteConnection(projectId);
+			if (!test.ok) {
+				toast("error", test.error ?? "Could not connect to the server.");
+				return;
+			}
+			// Overwrite guard: if any selected file has un-pushed local edits, confirm first.
+			const { conflicts, error } = await rpc.computeRemotePullConflicts(projectId);
+			if (error) {
+				toast("error", error);
+				return;
+			}
+			if (conflicts.length > 0) {
+				setPullConflicts(conflicts);
+				return; // wait for the user to confirm in the dialog
+			}
+			await doStartPull();
+		} catch {
+			toast("error", "Could not start download.");
+		} finally {
+			setCheckingPull(false);
+		}
+	}, [projectId, selections, selectionDirty, doStartPull]);
+
+	const onConfirmOverwritePull = useCallback(async () => {
+		setPullConflicts(null);
+		await doStartPull();
+	}, [doStartPull]);
+
+	const onPushClick = useCallback(async () => {
+		setCheckingPush(true);
+		try {
+			// Same as pull: confirm the server is reachable before opening the diff dialog,
+			// so the user gets a spinner + a toast on failure rather than a silent wait.
+			const test = await rpc.testRemoteConnection(projectId);
+			if (!test.ok) {
+				toast("error", test.error ?? "Could not connect to the server.");
+				return;
+			}
+			setPushOpen(true);
+		} catch {
+			toast("error", "Could not connect to the server.");
+		} finally {
+			setCheckingPush(false);
+		}
+	}, [projectId]);
 
 	const onPushConfirm = useCallback(
 		async (remotePaths: string[]) => {
@@ -162,6 +245,7 @@ export function RemoteSyncTab({ projectId }: { projectId: string }) {
 					toast("error", res.error ?? "Could not start upload.");
 					return;
 				}
+				if (res.runId) useRemoteSyncStore.getState().beginConnecting(projectId, res.runId, "push");
 				setSubTab("activity");
 			} catch {
 				toast("error", "Could not start upload.");
@@ -204,11 +288,11 @@ export function RemoteSyncTab({ projectId }: { projectId: string }) {
 								</Button>
 							) : (
 								<>
-									<Button variant="outline" size="sm" onClick={onPull} disabled={selectedCount === 0} title={selectedCount === 0 ? "Select files in the Files tab first." : undefined}>
-										<Download className="h-4 w-4" /> Pull selected
+									<Button variant="outline" size="sm" onClick={onPull} disabled={selectedCount === 0 || checkingPull} title={selectedCount === 0 ? "Select files in the Files tab first." : undefined}>
+										{checkingPull ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Pull selected
 									</Button>
-									<Button size="sm" onClick={() => setPushOpen(true)}>
-										<Upload className="h-4 w-4" /> Push changes
+									<Button size="sm" onClick={onPushClick} disabled={checkingPush}>
+										{checkingPush ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Push changes
 									</Button>
 								</>
 							)}
@@ -353,6 +437,38 @@ export function RemoteSyncTab({ projectId }: { projectId: string }) {
 			</div>
 
 			<PushDiffDialog projectId={projectId} open={pushOpen} onOpenChange={setPushOpen} onConfirm={onPushConfirm} />
+
+			<Dialog open={!!pullConflicts} onOpenChange={(o) => !o && setPullConflicts(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<AlertTriangle className="h-5 w-5 text-amber-500" />
+							Overwrite local changes?
+						</DialogTitle>
+						<DialogDescription>
+							{pullConflicts?.length === 1 ? "1 selected file has" : `${pullConflicts?.length ?? 0} selected files have`}{" "}
+							local edits that haven't been pushed. Pulling will overwrite{" "}
+							{pullConflicts?.length === 1 ? "it" : "them"} with the server copy. Push your changes first if you
+							want to keep this work.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="max-h-60 overflow-auto rounded-md border border-border bg-muted/20 p-2 font-mono text-xs">
+						{pullConflicts?.map((c) => (
+							<div key={c.remotePath} className="truncate text-amber-700 dark:text-amber-400" title={c.remotePath}>
+								{c.remotePath}
+							</div>
+						))}
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setPullConflicts(null)}>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={onConfirmOverwritePull}>
+							Overwrite &amp; pull
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

@@ -964,6 +964,7 @@ When enhancing a prompt:
 			revealRemoteSyncSecret: (params) => remoteSyncRpc.revealRemoteSyncSecret(params),
 			testRemoteConnection: (params) => remoteSyncRpc.testRemoteConnection(params),
 			browseRemoteDir: (params) => remoteSyncRpc.browseRemoteDir(params),
+			computeRemotePullConflicts: (params) => remoteSyncRpc.computeRemotePullConflicts(params),
 			startRemotePull: (params) => remoteSyncRpc.startRemotePull(params),
 			computeRemotePushDiff: (params) => remoteSyncRpc.computeRemotePushDiff(params),
 			getRemotePushFileDiff: (params) => remoteSyncRpc.getRemotePushFileDiff(params),

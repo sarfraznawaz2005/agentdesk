@@ -1264,6 +1264,10 @@ export const rpc = {
   browseRemoteDir: (projectId: string, remoteDir: string) =>
     electroviewRpc.request.browseRemoteDir({ projectId, remoteDir }),
 
+  /** Preflight: selected files with un-pushed local edits a Pull would overwrite. */
+  computeRemotePullConflicts: (projectId: string) =>
+    electroviewRpc.request.computeRemotePullConflicts({ projectId }),
+
   /** Start downloading all selected files/folders (async; streams progress). */
   startRemotePull: (projectId: string) =>
     electroviewRpc.request.startRemotePull({ projectId }),

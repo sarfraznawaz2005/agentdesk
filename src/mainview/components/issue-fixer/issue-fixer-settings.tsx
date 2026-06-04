@@ -98,8 +98,8 @@ const AUTONOMY_HELP = (
 
 const DEFAULT_FORM: FormState = {
 	enabled: false,
-	keywords: ["agentdesk-fix"],
-	labels: [],
+	keywords: ["agentdesk-task", "agentdesk-fix"],
+	labels: ["agentdesk-task"],
 	authMode: "both",
 	pollIntervalMin: 60,
 	autonomy: "branch_pr",
@@ -198,7 +198,7 @@ export function IssueFixerSettingsTab({
 		if (config) {
 			setForm({
 				enabled: config.enabled,
-				keywords: config.keywords.length ? config.keywords : ["agentdesk-fix"],
+				keywords: config.keywords.length ? config.keywords : ["agentdesk-task", "agentdesk-fix"],
 				labels: config.labels,
 				authMode: config.authMode,
 				pollIntervalMin: config.pollIntervalMin,

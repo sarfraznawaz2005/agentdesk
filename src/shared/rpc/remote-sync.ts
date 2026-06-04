@@ -80,6 +80,13 @@ export interface PushDiffEntry {
 	remoteChanged: boolean | null;
 }
 
+export interface PullConflictEntry {
+	remotePath: string;
+	localPath: string;
+	/** Local file size (bytes). */
+	size: number;
+}
+
 export interface RemoteSyncRunDto {
 	id: string;
 	projectId: string;
@@ -119,6 +126,15 @@ export type RemoteSyncRequests = {
 	browseRemoteDir: {
 		params: { projectId: string; remoteDir: string };
 		response: { entries: RemoteEntryDto[]; error?: string };
+	};
+	/**
+	 * Preflight for Pull: list selected files whose local copy has un-pushed edits
+	 * (local content differs from the last-synced manifest) and would be overwritten.
+	 * Empty `conflicts` ⇒ safe to pull without prompting.
+	 */
+	computeRemotePullConflicts: {
+		params: { projectId: string };
+		response: { conflicts: PullConflictEntry[]; error?: string };
 	};
 	/** Download all selected files/folders into the workspace (async; streams progress). */
 	startRemotePull: {

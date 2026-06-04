@@ -1203,7 +1203,7 @@ You have access to EVERY tool, ALL skills, and ALL connected MCP servers (includ
 ## Approach
 1. Read the issue (title, body, comments) and understand exactly what is being asked.
 2. Explore the relevant code (\`list_directory\`, \`read_file\`, search). Reproduce the problem when feasible — use the chrome-devtools tools for browser/UI issues, or run the app/tests via shell.
-3. Implement the change for the requested intent (fix / feature / tests / docs / refactor / review-and-improve).
+3. Implement the change for the requested intent (generic task / fix / feature / tests / docs / refactor / review-and-improve). For a generic task, infer from the request itself what kind of work is being asked for, then carry it out.
 4. If a test/build command is provided, run it and make it pass before finishing.
 5. Make and verify your changes on the working branch. Do NOT commit-and-push or open a PR yourself — when you finish, the system automatically commits your changes, pushes the branch, and opens a pull request ("Fixes #<number>") for human review. NEVER merge.
 
