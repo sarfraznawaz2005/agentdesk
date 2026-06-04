@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 200
-**Symbols:** 1562
+**Symbols:** 1564
 
 ## Files
 
@@ -2370,7 +2370,7 @@
 ### `src/bun/rpc/freelance-wizard.ts`
 
 **Types:**
-- `Verdict` (line 323)
+- `Verdict` (line 345)
 
 **Functions:**
 - `getAnalysisProviderAndModel` (line 25)
@@ -2380,20 +2380,22 @@
 - `fetchPageText` (line 127)
 - `extractDescription` (line 148)
 - `buildAnalysisSystemPrompt` (line 177)
-- `buildUserMessage` (line 263)
-- `coerceVerdict` (line 325)
-- `extractJsonFromText` (line 366)
-- `formatToolOutput` (line 385)
-- `clean` (line 389)
-- `analyzeListingWorkability` (line 401)
-- `normalizeNewlines` (line 515)
-- `isCacheValid` (line 527)
-- `runWizard` (line 537)
-- `startWizard` (line 740)
-- `stopWizard` (line 746)
-- `runAutoShortlist` (line 760)
-- `analyzeListing` (line 910)
-- `shortlistListings` (line 974)
+- `buildUserMessage` (line 244)
+- `buildAnalysisWritePrompt` (line 297)
+- `coerceVerdict` (line 347)
+- `extractJsonFromText` (line 388)
+- `formatToolOutput` (line 407)
+- `clean` (line 411)
+- `analyzeListingWorkability` (line 423)
+- `collectToolResults` (line 448)
+- `normalizeNewlines` (line 553)
+- `isCacheValid` (line 567)
+- `runWizard` (line 577)
+- `startWizard` (line 780)
+- `stopWizard` (line 786)
+- `runAutoShortlist` (line 800)
+- `analyzeListing` (line 950)
+- `shortlistListings` (line 1014)
 
 
 ### `src/bun/rpc/freelance.ts`

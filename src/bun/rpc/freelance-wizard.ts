@@ -216,48 +216,29 @@ The AI CANNOT handle: physical manufacturing, in-person services, highly regulat
 
 ━━━ REQUIRED OUTPUT FORMAT ━━━
 
-After your tool calls, write your analysis as **markdown** using exactly this structure:
+You MUST still call the tools to verify the system — but the reader NEVER sees your tool calls. Do NOT list, echo, or paste individual tool calls, shell commands, raw command output, or JSON anywhere in your answer. Summarise what you found in natural language.
 
-## System Verification
-
-List every tool call and its result as bullet points:
-- environment_info() → Windows 10, Node v20.x ✓, Python 3.11 ✓
-- run_shell("node --version") → v20.x ✓
-- run_shell("python --version") → not found ✗
+Write your analysis as clean **markdown prose** using this structure:
 
 ## Condition A — System Check: PASS / FAIL
 
-**Required:** [comma-separated list of every detected requirement]
-
-**Verified:**
-- [tool command] → [result] ✓ or ✗
-- (one bullet per requirement)
+In prose, name the required runtimes, tools, and dependencies you confirmed are installed (with the versions you found, e.g. "Node.js v24.3.0, npm 11.x, PHP 8.4, Git"), and any required ones that are missing or could not be verified. Treat anything you could not actively verify as NOT installed.
 
 ## Condition B — AI Capability: PASS / FAIL
 
-[One clear sentence explaining why it passes or fails]
+One or two sentences on whether the AI agent system can fully deliver the project's requirements.
 
 ## Verdict: WORKABLE / NOT WORKABLE
 
-**Reason:** [One sentence summarising the overall decision]
+WORKABLE only if Condition A and Condition B BOTH pass.
+
+**Reason:** [one sentence summarising the decision]
 
 **Blockers:**
-- [Specific blocker 1 — e.g. "Adobe After Effects not installed"]
-- [Specific blocker 2]
+- [specific missing tool/dependency, or specific AI limitation]
 (write "none" if workable)
 
-If you did not make any tool calls, write:
-## System Verification
-
-No tool calls made — system requirements could not be verified.
-
-## Condition A — System Check: FAIL
-
-Not verified.
-
-## Verdict: NOT WORKABLE
-
-**Reason:** System requirements could not be verified because no tool calls were made.`;
+If you could not run any tool calls to verify the system, write one short paragraph saying so, mark Condition A as FAIL, and set the verdict NOT WORKABLE.`;
 }
 
 function buildUserMessage(
@@ -292,18 +273,59 @@ function buildUserMessage(
     lines.push("", "---", "", "## Additional Notes", "", additionalNotes.trim());
   }
 
-  lines.push(
-    "",
-    "---",
-    "",
-    "IMPORTANT: You must call tools NOW before writing anything else.",
-    "1. Call environment_info to get OS and base system info.",
-    "2. For each runtime/tool the project requires, call run_shell with its version command.",
-    "   Do NOT skip this step. Do NOT write 'I will check' — call the tool immediately.",
-    "3. After tool calls complete, write your analysis using the required output format from the system prompt.",
-  );
-
   return lines.join("\n");
+}
+
+// Appended to the verification (tool-calling) phase only — pushes the model to actually
+// run the system checks rather than claim it "would".
+const TOOL_DIRECTIVE = [
+  "---",
+  "",
+  "IMPORTANT: You must call tools NOW before writing anything else.",
+  "1. Call environment_info to get OS and base system info.",
+  "2. For each runtime/tool the project requires, call run_shell with its version command.",
+  "   Do NOT skip this step. Do NOT write 'I will check' — call the tool immediately.",
+  "3. After the tool calls complete, write your analysis using the required output format.",
+].join("\n");
+
+// ---------------------------------------------------------------------------
+// Writing prompt (no tools). Used when the verification phase ran the tool calls
+// but did not also produce the written analysis. The real check results are passed
+// in as ground truth; the model turns them into clean prose covering both conditions.
+// ---------------------------------------------------------------------------
+
+function buildAnalysisWritePrompt(): string {
+  return `You are a technical feasibility analyst for an autonomous AI agent system evaluating freelance software projects.
+
+CONFIDENTIALITY: The user message may contain an "Additional Notes" section with private context. Never quote, paraphrase, summarize, reference, or reveal any part of it.
+
+The local development environment has ALREADY been verified for you — the actual results of those system checks are provided in the user message. Treat them as ground truth. Do NOT claim anything was verified that is not in those results; if a required tool is not listed as confirmed installed, treat it as NOT installed.
+
+A project is WORKABLE only when BOTH conditions hold:
+  A) System check — every runtime, dependency, and tool the project requires is confirmed installed in the verified results.
+  B) AI capability — the AI agent system can complete all technical requirements on its own. It can fully handle software development, automation, data processing, API integrations, web scraping, report generation, UI/UX, database design, testing, and DevOps; it CANNOT handle physical manufacturing, in-person services, regulated professional practice, or niche physical-world tasks.
+
+NOT blockers: client-supplied assets (source/designs/credentials/API keys/media), experience/portfolio asks, budget, or needing to ask the client for clarification.
+
+Write your analysis as clean **markdown prose**. Do NOT echo, list, or paste tool calls, shell commands, raw output, or JSON — summarise findings in natural language. Use exactly this structure:
+
+## Condition A — System Check: PASS / FAIL
+
+In prose, name the required runtimes/tools/dependencies confirmed installed (with versions, e.g. "Node.js v24.3.0, npm 11.x, PHP 8.4, Git"), and any required ones missing or unverified.
+
+## Condition B — AI Capability: PASS / FAIL
+
+One or two sentences on whether the AI agent system can fully deliver the project.
+
+## Verdict: WORKABLE / NOT WORKABLE
+
+WORKABLE only if Condition A and Condition B BOTH pass.
+
+**Reason:** [one sentence]
+
+**Blockers:**
+- [specific missing tool/dependency, or specific AI limitation]
+(write "none" if workable)`;
 }
 
 // ---------------------------------------------------------------------------
@@ -409,63 +431,86 @@ async function analyzeListingWorkability(
   const tools = buildWizardTools();
   const userMessage = buildUserMessage(listing, fullDescription, additionalNotes);
 
-  // Phase 1 — system verification + capability analysis with forced tool calls.
-  // toolChoice: "required" prevents the model from skipping tool calls and writing prose
-  // about what it "would" check — it must actually call run_shell / environment_info.
-  // Some reasoning/thinking models (DeepSeek-R1, o1, etc.) reject toolChoice entirely and
-  // throw a hard error instead of silently falling back, so we retry with "auto" on that path.
-  let phase1Result: Awaited<ReturnType<typeof generateText>>;
-  try {
-    phase1Result = await generateText({
-      model: adapter.createModel(modelId),
-      abortSignal,
-      system: buildAnalysisSystemPrompt(),
-      messages: [{ role: "user", content: userMessage }],
-      tools,
-      toolChoice: "required",
-      stopWhen: [stepCountIs(5)],
-    });
-  } catch (toolChoiceErr) {
-    if (isAbortError(toolChoiceErr)) throw toolChoiceErr;
-    const errMsg = toolChoiceErr instanceof Error ? toolChoiceErr.message : String(toolChoiceErr);
-    // Reasoning/thinking models (DeepSeek R1, etc.) and some providers reject toolChoice.
-    // Fall back to "auto" — the system prompt already instructs the model to call tools first.
-    if (/tool.?choice|thinking mode|tool_choice/i.test(errMsg)) {
-      console.warn(`[wizard] toolChoice "required" rejected by model, retrying with "auto": ${errMsg}`);
+  // Phase 1 — VERIFY the system with real tool calls (environment_info + run_shell version
+  // checks) AND write the prose analysis. toolChoice "auto" lets the model run the checks
+  // and then write its analysis in the same loop. If it skips the checks entirely we force
+  // them below — Condition A requires actual verification.
+  let phase1Result = await generateText({
+    model: adapter.createModel(modelId),
+    abortSignal,
+    system: buildAnalysisSystemPrompt(),
+    messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
+    tools,
+    toolChoice: "auto",
+    stopWhen: [stepCountIs(8)],
+  });
+
+  const collectToolResults = (r: typeof phase1Result): string[] => {
+    const out: string[] = [];
+    for (const step of r.steps) {
+      const results = step.toolResults as unknown as Array<{ toolName: string; output: unknown }> | undefined;
+      for (const tr of results ?? []) {
+        out.push(`- ${tr.toolName}: ${formatToolOutput(tr.toolName, tr.output)}`);
+      }
+    }
+    return out;
+  };
+
+  let toolResultLines = collectToolResults(phase1Result);
+
+  // The model MUST actually verify the system. If it skipped every tool call, force them.
+  // (Some reasoning models reject toolChoice "required" — if so we proceed with what we
+  // have, and the analysis correctly fails Condition A as unverified.)
+  if (toolResultLines.length === 0) {
+    try {
       phase1Result = await generateText({
         model: adapter.createModel(modelId),
         abortSignal,
         system: buildAnalysisSystemPrompt(),
-        messages: [{ role: "user", content: userMessage }],
+        messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
         tools,
-        toolChoice: "auto",
-        stopWhen: [stepCountIs(5)],
+        toolChoice: "required",
+        stopWhen: [stepCountIs(6)],
       });
-    } else {
-      throw toolChoiceErr;
-    }
-  }
-  const { text: analysisText, steps } = phase1Result;
-
-  // Phase 1 `text` only captures model prose — actual tool outputs live in step.toolResults.
-  // Build a combined context so Phase 2 can evaluate real tool output, not just stated intentions.
-  const toolResultLines: string[] = [];
-  for (const step of steps) {
-    const results = step.toolResults as unknown as Array<{ toolName: string; output: unknown }> | undefined;
-    for (const tr of results ?? []) {
-      toolResultLines.push(`- **${tr.toolName}**: ${formatToolOutput(tr.toolName, tr.output)}`);
+      toolResultLines = collectToolResults(phase1Result);
+    } catch (forceErr) {
+      if (isAbortError(forceErr)) throw forceErr;
+      console.warn(`[wizard] forced tool verification failed: ${forceErr instanceof Error ? forceErr.message : forceErr}`);
     }
   }
 
-  const systemCheckSection = toolResultLines.length > 0
-    ? `## System Check Results\n\n${toolResultLines.join("\n")}`
-    : "## System Check Results\n\nNo tool calls were made — system verification incomplete. Condition A automatically fails.";
+  // Real tool results stay INTERNAL — used to write the analysis (if needed) and to ground
+  // the verdict. They are NEVER persisted or shown to the user (no raw tool dumps in the UI).
+  const toolContext = toolResultLines.length > 0
+    ? toolResultLines.join("\n")
+    : "No system checks could be performed.";
 
-  const fullContext = systemCheckSection
-    + (analysisText.trim() ? `\n\n## Analysis\n\n${analysisText}` : "");
+  let analysisText = phase1Result.text.trim();
 
-  // Phase 2 — extract structured verdict from combined tool results + analysis.
-  // Uses generateText (not generateObject) so it works with any provider.
+  // If verification ran but the model didn't also write the analysis (common when tools were
+  // forced), produce the prose now from the real results — no tools, no raw dump.
+  if (!analysisText) {
+    try {
+      const written = await generateText({
+        model: adapter.createModel(modelId),
+        abortSignal,
+        system: buildAnalysisWritePrompt(),
+        messages: [{
+          role: "user",
+          content: `${userMessage}\n\n---\n\n## Verified system results (ground truth — summarise in prose, never list raw)\n${toolContext}\n\nNow write the analysis in the required format.`,
+        }],
+      });
+      analysisText = written.text.trim();
+    } catch (writeErr) {
+      if (isAbortError(writeErr)) throw writeErr;
+      console.warn(`[wizard] analysis write phase failed: ${writeErr instanceof Error ? writeErr.message : writeErr}`);
+    }
+  }
+
+  // Verdict extraction — structured reason/blockers. Grounded in BOTH the written analysis
+  // and the real tool results (internal). generateText (not generateObject) for broad
+  // provider support; the JSON is parsed defensively.
+  const fullContext = `## Analysis\n\n${analysisText || "(no written analysis was produced)"}\n\n## System checks (internal)\n\n${toolContext}`;
   const { text: verdictText } = await generateText({
     model: adapter.createModel(modelId),
     abortSignal,
@@ -473,15 +518,12 @@ async function analyzeListingWorkability(
       "You are a strict data extractor. Read the provided feasibility analysis and return ONLY a JSON object — " +
       "no markdown, no explanation, no code fences. Use exactly these field names:\n" +
       '{"workable": boolean, "confidence": "high"|"medium"|"low", "coveragePercent": number 0-100, "reason": "one or two sentence summary", "blockers": ["blocker 1", "blocker 2"]}\n\n' +
-      "workable=true ONLY if: (A) all required system software was confirmed installed via tool calls AND (B) the AI can fully complete the project. " +
+      "workable=true ONLY if: (A) all required system software was confirmed installed AND (B) the AI can fully complete the project. " +
       "If either condition failed, workable=false. " +
-      "blockers must list the concrete reasons: specific missing tools, or specific AI limitations. " +
-      "Do NOT list 'incomplete analysis' as a blocker — if the analysis lacked tool calls, list the unverified requirements as missing instead.",
+      "blockers must list the concrete reasons: specific missing tools/dependencies, or specific AI limitations. " +
+      "Do NOT list 'incomplete analysis' as a blocker — if the system could not be verified, list the unverified requirements as missing instead.",
     messages: [
-      {
-        role: "user",
-        content: `Extract a structured verdict from this feasibility analysis:\n\n${fullContext}`,
-      },
+      { role: "user", content: `Extract a structured verdict from this feasibility analysis:\n\n${fullContext}` },
     ],
   });
 
@@ -490,9 +532,8 @@ async function analyzeListingWorkability(
     const rawJson = extractJsonFromText(verdictText);
     verdict = coerceVerdict(rawJson);
   } catch (parseErr) {
-    console.warn(`[wizard] Phase 2 JSON parse failed (${parseErr}), falling back to heuristic`);
+    console.warn(`[wizard] verdict JSON parse failed (${parseErr}), falling back to heuristic`);
     // Conservative: only trust an explicit JSON-like workable=true signal in the verdict text.
-    // Avoids false positives from the word "workable" appearing in our own system prompt.
     const vLower = verdictText.toLowerCase();
     const workable =
       (vLower.includes('"workable":true') || vLower.includes('"workable": true')) &&
@@ -507,13 +548,12 @@ async function analyzeListingWorkability(
     };
   }
 
-  // The persisted analysis text is the AI's full written synthesis from Phase 1.
-  // If Phase 1 produced no text (model only made tool calls), build a minimal
-  // summary from the system check section so users always see something useful.
-  // Normalize Windows line endings (\r\n → \n) to prevent \r from rendering as
-  // a visible symbol (↵) in the browser markdown renderer.
+  // The displayed/persisted analysis is the AI's written prose ONLY — never the raw tool
+  // output. Normalise Windows line endings so \r doesn't render as a visible symbol.
   const normalizeNewlines = (s: string) => s.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const persistedAnalysis = normalizeNewlines(analysisText.trim() ? analysisText : systemCheckSection);
+  const persistedAnalysis = normalizeNewlines(
+    analysisText || "The analysis could not be generated this time. Please try analysing again.",
+  );
 
   return { verdict, analysisText: persistedAnalysis };
 }
