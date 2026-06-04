@@ -1,0 +1,38 @@
+{
+  "project": {
+    "name": "agentdesk",
+    "type": "React",
+    "language": "TypeScript",
+    "languages": [
+      "TypeScript",
+      "Python",
+      "Swift",
+      "JavaScript"
+    ]
+  },
+  "entry_points": {},
+  "domains": {
+    "shared": ".agent-atlas/domains/shared.md",
+    "bun": ".agent-atlas/domains/bun.md",
+    "mainview": ".agent-atlas/domains/mainview.md",
+    "plugins": ".agent-atlas/domains/plugins.md",
+    "root": ".agent-atlas/domains/root.md",
+    "skills": ".agent-atlas/domains/skills.md",
+    "tests": ".agent-atlas/domains/tests.md"
+  },
+  "concepts_index": ".agent-atlas/concepts.json",
+  "conventions": ".agent-atlas/conventions.json",
+  "constraints": ".agent-atlas/constraints.md",
+  "architecture_pattern": "Flat / Unstructured",
+  "last_generated": "2026-06-04T07:15:23.594Z",
+  "usage_hints": {
+    "concepts_index": "Do NOT read concepts.json in full. Use grep/search to look up specific keywords from your task (e.g. grep \"login\" .agent-atlas/concepts.json). Each keyword maps to exact file:line locations.",
+    "workflow": [
+      "1. Read this index.json to orient yourself (you are here)",
+      "2. Map your task to a domain — read the matching domains/*.md file",
+      "3. Grep concepts.json for task-specific keywords to get exact file:line pointers",
+      "4. Read only the target files — make the change",
+      "5. Append a record to history.jsonl describing what you changed and why"
+    ]
+  }
+}
