@@ -1,8 +1,13 @@
 name: Test Build (Windows)
 # Manually triggered from Actions → "Test Build (Windows)" → Run workflow.
-# Builds the Windows installer + portable zip and uploads them as downloadable
-# artifacts on the run page. No release is created. Use this to validate any
-# workflow changes before tagging a real release.
+# Builds a portable zip AND a self-signed MSIX, then uploads both as downloadable
+# artifacts on the run page. No release is created, no tag is needed.
+#
+# The MSIX is signed with a throwaway self-signed cert (created fresh each run).
+# To install it locally you must first trust the cert or enable
+# "Install apps from any source" in Windows Settings → Privacy & Security → For developers.
+# This workflow only validates that the MSIX builds and signs correctly.
+# For production, wire in a real OV/EV cert as a GitHub Actions secret.
 
 on:
   workflow_dispatch:
@@ -39,31 +44,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on launcher.exe"; exit 1 }
           Write-Host "Icon embedded into launcher.exe"
 
-      - name: Build app — second pass (with icon-embedded launcher)
+      - name: Build app — second pass (icon-embedded launcher)
         run: bunx electrobun build --env=stable
 
-      - name: Embed icon into installer exe
-        shell: pwsh
-        run: |
-          $rcedit = "node_modules\rcedit\bin\rcedit-x64.exe"
-          & $rcedit "build\stable-win-x64\AgentDesk-Setup.exe" --set-icon "assets\icon.ico"
-          if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on AgentDesk-Setup.exe"; exit 1 }
-          Write-Host "Icon embedded into AgentDesk-Setup.exe"
-
-      - name: Build installer zip
-        shell: pwsh
-        run: |
-          $dir     = "build/stable-win-x64"
-          $staging = "$dir/.installer-staging"
-          New-Item -ItemType Directory -Force -Path "$staging/.installer" | Out-Null
-          Copy-Item "$dir/AgentDesk-Setup.exe"           "$staging/AgentDesk-Setup.exe"
-          Copy-Item "$dir/AgentDesk-Setup.metadata.json" "$staging/.installer/AgentDesk-Setup.metadata.json"
-          Copy-Item "$dir/AgentDesk-Setup.tar.zst"       "$staging/.installer/AgentDesk-Setup.tar.zst"
-          Compress-Archive -Path "$staging/*" -DestinationPath "$dir/AgentDesk-win-x64-Setup.zip" -Force
-          Remove-Item -Recurse -Force "$staging"
-          Write-Host "Installer zip created."
-
-      # Portable build: extract the app bundle then rezip without the installer.
+      # ── Portable zip ──────────────────────────────────────────────────────────
+      # Extract the app bundle (tar.zst) and rezip without the installer wrapper.
       # Uses C:\Windows\System32\tar.exe (libarchive, zstd-capable on Server 2022).
       - name: Build portable zip
         shell: pwsh
@@ -77,11 +62,105 @@ jobs:
           Remove-Item -Recurse -Force $staging
           Write-Host "Portable zip created."
 
+      # ── MSIX package ──────────────────────────────────────────────────────────
+
+      - name: Generate MSIX visual assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "build\msix-assets" | Out-Null
+          # ImageMagick 7 is pre-installed on windows-latest runners.
+          # Using assets\icon.png directly avoids ICO multi-frame ambiguity.
+          $src = "assets\icon.png"
+          magick $src -background transparent -resize  44x44  -gravity center -extent  44x44  "build\msix-assets\Square44x44Logo.png"
+          magick $src -background transparent -resize 150x150 -gravity center -extent 150x150 "build\msix-assets\Square150x150Logo.png"
+          magick $src -background transparent -resize  50x50  -gravity center -extent  50x50  "build\msix-assets\StoreLogo.png"
+          # Wide tile: icon centred on 310x150 transparent canvas
+          magick $src -background transparent -resize 140x140 -gravity center -extent 310x150 "build\msix-assets\Wide310x150Logo.png"
+          Write-Host "MSIX visual assets generated."
+
+      - name: Build MSIX package
+        shell: pwsh
+        run: |
+          $dir     = "build/stable-win-x64"
+          $staging = "build/msix-staging"
+          New-Item -ItemType Directory -Force -Path "$staging\Assets" | Out-Null
+
+          # Extract app bundle into staging root
+          C:\Windows\System32\tar.exe -xf "$dir/AgentDesk-Setup.tar.zst" -C $staging
+          if ($LASTEXITCODE -ne 0) { Write-Error "tar extraction failed"; exit 1 }
+
+          # Print the bundle layout — check this to verify the executable path if build fails
+          Write-Host "=== App bundle contents ==="
+          Get-ChildItem $staging -Recurse | Select-Object -ExpandProperty FullName | ForEach-Object { Write-Host "  $_" }
+          Write-Host "==========================="
+
+          # Locate main executable (searched recursively so subdirectory layouts work too)
+          $launcher = Get-ChildItem -Path $staging -Filter "launcher.exe" -Recurse | Select-Object -First 1
+          if (-not $launcher) { Write-Error "launcher.exe not found in bundle — see listing above"; exit 1 }
+          $exeRel = $launcher.FullName.Substring((Resolve-Path $staging).Path.Length + 1)
+          Write-Host "Main executable: $exeRel"
+
+          # Copy visual assets
+          Copy-Item "build\msix-assets\*" "$staging\Assets\"
+
+          # Stamp the manifest template with the detected executable path
+          (Get-Content "packaging\msix\AppxManifest.xml.template" -Raw) `
+            -replace '\{\{EXECUTABLE\}\}', $exeRel |
+            Set-Content "$staging\AppxManifest.xml" -Encoding utf8NoBOM
+
+          # Find the latest Windows SDK (makeappx ships with the kit, present on all runners)
+          $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                        Where-Object { $_.Name -match '^\d' } |
+                        Sort-Object Name -Descending |
+                        Select-Object -First 1 -ExpandProperty FullName
+          $makeappx = "$sdkBin\x64\makeappx.exe"
+          Write-Host "makeappx: $makeappx"
+
+          # Pack — /nv skips schema validation (fine for test; remove for Store submission)
+          & $makeappx pack /d $staging /p "$dir\AgentDesk-win-x64.msix" /o /nv
+          if ($LASTEXITCODE -ne 0) { Write-Error "makeappx pack failed"; exit 1 }
+
+          Remove-Item -Recurse -Force $staging
+          Write-Host "MSIX package created."
+
+      - name: Sign MSIX with self-signed certificate
+        shell: pwsh
+        run: |
+          # Creates a throwaway self-signed cert. Subject MUST match Publisher in
+          # AppxManifest.xml.template. Replace this whole step with a secrets-backed
+          # OV/EV cert when moving to production.
+          $cert = New-SelfSignedCertificate `
+            -Type Custom `
+            -Subject "CN=AgentDesk Self-Signed" `
+            -KeyUsage DigitalSignature `
+            -FriendlyName "AgentDesk" `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+
+          $pfxPass = ConvertTo-SecureString -String "AgentDesk-Test!" -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath "build\agentdesk-test.pfx" -Password $pfxPass | Out-Null
+
+          $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                        Where-Object { $_.Name -match '^\d' } |
+                        Sort-Object Name -Descending |
+                        Select-Object -First 1 -ExpandProperty FullName
+          $signtool = "$sdkBin\x64\signtool.exe"
+          Write-Host "signtool: $signtool"
+
+          & $signtool sign /fd SHA256 /f "build\agentdesk-test.pfx" /p "AgentDesk-Test!" `
+              "build\stable-win-x64\AgentDesk-win-x64.msix"
+          if ($LASTEXITCODE -ne 0) { Write-Error "signtool failed"; exit 1 }
+
+          Remove-Item -Force "build\agentdesk-test.pfx"
+          Write-Host "MSIX signed."
+
+      # Only portable + MSIX uploaded — installer zip intentionally excluded to keep
+      # artifact download small.
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-test-${{ github.sha }}
           path: |
-            build/stable-win-x64/AgentDesk-win-x64-Setup.zip
             build/stable-win-x64/AgentDesk-win-x64-portable.zip
+            build/stable-win-x64/AgentDesk-win-x64.msix
           retention-days: 7
