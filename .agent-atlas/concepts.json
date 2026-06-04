@@ -43151,22 +43151,6 @@
       "type": "function"
     }
   ],
-  "downloads": [
-    {
-      "file": "src/bun/rpc/playground.ts",
-      "line": 205,
-      "symbol": "resolveDownloadsDir",
-      "type": "function"
-    }
-  ],
-  "zip": [
-    {
-      "file": "src/bun/rpc/playground.ts",
-      "line": 237,
-      "symbol": "exportPlaygroundZip",
-      "type": "function"
-    }
-  ],
   "persisted": [
     {
       "file": "src/bun/rpc/playground.ts",
@@ -43208,34 +43192,6 @@
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
       "line": 103,
       "symbol": "loadPersistedSession",
-      "type": "function"
-    }
-  ],
-  "surge": [
-    {
-      "file": "src/bun/rpc/playground.ts",
-      "line": 402,
-      "symbol": "readSurgeNetrc",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/playground.ts",
-      "line": 427,
-      "symbol": "cacheSurgeToken",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/playground.ts",
-      "line": 440,
-      "symbol": "getSurgeToken",
-      "type": "function"
-    }
-  ],
-  "netrc": [
-    {
-      "file": "src/bun/rpc/playground.ts",
-      "line": 402,
-      "symbol": "readSurgeNetrc",
       "type": "function"
     }
   ],
@@ -52234,6 +52190,50 @@
       "file": "src/mainview/components/chat/message-list.tsx",
       "line": 417,
       "symbol": "WaitingRow",
+      "type": "function"
+    }
+  ],
+  "downloads": [
+    {
+      "file": "src/bun/rpc/playground.ts",
+      "line": 205,
+      "symbol": "resolveDownloadsDir",
+      "type": "function"
+    }
+  ],
+  "zip": [
+    {
+      "file": "src/bun/rpc/playground.ts",
+      "line": 237,
+      "symbol": "exportPlaygroundZip",
+      "type": "function"
+    }
+  ],
+  "surge": [
+    {
+      "file": "src/bun/rpc/playground.ts",
+      "line": 402,
+      "symbol": "readSurgeNetrc",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/playground.ts",
+      "line": 427,
+      "symbol": "cacheSurgeToken",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/playground.ts",
+      "line": 440,
+      "symbol": "getSurgeToken",
+      "type": "function"
+    }
+  ],
+  "netrc": [
+    {
+      "file": "src/bun/rpc/playground.ts",
+      "line": 402,
+      "symbol": "readSurgeNetrc",
       "type": "function"
     }
   ]

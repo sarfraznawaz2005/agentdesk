@@ -2,7 +2,7 @@
 // Playground RPC handlers
 // ---------------------------------------------------------------------------
 
-import { cpSync, readdirSync, existsSync, mkdirSync, rmSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, readdirSync, existsSync, mkdirSync, rmSync, readFileSync, statSync, writeFileSync, realpathSync } from "node:fs";
 import https from "node:https";
 import path from "node:path";
 import os from "node:os";
@@ -523,10 +523,13 @@ export async function deployPlayground(): Promise<{ success: boolean; url?: stri
 	const domain = `${slug}-${suffix}.surge.sh`;
 
 	try {
+		// Resolve the real long path for the temp dir to avoid Windows 8.3 short name
+		// paths (e.g. MEHBOO~1.REH) that break bunx's CJS module resolution.
+		const realTemp = realpathSync(os.tmpdir());
 		const proc = Bun.spawn(
 			["bun", "x", "surge", PLAYGROUND_FILES_DIR, domain],
 			{
-				env: { ...process.env, SURGE_LOGIN: email, SURGE_TOKEN: tokenResult.token },
+				env: { ...process.env, SURGE_LOGIN: email, SURGE_TOKEN: tokenResult.token, TEMP: realTemp, TMP: realTemp, TMPDIR: realTemp },
 				stdout: "pipe",
 				stderr: "pipe",
 				stdin: null,
