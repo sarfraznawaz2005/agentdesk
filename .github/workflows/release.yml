@@ -108,12 +108,28 @@ jobs:
           # Renamed tarball for Updater.downloadUpdate()
           Copy-Item "$dir/AgentDesk-Setup.tar.zst" "$dir/stable-win-x64-AgentDesk.tar.zst"
 
+      # Portable build: extract the app bundle (tar.zst) into a plain folder and zip
+      # it. No installer required — users just extract the zip and run the exe directly.
+      # Uses C:\Windows\System32\tar.exe (libarchive, zstd-capable on Server 2022 runners).
+      - name: Build portable zip
+        shell: pwsh
+        run: |
+          $dir      = "build/stable-win-x64"
+          $staging  = "build/portable-staging"
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          C:\Windows\System32\tar.exe -xf "$dir/AgentDesk-Setup.tar.zst" -C $staging
+          if ($LASTEXITCODE -ne 0) { Write-Error "tar extraction failed"; exit 1 }
+          Compress-Archive -Path "$staging/*" -DestinationPath "$dir/AgentDesk-win-x64-portable.zip" -Force
+          Remove-Item -Recurse -Force $staging
+          Write-Host "Portable zip created: $dir/AgentDesk-win-x64-portable.zip"
+
       - name: Upload Windows artifacts
         uses: softprops/action-gh-release@v3.0.0
         with:
           tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             build/stable-win-x64/AgentDesk-win-x64-Setup.zip
+            build/stable-win-x64/AgentDesk-win-x64-portable.zip
             build/stable-win-x64/stable-win-x64-update.json
             build/stable-win-x64/stable-win-x64-AgentDesk.tar.zst
           fail_on_unmatched_files: true
