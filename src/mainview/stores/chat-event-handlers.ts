@@ -51,7 +51,8 @@ function flushTokenBuffer(): void {
   buffers.tokenBuffer = "";
   useChatStore.setState((prev) => {
     // Ensure PM placeholder exists in messages array on first token flush
-    // so onStreamComplete can find it and update in place (preserving timestamp).
+    // so onStreamComplete can find it and update it in place (its createdAt is
+    // finalized to the PM's finish time on completion).
     const hasMsg = prev.messages.some((m) => m.id === meta.messageId);
     const messages = hasMsg ? prev.messages : [...prev.messages, {
       id: meta.messageId,
@@ -119,9 +120,9 @@ function onStreamReset(e: Event): void {
 
   useChatStore.setState((prev) => {
     // Ensure PM's placeholder message exists in the messages array so
-    // onStreamComplete can find it and update in place (preserving its
-    // early timestamp). Without this, PM gets appended as new with a
-    // late timestamp and sorts after agent messages.
+    // onStreamComplete can find it and update it in place. The final ordering
+    // (PM below the sub-agents it spawned) is set in onStreamComplete, which
+    // finalizes createdAt to the PM's finish time — not here.
     const hasPlaceholder = prev.messages.some((m) => m.id === messageId);
     const messages = hasPlaceholder ? prev.messages : [...prev.messages, {
       id: messageId,
@@ -242,23 +243,19 @@ function onStreamComplete(e: Event): void {
     const existingIdx = prev.messages.findIndex((m) => m.id === messageId);
     let updatedMessages: Message[];
     if (existingIdx >= 0) {
-      // Preserve the placeholder's original createdAt (set when the PM streamed its
-      // first token — before it dispatched any agent). This keeps the PM message in
-      // the chronological slot where it was first shown, so a sub-agent that starts
-      // AFTER this PM segment sorts BELOW it (latest at the bottom) rather than the PM
-      // retroactively jumping under the agent it just spawned. A PM continuation after
-      // an agent is a separate message with a later timestamp, so it still sorts below
-      // the agent. (Matches onStreamReset's "preserve its early timestamp" intent.)
-      const updated = { ...prev.messages[existingIdx], content: finalContent, tokenCount: usage.completionTokens, metadata: resolveMetadata(prev.messages[existingIdx].metadata) };
+      // Bump createdAt to the PM's finish time so its final message sorts AFTER any
+      // sub-agents it spawned (which carry earlier timestamps) — latest at the bottom,
+      // like a normal chat. The backend likewise repositions this row (by rowid) and
+      // bumps its created_at, so the live view, a reload, and the model's replay all
+      // agree. Pre-agent narration never survives to here: the engine retracts text
+      // emitted in the same step as an agent dispatch, so the PM message is always the
+      // post-agent summary.
+      const updated = { ...prev.messages[existingIdx], content: finalContent, tokenCount: usage.completionTokens, metadata: resolveMetadata(prev.messages[existingIdx].metadata), createdAt: new Date().toISOString() };
       updatedMessages = prev.messages.map((m, i) => i === existingIdx ? updated : m);
     } else {
-      // PM placeholder wasn't in the array (no tokens were streamed before tool call).
-      // Use a timestamp just after the last user message so PM sorts before any
-      // agent messages it spawned.
-      const lastUser = [...prev.messages].reverse().find(m => m.role === "user");
-      if (lastUser) {
-        completedMessage.createdAt = new Date(new Date(lastUser.createdAt).getTime() + 1).toISOString();
-      }
+      // PM placeholder wasn't in the array (no tokens streamed before the tool call).
+      // completedMessage already carries the finish-time createdAt set above, so it
+      // sorts AFTER the sub-agents it spawned (latest at the bottom).
       updatedMessages = [...prev.messages, completedMessage];
     }
 

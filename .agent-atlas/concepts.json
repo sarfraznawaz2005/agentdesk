@@ -116,13 +116,13 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "AgentEngineCallbacks",
       "type": "export"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 46,
+      "line": 47,
       "symbol": "AgentEngine",
       "type": "class"
     },
@@ -596,19 +596,19 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 314,
+      "line": 311,
       "symbol": "onAgentStatus",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 537,
+      "line": 534,
       "symbol": "onAgentInlineStart",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 557,
+      "line": 554,
       "symbol": "onAgentInlineComplete",
       "type": "function"
     },
@@ -696,7 +696,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "QueueEntry",
       "type": "export"
     },
@@ -1002,7 +1002,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 929,
+      "line": 965,
       "symbol": "setAbortAgentsFn",
       "type": "method"
     },
@@ -1082,13 +1082,13 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 909,
+      "line": 945,
       "symbol": "stopAll",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 918,
+      "line": 954,
       "symbol": "stopAllAndReset",
       "type": "method"
     },
@@ -1264,13 +1264,13 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 929,
+      "line": 965,
       "symbol": "setAbortAgentsFn",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 954,
+      "line": 990,
       "symbol": "getQueuedAgentsSnapshot",
       "type": "method"
     },
@@ -1850,31 +1850,31 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 934,
+      "line": 970,
       "symbol": "getProjectId",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 944,
+      "line": 980,
       "symbol": "getActiveConversationId",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 949,
+      "line": 985,
       "symbol": "getActiveMetadata",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 954,
+      "line": 990,
       "symbol": "getQueuedAgentsSnapshot",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1011,
+      "line": 1047,
       "symbol": "getDefaultProviderRow",
       "type": "method"
     },
@@ -3468,7 +3468,7 @@
   "activity": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 556,
+      "line": 557,
       "symbol": "emitActivity",
       "type": "function"
     },
@@ -3602,7 +3602,7 @@
   "set": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 929,
+      "line": 965,
       "symbol": "setAbortAgentsFn",
       "type": "method"
     },
@@ -3848,7 +3848,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 999,
+      "line": 1035,
       "symbol": "_handleStatusCommand",
       "type": "method"
     },
@@ -4190,7 +4190,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 314,
+      "line": 311,
       "symbol": "onAgentStatus",
       "type": "function"
     },
@@ -4418,13 +4418,13 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "AgentEngineCallbacks",
       "type": "export"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 46,
+      "line": 47,
       "symbol": "AgentEngine",
       "type": "class"
     },
@@ -5174,7 +5174,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 185,
+      "line": 186,
       "symbol": "resolveMetadata",
       "type": "function"
     }
@@ -5290,13 +5290,13 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 446,
+      "line": 443,
       "symbol": "persistShellApprovalDecision",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 516,
+      "line": 513,
       "symbol": "onShellApprovalRequest",
       "type": "function"
     },
@@ -5358,13 +5358,13 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 446,
+      "line": 443,
       "symbol": "persistShellApprovalDecision",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 516,
+      "line": 513,
       "symbol": "onShellApprovalRequest",
       "type": "function"
     },
@@ -7066,7 +7066,7 @@
   "load": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1062,
+      "line": 1098,
       "symbol": "_loadSummarizationThreshold",
       "type": "method"
     },
@@ -8300,7 +8300,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 984,
+      "line": 1020,
       "symbol": "invokePMWithEvent",
       "type": "method"
     },
@@ -8524,7 +8524,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 274,
+      "line": 271,
       "symbol": "onStreamError",
       "type": "function"
     },
@@ -9456,7 +9456,7 @@
   "send": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 85,
+      "line": 86,
       "symbol": "sendMessage",
       "type": "method"
     },
@@ -9590,19 +9590,19 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "MessageMetadata",
       "type": "export"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 85,
+      "line": 86,
       "symbol": "sendMessage",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 973,
+      "line": 1009,
       "symbol": "postDeterministicMessage",
       "type": "method"
     },
@@ -9998,7 +9998,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 454,
+      "line": 451,
       "symbol": "onNewMessage",
       "type": "function"
     },
@@ -10244,7 +10244,7 @@
   "project": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 934,
+      "line": 970,
       "symbol": "getProjectId",
       "type": "method"
     },
@@ -10842,7 +10842,7 @@
   "task": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 968,
+      "line": 1004,
       "symbol": "moveKanbanTask",
       "type": "method"
     },
@@ -12144,7 +12144,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 658,
+      "line": 655,
       "symbol": "initChatEventHandlers",
       "type": "function"
     },
@@ -13242,25 +13242,25 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 82,
+      "line": 83,
       "symbol": "onStreamToken",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 104,
+      "line": 105,
       "symbol": "onStreamReset",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 147,
+      "line": 148,
       "symbol": "onStreamComplete",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 274,
+      "line": 271,
       "symbol": "onStreamError",
       "type": "function"
     },
@@ -13520,7 +13520,7 @@
   "event": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 984,
+      "line": 1020,
       "symbol": "invokePMWithEvent",
       "type": "method"
     },
@@ -13622,7 +13622,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 658,
+      "line": 655,
       "symbol": "initChatEventHandlers",
       "type": "function"
     },
@@ -13928,7 +13928,7 @@
   "provider": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1011,
+      "line": 1047,
       "symbol": "getDefaultProviderRow",
       "type": "method"
     },
@@ -15720,13 +15720,13 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 934,
+      "line": 970,
       "symbol": "getProjectId",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 944,
+      "line": 980,
       "symbol": "getActiveConversationId",
       "type": "method"
     },
@@ -16642,7 +16642,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 918,
+      "line": 954,
       "symbol": "stopAllAndReset",
       "type": "method"
     },
@@ -18832,7 +18832,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1011,
+      "line": 1047,
       "symbol": "getDefaultProviderRow",
       "type": "method"
     },
@@ -20600,7 +20600,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 185,
+      "line": 186,
       "symbol": "_runPMProcessing",
       "type": "method"
     },
@@ -21852,13 +21852,13 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 537,
+      "line": 534,
       "symbol": "onAgentInlineStart",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 557,
+      "line": 554,
       "symbol": "onAgentInlineComplete",
       "type": "function"
     },
@@ -21890,7 +21890,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "AgentEngineCallbacks",
       "type": "export"
     },
@@ -21978,7 +21978,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 601,
+      "line": 602,
       "symbol": "emitThinking",
       "type": "function"
     },
@@ -21996,7 +21996,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 630,
+      "line": 627,
       "symbol": "onPmThinking",
       "type": "function"
     }
@@ -22770,7 +22770,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 602,
+      "line": 599,
       "symbol": "onCompactionStarted",
       "type": "function"
     }
@@ -22784,19 +22784,19 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 944,
+      "line": 980,
       "symbol": "getActiveConversationId",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1111,
+      "line": 1147,
       "symbol": "_touchConversation",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1140,
+      "line": 1176,
       "symbol": "autoTitleConversation",
       "type": "method"
     },
@@ -22934,25 +22934,25 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 350,
+      "line": 347,
       "symbol": "onConversationTitleChanged",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 363,
+      "line": 360,
       "symbol": "onConversationUpdated",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 403,
+      "line": 400,
       "symbol": "onSwitchToConversation",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 609,
+      "line": 606,
       "symbol": "onConversationCompacted",
       "type": "function"
     },
@@ -23004,7 +23004,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 999,
+      "line": 1035,
       "symbol": "_handleStatusCommand",
       "type": "method"
     },
@@ -24224,19 +24224,19 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "MessageMetadata",
       "type": "export"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 949,
+      "line": 985,
       "symbol": "getActiveMetadata",
       "type": "method"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 185,
+      "line": 186,
       "symbol": "resolveMetadata",
       "type": "function"
     }
@@ -24266,7 +24266,7 @@
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 39,
+      "line": 40,
       "symbol": "QueueEntry",
       "type": "export"
     }
@@ -24629,36 +24629,22 @@
       "type": "type"
     }
   ],
-  "processing": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 185,
-      "symbol": "_runPMProcessing",
-      "type": "method"
-    },
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 939,
-      "symbol": "isProcessing",
-      "type": "method"
-    }
-  ],
   "emit": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 301,
+      "line": 302,
       "symbol": "emit",
       "type": "function"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 556,
+      "line": 557,
       "symbol": "emitActivity",
       "type": "function"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 601,
+      "line": 602,
       "symbol": "emitThinking",
       "type": "function"
     },
@@ -24678,13 +24664,13 @@
   "stop": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 909,
+      "line": 945,
       "symbol": "stopAll",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 918,
+      "line": 954,
       "symbol": "stopAllAndReset",
       "type": "method"
     },
@@ -24770,7 +24756,7 @@
   "reset": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 918,
+      "line": 954,
       "symbol": "stopAllAndReset",
       "type": "method"
     },
@@ -24848,7 +24834,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 104,
+      "line": 105,
       "symbol": "onStreamReset",
       "type": "function"
     }
@@ -24856,7 +24842,7 @@
   "stopped": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 924,
+      "line": 960,
       "symbol": "isStopped",
       "type": "method"
     },
@@ -24873,24 +24859,16 @@
       "type": "function"
     }
   ],
-  "fn": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 929,
-      "symbol": "setAbortAgentsFn",
-      "type": "method"
-    }
-  ],
   "active": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 944,
+      "line": 980,
       "symbol": "getActiveConversationId",
       "type": "method"
     },
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 949,
+      "line": 985,
       "symbol": "getActiveMetadata",
       "type": "method"
     },
@@ -24967,18 +24945,10 @@
       "type": "interface"
     }
   ],
-  "queued": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 954,
-      "symbol": "getQueuedAgentsSnapshot",
-      "type": "method"
-    }
-  ],
   "snapshot": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 954,
+      "line": 990,
       "symbol": "getQueuedAgentsSnapshot",
       "type": "method"
     },
@@ -25001,18 +24971,10 @@
       "type": "interface"
     }
   ],
-  "present": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 961,
-      "symbol": "presentPlan",
-      "type": "method"
-    }
-  ],
   "plan": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 961,
+      "line": 997,
       "symbol": "presentPlan",
       "type": "method"
     },
@@ -25060,7 +25022,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 326,
+      "line": 323,
       "symbol": "onPlanPresented",
       "type": "function"
     }
@@ -25068,7 +25030,7 @@
   "move": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 968,
+      "line": 1004,
       "symbol": "moveKanbanTask",
       "type": "method"
     },
@@ -25118,7 +25080,7 @@
   "kanban": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 968,
+      "line": 1004,
       "symbol": "moveKanbanTask",
       "type": "method"
     },
@@ -25336,7 +25298,7 @@
   "post": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 973,
+      "line": 1009,
       "symbol": "postDeterministicMessage",
       "type": "method"
     },
@@ -25350,7 +25312,7 @@
   "deterministic": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 973,
+      "line": 1009,
       "symbol": "postDeterministicMessage",
       "type": "method"
     },
@@ -25361,18 +25323,10 @@
       "type": "function"
     }
   ],
-  "invoke": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 984,
-      "symbol": "invokePMWithEvent",
-      "type": "method"
-    }
-  ],
   "handle": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 999,
+      "line": 1035,
       "symbol": "_handleStatusCommand",
       "type": "method"
     },
@@ -26430,7 +26384,7 @@
   "row": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1011,
+      "line": 1047,
       "symbol": "getDefaultProviderRow",
       "type": "method"
     },
@@ -26520,13 +26474,13 @@
     },
     {
       "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 362,
+      "line": 363,
       "symbol": "TypingRow",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 416,
+      "line": 417,
       "symbol": "WaitingRow",
       "type": "function"
     },
@@ -26681,32 +26635,10 @@
       "type": "type"
     }
   ],
-  "summarization": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 1062,
-      "symbol": "_loadSummarizationThreshold",
-      "type": "method"
-    },
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 1074,
-      "symbol": "triggerSummarization",
-      "type": "method"
-    }
-  ],
-  "threshold": [
-    {
-      "file": "src/bun/agents/engine.ts",
-      "line": 1062,
-      "symbol": "_loadSummarizationThreshold",
-      "type": "method"
-    }
-  ],
   "trigger": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1074,
+      "line": 1110,
       "symbol": "triggerSummarization",
       "type": "method"
     },
@@ -26852,7 +26784,7 @@
   "touch": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1111,
+      "line": 1147,
       "symbol": "_touchConversation",
       "type": "method"
     },
@@ -26866,7 +26798,7 @@
   "auto": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1140,
+      "line": 1176,
       "symbol": "autoTitleConversation",
       "type": "method"
     },
@@ -26922,7 +26854,7 @@
   "title": [
     {
       "file": "src/bun/agents/engine.ts",
-      "line": 1140,
+      "line": 1176,
       "symbol": "autoTitleConversation",
       "type": "method"
     },
@@ -26964,7 +26896,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 350,
+      "line": 347,
       "symbol": "onConversationTitleChanged",
       "type": "function"
     }
@@ -29360,7 +29292,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 537,
+      "line": 534,
       "symbol": "onAgentInlineStart",
       "type": "function"
     }
@@ -31644,7 +31576,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 658,
+      "line": 655,
       "symbol": "initChatEventHandlers",
       "type": "function"
     }
@@ -34464,7 +34396,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 658,
+      "line": 655,
       "symbol": "initChatEventHandlers",
       "type": "function"
     },
@@ -36352,7 +36284,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 516,
+      "line": 513,
       "symbol": "onShellApprovalRequest",
       "type": "function"
     },
@@ -37222,7 +37154,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 350,
+      "line": 347,
       "symbol": "onConversationTitleChanged",
       "type": "function"
     }
@@ -38106,7 +38038,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 417,
+      "line": 414,
       "symbol": "bumpToTop",
       "type": "function"
     }
@@ -38496,7 +38428,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 454,
+      "line": 451,
       "symbol": "onNewMessage",
       "type": "function"
     }
@@ -39996,7 +39928,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 82,
+      "line": 83,
       "symbol": "onStreamToken",
       "type": "function"
     }
@@ -42376,7 +42308,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 446,
+      "line": 443,
       "symbol": "persistShellApprovalDecision",
       "type": "function"
     }
@@ -45928,7 +45860,7 @@
     },
     {
       "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 353,
+      "line": 354,
       "symbol": "StreamingBubble",
       "type": "function"
     },
@@ -46564,7 +46496,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 602,
+      "line": 599,
       "symbol": "onCompactionStarted",
       "type": "function"
     },
@@ -46596,7 +46528,7 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 363,
+      "line": 360,
       "symbol": "onConversationUpdated",
       "type": "function"
     },
@@ -46652,13 +46584,13 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 147,
+      "line": 148,
       "symbol": "onStreamComplete",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 557,
+      "line": 554,
       "symbol": "onAgentInlineComplete",
       "type": "function"
     },
@@ -47139,38 +47071,6 @@
       "type": "function"
     }
   ],
-  "completed": [
-    {
-      "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 18,
-      "symbol": "markStreamCompleted",
-      "type": "function"
-    }
-  ],
-  "buffers": [
-    {
-      "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 34,
-      "symbol": "buffers",
-      "type": "export"
-    }
-  ],
-  "flush": [
-    {
-      "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 46,
-      "symbol": "flushTokenBuffer",
-      "type": "function"
-    }
-  ],
-  "presented": [
-    {
-      "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 326,
-      "symbol": "onPlanPresented",
-      "type": "function"
-    }
-  ],
   "switch": [
     {
       "file": "src/mainview/components/git/branch-list.tsx",
@@ -47192,22 +47092,14 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 403,
+      "line": 400,
       "symbol": "onSwitchToConversation",
       "type": "function"
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 428,
+      "line": 425,
       "symbol": "doSwitch",
-      "type": "function"
-    }
-  ],
-  "bump": [
-    {
-      "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 417,
-      "symbol": "bumpToTop",
       "type": "function"
     }
   ],
@@ -47220,16 +47112,8 @@
     },
     {
       "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 446,
+      "line": 443,
       "symbol": "persistShellApprovalDecision",
-      "type": "function"
-    }
-  ],
-  "compacted": [
-    {
-      "file": "src/mainview/stores/chat-event-handlers.ts",
-      "line": 609,
-      "symbol": "onConversationCompacted",
       "type": "function"
     }
   ],
@@ -49226,7 +49110,7 @@
   "scroll": [
     {
       "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 194,
+      "line": 195,
       "symbol": "scrollIfAtBottom",
       "type": "function"
     },
@@ -49261,18 +49145,10 @@
       "type": "export"
     }
   ],
-  "bottom": [
-    {
-      "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 194,
-      "symbol": "scrollIfAtBottom",
-      "type": "function"
-    }
-  ],
   "streaming": [
     {
       "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 353,
+      "line": 354,
       "symbol": "StreamingBubble",
       "type": "function"
     },
@@ -49286,22 +49162,6 @@
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
       "line": 77,
       "symbol": "isStreaming",
-      "type": "function"
-    }
-  ],
-  "typing": [
-    {
-      "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 362,
-      "symbol": "TypingRow",
-      "type": "function"
-    }
-  ],
-  "waiting": [
-    {
-      "file": "src/mainview/components/chat/message-list.tsx",
-      "line": 416,
-      "symbol": "WaitingRow",
       "type": "function"
     }
   ],
@@ -52235,6 +52095,146 @@
       "line": 301,
       "symbol": "electroview",
       "type": "export"
+    }
+  ],
+  "processing": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 186,
+      "symbol": "_runPMProcessing",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 975,
+      "symbol": "isProcessing",
+      "type": "method"
+    }
+  ],
+  "fn": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 965,
+      "symbol": "setAbortAgentsFn",
+      "type": "method"
+    }
+  ],
+  "queued": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 990,
+      "symbol": "getQueuedAgentsSnapshot",
+      "type": "method"
+    }
+  ],
+  "present": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 997,
+      "symbol": "presentPlan",
+      "type": "method"
+    }
+  ],
+  "invoke": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 1020,
+      "symbol": "invokePMWithEvent",
+      "type": "method"
+    }
+  ],
+  "summarization": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 1098,
+      "symbol": "_loadSummarizationThreshold",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 1110,
+      "symbol": "triggerSummarization",
+      "type": "method"
+    }
+  ],
+  "threshold": [
+    {
+      "file": "src/bun/agents/engine.ts",
+      "line": 1098,
+      "symbol": "_loadSummarizationThreshold",
+      "type": "method"
+    }
+  ],
+  "completed": [
+    {
+      "file": "src/mainview/stores/chat-event-handlers.ts",
+      "line": 18,
+      "symbol": "markStreamCompleted",
+      "type": "function"
+    }
+  ],
+  "buffers": [
+    {
+      "file": "src/mainview/stores/chat-event-handlers.ts",
+      "line": 34,
+      "symbol": "buffers",
+      "type": "export"
+    }
+  ],
+  "flush": [
+    {
+      "file": "src/mainview/stores/chat-event-handlers.ts",
+      "line": 46,
+      "symbol": "flushTokenBuffer",
+      "type": "function"
+    }
+  ],
+  "presented": [
+    {
+      "file": "src/mainview/stores/chat-event-handlers.ts",
+      "line": 323,
+      "symbol": "onPlanPresented",
+      "type": "function"
+    }
+  ],
+  "bump": [
+    {
+      "file": "src/mainview/stores/chat-event-handlers.ts",
+      "line": 414,
+      "symbol": "bumpToTop",
+      "type": "function"
+    }
+  ],
+  "compacted": [
+    {
+      "file": "src/mainview/stores/chat-event-handlers.ts",
+      "line": 606,
+      "symbol": "onConversationCompacted",
+      "type": "function"
+    }
+  ],
+  "bottom": [
+    {
+      "file": "src/mainview/components/chat/message-list.tsx",
+      "line": 195,
+      "symbol": "scrollIfAtBottom",
+      "type": "function"
+    }
+  ],
+  "typing": [
+    {
+      "file": "src/mainview/components/chat/message-list.tsx",
+      "line": 363,
+      "symbol": "TypingRow",
+      "type": "function"
+    }
+  ],
+  "waiting": [
+    {
+      "file": "src/mainview/components/chat/message-list.tsx",
+      "line": 417,
+      "symbol": "WaitingRow",
+      "type": "function"
     }
   ]
 }

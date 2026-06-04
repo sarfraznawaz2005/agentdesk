@@ -111,10 +111,11 @@ export function MessageList({
       return true;
     }).sort((a, b) => {
       // Order by the DB insertion-order key (seq/rowid) when both messages are
-      // persisted — this keeps a PM message above the sub-agents it spawned on
-      // reload, regardless of createdAt collisions/mutations. Live/optimistic
-      // messages have no seq yet; treat them as newest (sorted last) and break
-      // ties between them by arrival time (createdAt).
+      // persisted. The backend repositions a PM message's rowid to just after the
+      // sub-agents it spawned, so seq order places it BELOW them (latest at the
+      // bottom) on reload. Live/optimistic messages have no seq yet; treat them as
+      // newest (sorted last) and break ties by createdAt — which onStreamComplete
+      // finalizes to the PM's finish time, keeping the same below-the-agents order live.
       const sa = a.seq ?? Number.MAX_SAFE_INTEGER;
       const sb = b.seq ?? Number.MAX_SAFE_INTEGER;
       if (sa !== sb) return sa - sb;

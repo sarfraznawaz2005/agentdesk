@@ -8,6 +8,7 @@ function getPreviewPrompt(_projectId: string): string {
 }
 import { eq } from "drizzle-orm";
 import { db } from "../db";
+import { sqlite } from "../db/connection";
 import { messages, conversations, settings, aiProviders, projects, agents, kanbanTasks } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
@@ -824,8 +825,13 @@ export class AgentEngine {
 			// 9. Persist full assistant message content + metadata
 			const msgMeta: Record<string, unknown> = { promptTokens, completionTokens, modelId };
 			if (accumulatedReasoning) msgMeta.reasoning = accumulatedReasoning;
-			// Update createdAt to now so the PM's final message sorts AFTER any
-			// agent messages it spawned (agents run between T1 and now).
+			// Bump createdAt to the PM's finish time. This is the ordering key for
+			// the LLM-context path: context.ts (history replay) and summarizer.ts
+			// both sort messages by createdAt, so bumping keeps the PM's final
+			// message AFTER the sub-agents it spawned when the conversation is
+			// replayed to the model. The UI orders by rowid instead (see the
+			// reposition below), so both the model's view and the user's view stay
+			// chronological and consistent.
 			await db
 				.update(messages)
 				.set({
@@ -835,6 +841,36 @@ export class AgentEngine {
 					createdAt: new Date().toISOString(),
 				})
 				.where(eq(messages.id, assistantMessageId));
+
+			// Re-position the PM's final message AFTER any sub-agent messages it
+			// spawned during this turn. The PM row is inserted as an empty
+			// placeholder BEFORE streaming begins (and thus before any sub-agent
+			// rows exist), so by SQLite rowid — which the UI orders by — it would
+			// otherwise render ABOVE the agents it spawned, even though its text
+			// was produced last. Bump its rowid to MAX+1 so the conversation reads
+			// chronologically (latest at the bottom), like a normal chat app. The
+			// EXISTS guard only bumps when a newer row exists in this conversation;
+			// the PM-processing lock guarantees the only newer rows are this turn's
+			// sub-agents, so MAX(rowid)+1 slots the PM directly after them. rowid is
+			// referenced by nothing else (FKs use messages.id), so this is safe.
+			try {
+				sqlite
+					.prepare(
+						`UPDATE messages
+						   SET rowid = (SELECT MAX(rowid) FROM messages) + 1
+						 WHERE id = ?
+						   AND EXISTS (
+						     SELECT 1 FROM messages m2
+						     WHERE m2.conversation_id = ?
+						       AND m2.rowid > messages.rowid
+						   )`,
+					)
+					.run(assistantMessageId, conversationId);
+			} catch (err) {
+				// Non-critical: on failure the PM message keeps its placeholder
+				// position (above its sub-agents) — the prior behaviour, not a crash.
+				console.error("[Engine] Failed to re-position PM message by rowid:", err);
+			}
 
 			// 10. Notify stream complete
 			const metadataJson = JSON.stringify(msgMeta);
