@@ -53,87 +53,9 @@ jobs:
           Remove-Item -Recurse -Force $staging
           Write-Host "Portable zip created."
 
-      # ── MSIX package ──────────────────────────────────────────────────────────
-      - name: Generate MSIX visual assets
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "build\msix-assets" | Out-Null
-          $src = "assets\icon.png"
-          magick $src -background transparent -resize  44x44  -gravity center -extent  44x44  "build\msix-assets\Square44x44Logo.png"
-          magick $src -background transparent -resize 150x150 -gravity center -extent 150x150 "build\msix-assets\Square150x150Logo.png"
-          magick $src -background transparent -resize  50x50  -gravity center -extent  50x50  "build\msix-assets\StoreLogo.png"
-          magick $src -background transparent -resize 140x140 -gravity center -extent 310x150 "build\msix-assets\Wide310x150Logo.png"
-          Write-Host "MSIX visual assets generated."
-
-      - name: Build MSIX package
-        shell: pwsh
-        run: |
-          $dir     = "build/stable-win-x64"
-          $staging = "build/msix-staging"
-          New-Item -ItemType Directory -Force -Path "$staging\Assets" | Out-Null
-
-          C:\Windows\System32\tar.exe -xf "$dir/AgentDesk-Setup.tar.zst" -C $staging
-          if ($LASTEXITCODE -ne 0) { Write-Error "tar extraction failed"; exit 1 }
-
-          Write-Host "=== App bundle contents ==="
-          Get-ChildItem $staging -Recurse | Select-Object -ExpandProperty FullName | ForEach-Object { Write-Host "  $_" }
-          Write-Host "==========================="
-
-          $launcher = Get-ChildItem -Path $staging -Filter "launcher.exe" -Recurse | Select-Object -First 1
-          if (-not $launcher) { Write-Error "launcher.exe not found — check bundle listing above"; exit 1 }
-          $exeRel = $launcher.FullName.Substring((Resolve-Path $staging).Path.Length + 1)
-          Write-Host "Main executable: $exeRel"
-
-          Copy-Item "build\msix-assets\*" "$staging\Assets\"
-
-          (Get-Content "packaging\msix\AppxManifest.xml.template" -Raw) `
-            -replace '\{\{EXECUTABLE\}\}', $exeRel |
-            Set-Content "$staging\AppxManifest.xml" -Encoding utf8NoBOM
-
-          $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
-                        Where-Object { $_.Name -match '^\d' } |
-                        Sort-Object Name -Descending |
-                        Select-Object -First 1 -ExpandProperty FullName
-          $makeappx = "$sdkBin\x64\makeappx.exe"
-
-          & $makeappx pack /d $staging /p "$dir\AgentDesk-win-x64.msix" /o /nv
-          if ($LASTEXITCODE -ne 0) { Write-Error "makeappx pack failed"; exit 1 }
-
-          Remove-Item -Recurse -Force $staging
-          Write-Host "MSIX package created."
-
-      - name: Sign MSIX with self-signed certificate
-        shell: pwsh
-        run: |
-          $cert = New-SelfSignedCertificate `
-            -Type Custom `
-            -Subject "CN=AgentDesk Self-Signed" `
-            -KeyUsage DigitalSignature `
-            -FriendlyName "AgentDesk" `
-            -CertStoreLocation "Cert:\CurrentUser\My" `
-            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
-
-          $pfxPass = ConvertTo-SecureString -String "AgentDesk-Test!" -Force -AsPlainText
-          Export-PfxCertificate -Cert $cert -FilePath "build\agentdesk-test.pfx" -Password $pfxPass | Out-Null
-
-          $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
-                        Where-Object { $_.Name -match '^\d' } |
-                        Sort-Object Name -Descending |
-                        Select-Object -First 1 -ExpandProperty FullName
-          $signtool = "$sdkBin\x64\signtool.exe"
-
-          & $signtool sign /fd SHA256 /f "build\agentdesk-test.pfx" /p "AgentDesk-Test!" `
-              "build\stable-win-x64\AgentDesk-win-x64.msix"
-          if ($LASTEXITCODE -ne 0) { Write-Error "signtool failed"; exit 1 }
-
-          Remove-Item -Force "build\agentdesk-test.pfx"
-          Write-Host "MSIX signed."
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-test-${{ github.sha }}
-          path: |
-            build/stable-win-x64/AgentDesk-win-x64-portable.zip
-            build/stable-win-x64/AgentDesk-win-x64.msix
+          path: build/stable-win-x64/AgentDesk-win-x64-portable.zip
           retention-days: 7
