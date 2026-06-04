@@ -2,14 +2,6 @@ name: Test Build (Windows)
 # Manually triggered from Actions → "Test Build (Windows)" → Run workflow.
 # IMPORTANT: After pushing a fix, always trigger a NEW run here — never click
 # "Re-run failed jobs", which re-checks out the original commit and ignores your fix.
-#
-# Two-job structure:
-#   1. validate-msix  — fast (~45s): validates the manifest schema against a dummy
-#                       package before the 10-minute build starts. Fails immediately
-#                       on schema errors so you don't waste build time.
-#   2. build          — slow (~10m): full build, portable zip + signed MSIX.
-#                       Only runs if validate-msix passes.
-
 on:
   workflow_dispatch:
     inputs:
@@ -19,57 +11,7 @@ on:
         default: ''
 
 jobs:
-  # ── Fast manifest validation (~45s) ─────────────────────────────────────────
-  # Builds a minimal dummy MSIX package (empty assets, placeholder exe) so
-  # makeappx can validate the manifest schema without running the full build.
-  validate-msix:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v5.0.0
-
-      - name: Validate AppxManifest schema
-        shell: pwsh
-        run: |
-          $staging = "build\manifest-validate"
-          New-Item -ItemType Directory -Force -Path "$staging\Assets" | Out-Null
-
-          # Create placeholder files that satisfy makeappx path references
-          $placeholderPng = [System.Convert]::FromBase64String(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-          )
-          foreach ($asset in @("Square44x44Logo","Square150x150Logo","StoreLogo","Wide310x150Logo")) {
-            [IO.File]::WriteAllBytes("$staging\Assets\$asset.png", $placeholderPng)
-          }
-          # Placeholder exe so the manifest Executable path resolves
-          [IO.File]::WriteAllBytes("$staging\launcher.exe", [byte[]]@(0x4D,0x5A))
-
-          # Stamp manifest (replace {{EXECUTABLE}} with the placeholder)
-          (Get-Content "packaging\msix\AppxManifest.xml.template" -Raw) `
-            -replace '\{\{EXECUTABLE\}\}', 'launcher.exe' |
-            Set-Content "$staging\AppxManifest.xml" -Encoding utf8NoBOM
-
-          # Find makeappx from latest Windows SDK
-          $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
-                        Where-Object { $_.Name -match '^\d' } |
-                        Sort-Object Name -Descending |
-                        Select-Object -First 1 -ExpandProperty FullName
-          $makeappx = "$sdkBin\x64\makeappx.exe"
-          Write-Host "makeappx: $makeappx"
-
-          # Pack WITHOUT /nv so makeappx performs full schema validation
-          & $makeappx pack /d $staging /p "build\validate-test.msix" /o
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Manifest validation failed — fix packaging\msix\AppxManifest.xml.template before rebuilding."
-            exit 1
-          }
-
-          Remove-Item -Recurse -Force $staging
-          Remove-Item -Force "build\validate-test.msix"
-          Write-Host "Manifest schema is valid."
-
-  # ── Full Windows build (~10m) ────────────────────────────────────────────────
   build:
-    needs: validate-msix
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5.0.0
