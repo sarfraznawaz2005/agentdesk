@@ -1,13 +1,14 @@
 name: Test Build (Windows)
 # Manually triggered from Actions → "Test Build (Windows)" → Run workflow.
-# Builds a portable zip AND a self-signed MSIX, then uploads both as downloadable
-# artifacts on the run page. No release is created, no tag is needed.
+# IMPORTANT: After pushing a fix, always trigger a NEW run here — never click
+# "Re-run failed jobs", which re-checks out the original commit and ignores your fix.
 #
-# The MSIX is signed with a throwaway self-signed cert (created fresh each run).
-# To install it locally you must first trust the cert or enable
-# "Install apps from any source" in Windows Settings → Privacy & Security → For developers.
-# This workflow only validates that the MSIX builds and signs correctly.
-# For production, wire in a real OV/EV cert as a GitHub Actions secret.
+# Two-job structure:
+#   1. validate-msix  — fast (~45s): validates the manifest schema against a dummy
+#                       package before the 10-minute build starts. Fails immediately
+#                       on schema errors so you don't waste build time.
+#   2. build          — slow (~10m): full build, portable zip + signed MSIX.
+#                       Only runs if validate-msix passes.
 
 on:
   workflow_dispatch:
@@ -18,7 +19,57 @@ on:
         default: ''
 
 jobs:
-  build-windows-test:
+  # ── Fast manifest validation (~45s) ─────────────────────────────────────────
+  # Builds a minimal dummy MSIX package (empty assets, placeholder exe) so
+  # makeappx can validate the manifest schema without running the full build.
+  validate-msix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+
+      - name: Validate AppxManifest schema
+        shell: pwsh
+        run: |
+          $staging = "build\manifest-validate"
+          New-Item -ItemType Directory -Force -Path "$staging\Assets" | Out-Null
+
+          # Create placeholder files that satisfy makeappx path references
+          $placeholderPng = [System.Convert]::FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+          )
+          foreach ($asset in @("Square44x44Logo","Square150x150Logo","StoreLogo","Wide310x150Logo")) {
+            [IO.File]::WriteAllBytes("$staging\Assets\$asset.png", $placeholderPng)
+          }
+          # Placeholder exe so the manifest Executable path resolves
+          [IO.File]::WriteAllBytes("$staging\launcher.exe", [byte[]]@(0x4D,0x5A))
+
+          # Stamp manifest (replace {{EXECUTABLE}} with the placeholder)
+          (Get-Content "packaging\msix\AppxManifest.xml.template" -Raw) `
+            -replace '\{\{EXECUTABLE\}\}', 'launcher.exe' |
+            Set-Content "$staging\AppxManifest.xml" -Encoding utf8NoBOM
+
+          # Find makeappx from latest Windows SDK
+          $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                        Where-Object { $_.Name -match '^\d' } |
+                        Sort-Object Name -Descending |
+                        Select-Object -First 1 -ExpandProperty FullName
+          $makeappx = "$sdkBin\x64\makeappx.exe"
+          Write-Host "makeappx: $makeappx"
+
+          # Pack WITHOUT /nv so makeappx performs full schema validation
+          & $makeappx pack /d $staging /p "build\validate-test.msix" /o
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Manifest validation failed — fix packaging\msix\AppxManifest.xml.template before rebuilding."
+            exit 1
+          }
+
+          Remove-Item -Recurse -Force $staging
+          Remove-Item -Force "build\validate-test.msix"
+          Write-Host "Manifest schema is valid."
+
+  # ── Full Windows build (~10m) ────────────────────────────────────────────────
+  build:
+    needs: validate-msix
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5.0.0
@@ -48,8 +99,6 @@ jobs:
         run: bunx electrobun build --env=stable
 
       # ── Portable zip ──────────────────────────────────────────────────────────
-      # Extract the app bundle (tar.zst) and rezip without the installer wrapper.
-      # Uses C:\Windows\System32\tar.exe (libarchive, zstd-capable on Server 2022).
       - name: Build portable zip
         shell: pwsh
         run: |
@@ -63,18 +112,14 @@ jobs:
           Write-Host "Portable zip created."
 
       # ── MSIX package ──────────────────────────────────────────────────────────
-
       - name: Generate MSIX visual assets
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "build\msix-assets" | Out-Null
-          # ImageMagick 7 is pre-installed on windows-latest runners.
-          # Using assets\icon.png directly avoids ICO multi-frame ambiguity.
           $src = "assets\icon.png"
           magick $src -background transparent -resize  44x44  -gravity center -extent  44x44  "build\msix-assets\Square44x44Logo.png"
           magick $src -background transparent -resize 150x150 -gravity center -extent 150x150 "build\msix-assets\Square150x150Logo.png"
           magick $src -background transparent -resize  50x50  -gravity center -extent  50x50  "build\msix-assets\StoreLogo.png"
-          # Wide tile: icon centred on 310x150 transparent canvas
           magick $src -background transparent -resize 140x140 -gravity center -extent 310x150 "build\msix-assets\Wide310x150Logo.png"
           Write-Host "MSIX visual assets generated."
 
@@ -85,38 +130,30 @@ jobs:
           $staging = "build/msix-staging"
           New-Item -ItemType Directory -Force -Path "$staging\Assets" | Out-Null
 
-          # Extract app bundle into staging root
           C:\Windows\System32\tar.exe -xf "$dir/AgentDesk-Setup.tar.zst" -C $staging
           if ($LASTEXITCODE -ne 0) { Write-Error "tar extraction failed"; exit 1 }
 
-          # Print the bundle layout — check this to verify the executable path if build fails
           Write-Host "=== App bundle contents ==="
           Get-ChildItem $staging -Recurse | Select-Object -ExpandProperty FullName | ForEach-Object { Write-Host "  $_" }
           Write-Host "==========================="
 
-          # Locate main executable (searched recursively so subdirectory layouts work too)
           $launcher = Get-ChildItem -Path $staging -Filter "launcher.exe" -Recurse | Select-Object -First 1
-          if (-not $launcher) { Write-Error "launcher.exe not found in bundle — see listing above"; exit 1 }
+          if (-not $launcher) { Write-Error "launcher.exe not found — check bundle listing above"; exit 1 }
           $exeRel = $launcher.FullName.Substring((Resolve-Path $staging).Path.Length + 1)
           Write-Host "Main executable: $exeRel"
 
-          # Copy visual assets
           Copy-Item "build\msix-assets\*" "$staging\Assets\"
 
-          # Stamp the manifest template with the detected executable path
           (Get-Content "packaging\msix\AppxManifest.xml.template" -Raw) `
             -replace '\{\{EXECUTABLE\}\}', $exeRel |
             Set-Content "$staging\AppxManifest.xml" -Encoding utf8NoBOM
 
-          # Find the latest Windows SDK (makeappx ships with the kit, present on all runners)
           $sdkBin   = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
                         Where-Object { $_.Name -match '^\d' } |
                         Sort-Object Name -Descending |
                         Select-Object -First 1 -ExpandProperty FullName
           $makeappx = "$sdkBin\x64\makeappx.exe"
-          Write-Host "makeappx: $makeappx"
 
-          # Pack — /nv skips schema validation (fine for test; remove for Store submission)
           & $makeappx pack /d $staging /p "$dir\AgentDesk-win-x64.msix" /o /nv
           if ($LASTEXITCODE -ne 0) { Write-Error "makeappx pack failed"; exit 1 }
 
@@ -126,9 +163,6 @@ jobs:
       - name: Sign MSIX with self-signed certificate
         shell: pwsh
         run: |
-          # Creates a throwaway self-signed cert. Subject MUST match Publisher in
-          # AppxManifest.xml.template. Replace this whole step with a secrets-backed
-          # OV/EV cert when moving to production.
           $cert = New-SelfSignedCertificate `
             -Type Custom `
             -Subject "CN=AgentDesk Self-Signed" `
@@ -145,7 +179,6 @@ jobs:
                         Sort-Object Name -Descending |
                         Select-Object -First 1 -ExpandProperty FullName
           $signtool = "$sdkBin\x64\signtool.exe"
-          Write-Host "signtool: $signtool"
 
           & $signtool sign /fd SHA256 /f "build\agentdesk-test.pfx" /p "AgentDesk-Test!" `
               "build\stable-win-x64\AgentDesk-win-x64.msix"
@@ -154,8 +187,6 @@ jobs:
           Remove-Item -Force "build\agentdesk-test.pfx"
           Write-Host "MSIX signed."
 
-      # Only portable + MSIX uploaded — installer zip intentionally excluded to keep
-      # artifact download small.
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
