@@ -254,13 +254,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1357,
+      "line": 1361,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1602,
+      "line": 1606,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -2144,7 +2144,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1357,
+      "line": 1361,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -12874,13 +12874,13 @@
   "seed": [
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1372,
+      "line": 1376,
       "symbol": "seedDatabase",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1602,
+      "line": 1606,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -18898,7 +18898,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1357,
+      "line": 1361,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -22430,13 +22430,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1357,
+      "line": 1361,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1602,
+      "line": 1606,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -31510,7 +31510,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1372,
+      "line": 1376,
       "symbol": "seedDatabase",
       "type": "function"
     },
@@ -52165,14 +52165,6 @@
       "type": "export"
     }
   ],
-  "fnv1a": [
-    {
-      "file": "src/bun/db/seed.ts",
-      "line": 16,
-      "symbol": "fnv1a",
-      "type": "function"
-    }
-  ],
   "purge": [
     {
       "file": "src/bun/freelance/fetcher.ts",
@@ -52318,6 +52310,14 @@
       "file": "src/mainview/components/layout/sidebar.tsx",
       "line": 263,
       "symbol": "handleVersionClick",
+      "type": "function"
+    }
+  ],
+  "fnv1a": [
+    {
+      "file": "src/bun/db/seed.ts",
+      "line": 16,
+      "symbol": "fnv1a",
       "type": "function"
     }
   ]
