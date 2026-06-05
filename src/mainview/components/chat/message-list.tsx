@@ -72,6 +72,7 @@ interface MessageListProps {
   searchQuery?: string;
   loading?: boolean;
   onSend?: (text: string) => void;
+  fontSizePercent?: number;
 }
 
 export function MessageList({
@@ -85,6 +86,7 @@ export function MessageList({
   searchQuery,
   loading = false,
   onSend,
+  fontSizePercent = 100,
 }: MessageListProps) {
   const isCompacting = useChatStore((s) => s.isCompacting);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -123,6 +125,15 @@ export function MessageList({
     }),
     [messages],
   );
+
+  // ID of the last assistant/agent message — used to show retry button only there
+  const lastAssistantMessageId = useMemo(() => {
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      const m = visibleMessages[i];
+      if (m.role === "assistant" || m.role === "agent") return m.id;
+    }
+    return null;
+  }, [visibleMessages]);
 
   // Build streaming/waiting state
   const agentRunning = activeAgentCount > 0;
@@ -275,6 +286,7 @@ export function MessageList({
             </div>
           )}
 
+          <div style={fontSizePercent !== 100 ? { zoom: fontSizePercent / 100 } : undefined}>
           {visibleMessages.map((msg) => (
             <div
               key={msg.id}
@@ -293,6 +305,7 @@ export function MessageList({
                     projectId={projectId}
                     allMessages={visibleMessages}
                     searchQuery={searchQuery}
+                    isLastMessage={msg.id === lastAssistantMessageId}
                   />
                 </MessageErrorBoundary>
               </div>
@@ -319,6 +332,7 @@ export function MessageList({
 
           {/* Scroll anchor — browser keeps this in view when content above changes */}
           <div style={{ overflowAnchor: "auto", height: 1 }} />
+          </div>{/* end zoom wrapper */}
         </div>
 
         {/* Streaming / compaction indicator — fixed at bottom */}

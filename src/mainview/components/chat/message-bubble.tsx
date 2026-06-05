@@ -29,6 +29,8 @@ interface MessageBubbleProps {
   searchQuery?: string;
   /** Live PM thinking text — rendered as a connected card above the bubble. */
   thinkingContent?: string;
+  /** Whether this is the last message in the conversation — controls retry button visibility. */
+  isLastMessage?: boolean;
 }
 
 // Highlight matching search terms in text
@@ -250,7 +252,7 @@ const PLAN_MD_COMPONENTS = {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export const MessageBubble = memo(function MessageBubble({ message, projectId, isStreaming = false, allMessages, searchQuery = "", thinkingContent }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, projectId, isStreaming = false, allMessages, searchQuery = "", thinkingContent, isLastMessage = false }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -748,7 +750,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                   {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
                 </button>
               </Tip>
-              {projectId && (
+              {projectId && isLastMessage && (
                 <Tip content="Retry" side="top">
                   <button
                     onClick={handleRetry}

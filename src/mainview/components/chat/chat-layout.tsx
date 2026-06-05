@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useMessageQueueStore } from "@/stores/message-queue";
-import { PanelLeft, PanelRight, Upload, Search, Download, SquarePen } from "lucide-react";
+import { PanelLeft, PanelRight, Upload, Search, Download, SquarePen, FoldHorizontal, UnfoldHorizontal, ZoomIn, ZoomOut } from "lucide-react";
+import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { cn } from "../../lib/utils";
 import { useChatStore } from "../../stores/chat-store";
 
@@ -23,12 +24,54 @@ interface ChatLayoutProps {
 const ACTIVITY_WIDTH_MIN = 300;
 const ACTIVITY_WIDTH_MAX = 400;
 const ACTIVITY_WIDTH_DEFAULT = 300;
+const FOCUS_KEY = "chat-focus-mode";
 
 export function ChatLayout({ projectId }: ChatLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(() => {
+    try { return localStorage.getItem(FOCUS_KEY) === "true"; } catch { return false; }
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false); // always starts closed; user opens manually
+  const [activityOpen, setActivityOpen] = useState(() => {
+    try { return localStorage.getItem(FOCUS_KEY) !== "true"; } catch { return true; }
+  });
   const sidebarRef = useRef<HTMLDivElement>(null);
   const sidebarToggleRef = useRef<HTMLButtonElement>(null);
-  const [activityOpen, setActivityOpen] = useState(true);
+
+  // On mount: if already in focus mode, tell app-shell to collapse main sidebar
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(FOCUS_KEY) === "true") {
+        window.dispatchEvent(new CustomEvent("agentdesk:focus-mode-enter"));
+      }
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleFocusToggle = useCallback(() => {
+    setIsFocused((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(FOCUS_KEY, String(next)); } catch {}
+      if (next) {
+        // Enter: collapse conv sidebar, activity pane, and main app sidebar
+        setSidebarOpen(false);
+        setActivityOpen(false);
+        window.dispatchEvent(new CustomEvent("agentdesk:focus-mode-enter"));
+      } else {
+        // Exit: restore activity pane only — conv sidebar stays closed; main sidebar restores to saved setting
+        setActivityOpen(true);
+        window.dispatchEvent(new CustomEvent("agentdesk:focus-mode-exit"));
+      }
+      return next;
+    });
+  }, []);
+  const { percent: fontSizePercent, zoomIn, zoomOut, atMin: zoomAtMin, atMax: zoomAtMax } = useConvFontSize();
+  const [showZoomHint, setShowZoomHint] = useState(false);
+  const zoomHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerZoomHint = useCallback(() => {
+    setShowZoomHint(true);
+    if (zoomHintTimer.current) clearTimeout(zoomHintTimer.current);
+    zoomHintTimer.current = setTimeout(() => setShowZoomHint(false), 1500);
+  }, []);
+
   const [isDragging, setIsDragging] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
@@ -530,6 +573,60 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
             </button>
           </Tip>
 
+          <Tip content={isFocused ? "Restore sidebars" : "Focus mode — hide both sidebars"} side="bottom">
+            <button
+              type="button"
+              onClick={handleFocusToggle}
+              aria-label={isFocused ? "Restore sidebars" : "Focus mode"}
+              aria-pressed={isFocused}
+              className={cn(
+                "inline-flex items-center justify-center rounded-md p-1.5",
+                "text-muted-foreground hover:text-foreground hover:bg-muted",
+                "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                isFocused && "text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700",
+              )}
+            >
+              {isFocused
+                ? <UnfoldHorizontal className="h-4 w-4" aria-hidden="true" />
+                : <FoldHorizontal className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          </Tip>
+
+          {/* Font size controls */}
+          <div className="relative flex items-center gap-0.5">
+            {/* Temporary hint pill — appears above the buttons on zoom change */}
+            <div
+              className={cn(
+                "absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-foreground text-background shadow-md pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50",
+                showZoomHint ? "opacity-100" : "opacity-0",
+              )}
+            >
+              {fontSizePercent}%
+            </div>
+            <Tip content="Decrease font size" side="bottom">
+              <button
+                type="button"
+                onClick={() => { zoomOut(); triggerZoomHint(); }}
+                disabled={zoomAtMin}
+                aria-label="Decrease conversation font size"
+                className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ZoomOut className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </Tip>
+            <Tip content="Increase font size" side="bottom">
+              <button
+                type="button"
+                onClick={() => { zoomIn(); triggerZoomHint(); }}
+                disabled={zoomAtMax}
+                aria-label="Increase conversation font size"
+                className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ZoomIn className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </Tip>
+          </div>
+
           <Tip content="Search messages" side="bottom">
             <button
               type="button"
@@ -598,6 +695,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
               searchQuery={searchQuery}
               loading={messagesLoading}
               onSend={handleSend}
+              fontSizePercent={fontSizePercent}
             />
           </div>
         ) : (

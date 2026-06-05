@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw, Check, Copy, Download } from "lucide-react";
+import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
@@ -140,6 +141,15 @@ function persistSessionId(sessionId: string) {
 // ---------------------------------------------------------------------------
 
 export function PmChatWidget({ visible = true }: { visible?: boolean }) {
+  const { percent: fontSizePercent, zoomIn, zoomOut, atMin: zoomAtMin, atMax: zoomAtMax } = useConvFontSize("conv-font-size-pm");
+  const [showZoomHint, setShowZoomHint] = useState(false);
+  const zoomHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerZoomHint = useCallback(() => {
+    setShowZoomHint(true);
+    if (zoomHintTimer.current) clearTimeout(zoomHintTimer.current);
+    zoomHintTimer.current = setTimeout(() => setShowZoomHint(false), 1500);
+  }, []);
+
   const [open, setOpen] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [input, setInput] = useState("");
@@ -447,7 +457,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
             "text-sm font-medium whitespace-nowrap",
           )}
         >
-          <MessageSquare className="h-4 w-4" aria-hidden="true" />
+          <MessageSquare className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
           Chat with PM
           {unread && <UnreadDot className="absolute -top-1 -right-1" />}
         </button>
@@ -466,26 +476,50 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-indigo-600 rounded-t-xl">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-white" aria-hidden="true" />
+          <div className="flex items-center px-4 py-3 border-b border-border shrink-0 bg-indigo-600 rounded-t-xl">
+            {/* Left: title */}
+            <div className="flex items-center gap-2 flex-1">
+              <MessageSquare className="h-4 w-4 text-white" strokeWidth={3.5} aria-hidden="true" />
               <span className="text-sm font-semibold text-white">Project Manager</span>
               {isStreaming && (
-                <Loader2 className="h-3.5 w-3.5 text-white/70 animate-spin" aria-hidden="true" />
+                <Loader2 className="h-3.5 w-3.5 text-white/70 animate-spin" strokeWidth={3.5} aria-hidden="true" />
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <Tip content="Show system status (/info)" side="bottom">
-                <button
-                  type="button"
-                  onClick={sendInfo}
-                  disabled={isStreaming}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-white/80 hover:text-white hover:bg-white/20 transition-colors text-xs font-medium disabled:opacity-40"
-                >
-                  <Info className="h-3 w-3" aria-hidden="true" />
-                  /info
-                </button>
-              </Tip>
+            {/* Center: /info */}
+            <Tip content="Show system status (/info)" side="bottom">
+              <button
+                type="button"
+                onClick={sendInfo}
+                disabled={isStreaming}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-white/80 hover:text-white hover:bg-white/20 transition-colors text-xs font-medium disabled:opacity-40"
+              >
+                <Info className="h-3 w-3" strokeWidth={3.5} aria-hidden="true" />
+                /info
+              </button>
+            </Tip>
+            {/* Right: zoom, export, clear, close */}
+            <div className="flex items-center gap-1 flex-1 justify-end">
+              {/* Zoom controls */}
+              <div className="relative flex items-center">
+                <div className={cn(
+                  "absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-foreground text-background shadow-md pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50",
+                  showZoomHint ? "opacity-100" : "opacity-0",
+                )}>
+                  {fontSizePercent}%
+                </div>
+                <Tip content="Decrease font size" side="bottom">
+                  <button type="button" onClick={() => { zoomOut(); triggerZoomHint(); }} disabled={zoomAtMin}
+                    className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ZoomOut className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                  </button>
+                </Tip>
+                <Tip content="Increase font size" side="bottom">
+                  <button type="button" onClick={() => { zoomIn(); triggerZoomHint(); }} disabled={zoomAtMax}
+                    className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ZoomIn className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                  </button>
+                </Tip>
+              </div>
               <Tip content="Export as markdown" side="bottom">
                 <button
                   type="button"
@@ -493,7 +527,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                   disabled={messages.length === 0}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Download className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
               <Tip content="Clear conversation" side="bottom">
@@ -502,7 +536,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                   onClick={handleClear}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors"
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
               <Tip content="Close" side="bottom">
@@ -511,17 +545,19 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                   onClick={() => setOpen(false)}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors"
                 >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  <X className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
             </div>
           </div>
 
           {/* Messages */}
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 gap-3">
+          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 gap-3"
+            style={fontSizePercent !== 100 ? { zoom: fontSizePercent / 100 } : undefined}
+          >
             {messages.length === 0 && !isStreaming && (
               <div className="flex flex-col items-center justify-center flex-1 text-center gap-2">
-                <MessageSquare className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+                <MessageSquare className="h-8 w-8 text-muted-foreground/40" strokeWidth={3.5} aria-hidden="true" />
                 <p className="text-sm text-muted-foreground">
                   Ask me about your projects, agents, or anything else.
                 </p>
@@ -549,7 +585,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                           disabled={isStreaming}
                           className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <RefreshCw className={cn("w-3 h-3", isStreaming && "animate-spin")} aria-hidden="true" />
+                          <RefreshCw className={cn("w-3 h-3", isStreaming && "animate-spin")} strokeWidth={3.5} aria-hidden="true" />
                           {isStreaming ? "Retrying…" : "Retry"}
                         </button>
                       )}
@@ -655,7 +691,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                 disabled={!input.trim() || isStreaming}
                 className="shrink-0 h-9 w-9"
               >
-                <Send className="h-4 w-4" aria-hidden="true" />
+                <Send className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground mt-1 px-1">

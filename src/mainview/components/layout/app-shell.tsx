@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation, useParams } from "@tanstack/react-router";
 import { Sidebar } from "./sidebar";
 import { TopNav } from "./topnav";
@@ -101,6 +101,8 @@ export function AppShell() {
 
 function AppShellContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Tracks the user's saved preference independently of transient focus-mode overrides
+  const sidebarDefaultRef = useRef<"collapsed" | "expanded">("expanded");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [checkingFirstLaunch, setCheckingFirstLaunch] = useState(true);
   const [pageTitle, setPageTitle] = useState("AgentDesk");
@@ -122,17 +124,27 @@ function AppShellContent() {
   useEffect(() => {
     rpc.getSettings("appearance").then((s) => {
       const raw = (s as Record<string, unknown>)["sidebar_default"];
-      if (raw === "collapsed") setSidebarCollapsed(true);
-      else if (raw === "expanded") setSidebarCollapsed(false);
+      if (raw === "collapsed") { setSidebarCollapsed(true); sidebarDefaultRef.current = "collapsed"; }
+      else if (raw === "expanded") { setSidebarCollapsed(false); sidebarDefaultRef.current = "expanded"; }
     }).catch(() => {});
 
-    const handler = (e: Event) => {
+    const onSettingChanged = (e: Event) => {
       const { sidebarDefault } = (e as CustomEvent<{ sidebarDefault: string }>).detail;
-      if (sidebarDefault === "collapsed") setSidebarCollapsed(true);
-      else if (sidebarDefault === "expanded") setSidebarCollapsed(false);
+      if (sidebarDefault === "collapsed") { setSidebarCollapsed(true); sidebarDefaultRef.current = "collapsed"; }
+      else if (sidebarDefault === "expanded") { setSidebarCollapsed(false); sidebarDefaultRef.current = "expanded"; }
     };
-    window.addEventListener("agentdesk:sidebar-default-changed", handler);
-    return () => window.removeEventListener("agentdesk:sidebar-default-changed", handler);
+    // Focus mode: collapse without touching the saved default; restore from saved default
+    const onFocusEnter = () => setSidebarCollapsed(true);
+    const onFocusExit = () => setSidebarCollapsed(sidebarDefaultRef.current === "collapsed");
+
+    window.addEventListener("agentdesk:sidebar-default-changed", onSettingChanged);
+    window.addEventListener("agentdesk:focus-mode-enter", onFocusEnter);
+    window.addEventListener("agentdesk:focus-mode-exit", onFocusExit);
+    return () => {
+      window.removeEventListener("agentdesk:sidebar-default-changed", onSettingChanged);
+      window.removeEventListener("agentdesk:focus-mode-enter", onFocusEnter);
+      window.removeEventListener("agentdesk:focus-mode-exit", onFocusExit);
+    };
   }, []);
 
   // Update the top-nav title + workspace path when navigating between pages/projects
@@ -271,6 +283,7 @@ function AppShellContent() {
         onToggleCollapse={() => {
           setSidebarCollapsed((prev) => {
             const next = !prev;
+            sidebarDefaultRef.current = next ? "collapsed" : "expanded";
             rpc.saveSetting("sidebar_default", next ? "collapsed" : "expanded", "appearance").catch(() => {});
             return next;
           });

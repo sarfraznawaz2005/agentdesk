@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 156
-**Symbols:** 1325
+**Files:** 157
+**Symbols:** 1332
 
 ## Files
 
@@ -138,14 +138,14 @@
 ### `src/mainview/components/chat/chat-layout.tsx`
 
 **Interfaces:**
-- `ChatLayoutProps` (line 19)
+- `ChatLayoutProps` (line 20)
 
 **Functions:**
-- `ChatLayout` (line 27)
-- `handleMouseDown` (line 43)
-- `onMouseMove` (line 322)
-- `onMouseUp` (line 331)
-- `onKeyDown` (line 342)
+- `ChatLayout` (line 29)
+- `handleMouseDown` (line 86)
+- `onMouseMove` (line 365)
+- `onMouseUp` (line 374)
+- `onKeyDown` (line 385)
 
 
 ### `src/mainview/components/chat/code-block.tsx`
@@ -225,27 +225,27 @@
 - `MessageBubbleProps` (line 23)
 
 **Functions:**
-- `SearchHighlight` (line 35)
-- `highlightChildren` (line 54)
-- `AttachmentPreviews` (line 65)
-- `PlanApprovalFooter` (line 120)
-- `handleApprove` (line 131)
-- `handleReject` (line 136)
-- `onPartCreated` (line 289)
-- `onPartUpdated` (line 309)
-- `handleCopy` (line 360)
-- `handleDeleteClick` (line 366)
-- `handleRetry` (line 368)
-- `handleBranch` (line 378)
-- `h` (line 392)
+- `SearchHighlight` (line 37)
+- `highlightChildren` (line 56)
+- `AttachmentPreviews` (line 67)
+- `PlanApprovalFooter` (line 122)
+- `handleApprove` (line 133)
+- `handleReject` (line 138)
+- `onPartCreated` (line 291)
+- `onPartUpdated` (line 311)
+- `handleCopy` (line 362)
+- `handleDeleteClick` (line 368)
+- `handleRetry` (line 370)
+- `handleBranch` (line 380)
+- `h` (line 394)
 
 **Methods:**
-- `code` (line 209)
-- `code` (line 395)
+- `code` (line 211)
+- `code` (line 397)
 
 **Exports:**
 - `Message` (line 21)
-- `MessageBubble` (line 253)
+- `MessageBubble` (line 255)
 
 
 ### `src/mainview/components/chat/message-list.tsx`
@@ -257,12 +257,12 @@
 - `MessageListProps` (line 64)
 
 **Functions:**
-- `MessageList` (line 77)
-- `handler` (line 97)
-- `scrollIfAtBottom` (line 195)
-- `StreamingBubble` (line 354)
-- `TypingRow` (line 363)
-- `WaitingRow` (line 417)
+- `MessageList` (line 78)
+- `handler` (line 99)
+- `scrollIfAtBottom` (line 206)
+- `StreamingBubble` (line 368)
+- `TypingRow` (line 377)
+- `WaitingRow` (line 431)
 
 **Methods:**
 - `getDerivedStateFromError` (line 20)
@@ -401,53 +401,53 @@
 ### `src/mainview/components/dashboard/custom-agent-chat-widget.tsx`
 
 **Interfaces:**
-- `ChatMessage` (line 17)
-- `CustomAgentChatWidgetProps` (line 135)
+- `ChatMessage` (line 18)
+- `CustomAgentChatWidgetProps` (line 136)
 
 **Functions:**
-- `sessionStorageKey` (line 85)
-- `messagesStorageKey` (line 86)
-- `unreadStorageKey` (line 87)
-- `loadPersistedUnread` (line 89)
-- `persistUnread` (line 93)
-- `loadPersistedSession` (line 100)
-- `persistMessages` (line 121)
-- `persistSessionId` (line 126)
-- `CustomAgentChatWidget` (line 142)
-- `onMouseDown` (line 198)
-- `onChunk` (line 222)
-- `onToolCall` (line 234)
-- `onComplete` (line 243)
-- `onError` (line 258)
-- `handleKeyDown` (line 395)
-- `handleClear` (line 407)
+- `sessionStorageKey` (line 86)
+- `messagesStorageKey` (line 87)
+- `unreadStorageKey` (line 88)
+- `loadPersistedUnread` (line 90)
+- `persistUnread` (line 94)
+- `loadPersistedSession` (line 101)
+- `persistMessages` (line 122)
+- `persistSessionId` (line 127)
+- `CustomAgentChatWidget` (line 143)
+- `onMouseDown` (line 208)
+- `onChunk` (line 232)
+- `onToolCall` (line 244)
+- `onComplete` (line 253)
+- `onError` (line 268)
+- `handleKeyDown` (line 405)
+- `handleClear` (line 417)
 
 **Methods:**
-- `code` (line 30)
+- `code` (line 31)
 
 
 ### `src/mainview/components/dashboard/pm-chat-widget.tsx`
 
 **Interfaces:**
-- `ChatMessage` (line 17)
+- `ChatMessage` (line 18)
 
 **Functions:**
-- `loadPersistedUnread` (line 92)
-- `persistUnread` (line 96)
-- `loadPersistedSession` (line 103)
-- `persistMessages` (line 122)
-- `persistSessionId` (line 130)
-- `PmChatWidget` (line 142)
-- `handleMouseDown` (line 186)
-- `onChunk` (line 212)
-- `onToolCall` (line 226)
-- `onComplete` (line 235)
-- `onError` (line 249)
-- `handleKeyDown` (line 406)
-- `handleClear` (line 418)
+- `loadPersistedUnread` (line 93)
+- `persistUnread` (line 97)
+- `loadPersistedSession` (line 104)
+- `persistMessages` (line 123)
+- `persistSessionId` (line 131)
+- `PmChatWidget` (line 143)
+- `handleMouseDown` (line 196)
+- `onChunk` (line 222)
+- `onToolCall` (line 236)
+- `onComplete` (line 245)
+- `onError` (line 259)
+- `handleKeyDown` (line 416)
+- `handleClear` (line 428)
 
 **Methods:**
-- `code` (line 31)
+- `code` (line 32)
 
 
 ### `src/mainview/components/dashboard/project-card.tsx`
@@ -893,10 +893,12 @@
 **Functions:**
 - `AppShell` (line 94)
 - `AppShellContent` (line 102)
-- `handler` (line 129)
-- `handler` (line 218)
-- `onFocus` (line 238)
-- `onBlur` (line 239)
+- `onSettingChanged` (line 131)
+- `onFocusEnter` (line 137)
+- `onFocusExit` (line 138)
+- `handler` (line 230)
+- `onFocus` (line 250)
+- `onBlur` (line 251)
 
 
 ### `src/mainview/components/layout/project-branch-badge.tsx`
@@ -1714,6 +1716,18 @@
 **Functions:**
 - `ensureFetched` (line 9)
 - `useAgentColorMap` (line 24)
+
+
+### `src/mainview/lib/use-conv-font-size.ts`
+
+**Functions:**
+- `useConvFontSize` (line 10)
+- `zoomIn` (line 23)
+- `zoomOut` (line 24)
+- `reset` (line 25)
+
+**Exports:**
+- `CONV_FONT_SIZE_KEY` (line 8)
 
 
 ### `src/mainview/lib/utils.ts`
