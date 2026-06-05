@@ -11,8 +11,9 @@
  *     agentName included so the matching widget can filter.
  */
 
-import { streamText, stepCountIs, type ModelMessage } from "ai";
+import { streamText, stepCountIs, type ModelMessage, tool } from "ai";
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../db";
 import { agents, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
@@ -20,6 +21,7 @@ import { getDefaultModel } from "../providers/models";
 import { getAgentSystemPrompt } from "../agents/prompts";
 import { getToolsForAgent } from "../agents/tools/index";
 import { broadcastToWebview } from "../engine-manager";
+import { saveLastMessage, loadLastMessage, removeLastMessage, buildLastMsgInjection } from "../agents/last-msg-store";
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -81,6 +83,7 @@ export async function sendDashboardAgentMessage(
 
 	(async () => {
 		let fullText = "";
+		let removedLastMsg = false;
 		try {
 			// Verify the agent is real, custom, enabled, and chat-enabled
 			const agentRows = await db.select().from(agents).where(eq(agents.name, agentName)).limit(1);
@@ -103,16 +106,34 @@ export async function sendDashboardAgentMessage(
 
 			// System prompt: getAgentSystemPrompt honours useSystemPromptOnly already.
 			// Tools: getToolsForAgent honours the per-agent agent_tools rows.
-			const [system, tools] = await Promise.all([
+			const [systemBase, tools] = await Promise.all([
 				getAgentSystemPrompt(agentName),
 				getToolsForAgent(agentName),
 			]);
+
+			// Inject last saved message so the agent remembers its previous reply
+			// even after the user clears the conversation.
+			const lastMsg = loadLastMessage(agentName);
+			const system = lastMsg ? systemBase + buildLastMsgInjection(lastMsg) : systemBase;
+
+			// remove_last_message tool — custom dashboard agents only.
+			const removeLastMsgTool = tool({
+				description: "Delete your saved last message file so you can start fresh. Use this when the user explicitly asks you to forget your last message or reset your memory.",
+				inputSchema: z.object({}),
+				execute: async () => {
+					const deleted = removeLastMessage(agentName);
+					removedLastMsg = true;
+					return deleted
+						? "Your last saved message has been deleted. You will start fresh from the next reply."
+						: "No saved last message was found — nothing to delete.";
+				},
+			});
 
 			const result = streamText({
 				model: adapter.createModel(modelId),
 				system,
 				messages:    newHistory,
-				tools,
+				tools:       { ...tools, remove_last_message: removeLastMsgTool },
 				stopWhen:    [stepCountIs(15)],
 				abortSignal: abortController.signal,
 			});
@@ -144,6 +165,9 @@ export async function sendDashboardAgentMessage(
 			if (fullText) {
 				const updated = sessionHistory.get(sessionId) ?? newHistory;
 				sessionHistory.set(sessionId, [...updated, { role: "assistant", content: fullText }]);
+				// Don't persist the confirmation reply after a removal — the file was
+				// just deleted intentionally and we must not recreate it.
+				if (!removedLastMsg) saveLastMessage(agentName, fullText);
 			}
 
 			broadcastToWebview("dashboardAgentComplete", { sessionId, agentName, messageId, content: fullText });

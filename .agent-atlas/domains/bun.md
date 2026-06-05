@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 201
-**Symbols:** 1568
+**Files:** 202
+**Symbols:** 1574
 
 ## Files
 
@@ -137,6 +137,17 @@
 - `checkBlocked` (line 134)
 - `logActivity` (line 195)
 - `getProjectId` (line 222)
+
+
+### `src/bun/agents/last-msg-store.ts`
+
+**Functions:**
+- `getLastMsgPath` (line 12)
+- `getLastMsgDir` (line 16)
+- `saveLastMessage` (line 21)
+- `loadLastMessage` (line 32)
+- `removeLastMessage` (line 43)
+- `buildLastMsgInjection` (line 59)
 
 
 ### `src/bun/agents/project-snapshot.ts`
@@ -2292,11 +2303,11 @@
 ### `src/bun/rpc/dashboard-agent.ts`
 
 **Functions:**
-- `getProviderForAgent` (line 33)
-- `getChatEnabledAgents` (line 49)
-- `sendDashboardAgentMessage` (line 66)
-- `abortDashboardAgentMessage` (line 163)
-- `clearDashboardAgentSession` (line 173)
+- `getProviderForAgent` (line 35)
+- `getChatEnabledAgents` (line 51)
+- `sendDashboardAgentMessage` (line 68)
+- `abortDashboardAgentMessage` (line 187)
+- `clearDashboardAgentSession` (line 197)
 
 
 ### `src/bun/rpc/dashboard.ts`

@@ -368,25 +368,25 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "getProviderForAgent",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "sendDashboardAgentMessage",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 163,
+      "line": 187,
       "symbol": "abortDashboardAgentMessage",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 173,
+      "line": 197,
       "symbol": "clearDashboardAgentSession",
       "type": "function"
     },
@@ -1026,7 +1026,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 163,
+      "line": 187,
       "symbol": "abortDashboardAgentMessage",
       "type": "function"
     },
@@ -1306,7 +1306,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "getChatEnabledAgents",
       "type": "function"
     },
@@ -1889,6 +1889,18 @@
       "line": 222,
       "symbol": "getProjectId",
       "type": "method"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 12,
+      "symbol": "getLastMsgPath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 16,
+      "symbol": "getLastMsgDir",
+      "type": "function"
     },
     {
       "file": "src/bun/agents/project-snapshot.ts",
@@ -2582,13 +2594,13 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "getProviderForAgent",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "getChatEnabledAgents",
       "type": "function"
     },
@@ -4341,6 +4353,12 @@
       "line": 198,
       "symbol": "_remove_author_tracked_changes",
       "type": "method"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 43,
+      "symbol": "removeLastMessage",
+      "type": "function"
     },
     {
       "file": "src/bun/agents/tools/file-tracker.ts",
@@ -6961,6 +6979,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 12,
+      "symbol": "getLastMsgPath",
+      "type": "function"
+    },
+    {
       "file": "src/bun/agents/prompt-logger.ts",
       "line": 49,
       "symbol": "getPromptLogPath",
@@ -7081,6 +7105,12 @@
       "line": 1098,
       "symbol": "_loadSummarizationThreshold",
       "type": "method"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 32,
+      "symbol": "loadLastMessage",
+      "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
@@ -7288,6 +7318,12 @@
     }
   ],
   "save": [
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 21,
+      "symbol": "saveLastMessage",
+      "type": "function"
+    },
     {
       "file": "src/bun/agents/tools/preview.ts",
       "line": 215,
@@ -7942,7 +7978,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "getChatEnabledAgents",
       "type": "function"
     },
@@ -9546,7 +9582,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "sendDashboardAgentMessage",
       "type": "function"
     },
@@ -9617,6 +9653,24 @@
       "line": 1009,
       "symbol": "postDeterministicMessage",
       "type": "method"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 21,
+      "symbol": "saveLastMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 32,
+      "symbol": "loadLastMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 43,
+      "symbol": "removeLastMessage",
+      "type": "function"
     },
     {
       "file": "src/bun/agents/tools/git.ts",
@@ -9758,13 +9812,13 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "sendDashboardAgentMessage",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 163,
+      "line": 187,
       "symbol": "abortDashboardAgentMessage",
       "type": "function"
     },
@@ -13394,7 +13448,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 173,
+      "line": 197,
       "symbol": "clearDashboardAgentSession",
       "type": "function"
     },
@@ -13838,7 +13892,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "getProviderForAgent",
       "type": "function"
     },
@@ -13900,7 +13954,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 173,
+      "line": 197,
       "symbol": "clearDashboardAgentSession",
       "type": "function"
     },
@@ -14030,7 +14084,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "getProviderForAgent",
       "type": "function"
     },
@@ -15198,6 +15252,12 @@
       "file": "src/bun/agents/agent-loop.ts",
       "line": 887,
       "symbol": "wrapDirTool",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 16,
+      "symbol": "getLastMsgDir",
       "type": "function"
     },
     {
@@ -19214,6 +19274,12 @@
       "file": "src/bun/agents/handoff.ts",
       "line": 69,
       "symbol": "buildDeterministicSummary",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 59,
+      "symbol": "buildLastMsgInjection",
       "type": "function"
     },
     {
@@ -31825,6 +31891,42 @@
   ],
   "last": [
     {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 12,
+      "symbol": "getLastMsgPath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 16,
+      "symbol": "getLastMsgDir",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 21,
+      "symbol": "saveLastMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 32,
+      "symbol": "loadLastMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 43,
+      "symbol": "removeLastMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 59,
+      "symbol": "buildLastMsgInjection",
+      "type": "function"
+    },
+    {
       "file": "src/bun/db/maintenance.ts",
       "line": 172,
       "symbol": "getLastVacuumTimestamp",
@@ -34280,7 +34382,7 @@
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "getChatEnabledAgents",
       "type": "function"
     },
@@ -41730,19 +41832,19 @@
   "dashboard": [
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "sendDashboardAgentMessage",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 163,
+      "line": 187,
       "symbol": "abortDashboardAgentMessage",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/dashboard-agent.ts",
-      "line": 173,
+      "line": 197,
       "symbol": "clearDashboardAgentSession",
       "type": "function"
     },
@@ -52319,6 +52421,34 @@
       "line": 39,
       "symbol": "ConvTurn",
       "type": "interface"
+    }
+  ],
+  "msg": [
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 12,
+      "symbol": "getLastMsgPath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 16,
+      "symbol": "getLastMsgDir",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 59,
+      "symbol": "buildLastMsgInjection",
+      "type": "function"
+    }
+  ],
+  "injection": [
+    {
+      "file": "src/bun/agents/last-msg-store.ts",
+      "line": 59,
+      "symbol": "buildLastMsgInjection",
+      "type": "function"
     }
   ]
 }
