@@ -254,13 +254,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1361,
+      "line": 1363,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1606,
+      "line": 1608,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -2144,7 +2144,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1361,
+      "line": 1363,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -12874,13 +12874,13 @@
   "seed": [
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1376,
+      "line": 1378,
       "symbol": "seedDatabase",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1606,
+      "line": 1608,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -18898,7 +18898,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1361,
+      "line": 1363,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -22165,20 +22165,6 @@
       "type": "function"
     }
   ],
-  "only": [
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 239,
-      "symbol": "READ_ONLY_AGENTS",
-      "type": "export"
-    },
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 245,
-      "symbol": "filterReadOnlyTools",
-      "type": "function"
-    }
-  ],
   "filter": [
     {
       "file": "src/bun/agents/agent-loop.ts",
@@ -22430,13 +22416,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1361,
+      "line": 1363,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1606,
+      "line": 1608,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -22577,20 +22563,6 @@
       "type": "function"
     }
   ],
-  "compact": [
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 376,
-      "symbol": "compactToolResultsInMessages",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 584,
-      "symbol": "aiCompactConversation",
-      "type": "function"
-    }
-  ],
   "old": [
     {
       "file": "src/bun/agents/agent-loop.ts",
@@ -22620,14 +22592,6 @@
       "file": "src/bun/rpc/conversations.ts",
       "line": 226,
       "symbol": "archiveOldConversations",
-      "type": "function"
-    }
-  ],
-  "assistant": [
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 411,
-      "symbol": "stripOldAssistantText",
       "type": "function"
     }
   ],
@@ -22798,14 +22762,6 @@
       "file": "src/mainview/pages/scheduler.tsx",
       "line": 820,
       "symbol": "handleToggleRule",
-      "type": "function"
-    }
-  ],
-  "based": [
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 446,
-      "symbol": "buildRuleBasedCompaction",
       "type": "function"
     }
   ],
@@ -23240,14 +23196,6 @@
       "file": "src/mainview/components/ui/unified-diff.tsx",
       "line": 17,
       "symbol": "shortPath",
-      "type": "function"
-    }
-  ],
-  "describe": [
-    {
-      "file": "src/bun/agents/agent-loop.ts",
-      "line": 756,
-      "symbol": "describeToolCall",
       "type": "function"
     }
   ],
@@ -31510,7 +31458,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1376,
+      "line": 1378,
       "symbol": "seedDatabase",
       "type": "function"
     },
@@ -37895,14 +37843,6 @@
       "line": 182,
       "symbol": "NativeSelect",
       "type": "function"
-    }
-  ],
-  "conv": [
-    {
-      "file": "src/bun/playground/orchestrator.ts",
-      "line": 39,
-      "symbol": "ConvTurn",
-      "type": "interface"
     }
   ],
   "turn": [
@@ -52313,12 +52253,72 @@
       "type": "function"
     }
   ],
+  "only": [
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 239,
+      "symbol": "READ_ONLY_AGENTS",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 245,
+      "symbol": "filterReadOnlyTools",
+      "type": "function"
+    }
+  ],
+  "compact": [
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 376,
+      "symbol": "compactToolResultsInMessages",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 584,
+      "symbol": "aiCompactConversation",
+      "type": "function"
+    }
+  ],
+  "assistant": [
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 411,
+      "symbol": "stripOldAssistantText",
+      "type": "function"
+    }
+  ],
+  "based": [
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 446,
+      "symbol": "buildRuleBasedCompaction",
+      "type": "function"
+    }
+  ],
+  "describe": [
+    {
+      "file": "src/bun/agents/agent-loop.ts",
+      "line": 756,
+      "symbol": "describeToolCall",
+      "type": "function"
+    }
+  ],
   "fnv1a": [
     {
       "file": "src/bun/db/seed.ts",
       "line": 16,
       "symbol": "fnv1a",
       "type": "function"
+    }
+  ],
+  "conv": [
+    {
+      "file": "src/bun/playground/orchestrator.ts",
+      "line": 39,
+      "symbol": "ConvTurn",
+      "type": "interface"
     }
   ]
 }

@@ -1352,6 +1352,8 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	// WEB added: mobile engineers look up React Native, Expo, iOS/Android platform docs
 	"mobile-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SCREENSHOT, ...NOTES, ...SKILLS, ...WEB],
 	"ml-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...WEB, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS],
+	// Playground agent: no git, no kanban, no notes, no planning — just build + preview tools.
+	"playground-agent": [...FILE_READ, ...FILE_WRITE, "download_file", ...SHELL, ...WEB, ...LSP, ...PROCESS, "sleep", ...SKILLS],
 };
 
 /**
@@ -1501,7 +1503,7 @@ export async function seedDatabase(): Promise<void> {
 	// Note: the legacy "general-agent" row (the Playground agent's old name) is
 	// removed by migration v26 (runs once), NOT here — seed runs every launch and
 	// must never repeatedly delete a user's agent. The Playground agent is now
-	// "playground-agent" with no agent_tools rows ⇒ full tool registry.
+	// "playground-agent" tool set is defined in defaultAgentTools above — ~37 focused tools.
 	const existingAgents = await db.select().from(agents);
 	const currentPromptsHash = hashAgentDefs(defaultAgentDefs);
 

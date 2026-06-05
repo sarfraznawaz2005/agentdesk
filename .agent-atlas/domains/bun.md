@@ -1173,9 +1173,9 @@
 - `hashAgentDefs` (line 25)
 - `loadBuiltinPromptsHash` (line 31)
 - `saveBuiltinPromptsHash` (line 37)
-- `getDefaultAgentTools` (line 1361)
-- `seedDatabase` (line 1376)
-- `seedAgentTools` (line 1606)
+- `getDefaultAgentTools` (line 1363)
+- `seedDatabase` (line 1378)
+- `seedAgentTools` (line 1608)
 
 
 ### `src/bun/db/summaries.ts`
