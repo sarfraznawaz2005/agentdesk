@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
@@ -165,8 +166,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   const initialised  = useRef(false);
   const messagesRef  = useRef<ChatMessage[]>(messages);
 
+  const [expandedOpen, setExpandedOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const modalMessagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef       = useRef<HTMLTextAreaElement>(null);
+  const modalInputRef  = useRef<HTMLTextAreaElement>(null);
+  const expandedOpenRef = useRef(false);
   const widgetRef      = useRef<HTMLDivElement>(null);
 
   // Mirror the latest messages into a ref so async callbacks / event handlers
@@ -192,8 +197,9 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
 
   // Keep a ref of `open` so the stream listeners read the current value.
   useEffect(() => { openRef.current = open; }, [open]);
+  useEffect(() => { expandedOpenRef.current = expandedOpen; }, [expandedOpen]);
 
-  // Opening the panel marks everything read.
+  // Opening the panel or popup marks everything read.
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -201,6 +207,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       persistUnread(agentName, false);
     }
   }, [open, agentName]);
+  useEffect(() => {
+    if (expandedOpen) {
+      setUnread(false);
+      persistUnread(agentName, false);
+    }
+  }, [expandedOpen, agentName]);
 
   // Close on outside click
   useEffect(() => {
@@ -212,10 +224,11 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, [open]);
 
-  // Auto-scroll
+  // Auto-scroll (widget + modal)
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, open]);
+    modalMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, open, expandedOpen]);
 
   // Focus input on open
   useEffect(() => {
@@ -224,7 +237,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
 
   // Re-focus input whenever streaming ends (textarea is disabled while streaming)
   useEffect(() => {
-    if (!isStreaming) requestAnimationFrame(() => inputRef.current?.focus());
+    if (!isStreaming) requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus());
   }, [isStreaming]);
 
   // Listen for streaming events — filter by sessionId AND agentName
@@ -262,7 +275,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       setToolCalls([]);
       setIsStreaming(false);
       // A reply finished while the panel was closed → flag it as unread.
-      if (!openRef.current) { setUnread(true); persistUnread(agentName, true); }
+      if (!openRef.current && !expandedOpenRef.current) { setUnread(true); persistUnread(agentName, true); }
     };
 
     const onError = (e: Event) => {
@@ -278,7 +291,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
         return next;
       });
       setIsStreaming(false);
-      if (!openRef.current) { setUnread(true); persistUnread(agentName, true); }
+      if (!openRef.current && !expandedOpenRef.current) { setUnread(true); persistUnread(agentName, true); }
     };
 
     window.addEventListener("agentdesk:dashboard-agent-chunk",     onChunk);
@@ -324,7 +337,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     if (!content || isStreaming) return;
 
     setInput("");
-    requestAnimationFrame(() => inputRef.current?.focus());
+    requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus());
     setLastSent(content);
     setIsStreaming(true);
     setToolCalls([]);
@@ -455,7 +468,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
 
       {/* Chat panel — z-[60] so it sits above the row of floating trigger
           buttons (z-50) when opened. Sits ~5px lower than the buttons. */}
-      {open && (
+      {open && !expandedOpen && (
         <div
           ref={widgetRef}
           className={cn(
@@ -498,6 +511,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   </button>
                 </Tip>
               </div>
+              <Tip content="Expand conversation" side="bottom">
+                <button type="button" onClick={() => setExpandedOpen(true)}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <Maximize2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
               <Tip content="Export as markdown" side="bottom">
                 <button
                   type="button"
@@ -680,6 +699,134 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
           </div>
         </div>
       )}
+
+      {/* Expanded modal */}
+      <Dialog open={expandedOpen} onOpenChange={setExpandedOpen}>
+        <DialogContent className="p-0 gap-0 overflow-hidden flex flex-col max-w-4xl w-full h-[82vh] border-0 [&>button:last-child]:hidden">
+          {/* Header */}
+          <div className="flex items-center px-4 py-3 border-b border-border shrink-0 rounded-t-lg"
+            style={{ backgroundColor: color }}
+          >
+            <div className="flex items-center gap-2 flex-1">
+              <MessageSquare className="h-4 w-4 text-white" strokeWidth={3.5} aria-hidden="true" />
+              <span className="text-sm font-semibold text-white">{displayName}</span>
+              {isStreaming && <Loader2 className="h-3.5 w-3.5 text-white/70 animate-spin" strokeWidth={3.5} aria-hidden="true" />}
+            </div>
+            <button type="button" onClick={() => setExpandedOpen(false)}
+              className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+              <X className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+            </button>
+          </div>
+          {/* Messages */}
+          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 gap-3"
+            style={fontSizePercent !== 100 ? { zoom: fontSizePercent / 100 } : undefined}
+          >
+            {messages.length === 0 && !isStreaming && (
+              <div className="flex flex-col items-center justify-center flex-1 text-center gap-2">
+                <MessageSquare className="h-8 w-8 text-muted-foreground/40" strokeWidth={3.5} aria-hidden="true" />
+                <p className="text-sm text-muted-foreground">Chat with {displayName}.</p>
+              </div>
+            )}
+            {(() => {
+              const assistantMsgs = messages.filter((m) => m.role === "assistant" && !m.isError && !m.streaming);
+              const lastAssistantId = assistantMsgs.length > 0 ? assistantMsgs[assistantMsgs.length - 1].id : null;
+              return messages.map((msg, index) => (
+                <div key={msg.id} className={cn("flex flex-col group gap-0.5", msg.role === "user" ? "items-end" : "items-start")}>
+                  {msg.role === "user" ? (
+                    <div className="max-w-[80%] rounded-2xl rounded-br-sm px-3 py-2 text-sm leading-relaxed text-white whitespace-pre-wrap break-words"
+                      style={{ backgroundColor: color }}>
+                      {msg.content}
+                    </div>
+                  ) : msg.isError ? (
+                    <div className="w-full rounded-2xl rounded-bl-sm bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm leading-relaxed text-destructive overflow-hidden">
+                      <div>{msg.content}</div>
+                      {index === messages.length - 1 && (
+                        <button type="button" onClick={retryLastMessage} disabled={isStreaming}
+                          className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          <RefreshCw className={cn("w-3 h-3", isStreaming && "animate-spin")} strokeWidth={3.5} aria-hidden="true" />
+                          {isStreaming ? "Retrying…" : "Retry"}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="font-arabic-aware w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground overflow-hidden">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={MD_COMPONENTS as never}>
+                        {msg.content + (msg.streaming ? "▍" : "")}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                  {!msg.isError && !msg.streaming && (
+                    <div className="flex items-center gap-0.5 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Tip content={copiedId === msg.id ? "Copied!" : "Copy"} side="top">
+                        <button type="button" onClick={() => handleCopy(msg.id, msg.content)} aria-label="Copy message"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors">
+                          {copiedId === msg.id ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </Tip>
+                      {msg.role === "assistant" && msg.id === lastAssistantId && (
+                        <Tip content="Regenerate response" side="top">
+                          <button type="button" onClick={handleRegenerate} disabled={isStreaming} aria-label="Regenerate response"
+                            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            <RefreshCw className="size-3.5" />
+                          </button>
+                        </Tip>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
+            {isStreaming && toolCalls.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {toolCalls.map((tc) => (
+                  <div key={tc.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    {tc.isSkill ? <Sparkles className="h-3 w-3 text-indigo-400 shrink-0" /> : <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />}
+                    <span className="font-mono truncate">{tc.toolName}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isStreaming && !messages.some((m) => m.streaming) && (
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={modalMessagesEndRef} />
+          </div>
+          {/* Input */}
+          <div className="px-4 pb-4 pt-2 border-t border-border shrink-0">
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={modalInputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`Message ${displayName}…`}
+                rows={1}
+                className={cn(
+                  "flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2",
+                  "text-sm placeholder:text-muted-foreground",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  "max-h-28 overflow-y-auto",
+                )}
+                style={{ minHeight: "2.25rem" }}
+                disabled={isStreaming}
+              />
+              <Button type="button" size="icon" onClick={sendMessage} disabled={!input.trim() || isStreaming}
+                className="shrink-0 h-9 w-9" style={{ backgroundColor: color }}>
+                <Send className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1 px-1">Enter to send · Shift+Enter for newline</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

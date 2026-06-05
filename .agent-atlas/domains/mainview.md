@@ -401,53 +401,53 @@
 ### `src/mainview/components/dashboard/custom-agent-chat-widget.tsx`
 
 **Interfaces:**
-- `ChatMessage` (line 18)
-- `CustomAgentChatWidgetProps` (line 136)
+- `ChatMessage` (line 19)
+- `CustomAgentChatWidgetProps` (line 137)
 
 **Functions:**
-- `sessionStorageKey` (line 86)
-- `messagesStorageKey` (line 87)
-- `unreadStorageKey` (line 88)
-- `loadPersistedUnread` (line 90)
-- `persistUnread` (line 94)
-- `loadPersistedSession` (line 101)
-- `persistMessages` (line 122)
-- `persistSessionId` (line 127)
-- `CustomAgentChatWidget` (line 143)
-- `onMouseDown` (line 208)
-- `onChunk` (line 232)
-- `onToolCall` (line 244)
-- `onComplete` (line 253)
-- `onError` (line 268)
-- `handleKeyDown` (line 405)
-- `handleClear` (line 417)
+- `sessionStorageKey` (line 87)
+- `messagesStorageKey` (line 88)
+- `unreadStorageKey` (line 89)
+- `loadPersistedUnread` (line 91)
+- `persistUnread` (line 95)
+- `loadPersistedSession` (line 102)
+- `persistMessages` (line 123)
+- `persistSessionId` (line 128)
+- `CustomAgentChatWidget` (line 144)
+- `onMouseDown` (line 220)
+- `onChunk` (line 245)
+- `onToolCall` (line 257)
+- `onComplete` (line 266)
+- `onError` (line 281)
+- `handleKeyDown` (line 418)
+- `handleClear` (line 430)
 
 **Methods:**
-- `code` (line 31)
+- `code` (line 32)
 
 
 ### `src/mainview/components/dashboard/pm-chat-widget.tsx`
 
 **Interfaces:**
-- `ChatMessage` (line 18)
+- `ChatMessage` (line 19)
 
 **Functions:**
-- `loadPersistedUnread` (line 93)
-- `persistUnread` (line 97)
-- `loadPersistedSession` (line 104)
-- `persistMessages` (line 123)
-- `persistSessionId` (line 131)
-- `PmChatWidget` (line 143)
-- `handleMouseDown` (line 196)
-- `onChunk` (line 222)
-- `onToolCall` (line 236)
-- `onComplete` (line 245)
-- `onError` (line 259)
-- `handleKeyDown` (line 416)
-- `handleClear` (line 428)
+- `loadPersistedUnread` (line 94)
+- `persistUnread` (line 98)
+- `loadPersistedSession` (line 105)
+- `persistMessages` (line 124)
+- `persistSessionId` (line 132)
+- `PmChatWidget` (line 144)
+- `handleMouseDown` (line 201)
+- `onChunk` (line 235)
+- `onToolCall` (line 249)
+- `onComplete` (line 258)
+- `onError` (line 272)
+- `handleKeyDown` (line 429)
+- `handleClear` (line 441)
 
 **Methods:**
-- `code` (line 32)
+- `code` (line 33)
 
 
 ### `src/mainview/components/dashboard/project-card.tsx`

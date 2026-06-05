@@ -452,13 +452,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 136,
+      "line": 137,
       "symbol": "CustomAgentChatWidgetProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 143,
+      "line": 144,
       "symbol": "CustomAgentChatWidget",
       "type": "function"
     },
@@ -7222,25 +7222,25 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 90,
+      "line": 91,
       "symbol": "loadPersistedUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 101,
+      "line": 102,
       "symbol": "loadPersistedSession",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 93,
+      "line": 94,
       "symbol": "loadPersistedUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 104,
+      "line": 105,
       "symbol": "loadPersistedSession",
       "type": "function"
     },
@@ -8500,13 +8500,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 268,
+      "line": 281,
       "symbol": "onError",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 259,
+      "line": 272,
       "symbol": "onError",
       "type": "function"
     },
@@ -9968,13 +9968,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatMessage",
       "type": "interface"
     },
@@ -12998,13 +12998,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 136,
+      "line": 137,
       "symbol": "CustomAgentChatWidgetProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 143,
+      "line": 144,
       "symbol": "CustomAgentChatWidget",
       "type": "function"
     },
@@ -13466,13 +13466,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 417,
+      "line": 430,
       "symbol": "handleClear",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 428,
+      "line": 441,
       "symbol": "handleClear",
       "type": "function"
     },
@@ -13966,31 +13966,31 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 86,
+      "line": 87,
       "symbol": "sessionStorageKey",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 101,
+      "line": 102,
       "symbol": "loadPersistedSession",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 127,
+      "line": 128,
       "symbol": "persistSessionId",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 104,
+      "line": 105,
       "symbol": "loadPersistedSession",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 131,
+      "line": 132,
       "symbol": "persistSessionId",
       "type": "function"
     },
@@ -15068,13 +15068,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 244,
+      "line": 257,
       "symbol": "onToolCall",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 236,
+      "line": 249,
       "symbol": "onToolCall",
       "type": "function"
     },
@@ -15882,13 +15882,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 127,
+      "line": 128,
       "symbol": "persistSessionId",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 131,
+      "line": 132,
       "symbol": "persistSessionId",
       "type": "function"
     },
@@ -16962,19 +16962,19 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 87,
+      "line": 88,
       "symbol": "messagesStorageKey",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 122,
+      "line": 123,
       "symbol": "persistMessages",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 123,
+      "line": 124,
       "symbol": "persistMessages",
       "type": "function"
     },
@@ -17368,31 +17368,31 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 86,
+      "line": 87,
       "symbol": "sessionStorageKey",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 87,
+      "line": 88,
       "symbol": "messagesStorageKey",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 88,
+      "line": 89,
       "symbol": "unreadStorageKey",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 405,
+      "line": 418,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 416,
+      "line": 429,
       "symbol": "handleKeyDown",
       "type": "function"
     },
@@ -23322,13 +23322,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 244,
+      "line": 257,
       "symbol": "onToolCall",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 236,
+      "line": 249,
       "symbol": "onToolCall",
       "type": "function"
     }
@@ -25592,31 +25592,31 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 405,
+      "line": 418,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 417,
+      "line": 430,
       "symbol": "handleClear",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 196,
+      "line": 201,
       "symbol": "handleMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 416,
+      "line": 429,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 428,
+      "line": 441,
       "symbol": "handleClear",
       "type": "function"
     },
@@ -29168,13 +29168,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 232,
+      "line": 245,
       "symbol": "onChunk",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 222,
+      "line": 235,
       "symbol": "onChunk",
       "type": "function"
     }
@@ -34478,31 +34478,31 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 136,
+      "line": 137,
       "symbol": "CustomAgentChatWidgetProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 143,
+      "line": 144,
       "symbol": "CustomAgentChatWidget",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 143,
+      "line": 144,
       "symbol": "PmChatWidget",
       "type": "function"
     },
@@ -40128,13 +40128,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 31,
+      "line": 32,
       "symbol": "code",
       "type": "method"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 32,
+      "line": 33,
       "symbol": "code",
       "type": "method"
     },
@@ -41256,31 +41256,31 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 88,
+      "line": 89,
       "symbol": "unreadStorageKey",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 90,
+      "line": 91,
       "symbol": "loadPersistedUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 94,
+      "line": 95,
       "symbol": "persistUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 93,
+      "line": 94,
       "symbol": "loadPersistedUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 97,
+      "line": 98,
       "symbol": "persistUnread",
       "type": "function"
     },
@@ -42270,37 +42270,37 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 94,
+      "line": 95,
       "symbol": "persistUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 122,
-      "symbol": "persistMessages",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 127,
-      "symbol": "persistSessionId",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 97,
-      "symbol": "persistUnread",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
       "line": 123,
       "symbol": "persistMessages",
       "type": "function"
     },
     {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 128,
+      "symbol": "persistSessionId",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 131,
+      "line": 98,
+      "symbol": "persistUnread",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
+      "line": 124,
+      "symbol": "persistMessages",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
+      "line": 132,
       "symbol": "persistSessionId",
       "type": "function"
     },
@@ -43170,25 +43170,25 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 90,
+      "line": 91,
       "symbol": "loadPersistedUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 101,
+      "line": 102,
       "symbol": "loadPersistedSession",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 93,
+      "line": 94,
       "symbol": "loadPersistedUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 104,
+      "line": 105,
       "symbol": "loadPersistedSession",
       "type": "function"
     }
@@ -43958,7 +43958,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 136,
+      "line": 137,
       "symbol": "CustomAgentChatWidgetProps",
       "type": "interface"
     },
@@ -46496,13 +46496,13 @@
   "complete": [
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 253,
+      "line": 266,
       "symbol": "onComplete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 245,
+      "line": 258,
       "symbol": "onComplete",
       "type": "function"
     },
@@ -48682,25 +48682,25 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 208,
+      "line": 220,
       "symbol": "onMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 405,
+      "line": 418,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 196,
+      "line": 201,
       "symbol": "handleMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 416,
+      "line": 429,
       "symbol": "handleKeyDown",
       "type": "function"
     },
@@ -48744,13 +48744,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 208,
+      "line": 220,
       "symbol": "onMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 196,
+      "line": 201,
       "symbol": "handleMouseDown",
       "type": "function"
     },
@@ -52491,46 +52491,6 @@
       "type": "function"
     }
   ],
-  "storage": [
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 86,
-      "symbol": "sessionStorageKey",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 87,
-      "symbol": "messagesStorageKey",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 88,
-      "symbol": "unreadStorageKey",
-      "type": "function"
-    }
-  ],
-  "widget": [
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 136,
-      "symbol": "CustomAgentChatWidgetProps",
-      "type": "interface"
-    },
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 143,
-      "symbol": "CustomAgentChatWidget",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
-      "line": 143,
-      "symbol": "PmChatWidget",
-      "type": "function"
-    }
-  ],
   "focus": [
     {
       "file": "src/mainview/components/layout/app-shell.tsx",
@@ -52556,6 +52516,46 @@
       "file": "src/mainview/components/layout/app-shell.tsx",
       "line": 137,
       "symbol": "onFocusEnter",
+      "type": "function"
+    }
+  ],
+  "storage": [
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 87,
+      "symbol": "sessionStorageKey",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 88,
+      "symbol": "messagesStorageKey",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 89,
+      "symbol": "unreadStorageKey",
+      "type": "function"
+    }
+  ],
+  "widget": [
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 137,
+      "symbol": "CustomAgentChatWidgetProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 144,
+      "symbol": "CustomAgentChatWidget",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
+      "line": 144,
+      "symbol": "PmChatWidget",
       "type": "function"
     }
   ]
