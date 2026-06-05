@@ -9,7 +9,8 @@ import {
   useImperativeHandle,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, Square, Paperclip, Server, X, FileText, Sparkles, AlertCircle, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowUp, Square, Paperclip, Server, X, FileText, Sparkles, AlertCircle, RefreshCw, WifiOff, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { MESSAGE_QUEUE_MAX, type QueuedMessage } from "@/stores/message-queue";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,10 @@ interface ChatInputProps {
   activeConversationId?: string | null;
   /** Context utilization percentage (0-100) for conditional /compact visibility */
   contextUtilization?: number;
+  /** Messages waiting to be sent once the PM becomes idle. */
+  queuedMessages?: QueuedMessage[];
+  /** Remove a specific queued message by id. */
+  onRemoveQueued?: (id: string) => void;
 }
 
 export const TEXT_EXTENSIONS = new Set([
@@ -142,6 +147,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   onCompact: _onCompact,
   activeConversationId,
   contextUtilization = 0,
+  queuedMessages = [],
+  onRemoveQueued,
 }, ref) {
   const [value, setValue] = useState("");
   const [lastSent, setLastSent] = useState("");
@@ -155,6 +162,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [inputMode, setInputMode] = useState<"normal" | "shell">("normal");
   const [shellExecuting, setShellExecuting] = useState(false);
   const [compacting, setCompacting] = useState(false);
+  const [queueExpanded, setQueueExpanded] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
 
   // ---- Popover state ------------------------------------------------------
@@ -599,10 +607,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, [value, enhancing, projectId, onInputChange]);
 
+  const isQueueFull = queuedMessages.length >= MESSAGE_QUEUE_MAX;
   const canEnhance = value.trim().length >= 25 && !isStreaming && !disabled && inputMode === "normal" && !compacting;
   const canSend = inputMode === "shell"
     ? value.trim().length > 0 && !shellExecuting
-    : (value.trim().length > 0 || attachedFiles.length > 0) && !disabled && !enhancing && !compacting;
+    : (value.trim().length > 0 || attachedFiles.length > 0) && !disabled && !enhancing && !compacting && !(isStreaming && isQueueFull);
   const hasInput = value.trim().length > 0 || attachedFiles.length > 0;
 
   const isShellMode = inputMode === "shell";
@@ -626,16 +635,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         onChange={handleFileSelect}
       />
 
-      {/* MCP server indicator */}
-      {Object.keys(mcpServers).length > 0 && !isShellMode && (
-        <div className="flex items-center gap-3 mb-1.5 px-1">
-          <button
-            onClick={() => setMcpDialogOpen(true)}
-            className="inline-flex items-center gap-1 text-[11px] text-foreground/75 font-semibold hover:text-foreground transition-colors cursor-pointer"
-          >
-            <Server className="w-3 h-3" />
-            {mcpCount}/{Object.keys(mcpServers).length} MCP server{Object.keys(mcpServers).length !== 1 ? "s" : ""}
-          </button>
+      {/* MCP + queue count row */}
+      {(Object.keys(mcpServers).length > 0 || queuedMessages.length > 0) && !isShellMode && (
+        <div className="flex items-center justify-between mb-1.5 px-1">
+          {Object.keys(mcpServers).length > 0 ? (
+            <button
+              onClick={() => setMcpDialogOpen(true)}
+              className="inline-flex items-center gap-1 text-xs text-foreground/75 font-semibold hover:text-foreground transition-colors cursor-pointer"
+            >
+              <Server className="w-3 h-3" />
+              {mcpCount}/{Object.keys(mcpServers).length} MCP server{Object.keys(mcpServers).length !== 1 ? "s" : ""}
+            </button>
+          ) : <span />}
+
+          {queuedMessages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQueueExpanded((v) => !v)}
+              className="inline-flex items-center gap-1 text-xs text-amber-600 font-semibold hover:text-amber-700 transition-colors"
+            >
+              <Clock className="w-3 h-3 text-amber-500" />
+              {queuedMessages.length} queued{isQueueFull ? " (full)" : ""}
+              {queueExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          )}
         </div>
       )}
 
@@ -732,6 +755,29 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </div>
       )}
 
+      {/* Expanded queue list */}
+      {!isShellMode && queueExpanded && queuedMessages.length > 0 && (
+        <div className="mb-2 px-1 flex flex-col gap-1">
+          {queuedMessages.map((m, i) => (
+            <div
+              key={m.id}
+              className="flex items-start gap-1.5 px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800"
+            >
+              <span className="shrink-0 font-semibold text-amber-500 mt-px">{i + 1}.</span>
+              <span className="flex-1 break-words">{m.content}</span>
+              <button
+                type="button"
+                aria-label="Remove queued message"
+                onClick={() => onRemoveQueued?.(m.id)}
+                className="shrink-0 mt-px text-amber-400 hover:text-amber-700 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Main input container — relative for popover positioning */}
       <div className="relative">
         {/* Popovers (rendered above input) */}
@@ -744,7 +790,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             isShellMode
               ? "border-red-300 bg-red-50/50 focus-within:ring-1 focus-within:ring-red-400 focus-within:border-red-400"
               : "border-border bg-background focus-within:ring-1 focus-within:ring-indigo-400 focus-within:border-indigo-400",
-            isStreaming && !isShellMode && "bg-muted/50",
             enhancing && "bg-muted/50 opacity-75",
           )}
         >
@@ -872,7 +917,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             </Tip>
           )}
           {(isShellMode || !isStreaming || hasInput) && (
-            <Tip content={isShellMode ? "Run command" : (isStreaming && hasInput ? "Send (stops current generation)" : "Send message")} side="top">
+            <Tip content={isShellMode ? "Run command" : (isStreaming && hasInput ? (isQueueFull ? `Queue full (${MESSAGE_QUEUE_MAX}/${MESSAGE_QUEUE_MAX})` : "Add to queue") : "Send message")} side="top">
               <button
                 type="button"
                 onClick={handleSend}

@@ -159,10 +159,23 @@ export async function fetchAllPlatforms(options?: { notify?: boolean; source?: "
 let pollerTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export function startFreelancePoller(): void {
-  fetchAllPlatforms({ source: "startup" }).catch((err) =>
-    console.error("[freelance] Initial fetch failed:", err),
-  );
-  scheduleNextPoll();
+  getFreelanceSettings()
+    .then((s) => {
+      if (s.pollingInterval === 0) {
+        console.log("[freelance] Polling disabled — skipping startup fetch");
+        return;
+      }
+      fetchAllPlatforms({ source: "startup" }).catch((err) =>
+        console.error("[freelance] Initial fetch failed:", err),
+      );
+      scheduleNextPoll();
+    })
+    .catch((err) => {
+      console.error("[freelance] Failed to read settings on startup:", err);
+      // Fall back to normal start if settings unreadable
+      fetchAllPlatforms({ source: "startup" }).catch(console.error);
+      scheduleNextPoll();
+    });
 }
 
 export function stopFreelancePoller(): void {
@@ -175,6 +188,10 @@ export function stopFreelancePoller(): void {
 function scheduleNextPoll(): void {
   getFreelanceSettings()
     .then((s) => {
+      if (s.pollingInterval === 0) {
+        console.log("[freelance] Polling disabled — poller stopped");
+        return;
+      }
       const intervalMs = (s.pollingInterval ?? 60) * 60 * 1000;
       pollerTimeout = setTimeout(async () => {
         await fetchAllPlatforms({ notify: true, source: "scheduled" }).catch((err) =>

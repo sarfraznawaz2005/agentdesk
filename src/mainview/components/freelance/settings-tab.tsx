@@ -228,6 +228,10 @@ export function SettingsTab() {
     );
   }
 
+  // ---- Derived ---------------------------------------------------------------
+
+  const pollingDisabled = settings.pollingInterval === 0;
+
   // ---- Render --------------------------------------------------------------
 
   return (
@@ -409,17 +413,30 @@ export function SettingsTab() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Enable toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="auto-shortlist-enabled">Enable auto shortlist</Label>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="auto-shortlist-enabled"
+                className={pollingDisabled ? "text-muted-foreground" : ""}
+              >
+                Enable auto shortlist
+              </Label>
+              {pollingDisabled && (
+                <p className="text-xs text-muted-foreground">
+                  Requires polling to be enabled
+                </p>
+              )}
+            </div>
             <Switch
               id="auto-shortlist-enabled"
-              checked={settings.autoShortlistEnabled}
+              checked={settings.autoShortlistEnabled && !pollingDisabled}
+              disabled={pollingDisabled}
               onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, autoShortlistEnabled: checked }))}
             />
           </div>
 
-          {/* Settings shown only when enabled */}
-          {settings.autoShortlistEnabled && (
+          {/* Settings shown only when enabled and polling is active */}
+          {settings.autoShortlistEnabled && !pollingDisabled && (
             <>
               {/* Max entries */}
               <div className="space-y-1.5">
@@ -504,7 +521,10 @@ export function SettingsTab() {
       <Card>
         <CardHeader>
           <CardTitle>Polling interval</CardTitle>
-          <CardDescription>How often to check RSS feeds for new projects.</CardDescription>
+          <CardDescription>
+            How often to check RSS feeds for new projects. Set to Disabled to stop all background
+            polling — you can still fetch manually using the Fetch Now button.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Select
@@ -515,6 +535,7 @@ export function SettingsTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="0">Disabled (manual only)</SelectItem>
               <SelectItem value="15">Every 15 minutes</SelectItem>
               <SelectItem value="30">Every 30 minutes</SelectItem>
               <SelectItem value="60">Every Hour</SelectItem>

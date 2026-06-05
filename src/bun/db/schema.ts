@@ -531,6 +531,8 @@ export const issueFixerConfig = sqliteTable("issue_fixer_config", {
 	maxPerHour: integer("max_per_hour").notNull().default(5),
 	// JSON array of channel ids to notify on success/failure
 	notifyChannels: text("notify_channels").notNull().default("[]"),
+	// Whether to broadcast run results to connected channels (Discord/email/etc.)
+	notifyEnabled: integer("notify_enabled").notNull().default(0),
 	// ISO timestamp — only issues/comments at or after this are considered
 	cursorAt: text("cursor_at"),
 	lastPolledAt: text("last_polled_at"),

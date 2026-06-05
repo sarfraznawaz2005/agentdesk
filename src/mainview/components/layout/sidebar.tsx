@@ -412,7 +412,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
 
         {/* Update panel — appears above the footer */}
         {showUpdatePanel && (
-          <div className="absolute bottom-full left-2 right-2 mb-1 bg-background border border-border rounded-lg shadow-lg p-3 z-50">
+          <div className="absolute bottom-full left-2 right-2 min-w-[210px] mb-1 bg-background border border-border rounded-lg shadow-lg p-3 z-50">
             {/* Checking */}
             {updateState === "checking" && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">

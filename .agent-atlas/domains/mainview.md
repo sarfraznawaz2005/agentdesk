@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 155
-**Symbols:** 1321
+**Files:** 156
+**Symbols:** 1325
 
 ## Files
 
@@ -114,38 +114,38 @@
 ### `src/mainview/components/chat/chat-input.tsx`
 
 **Interfaces:**
-- `ChatInputHandle` (line 30)
-- `ChatInputProps` (line 36)
-- `AttachmentFile` (line 78)
+- `ChatInputHandle` (line 31)
+- `ChatInputProps` (line 37)
+- `AttachmentFile` (line 83)
 
 **Types:**
-- `AttachmentType` (line 76)
+- `AttachmentType` (line 81)
 
 **Functions:**
-- `categorizeFile` (line 89)
-- `processFiles` (line 107)
-- `handleSlashSelect` (line 342)
-- `handleFileSelect_mention` (line 403)
-- `handleKeyDown` (line 526)
+- `categorizeFile` (line 94)
+- `processFiles` (line 112)
+- `handleSlashSelect` (line 350)
+- `handleFileSelect_mention` (line 411)
+- `handleKeyDown` (line 534)
 
 **Exports:**
-- `TEXT_EXTENSIONS` (line 54)
-- `IMAGE_EXTENSIONS` (line 65)
-- `BINARY_DOC_EXTENSIONS` (line 70)
-- `ChatInput` (line 131)
+- `TEXT_EXTENSIONS` (line 59)
+- `IMAGE_EXTENSIONS` (line 70)
+- `BINARY_DOC_EXTENSIONS` (line 75)
+- `ChatInput` (line 136)
 
 
 ### `src/mainview/components/chat/chat-layout.tsx`
 
 **Interfaces:**
-- `ChatLayoutProps` (line 18)
+- `ChatLayoutProps` (line 19)
 
 **Functions:**
-- `ChatLayout` (line 26)
-- `handleMouseDown` (line 42)
-- `onMouseMove` (line 282)
-- `onMouseUp` (line 291)
-- `onKeyDown` (line 302)
+- `ChatLayout` (line 27)
+- `handleMouseDown` (line 43)
+- `onMouseMove` (line 322)
+- `onMouseUp` (line 331)
+- `onKeyDown` (line 342)
 
 
 ### `src/mainview/components/chat/code-block.tsx`
@@ -796,13 +796,13 @@
 
 **Functions:**
 - `OptionHelp` (line 48)
-- `Row` (line 114)
-- `IssueFixerSettingsTab` (line 150)
-- `update` (line 218)
-- `toggleKeyword` (line 223)
-- `addCustomKeyword` (line 231)
-- `addLabel` (line 242)
-- `isPredefined` (line 275)
+- `Row` (line 115)
+- `IssueFixerSettingsTab` (line 151)
+- `update` (line 220)
+- `toggleKeyword` (line 225)
+- `addCustomKeyword` (line 233)
+- `addLabel` (line 244)
+- `isPredefined` (line 277)
 
 
 ### `src/mainview/components/issue-fixer/issue-fixer-tab.tsx`
@@ -2438,6 +2438,17 @@
 
 **Exports:**
 - `useKanbanStore` (line 92)
+
+
+### `src/mainview/stores/message-queue.ts`
+
+**Interfaces:**
+- `QueuedMessage` (line 5)
+- `MessageQueueState` (line 12)
+
+**Exports:**
+- `MESSAGE_QUEUE_MAX` (line 3)
+- `useMessageQueueStore` (line 27)
 
 
 ### `src/mainview/stores/playground-store.ts`

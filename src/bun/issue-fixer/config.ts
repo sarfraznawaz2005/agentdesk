@@ -36,6 +36,7 @@ export interface IssueFixerConfigDto {
 	cooldownSec: number;
 	maxPerHour: number;
 	notifyChannels: string[];
+	notifyEnabled: boolean;
 	cursorAt: string | null;
 	lastPolledAt: string | null;
 }
@@ -67,6 +68,7 @@ function mapConfig(row: ConfigRow): IssueFixerConfigDto {
 		cooldownSec: row.cooldownSec ?? 0,
 		maxPerHour: row.maxPerHour ?? 5,
 		notifyChannels: parseJsonArray(row.notifyChannels),
+		notifyEnabled: (row.notifyEnabled ?? 0) !== 0,
 		cursorAt: row.cursorAt ?? null,
 		lastPolledAt: row.lastPolledAt ?? null,
 	};
@@ -103,6 +105,7 @@ export async function saveIssueFixerConfig(
 		cooldownSec: patch.cooldownSec ?? existing?.cooldownSec ?? 0,
 		maxPerHour: patch.maxPerHour ?? existing?.maxPerHour ?? 5,
 		notifyChannels: patch.notifyChannels ?? existing?.notifyChannels ?? [],
+		notifyEnabled: patch.notifyEnabled ?? existing?.notifyEnabled ?? false,
 		// When enabling for the first time, set the cursor to "now" so old issues
 		// are not retroactively processed.
 		cursorAt:
@@ -129,6 +132,7 @@ export async function saveIssueFixerConfig(
 		cooldownSec: merged.cooldownSec,
 		maxPerHour: merged.maxPerHour,
 		notifyChannels: JSON.stringify(merged.notifyChannels),
+		notifyEnabled: merged.notifyEnabled ? 1 : 0,
 		cursorAt: merged.cursorAt,
 		updatedAt: now,
 	};

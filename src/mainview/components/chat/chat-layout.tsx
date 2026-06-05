@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useMessageQueueStore } from "@/stores/message-queue";
 import { PanelLeft, PanelRight, Upload, Search, Download, SquarePen } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useChatStore } from "../../stores/chat-store";
@@ -78,6 +79,13 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
   const isCompacting = useChatStore((s) => s.isCompacting);
   const isBusy = isStreaming || runningAgentCount > 0 || pmPending || isCompacting;
 
+  // ---- Message queue --------------------------------------------------------
+  const enqueue = useMessageQueueStore((s) => s.enqueue);
+  const dequeue = useMessageQueueStore((s) => s.dequeue);
+  const removeQueued = useMessageQueueStore((s) => s.remove);
+  const clearQueue = useMessageQueueStore((s) => s.clear);
+  const queuedMessages = useMessageQueueStore((s) => s.queue);
+
   // Context utilization estimate for /compact visibility (same logic as ContextIndicator)
   const contextUtilization = useMemo(() => {
     const tokens = messages.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0);
@@ -118,6 +126,15 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
   const handleSend = useCallback(
     async (content: string, attachments?: import("./chat-input").AttachmentFile[], mentionedFilePaths?: string[]) => {
       if (!activeConversationId) return;
+
+      // Queue plain-text messages when the PM is busy (no attachments, not shell)
+      if (isBusy && !attachments?.length && !content.startsWith("__shell__")) {
+        const added = enqueue(content);
+        if (!added) {
+          toast("error", "Message queue is full — wait for the PM to respond before sending more.");
+        }
+        return;
+      }
 
       // Shell result — display as ephemeral chat bubbles, don't send to AI
       if (content.startsWith("__shell__")) {
@@ -234,12 +251,35 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
 
       sendMessage(projectId, activeConversationId, fullContent);
     },
-    [projectId, activeConversationId, sendMessage],
+    [projectId, activeConversationId, sendMessage, isBusy, enqueue],
   );
 
+  // Drain one queued message when the PM transitions from busy → idle.
+  const prevBusyRef = useRef(isBusy);
+  useEffect(() => {
+    const wasBusy = prevBusyRef.current;
+    prevBusyRef.current = isBusy;
+    if (wasBusy && !isBusy) {
+      const msg = dequeue();
+      if (msg && activeConversationId) {
+        handleSend(msg.content);
+      }
+    }
+  }, [isBusy, dequeue, handleSend, activeConversationId]);
+
+  // Clear the queue when the user switches to a different conversation.
+  useEffect(() => {
+    clearQueue();
+  }, [activeConversationId, clearQueue]);
+
   const handleStop = useCallback(() => {
+    const count = useMessageQueueStore.getState().queue.length;
+    if (count > 0) {
+      clearQueue();
+      toast("info", `Queue cleared — ${count} message${count !== 1 ? "s" : ""} discarded.`);
+    }
     stopGeneration(projectId);
-  }, [projectId, stopGeneration]);
+  }, [projectId, stopGeneration, clearQueue]);
 
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -596,6 +636,8 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
             onFork={handleSlashFork}
             activeConversationId={activeConversationId}
             contextUtilization={contextUtilization}
+            queuedMessages={queuedMessages}
+            onRemoveQueued={removeQueued}
           />
           <ModelSelector
             projectId={projectId}

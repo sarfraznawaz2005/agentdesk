@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 200
-**Symbols:** 1566
+**Files:** 201
+**Symbols:** 1568
 
 ## Files
 
@@ -1049,6 +1049,15 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v31_issue-fixer-notify-enabled.ts`
+
+**Functions:**
+- `run` (line 7)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v3_agent-sessions.ts`
 
 **Functions:**
@@ -1144,17 +1153,17 @@
 - `webhookEvents` (line 478)
 - `githubIssues` (line 497)
 - `issueFixerConfig` (line 514)
-- `issueFixRuns` (line 544)
-- `branchStrategies` (line 574)
-- `costBudgets` (line 595)
-- `auditLog` (line 610)
-- `messageParts` (line 624)
-- `freelanceListings` (line 646)
-- `freelanceChatMessages` (line 673)
-- `projectActivity` (line 690)
-- `remoteSyncConfig` (line 704)
-- `remoteSyncItems` (line 742)
-- `remoteSyncRuns` (line 760)
+- `issueFixRuns` (line 546)
+- `branchStrategies` (line 576)
+- `costBudgets` (line 597)
+- `auditLog` (line 612)
+- `messageParts` (line 626)
+- `freelanceListings` (line 648)
+- `freelanceChatMessages` (line 675)
+- `projectActivity` (line 692)
+- `remoteSyncConfig` (line 706)
+- `remoteSyncItems` (line 744)
+- `remoteSyncRuns` (line 762)
 
 
 ### `src/bun/db/seed.ts`
@@ -1255,8 +1264,8 @@
 - `trimListingsToMax` (line 24)
 - `fetchAllPlatforms` (line 46)
 - `startFreelancePoller` (line 161)
-- `stopFreelancePoller` (line 168)
-- `scheduleNextPoll` (line 175)
+- `stopFreelancePoller` (line 181)
+- `scheduleNextPoll` (line 188)
 
 
 ### `src/bun/freelance/normalizer.ts`
@@ -1323,24 +1332,24 @@
 - `IssueFixerConfigDto` (line 25)
 
 **Types:**
-- `ConfigRow` (line 53)
-- `IssueFixRunRow` (line 154)
+- `ConfigRow` (line 54)
+- `IssueFixRunRow` (line 158)
 
 **Functions:**
 - `sanitizeAgentdesk` (line 12)
-- `parseJsonArray` (line 43)
-- `mapConfig` (line 55)
-- `getIssueFixerConfig` (line 75)
-- `listEnabledConfigs` (line 80)
-- `saveIssueFixerConfig` (line 86)
-- `setCursor` (line 144)
-- `setLastPolled` (line 148)
-- `createRun` (line 156)
-- `updateRun` (line 190)
-- `listRuns` (line 206)
-- `getRun` (line 215)
-- `mostRecentFinishedAt` (line 221)
-- `failInterruptedRuns` (line 238)
+- `parseJsonArray` (line 44)
+- `mapConfig` (line 56)
+- `getIssueFixerConfig` (line 77)
+- `listEnabledConfigs` (line 82)
+- `saveIssueFixerConfig` (line 88)
+- `setCursor` (line 148)
+- `setLastPolled` (line 152)
+- `createRun` (line 160)
+- `updateRun` (line 194)
+- `listRuns` (line 210)
+- `getRun` (line 219)
+- `mostRecentFinishedAt` (line 225)
+- `failInterruptedRuns` (line 242)
 
 
 ### `src/bun/issue-fixer/github.ts`

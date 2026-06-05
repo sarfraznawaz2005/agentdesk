@@ -463,16 +463,18 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 		}
 		// Flag unread activity on the Auto Issues Fixer → History tab.
 		recordActivity(input.projectId, "issue-fixer:history").catch(() => {});
-		await notifyIssueFixResult({
-			ok: true,
-			projectId: input.projectId,
-			issueNumber: input.issueNumber,
-			issueTitle: input.issueTitle,
-			intent: input.intent,
-			prNumber,
-			prUrl,
-			summary: result.summary,
-		});
+		if (config.notifyEnabled) {
+			await notifyIssueFixResult({
+				ok: true,
+				projectId: input.projectId,
+				issueNumber: input.issueNumber,
+				issueTitle: input.issueTitle,
+				intent: input.intent,
+				prNumber,
+				prUrl,
+				summary: result.summary,
+			});
+		}
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		// A user-initiated Stop aborts the controller, which surfaces here as a thrown
@@ -499,14 +501,16 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 			const lrFail = liveRuns.get(input.projectId);
 			if (lrFail) { lrFail.status = "failed"; lrFail.running = false; lrFail.error = msg; }
 			recordActivity(input.projectId, "issue-fixer:history").catch(() => {});
-			await notifyIssueFixResult({
-				ok: false,
-				projectId: input.projectId,
-				issueNumber: input.issueNumber,
-				issueTitle: input.issueTitle,
-				intent: input.intent,
-				error: msg,
-			});
+			if (config.notifyEnabled) {
+				await notifyIssueFixResult({
+					ok: false,
+					projectId: input.projectId,
+					issueNumber: input.issueNumber,
+					issueTitle: input.issueTitle,
+					intent: input.intent,
+					error: msg,
+				});
+			}
 		}
 	} finally {
 		// Return the user's working copy to the branch it started on. The fix is preserved on the

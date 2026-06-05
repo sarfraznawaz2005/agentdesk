@@ -14,6 +14,7 @@ export interface IssueFixerConfigDto {
 	cooldownSec: number;
 	maxPerHour: number;
 	notifyChannels: string[];
+	notifyEnabled: boolean;
 	cursorAt: string | null;
 	lastPolledAt: string | null;
 }

@@ -140,12 +140,12 @@
 
 **Interfaces:**
 - `IssueFixerConfigDto` (line 3)
-- `IssueFixRunDto` (line 21)
-- `IssueFixerKeywordDto` (line 43)
-- `ActiveIssueFixRunDto` (line 50)
+- `IssueFixRunDto` (line 22)
+- `IssueFixerKeywordDto` (line 44)
+- `ActiveIssueFixRunDto` (line 51)
 
 **Types:**
-- `IssueFixerRequests` (line 63)
+- `IssueFixerRequests` (line 64)
 
 
 ### `src/shared/rpc/kanban.ts`

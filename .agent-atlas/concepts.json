@@ -1475,6 +1475,12 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/migrations/v31_issue-fixer-notify-enabled.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
       "file": "src/bun/db/migrations/v4_inline-agents.ts",
       "line": 3,
       "symbol": "name",
@@ -2228,13 +2234,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 215,
+      "line": 219,
       "symbol": "getRun",
       "type": "function"
     },
@@ -3492,7 +3498,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 690,
+      "line": 692,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -3644,13 +3650,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 144,
+      "line": 148,
       "symbol": "setCursor",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 148,
+      "line": 152,
       "symbol": "setLastPolled",
       "type": "function"
     },
@@ -5954,7 +5960,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 156,
+      "line": 160,
       "symbol": "createRun",
       "type": "function"
     },
@@ -6477,6 +6483,12 @@
       "type": "interface"
     },
     {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 12,
+      "symbol": "MessageQueueState",
+      "type": "interface"
+    },
+    {
       "file": "src/mainview/stores/playground-store.ts",
       "line": 26,
       "symbol": "PlaygroundState",
@@ -6846,19 +6858,19 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 78,
+      "line": 83,
       "symbol": "AttachmentFile",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 89,
+      "line": 94,
       "symbol": "categorizeFile",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 403,
+      "line": 411,
       "symbol": "handleFileSelect_mention",
       "type": "function"
     },
@@ -7314,7 +7326,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 86,
+      "line": 88,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
@@ -7724,13 +7736,13 @@
   "freelance": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 646,
+      "line": 648,
       "symbol": "freelanceListings",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 673,
+      "line": 675,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -7754,7 +7766,7 @@
     },
     {
       "file": "src/bun/freelance/fetcher.ts",
-      "line": 168,
+      "line": 181,
       "symbol": "stopFreelancePoller",
       "type": "function"
     },
@@ -7918,7 +7930,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 80,
+      "line": 82,
       "symbol": "listEnabledConfigs",
       "type": "function"
     },
@@ -9686,7 +9698,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 624,
+      "line": 626,
       "symbol": "messageParts",
       "type": "export"
     },
@@ -10015,6 +10027,30 @@
       "type": "interface"
     },
     {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 3,
+      "symbol": "MESSAGE_QUEUE_MAX",
+      "type": "export"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 5,
+      "symbol": "QueuedMessage",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 12,
+      "symbol": "MessageQueueState",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 27,
+      "symbol": "useMessageQueueStore",
+      "type": "export"
+    },
+    {
       "file": "src/shared/rpc/freelance.ts",
       "line": 3,
       "symbol": "FreelanceChatMessageDto",
@@ -10298,7 +10334,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 690,
+      "line": 692,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -12474,13 +12510,13 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 231,
+      "line": 233,
       "symbol": "addCustomKeyword",
       "type": "function"
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 242,
+      "line": 244,
       "symbol": "addLabel",
       "type": "function"
     },
@@ -12920,7 +12956,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 231,
+      "line": 233,
       "symbol": "addCustomKeyword",
       "type": "function"
     },
@@ -13140,7 +13176,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 54,
+      "line": 59,
       "symbol": "TEXT_EXTENSIONS",
       "type": "export"
     },
@@ -16092,7 +16128,7 @@
     },
     {
       "file": "src/bun/freelance/fetcher.ts",
-      "line": 175,
+      "line": 188,
       "symbol": "scheduleNextPoll",
       "type": "function"
     },
@@ -16442,7 +16478,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 76,
+      "line": 81,
       "symbol": "AttachmentType",
       "type": "type"
     },
@@ -16806,7 +16842,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 673,
+      "line": 675,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -17008,7 +17044,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 65,
+      "line": 70,
       "symbol": "IMAGE_EXTENSIONS",
       "type": "export"
     },
@@ -17248,13 +17284,13 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 526,
+      "line": 534,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 302,
+      "line": 342,
       "symbol": "onKeyDown",
       "type": "function"
     },
@@ -17966,13 +18002,13 @@
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatLayoutProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 26,
+      "line": 27,
       "symbol": "ChatLayout",
       "type": "function"
     }
@@ -18100,7 +18136,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "parseJsonArray",
       "type": "function"
     },
@@ -18494,7 +18530,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 107,
+      "line": 112,
       "symbol": "processFiles",
       "type": "function"
     },
@@ -18532,7 +18568,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 190,
+      "line": 194,
       "symbol": "updateRun",
       "type": "function"
     },
@@ -18640,7 +18676,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 218,
+      "line": 220,
       "symbol": "update",
       "type": "function"
     },
@@ -18783,6 +18819,12 @@
       "line": 24,
       "symbol": "trimListingsToMax",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 3,
+      "symbol": "MESSAGE_QUEUE_MAX",
+      "type": "export"
     }
   ],
   "cols": [
@@ -19078,7 +19120,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 242,
+      "line": 244,
       "symbol": "addLabel",
       "type": "function"
     },
@@ -19490,13 +19532,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 80,
+      "line": 82,
       "symbol": "listEnabledConfigs",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 206,
+      "line": 210,
       "symbol": "listRuns",
       "type": "function"
     },
@@ -20785,6 +20827,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/db/migrations/v31_issue-fixer-notify-enabled.ts",
+      "line": 7,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
       "file": "src/bun/db/migrations/v4_inline-agents.ts",
       "line": 5,
       "symbol": "run",
@@ -20822,25 +20870,25 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 154,
+      "line": 158,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 156,
+      "line": 160,
       "symbol": "createRun",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 190,
+      "line": 194,
       "symbol": "updateRun",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 215,
+      "line": 219,
       "symbol": "getRun",
       "type": "function"
     },
@@ -21068,13 +21116,13 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 21,
+      "line": 22,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     },
@@ -21126,7 +21174,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "parseJsonArray",
       "type": "function"
     },
@@ -21444,7 +21492,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 610,
+      "line": 612,
       "symbol": "auditLog",
       "type": "export"
     },
@@ -23294,19 +23342,19 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 704,
+      "line": 706,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 742,
+      "line": 744,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 760,
+      "line": 762,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -24269,6 +24317,24 @@
       "line": 40,
       "symbol": "QueueEntry",
       "type": "export"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 3,
+      "symbol": "MESSAGE_QUEUE_MAX",
+      "type": "export"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 12,
+      "symbol": "MessageQueueState",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 27,
+      "symbol": "useMessageQueueStore",
+      "type": "export"
     }
   ],
   "preview": [
@@ -24688,7 +24754,7 @@
     },
     {
       "file": "src/bun/freelance/fetcher.ts",
-      "line": 168,
+      "line": 181,
       "symbol": "stopFreelancePoller",
       "type": "function"
     },
@@ -24940,7 +25006,7 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     }
@@ -25066,7 +25132,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 282,
+      "line": 322,
       "symbol": "onMouseMove",
       "type": "function"
     },
@@ -25386,31 +25452,31 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 30,
+      "line": 31,
       "symbol": "ChatInputHandle",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 342,
+      "line": 350,
       "symbol": "handleSlashSelect",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 403,
+      "line": 411,
       "symbol": "handleFileSelect_mention",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 526,
+      "line": 534,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 42,
+      "line": 43,
       "symbol": "handleMouseDown",
       "type": "function"
     },
@@ -26396,13 +26462,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 53,
+      "line": 54,
       "symbol": "ConfigRow",
       "type": "type"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 154,
+      "line": 158,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
@@ -26510,7 +26576,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 114,
+      "line": 115,
       "symbol": "Row",
       "type": "function"
     },
@@ -28022,7 +28088,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 574,
+      "line": 576,
       "symbol": "branchStrategies",
       "type": "export"
     },
@@ -28616,7 +28682,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 704,
+      "line": 706,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
@@ -28628,25 +28694,25 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 53,
+      "line": 54,
       "symbol": "ConfigRow",
       "type": "type"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "mapConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 86,
+      "line": 88,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
@@ -30666,7 +30732,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 107,
+      "line": 112,
       "symbol": "processFiles",
       "type": "function"
     }
@@ -31215,6 +31281,12 @@
       "type": "export"
     },
     {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 27,
+      "symbol": "useMessageQueueStore",
+      "type": "export"
+    },
+    {
       "file": "src/mainview/stores/playground-store.ts",
       "line": 102,
       "symbol": "usePlaygroundStore",
@@ -31354,7 +31426,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 610,
+      "line": 612,
       "symbol": "auditLog",
       "type": "export"
     },
@@ -31812,7 +31884,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 148,
+      "line": 152,
       "symbol": "setLastPolled",
       "type": "function"
     },
@@ -32018,7 +32090,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 150,
+      "line": 151,
       "symbol": "IssueFixerSettingsTab",
       "type": "function"
     },
@@ -32345,14 +32417,6 @@
       "type": "type"
     }
   ],
-  "channels": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 274,
-      "symbol": "channels",
-      "type": "export"
-    }
-  ],
   "deploy": [
     {
       "file": "src/bun/db/schema.ts",
@@ -32439,22 +32503,6 @@
       "line": 11,
       "symbol": "getEnvironments",
       "type": "function"
-    }
-  ],
-  "whatsapp": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "sessions": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
     }
   ],
   "preferences": [
@@ -33252,7 +33300,7 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 63,
+      "line": 64,
       "symbol": "IssueFixerRequests",
       "type": "type"
     },
@@ -33378,7 +33426,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 80,
+      "line": 82,
       "symbol": "listEnabledConfigs",
       "type": "function"
     },
@@ -33502,7 +33550,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 544,
+      "line": 546,
       "symbol": "issueFixRuns",
       "type": "export"
     },
@@ -33514,19 +33562,19 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 86,
+      "line": 88,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 154,
+      "line": 158,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
@@ -33724,7 +33772,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 150,
+      "line": 151,
       "symbol": "IssueFixerSettingsTab",
       "type": "function"
     },
@@ -33796,25 +33844,25 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 21,
+      "line": 22,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 63,
+      "line": 64,
       "symbol": "IssueFixerRequests",
       "type": "type"
     }
@@ -33834,13 +33882,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 86,
+      "line": 88,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
@@ -33888,7 +33936,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 150,
+      "line": 151,
       "symbol": "IssueFixerSettingsTab",
       "type": "function"
     },
@@ -33948,13 +33996,13 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 63,
+      "line": 64,
       "symbol": "IssueFixerRequests",
       "type": "type"
     }
@@ -33962,13 +34010,13 @@
   "fix": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 544,
+      "line": 546,
       "symbol": "issueFixRuns",
       "type": "export"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 154,
+      "line": 158,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
@@ -34034,13 +34082,13 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 21,
+      "line": 22,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     }
@@ -34084,25 +34132,25 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 544,
+      "line": 546,
       "symbol": "issueFixRuns",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 760,
+      "line": 762,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 206,
+      "line": 210,
       "symbol": "listRuns",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 238,
+      "line": 242,
       "symbol": "failInterruptedRuns",
       "type": "function"
     },
@@ -34149,18 +34197,10 @@
       "type": "export"
     }
   ],
-  "strategies": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 574,
-      "symbol": "branchStrategies",
-      "type": "export"
-    }
-  ],
   "cost": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 595,
+      "line": 597,
       "symbol": "costBudgets",
       "type": "export"
     },
@@ -34189,18 +34229,10 @@
       "type": "function"
     }
   ],
-  "budgets": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 595,
-      "symbol": "costBudgets",
-      "type": "export"
-    }
-  ],
   "parts": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 624,
+      "line": 626,
       "symbol": "messageParts",
       "type": "export"
     },
@@ -34226,7 +34258,7 @@
   "listings": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 646,
+      "line": 648,
       "symbol": "freelanceListings",
       "type": "export"
     },
@@ -34270,7 +34302,7 @@
   "chat": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 673,
+      "line": 675,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -34312,31 +34344,31 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 30,
+      "line": 31,
       "symbol": "ChatInputHandle",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 36,
+      "line": 37,
       "symbol": "ChatInputProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 131,
+      "line": 136,
       "symbol": "ChatInput",
       "type": "export"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatLayoutProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 26,
+      "line": 27,
       "symbol": "ChatLayout",
       "type": "function"
     },
@@ -34428,19 +34460,19 @@
   "remote": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 704,
+      "line": 706,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 742,
+      "line": 744,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 760,
+      "line": 762,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -34772,17 +34804,9 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 742,
+      "line": 744,
       "symbol": "remoteSyncItems",
       "type": "export"
-    }
-  ],
-  "fnv1a": [
-    {
-      "file": "src/bun/db/seed.ts",
-      "line": 16,
-      "symbol": "fnv1a",
-      "type": "function"
     }
   ],
   "defs": [
@@ -35284,7 +35308,7 @@
     },
     {
       "file": "src/bun/freelance/fetcher.ts",
-      "line": 175,
+      "line": 188,
       "symbol": "scheduleNextPoll",
       "type": "function"
     },
@@ -35351,14 +35375,6 @@
       "type": "function"
     }
   ],
-  "purge": [
-    {
-      "file": "src/bun/freelance/fetcher.ts",
-      "line": 13,
-      "symbol": "purgeOldDeletedListings",
-      "type": "function"
-    }
-  ],
   "deleted": [
     {
       "file": "src/bun/freelance/fetcher.ts",
@@ -35373,40 +35389,10 @@
       "type": "function"
     }
   ],
-  "trim": [
-    {
-      "file": "src/bun/freelance/fetcher.ts",
-      "line": 24,
-      "symbol": "trimListingsToMax",
-      "type": "function"
-    }
-  ],
-  "platforms": [
-    {
-      "file": "src/bun/freelance/fetcher.ts",
-      "line": 46,
-      "symbol": "fetchAllPlatforms",
-      "type": "function"
-    }
-  ],
-  "poller": [
-    {
-      "file": "src/bun/freelance/fetcher.ts",
-      "line": 161,
-      "symbol": "startFreelancePoller",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/freelance/fetcher.ts",
-      "line": 168,
-      "symbol": "stopFreelancePoller",
-      "type": "function"
-    }
-  ],
   "poll": [
     {
       "file": "src/bun/freelance/fetcher.ts",
-      "line": 175,
+      "line": 188,
       "symbol": "scheduleNextPoll",
       "type": "function"
     },
@@ -35837,14 +35823,6 @@
       "type": "function"
     }
   ],
-  "agentdesk": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 12,
-      "symbol": "sanitizeAgentdesk",
-      "type": "function"
-    }
-  ],
   "dto": [
     {
       "file": "src/bun/issue-fixer/config.ts",
@@ -35920,19 +35898,19 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 21,
+      "line": 22,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     },
@@ -35982,7 +35960,7 @@
   "array": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "parseJsonArray",
       "type": "function"
     },
@@ -35996,7 +35974,7 @@
   "map": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "mapConfig",
       "type": "function"
     },
@@ -36079,34 +36057,10 @@
       "type": "type"
     }
   ],
-  "cursor": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 144,
-      "symbol": "setCursor",
-      "type": "function"
-    }
-  ],
-  "polled": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 148,
-      "symbol": "setLastPolled",
-      "type": "function"
-    }
-  ],
-  "most": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 221,
-      "symbol": "mostRecentFinishedAt",
-      "type": "function"
-    }
-  ],
   "recent": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 221,
+      "line": 225,
       "symbol": "mostRecentFinishedAt",
       "type": "function"
     },
@@ -36123,18 +36077,10 @@
       "type": "function"
     }
   ],
-  "finished": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 221,
-      "symbol": "mostRecentFinishedAt",
-      "type": "function"
-    }
-  ],
   "fail": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 238,
+      "line": 242,
       "symbol": "failInterruptedRuns",
       "type": "function"
     },
@@ -36154,7 +36100,7 @@
   "interrupted": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 238,
+      "line": 242,
       "symbol": "failInterruptedRuns",
       "type": "function"
     },
@@ -36322,19 +36268,19 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 30,
+      "line": 31,
       "symbol": "ChatInputHandle",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 36,
+      "line": 37,
       "symbol": "ChatInputProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 131,
+      "line": 136,
       "symbol": "ChatInput",
       "type": "export"
     },
@@ -36459,36 +36405,6 @@
       "type": "interface"
     }
   ],
-  "live": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 52,
-      "symbol": "LiveRunSnapshot",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 67,
-      "symbol": "getLiveRun",
-      "type": "function"
-    }
-  ],
-  "enqueue": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 71,
-      "symbol": "enqueueIssueFix",
-      "type": "function"
-    }
-  ],
-  "slugify": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 78,
-      "symbol": "slugify",
-      "type": "function"
-    }
-  ],
   "serialize": [
     {
       "file": "src/bun/issue-fixer/orchestrator.ts",
@@ -36514,14 +36430,6 @@
       "file": "src/bun/rpc/git.ts",
       "line": 97,
       "symbol": "gitCheckout",
-      "type": "function"
-    }
-  ],
-  "existing": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 229,
-      "symbol": "checkoutExisting",
       "type": "function"
     }
   ],
@@ -36704,19 +36612,19 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 223,
+      "line": 225,
       "symbol": "toggleKeyword",
       "type": "function"
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 231,
+      "line": 233,
       "symbol": "addCustomKeyword",
       "type": "function"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 43,
+      "line": 44,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     }
@@ -36750,7 +36658,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 275,
+      "line": 277,
       "symbol": "isPredefined",
       "type": "function"
     }
@@ -37414,7 +37322,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 70,
+      "line": 75,
       "symbol": "BINARY_DOC_EXTENSIONS",
       "type": "export"
     }
@@ -38730,7 +38638,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 150,
+      "line": 151,
       "symbol": "IssueFixerSettingsTab",
       "type": "function"
     },
@@ -38994,19 +38902,19 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 54,
+      "line": 59,
       "symbol": "TEXT_EXTENSIONS",
       "type": "export"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 65,
+      "line": 70,
       "symbol": "IMAGE_EXTENSIONS",
       "type": "export"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 70,
+      "line": 75,
       "symbol": "BINARY_DOC_EXTENSIONS",
       "type": "export"
     },
@@ -43252,7 +43160,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 223,
+      "line": 225,
       "symbol": "toggleKeyword",
       "type": "function"
     },
@@ -43876,13 +43784,13 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 36,
+      "line": 37,
       "symbol": "ChatInputProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 18,
+      "line": 19,
       "symbol": "ChatLayoutProps",
       "type": "interface"
     },
@@ -46032,13 +45940,13 @@
   "select": [
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 342,
+      "line": 350,
       "symbol": "handleSlashSelect",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 403,
+      "line": 411,
       "symbol": "handleFileSelect_mention",
       "type": "function"
     },
@@ -47108,6 +47016,12 @@
       "file": "src/mainview/stores/kanban-store.ts",
       "line": 92,
       "symbol": "useKanbanStore",
+      "type": "export"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 27,
+      "symbol": "useMessageQueueStore",
       "type": "export"
     },
     {
@@ -48444,7 +48358,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 70,
+      "line": 75,
       "symbol": "BINARY_DOC_EXTENSIONS",
       "type": "export"
     },
@@ -48618,7 +48532,7 @@
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 342,
+      "line": 350,
       "symbol": "handleSlashSelect",
       "type": "function"
     }
@@ -48634,13 +48548,13 @@
   "attachment": [
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 76,
+      "line": 81,
       "symbol": "AttachmentType",
       "type": "type"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 78,
+      "line": 83,
       "symbol": "AttachmentFile",
       "type": "interface"
     },
@@ -48651,38 +48565,22 @@
       "type": "function"
     }
   ],
-  "categorize": [
-    {
-      "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 89,
-      "symbol": "categorizeFile",
-      "type": "function"
-    }
-  ],
-  "mention": [
-    {
-      "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 403,
-      "symbol": "handleFileSelect_mention",
-      "type": "function"
-    }
-  ],
   "down": [
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
-      "line": 526,
+      "line": 534,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 42,
+      "line": 43,
       "symbol": "handleMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 302,
+      "line": 342,
       "symbol": "onKeyDown",
       "type": "function"
     },
@@ -48738,19 +48636,19 @@
   "mouse": [
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 42,
+      "line": 43,
       "symbol": "handleMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 282,
+      "line": 322,
       "symbol": "onMouseMove",
       "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-layout.tsx",
-      "line": 291,
+      "line": 331,
       "symbol": "onMouseUp",
       "type": "function"
     },
@@ -49629,14 +49527,6 @@
       "type": "interface"
     }
   ],
-  "help": [
-    {
-      "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 48,
-      "symbol": "OptionHelp",
-      "type": "function"
-    }
-  ],
   "variant": [
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-tab.tsx",
@@ -49782,14 +49672,6 @@
       "file": "src/mainview/components/layout/topnav.tsx",
       "line": 18,
       "symbol": "TopNav",
-      "type": "function"
-    }
-  ],
-  "version": [
-    {
-      "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 263,
-      "symbol": "handleVersionClick",
       "type": "function"
     }
   ],
@@ -52081,6 +51963,12 @@
       "line": 990,
       "symbol": "getQueuedAgentsSnapshot",
       "type": "method"
+    },
+    {
+      "file": "src/mainview/stores/message-queue.ts",
+      "line": 5,
+      "symbol": "QueuedMessage",
+      "type": "interface"
     }
   ],
   "present": [
@@ -52234,6 +52122,202 @@
       "file": "src/bun/rpc/playground.ts",
       "line": 402,
       "symbol": "readSurgeNetrc",
+      "type": "function"
+    }
+  ],
+  "channels": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 274,
+      "symbol": "channels",
+      "type": "export"
+    }
+  ],
+  "whatsapp": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "sessions": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "strategies": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 576,
+      "symbol": "branchStrategies",
+      "type": "export"
+    }
+  ],
+  "budgets": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 597,
+      "symbol": "costBudgets",
+      "type": "export"
+    }
+  ],
+  "fnv1a": [
+    {
+      "file": "src/bun/db/seed.ts",
+      "line": 16,
+      "symbol": "fnv1a",
+      "type": "function"
+    }
+  ],
+  "purge": [
+    {
+      "file": "src/bun/freelance/fetcher.ts",
+      "line": 13,
+      "symbol": "purgeOldDeletedListings",
+      "type": "function"
+    }
+  ],
+  "trim": [
+    {
+      "file": "src/bun/freelance/fetcher.ts",
+      "line": 24,
+      "symbol": "trimListingsToMax",
+      "type": "function"
+    }
+  ],
+  "platforms": [
+    {
+      "file": "src/bun/freelance/fetcher.ts",
+      "line": 46,
+      "symbol": "fetchAllPlatforms",
+      "type": "function"
+    }
+  ],
+  "poller": [
+    {
+      "file": "src/bun/freelance/fetcher.ts",
+      "line": 161,
+      "symbol": "startFreelancePoller",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/fetcher.ts",
+      "line": 181,
+      "symbol": "stopFreelancePoller",
+      "type": "function"
+    }
+  ],
+  "agentdesk": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 12,
+      "symbol": "sanitizeAgentdesk",
+      "type": "function"
+    }
+  ],
+  "cursor": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 148,
+      "symbol": "setCursor",
+      "type": "function"
+    }
+  ],
+  "polled": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 152,
+      "symbol": "setLastPolled",
+      "type": "function"
+    }
+  ],
+  "most": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 225,
+      "symbol": "mostRecentFinishedAt",
+      "type": "function"
+    }
+  ],
+  "finished": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 225,
+      "symbol": "mostRecentFinishedAt",
+      "type": "function"
+    }
+  ],
+  "live": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 52,
+      "symbol": "LiveRunSnapshot",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 67,
+      "symbol": "getLiveRun",
+      "type": "function"
+    }
+  ],
+  "enqueue": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 71,
+      "symbol": "enqueueIssueFix",
+      "type": "function"
+    }
+  ],
+  "slugify": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 78,
+      "symbol": "slugify",
+      "type": "function"
+    }
+  ],
+  "existing": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 229,
+      "symbol": "checkoutExisting",
+      "type": "function"
+    }
+  ],
+  "categorize": [
+    {
+      "file": "src/mainview/components/chat/chat-input.tsx",
+      "line": 94,
+      "symbol": "categorizeFile",
+      "type": "function"
+    }
+  ],
+  "mention": [
+    {
+      "file": "src/mainview/components/chat/chat-input.tsx",
+      "line": 411,
+      "symbol": "handleFileSelect_mention",
+      "type": "function"
+    }
+  ],
+  "help": [
+    {
+      "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
+      "line": 48,
+      "symbol": "OptionHelp",
+      "type": "function"
+    }
+  ],
+  "version": [
+    {
+      "file": "src/mainview/components/layout/sidebar.tsx",
+      "line": 263,
+      "symbol": "handleVersionClick",
       "type": "function"
     }
   ]

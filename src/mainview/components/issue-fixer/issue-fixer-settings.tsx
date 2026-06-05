@@ -109,6 +109,7 @@ const DEFAULT_FORM: FormState = {
 	cooldownSec: 0,
 	maxPerHour: 5,
 	notifyChannels: [],
+	notifyEnabled: false,
 };
 
 function Row({
@@ -209,6 +210,7 @@ export function IssueFixerSettingsTab({
 				cooldownSec: config.cooldownSec,
 				maxPerHour: config.maxPerHour,
 				notifyChannels: config.notifyChannels,
+				notifyEnabled: config.notifyEnabled,
 			});
 			setLastPolledAt(config.lastPolledAt);
 		}
@@ -446,6 +448,10 @@ export function IssueFixerSettingsTab({
 							onChange={(e) => update("maxPerHour", Math.max(1, parseInt(e.target.value, 10) || 1))}
 						/>
 					</Row>
+					<Separator />
+					<Row label="Notify on completion" description="Send run results to all connected channels (Discord, email, etc.) on success and failure.">
+						<Switch checked={form.notifyEnabled} onCheckedChange={(v) => update("notifyEnabled", v)} />
+					</Row>
 				</CardContent>
 			</Card>
 
@@ -480,10 +486,6 @@ export function IssueFixerSettingsTab({
 					)}
 				</CardContent>
 			</Card>
-
-			<p className="text-xs text-muted-foreground">
-				Run summaries are sent to all connected channels (Discord/email) on success and failure.
-			</p>
 
 			<div className="flex items-center justify-end gap-3">
 				<p className={cn("text-xs text-muted-foreground transition-opacity", dirty ? "opacity-100" : "opacity-0")}>

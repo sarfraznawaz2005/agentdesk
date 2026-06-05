@@ -7,7 +7,7 @@
     "confidence": 1
   },
   "patterns": {
-    "react_hooks": "React hooks pattern (13 custom hooks)"
+    "react_hooks": "React hooks pattern (14 custom hooks)"
   },
   "test_patterns": {
     "location": "tests/ directory",
