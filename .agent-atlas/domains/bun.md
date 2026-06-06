@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 202
-**Symbols:** 1574
+**Files:** 213
+**Symbols:** 1598
 
 ## Files
 
@@ -844,11 +844,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 50)
+- `Migration` (line 52)
 
 **Functions:**
-- `runMigrations` (line 91)
-- `ensureRuntimeSchema` (line 153)
+- `runMigrations` (line 95)
+- `ensureRuntimeSchema` (line 157)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1069,6 +1069,15 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v32_custom-env-vars.ts`
+
+**Functions:**
+- `run` (line 5)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v3_agent-sessions.ts`
 
 **Functions:**
@@ -1174,7 +1183,8 @@
 - `projectActivity` (line 692)
 - `remoteSyncConfig` (line 706)
 - `remoteSyncItems` (line 744)
-- `remoteSyncRuns` (line 762)
+- `customEnvVars` (line 762)
+- `remoteSyncRuns` (line 772)
 
 
 ### `src/bun/db/seed.ts`
@@ -1321,20 +1331,20 @@
 ### `src/bun/index.ts`
 
 **Interfaces:**
-- `WindowState` (line 40)
+- `WindowState` (line 41)
 
 **Functions:**
-- `getWindowStateFilePath` (line 50)
-- `loadWindowState` (line 54)
-- `saveWindowState` (line 88)
-- `debounce` (line 104)
-- `getMainViewUrl` (line 113)
-- `attachWindowListeners` (line 311)
-- `setWindowTitlebarIcon` (line 371)
-- `toWide` (line 380)
+- `getWindowStateFilePath` (line 51)
+- `loadWindowState` (line 55)
+- `saveWindowState` (line 89)
+- `debounce` (line 105)
+- `getMainViewUrl` (line 114)
+- `attachWindowListeners` (line 313)
+- `setWindowTitlebarIcon` (line 373)
+- `toWide` (line 382)
 
 **Exports:**
-- `FREELANCE_ENABLED` (line 143)
+- `FREELANCE_ENABLED` (line 145)
 
 
 ### `src/bun/issue-fixer/config.ts`
@@ -2144,15 +2154,74 @@
 - `runPush` (line 826)
 
 
+### `src/bun/rpc-groups/agents-kanban-notes.ts`
+
+**Exports:**
+- `handlers` (line 7)
+
+
+### `src/bun/rpc-groups/channels-inbox-scheduler.ts`
+
+**Exports:**
+- `handlers` (line 11)
+
+
+### `src/bun/rpc-groups/conversations-control.ts`
+
+**Exports:**
+- `handlers` (line 11)
+
+
+### `src/bun/rpc-groups/features.ts`
+
+**Exports:**
+- `handlers` (line 10)
+
+
+### `src/bun/rpc-groups/git-analytics.ts`
+
+**Exports:**
+- `handlers` (line 13)
+
+
+### `src/bun/rpc-groups/plugins-tools.ts`
+
+**Exports:**
+- `handlers` (line 12)
+
+
+### `src/bun/rpc-groups/projects-system.ts`
+
+**Functions:**
+- `walk` (line 114)
+
+**Exports:**
+- `handlers` (line 11)
+
+
+### `src/bun/rpc-groups/setting-callbacks.ts`
+
+**Functions:**
+- `onSettingChange` (line 4)
+
+**Exports:**
+- `settingChangeCallbacks` (line 8)
+
+
+### `src/bun/rpc-groups/settings-providers.ts`
+
+**Exports:**
+- `handlers` (line 15)
+
+
 ### `src/bun/rpc-registration.ts`
 
 **Functions:**
-- `onSettingChange` (line 63)
-- `withErrorToast` (line 72)
-- `walk` (line 548)
+- `withErrorToast` (line 19)
 
 **Exports:**
-- `rpc` (line 89)
+- `onSettingChange` (line 7)
+- `rpc` (line 36)
 
 
 ### `src/bun/rpc/activity.ts`
@@ -2360,6 +2429,22 @@
 - `saveEmailConfig` (line 9)
 - `deleteEmailConfig` (line 58)
 - `testEmailConnection` (line 63)
+
+
+### `src/bun/rpc/env-vars.ts`
+
+**Functions:**
+- `setOsEnvVar` (line 11)
+- `deleteOsEnvVar` (line 41)
+- `getShellProfilePath` (line 72)
+- `upsertShellProfileLine` (line 80)
+- `removeShellProfileLine` (line 108)
+- `loadCustomEnvVarsIntoProcess` (line 132)
+- `toDto` (line 150)
+- `listCustomEnvVars` (line 160)
+- `createCustomEnvVar` (line 164)
+- `updateCustomEnvVar` (line 177)
+- `deleteCustomEnvVar` (line 213)
 
 
 ### `src/bun/rpc/export-import.ts`

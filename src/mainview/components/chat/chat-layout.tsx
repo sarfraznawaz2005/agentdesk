@@ -43,13 +43,13 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
       if (localStorage.getItem(FOCUS_KEY) === "true") {
         window.dispatchEvent(new CustomEvent("agentdesk:focus-mode-enter"));
       }
-    } catch {}
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    } catch { /* ignore localStorage errors */ }
+  }, []);
 
   const handleFocusToggle = useCallback(() => {
     setIsFocused((prev) => {
       const next = !prev;
-      try { localStorage.setItem(FOCUS_KEY, String(next)); } catch {}
+      try { localStorage.setItem(FOCUS_KEY, String(next)); } catch { /* ignore */ }
       if (next) {
         // Enter: collapse conv sidebar, activity pane, and main app sidebar
         setSidebarOpen(false);

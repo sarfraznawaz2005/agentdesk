@@ -12,6 +12,7 @@ import { EmailSettings } from "./settings/email-settings";
 import { NotificationSettings } from "./settings/notification-settings";
 import { McpSettings } from "./settings/mcp";
 import { AiDebugSettings } from "./settings/ai-debug";
+import { EnvVarsSettings } from "./settings/env-vars";
 import { AuditLogSettings } from "./settings/audit-log";
 import { DataSettings } from "./settings/data";
 import { HealthSettings } from "./settings/health";
@@ -60,6 +61,7 @@ export function SettingsPage() {
           <SubTabs tabs={[
             { value: "general", label: "General", content: <GeneralSettings /> },
             { value: "appearance", label: "Appearance", content: <AppearanceSettings /> },
+            { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },
           ]} />
         </TabsContent>
 

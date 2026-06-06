@@ -1138,6 +1138,24 @@ export const rpc = {
   /** Delete a user-installed skill by name. */
   deleteSkill: (name: string) => electroviewRpc.request.deleteSkill({ name }),
 
+  // ---- Custom Env Vars -------------------------------------------------------
+
+  /** List all user-created environment variables. */
+  listCustomEnvVars: () =>
+    electroviewRpc.request.listCustomEnvVars({}),
+
+  /** Create a new custom environment variable. */
+  createCustomEnvVar: (name: string, value: string) =>
+    electroviewRpc.request.createCustomEnvVar({ name, value }),
+
+  /** Update an existing custom environment variable. */
+  updateCustomEnvVar: (id: string, params: { name?: string; value?: string }) =>
+    electroviewRpc.request.updateCustomEnvVar({ id, ...params }),
+
+  /** Delete a custom environment variable by id. */
+  deleteCustomEnvVar: (id: string) =>
+    electroviewRpc.request.deleteCustomEnvVar({ id }),
+
   // ---- Updater -------------------------------------------------------------
 
   /** Check for an available app update. Returns devMode=true when running in dev channel. */

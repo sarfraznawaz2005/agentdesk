@@ -12,12 +12,12 @@ export function useConvFontSize(storageKey = CONV_FONT_SIZE_KEY) {
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) return Math.min(MAX, Math.max(MIN, parseInt(stored, 10)));
-    } catch {}
+    } catch { /* ignore localStorage errors */ }
     return 100;
   });
 
   useEffect(() => {
-    try { localStorage.setItem(storageKey, String(percent)); } catch {}
+    try { localStorage.setItem(storageKey, String(percent)); } catch { /* ignore */ }
   }, [percent, storageKey]);
 
   const zoomIn = () => setPercent((p) => Math.min(MAX, p + STEP));

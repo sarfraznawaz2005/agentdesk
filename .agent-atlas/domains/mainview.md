@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 157
-**Symbols:** 1332
+**Files:** 158
+**Symbols:** 1337
 
 ## Files
 
@@ -414,13 +414,13 @@
 - `persistMessages` (line 123)
 - `persistSessionId` (line 128)
 - `CustomAgentChatWidget` (line 144)
-- `onMouseDown` (line 220)
-- `onChunk` (line 245)
-- `onToolCall` (line 257)
-- `onComplete` (line 266)
-- `onError` (line 281)
-- `handleKeyDown` (line 418)
-- `handleClear` (line 430)
+- `onMouseDown` (line 221)
+- `onChunk` (line 246)
+- `onToolCall` (line 258)
+- `onComplete` (line 267)
+- `onError` (line 282)
+- `handleKeyDown` (line 419)
+- `handleClear` (line 431)
 
 **Methods:**
 - `code` (line 32)
@@ -2078,8 +2078,8 @@
 ### `src/mainview/pages/settings.tsx`
 
 **Functions:**
-- `SubTabs` (line 20)
-- `SettingsPage` (line 45)
+- `SubTabs` (line 21)
+- `SettingsPage` (line 46)
 
 
 ### `src/mainview/pages/settings/ai-debug.tsx`
@@ -2167,6 +2167,18 @@
 - `ConfigForm` (line 230)
 - `EmailSettings` (line 629)
 - `projectName` (line 680)
+
+
+### `src/mainview/pages/settings/env-vars.tsx`
+
+**Interfaces:**
+- `AddRowProps` (line 23)
+- `EnvRowProps` (line 82)
+
+**Functions:**
+- `AddRow` (line 27)
+- `EnvRow` (line 88)
+- `EnvVarsSettings` (line 214)
 
 
 ### `src/mainview/pages/settings/general.tsx`

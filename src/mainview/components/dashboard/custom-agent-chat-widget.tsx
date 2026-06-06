@@ -209,6 +209,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   }, [open, agentName]);
   useEffect(() => {
     if (expandedOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUnread(false);
       persistUnread(agentName, false);
     }

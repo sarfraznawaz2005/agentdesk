@@ -644,7 +644,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 62,
+      "line": 64,
       "symbol": "AgentDeskRPC",
       "type": "type"
     },
@@ -828,19 +828,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     },
@@ -1324,7 +1324,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "AgentsRequests",
       "type": "export"
     }
@@ -1476,6 +1476,12 @@
     },
     {
       "file": "src/bun/db/migrations/v31_issue-fixer-notify-enabled.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v32_custom-env-vars.ts",
       "line": 3,
       "symbol": "name",
       "type": "export"
@@ -2234,13 +2240,13 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 113,
+      "line": 114,
       "symbol": "getMainViewUrl",
       "type": "function"
     },
@@ -2650,6 +2656,12 @@
       "file": "src/bun/rpc/email.ts",
       "line": 5,
       "symbol": "getEmailConfigs",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 72,
+      "symbol": "getShellProfilePath",
       "type": "function"
     },
     {
@@ -3472,7 +3484,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "SystemRequests",
       "type": "export"
     },
@@ -3606,13 +3618,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ActivityRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     }
@@ -3656,7 +3668,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 371,
+      "line": 373,
       "symbol": "setWindowTitlebarIcon",
       "type": "function"
     },
@@ -3712,6 +3724,12 @@
       "file": "src/bun/rpc/discord.ts",
       "line": 9,
       "symbol": "setDiscordStatusGetter",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 11,
+      "symbol": "setOsEnvVar",
       "type": "function"
     },
     {
@@ -4379,6 +4397,12 @@
       "type": "method"
     },
     {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 108,
+      "symbol": "removeShellProfileLine",
+      "type": "function"
+    },
+    {
       "file": "src/bun/scheduler/event-bus.ts",
       "line": 39,
       "symbol": "removeAllListeners",
@@ -4618,7 +4642,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 113,
+      "line": 114,
       "symbol": "getMainViewUrl",
       "type": "function"
     }
@@ -4704,37 +4728,37 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 40,
+      "line": 41,
       "symbol": "WindowState",
       "type": "interface"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 54,
+      "line": 55,
       "symbol": "loadWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 88,
+      "line": 89,
       "symbol": "saveWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 311,
+      "line": 313,
       "symbol": "attachWindowListeners",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 371,
+      "line": 373,
       "symbol": "setWindowTitlebarIcon",
       "type": "function"
     }
@@ -4806,7 +4830,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "WebviewSchema",
       "type": "export"
     },
@@ -5034,7 +5058,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "InboxRequests",
       "type": "export"
     }
@@ -5280,6 +5304,24 @@
       "file": "src/bun/issue-fixer/shell-guard.ts",
       "line": 78,
       "symbol": "createGuardedShellTool",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 72,
+      "symbol": "getShellProfilePath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 80,
+      "symbol": "upsertShellProfileLine",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 108,
+      "symbol": "removeShellProfileLine",
       "type": "function"
     },
     {
@@ -6127,6 +6169,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 164,
+      "symbol": "createCustomEnvVar",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/git.ts",
       "line": 103,
       "symbol": "gitCreateBranch",
@@ -6298,25 +6346,25 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 40,
+      "line": 41,
       "symbol": "WindowState",
       "type": "interface"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 54,
+      "line": 55,
       "symbol": "loadWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 88,
+      "line": 89,
       "symbol": "saveWindowState",
       "type": "function"
     },
@@ -6666,7 +6714,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
@@ -7028,7 +7076,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
@@ -7060,6 +7108,12 @@
       "file": "src/bun/rpc/backup.ts",
       "line": 18,
       "symbol": "getDbPath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 72,
+      "symbol": "getShellProfilePath",
       "type": "function"
     },
     {
@@ -7180,7 +7234,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 54,
+      "line": 55,
       "symbol": "loadWindowState",
       "type": "function"
     },
@@ -7200,6 +7254,12 @@
       "file": "src/bun/providers/claude-subscription.ts",
       "line": 24,
       "symbol": "loadOAuthToken",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
       "type": "function"
     },
     {
@@ -7350,7 +7410,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 88,
+      "line": 89,
       "symbol": "saveWindowState",
       "type": "function"
     },
@@ -7634,7 +7694,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 104,
+      "line": 105,
       "symbol": "debounce",
       "type": "function"
     }
@@ -7642,7 +7702,7 @@
   "view": [
     {
       "file": "src/bun/index.ts",
-      "line": 113,
+      "line": 114,
       "symbol": "getMainViewUrl",
       "type": "function"
     },
@@ -7692,7 +7752,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 113,
+      "line": 114,
       "symbol": "getMainViewUrl",
       "type": "function"
     },
@@ -7826,7 +7886,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 143,
+      "line": 145,
       "symbol": "FREELANCE_ENABLED",
       "type": "export"
     },
@@ -7892,19 +7952,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceListingDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     }
@@ -7954,7 +8014,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 143,
+      "line": 145,
       "symbol": "FREELANCE_ENABLED",
       "type": "export"
     },
@@ -8004,7 +8064,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 311,
+      "line": 313,
       "symbol": "attachWindowListeners",
       "type": "function"
     }
@@ -8018,7 +8078,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 311,
+      "line": 313,
       "symbol": "attachWindowListeners",
       "type": "function"
     },
@@ -8047,18 +8107,10 @@
       "type": "function"
     }
   ],
-  "titlebar": [
-    {
-      "file": "src/bun/index.ts",
-      "line": 371,
-      "symbol": "setWindowTitlebarIcon",
-      "type": "function"
-    }
-  ],
   "icon": [
     {
       "file": "src/bun/index.ts",
-      "line": 371,
+      "line": 373,
       "symbol": "setWindowTitlebarIcon",
       "type": "function"
     },
@@ -8099,14 +8151,6 @@
       "type": "function"
     }
   ],
-  "wide": [
-    {
-      "file": "src/bun/index.ts",
-      "line": 380,
-      "symbol": "toWide",
-      "type": "function"
-    }
-  ],
   "setting": [
     {
       "file": "src/bun/agents/tools/git.ts",
@@ -8127,10 +8171,22 @@
       "type": "interface"
     },
     {
-      "file": "src/bun/rpc-registration.ts",
-      "line": 63,
+      "file": "src/bun/rpc-groups/setting-callbacks.ts",
+      "line": 4,
       "symbol": "onSettingChange",
       "type": "function"
+    },
+    {
+      "file": "src/bun/rpc-groups/setting-callbacks.ts",
+      "line": 8,
+      "symbol": "settingChangeCallbacks",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-registration.ts",
+      "line": 7,
+      "symbol": "onSettingChange",
+      "type": "export"
     },
     {
       "file": "src/bun/rpc/projects.ts",
@@ -8249,10 +8305,22 @@
       "type": "type"
     },
     {
-      "file": "src/bun/rpc-registration.ts",
-      "line": 63,
+      "file": "src/bun/rpc-groups/setting-callbacks.ts",
+      "line": 4,
       "symbol": "onSettingChange",
       "type": "function"
+    },
+    {
+      "file": "src/bun/rpc-groups/setting-callbacks.ts",
+      "line": 8,
+      "symbol": "settingChangeCallbacks",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-registration.ts",
+      "line": 7,
+      "symbol": "onSettingChange",
+      "type": "export"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
@@ -8372,7 +8440,7 @@
     },
     {
       "file": "src/bun/rpc-registration.ts",
-      "line": 72,
+      "line": 19,
       "symbol": "withErrorToast",
       "type": "function"
     },
@@ -8458,7 +8526,7 @@
     },
     {
       "file": "src/bun/rpc-registration.ts",
-      "line": 72,
+      "line": 19,
       "symbol": "withErrorToast",
       "type": "function"
     },
@@ -8500,7 +8568,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 281,
+      "line": 282,
       "symbol": "onError",
       "type": "function"
     },
@@ -8604,7 +8672,7 @@
     },
     {
       "file": "src/bun/rpc-registration.ts",
-      "line": 72,
+      "line": 19,
       "symbol": "withErrorToast",
       "type": "function"
     },
@@ -8678,7 +8746,7 @@
     },
     {
       "file": "src/bun/rpc-registration.ts",
-      "line": 89,
+      "line": 36,
       "symbol": "rpc",
       "type": "export"
     },
@@ -8714,7 +8782,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 62,
+      "line": 64,
       "symbol": "AgentDeskRPC",
       "type": "type"
     }
@@ -8733,8 +8801,8 @@
       "type": "function"
     },
     {
-      "file": "src/bun/rpc-registration.ts",
-      "line": 548,
+      "file": "src/bun/rpc-groups/projects-system.ts",
+      "line": 114,
       "symbol": "walk",
       "type": "function"
     }
@@ -8908,7 +8976,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 62,
+      "line": 64,
       "symbol": "AgentDeskRPC",
       "type": "type"
     }
@@ -10112,7 +10180,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     },
@@ -12088,13 +12156,13 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 153,
+      "line": 157,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "WebviewSchema",
       "type": "export"
     },
@@ -12470,7 +12538,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "GitRequests",
       "type": "export"
     },
@@ -12608,6 +12676,18 @@
       "file": "src/mainview/pages/scheduler.tsx",
       "line": 788,
       "symbol": "handleAddRule",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 23,
+      "symbol": "AddRowProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 27,
+      "symbol": "AddRow",
       "type": "function"
     },
     {
@@ -12991,6 +13071,42 @@
   ],
   "custom": [
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 762,
+      "symbol": "customEnvVars",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 160,
+      "symbol": "listCustomEnvVars",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 164,
+      "symbol": "createCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 177,
+      "symbol": "updateCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 213,
+      "symbol": "deleteCustomEnvVar",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/dashboard/custom-agent-chat-launcher.tsx",
       "line": 23,
       "symbol": "CustomAgentChatLauncher",
@@ -13013,6 +13129,18 @@
       "line": 233,
       "symbol": "addCustomKeyword",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/env-vars.ts",
+      "line": 1,
+      "symbol": "CustomEnvVar",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 73,
+      "symbol": "CustomEnvVar",
+      "type": "export"
     },
     {
       "file": "tests/rpc/agents.test.ts",
@@ -13466,7 +13594,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 430,
+      "line": 431,
       "symbol": "handleClear",
       "type": "function"
     },
@@ -13596,7 +13724,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "CouncilRequests",
       "type": "export"
     },
@@ -14326,7 +14454,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ProvidersRequests",
       "type": "export"
     },
@@ -15068,7 +15196,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 257,
+      "line": 258,
       "symbol": "onToolCall",
       "type": "function"
     },
@@ -15146,6 +15274,24 @@
       "file": "src/bun/agents/prompts.ts",
       "line": 90,
       "symbol": "buildUserProfileSection",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 72,
+      "symbol": "getShellProfilePath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 80,
+      "symbol": "upsertShellProfileLine",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 108,
+      "symbol": "removeShellProfileLine",
       "type": "function"
     },
     {
@@ -16678,7 +16824,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 153,
+      "line": 157,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -16980,7 +17126,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "BunMessages",
       "type": "export"
     },
@@ -17386,7 +17532,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 418,
+      "line": 419,
       "symbol": "handleKeyDown",
       "type": "function"
     },
@@ -18669,6 +18815,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 177,
+      "symbol": "updateCustomEnvVar",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/inbox-rules.ts",
       "line": 94,
       "symbol": "updateInboxRule",
@@ -19783,6 +19935,12 @@
       "type": "interface"
     },
     {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 160,
+      "symbol": "listCustomEnvVars",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/inbox-rules.ts",
       "line": 78,
       "symbol": "getInboxRulesList",
@@ -20201,6 +20359,96 @@
       "line": 24,
       "symbol": "get_soffice_env",
       "type": "function"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 762,
+      "symbol": "customEnvVars",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 11,
+      "symbol": "setOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 41,
+      "symbol": "deleteOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 160,
+      "symbol": "listCustomEnvVars",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 164,
+      "symbol": "createCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 177,
+      "symbol": "updateCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 213,
+      "symbol": "deleteCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 82,
+      "symbol": "EnvRowProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 88,
+      "symbol": "EnvRow",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 214,
+      "symbol": "EnvVarsSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/env-vars.ts",
+      "line": 1,
+      "symbol": "CustomEnvVar",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/env-vars.ts",
+      "line": 9,
+      "symbol": "EnvVarsRequests",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 73,
+      "symbol": "EnvVarsRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 73,
+      "symbol": "CustomEnvVar",
+      "type": "export"
     }
   ],
   "platform": [
@@ -20774,7 +21022,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 91,
+      "line": 95,
       "symbol": "runMigrations",
       "type": "function"
     },
@@ -20925,6 +21173,12 @@
     {
       "file": "src/bun/db/migrations/v31_issue-fixer-notify-enabled.ts",
       "line": 7,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v32_custom-env-vars.ts",
+      "line": 5,
       "symbol": "run",
       "type": "function"
     },
@@ -21200,13 +21454,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
@@ -22043,6 +22297,12 @@
       "line": 10,
       "symbol": "KanbanIntegrationCallbacks",
       "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc-groups/setting-callbacks.ts",
+      "line": 8,
+      "symbol": "settingChangeCallbacks",
+      "type": "export"
     }
   ],
   "options": [
@@ -23322,7 +23582,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 257,
+      "line": 258,
       "symbol": "onToolCall",
       "type": "function"
     },
@@ -23398,7 +23658,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 762,
+      "line": 772,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -23518,25 +23778,25 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
@@ -23792,7 +24052,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "NotesRequests",
       "type": "export"
     },
@@ -24498,7 +24758,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
@@ -25394,7 +25654,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "KanbanRequests",
       "type": "export"
     },
@@ -25592,13 +25852,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 418,
+      "line": 419,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 430,
+      "line": 431,
       "symbol": "handleClear",
       "type": "function"
     },
@@ -26691,6 +26951,30 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 23,
+      "symbol": "AddRowProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 27,
+      "symbol": "AddRow",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 82,
+      "symbol": "EnvRowProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 88,
+      "symbol": "EnvRow",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/settings/general.tsx",
       "line": 183,
       "symbol": "FieldRowProps",
@@ -27764,7 +28048,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceListingDto",
       "type": "export"
     }
@@ -27896,7 +28180,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "SkillsRequests",
       "type": "export"
     },
@@ -29086,19 +29370,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
@@ -29168,7 +29452,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 245,
+      "line": 246,
       "symbol": "onChunk",
       "type": "function"
     },
@@ -30226,7 +30510,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
@@ -30779,6 +31063,12 @@
       "line": 116,
       "symbol": "processBuffer",
       "type": "method"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
+      "type": "function"
     },
     {
       "file": "src/mainview/components/chat/chat-input.tsx",
@@ -31703,6 +31993,54 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc-groups/agents-kanban-notes.ts",
+      "line": 7,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/channels-inbox-scheduler.ts",
+      "line": 11,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/conversations-control.ts",
+      "line": 11,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/features.ts",
+      "line": 10,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/git-analytics.ts",
+      "line": 13,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/plugins-tools.ts",
+      "line": 12,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/projects-system.ts",
+      "line": 11,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc-groups/settings-providers.ts",
+      "line": 15,
+      "symbol": "handlers",
+      "type": "export"
+    },
+    {
       "file": "src/mainview/stores/chat-event-handlers.ts",
       "line": 655,
       "symbol": "initChatEventHandlers",
@@ -32011,30 +32349,6 @@
       "type": "function"
     }
   ],
-  "migration": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 50,
-      "symbol": "Migration",
-      "type": "interface"
-    }
-  ],
-  "migrations": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 91,
-      "symbol": "runMigrations",
-      "type": "function"
-    }
-  ],
-  "runtime": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 153,
-      "symbol": "ensureRuntimeSchema",
-      "type": "function"
-    }
-  ],
   "settings": [
     {
       "file": "src/bun/db/schema.ts",
@@ -32242,7 +32556,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 45,
+      "line": 46,
       "symbol": "SettingsPage",
       "type": "function"
     },
@@ -32292,6 +32606,12 @@
       "file": "src/mainview/pages/settings/email-settings.tsx",
       "line": 629,
       "symbol": "EmailSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 214,
+      "symbol": "EnvVarsSettings",
       "type": "function"
     },
     {
@@ -32356,7 +32676,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "SettingsRequests",
       "type": "export"
     },
@@ -32382,7 +32702,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ProjectsRequests",
       "type": "export"
     },
@@ -32432,7 +32752,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ConversationsRequests",
       "type": "export"
     }
@@ -32498,7 +32818,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PluginsRequests",
       "type": "export"
     },
@@ -32578,7 +32898,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "DeployRequests",
       "type": "export"
     }
@@ -33217,6 +33537,12 @@
       "type": "type"
     },
     {
+      "file": "src/shared/rpc/env-vars.ts",
+      "line": 9,
+      "symbol": "EnvVarsRequests",
+      "type": "type"
+    },
+    {
       "file": "src/shared/rpc/freelance.ts",
       "line": 47,
       "symbol": "FreelanceRequests",
@@ -33236,152 +33562,158 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 36,
+      "line": 37,
       "symbol": "BunRequests",
       "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "SettingsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ProvidersRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ProjectsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ConversationsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "AgentsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "KanbanRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "NotesRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "DeployRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "GitRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IntegrationsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "InboxRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "AnalyticsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "SystemRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PluginsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "LspRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "DashboardRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "SkillsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "CouncilRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "UpdaterRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PlaygroundRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "ActivityRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 73,
+      "symbol": "EnvVarsRequests",
       "type": "export"
     },
     {
@@ -33912,19 +34244,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
@@ -34070,13 +34402,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
@@ -34168,7 +34500,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
@@ -34230,7 +34562,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 762,
+      "line": 772,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -34544,7 +34876,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     }
@@ -34564,7 +34896,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 762,
+      "line": 772,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -34804,31 +35136,31 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
@@ -34994,6 +35326,18 @@
       "file": "src/bun/rpc/email.ts",
       "line": 58,
       "symbol": "deleteEmailConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 41,
+      "symbol": "deleteOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 213,
+      "symbol": "deleteCustomEnvVar",
       "type": "function"
     },
     {
@@ -35923,6 +36267,12 @@
       "type": "interface"
     },
     {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 150,
+      "symbol": "toDto",
+      "type": "function"
+    },
+    {
       "file": "src/shared/rpc/freelance.ts",
       "line": 3,
       "symbol": "FreelanceChatMessageDto",
@@ -35936,49 +36286,49 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceListingDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
@@ -36486,7 +36836,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
@@ -37102,7 +37452,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "LspRequests",
       "type": "export"
     },
@@ -37494,13 +37844,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 36,
+      "line": 37,
       "symbol": "BunRequests",
       "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "BunMessages",
       "type": "export"
     },
@@ -38346,13 +38696,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PlaygroundRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
@@ -40513,6 +40863,12 @@
       "line": 216,
       "symbol": "upsertManifestItem",
       "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 80,
+      "symbol": "upsertShellProfileLine",
+      "type": "function"
     }
   ],
   "encrypted": [
@@ -40952,7 +41308,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
@@ -41340,7 +41696,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     }
@@ -41532,7 +41888,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "AnalyticsRequests",
       "type": "export"
     }
@@ -41958,7 +42314,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "DashboardRequests",
       "type": "export"
     }
@@ -42250,7 +42606,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 45,
+      "line": 46,
       "symbol": "SettingsPage",
       "type": "function"
     },
@@ -42842,7 +43198,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "IntegrationsRequests",
       "type": "export"
     },
@@ -44461,6 +44817,18 @@
       "type": "interface"
     },
     {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 23,
+      "symbol": "AddRowProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 82,
+      "symbol": "EnvRowProps",
+      "type": "interface"
+    },
+    {
       "file": "src/mainview/pages/settings/general.tsx",
       "line": 183,
       "symbol": "FieldRowProps",
@@ -45548,7 +45916,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 20,
+      "line": 21,
       "symbol": "SubTabs",
       "type": "function"
     }
@@ -46496,7 +46864,7 @@
   "complete": [
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 266,
+      "line": 267,
       "symbol": "onComplete",
       "type": "function"
     },
@@ -46994,7 +47362,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 20,
+      "line": 21,
       "symbol": "SubTabs",
       "type": "function"
     }
@@ -47219,6 +47587,18 @@
   ],
   "line": [
     {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 80,
+      "symbol": "upsertShellProfileLine",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 108,
+      "symbol": "removeShellProfileLine",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/analytics/charts.tsx",
       "line": 28,
       "symbol": "LineChartProps",
@@ -47322,7 +47702,7 @@
   "updater": [
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "UpdaterRequests",
       "type": "export"
     },
@@ -48682,13 +49062,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 220,
+      "line": 221,
       "symbol": "onMouseDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 418,
+      "line": 419,
       "symbol": "handleKeyDown",
       "type": "function"
     },
@@ -48744,7 +49124,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 220,
+      "line": 221,
       "symbol": "onMouseDown",
       "type": "function"
     },
@@ -51959,14 +52339,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 301,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "processing": [
     {
       "file": "src/bun/agents/engine.ts",
@@ -52131,46 +52503,6 @@
       "line": 402,
       "symbol": "readSurgeNetrc",
       "type": "function"
-    }
-  ],
-  "channels": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 274,
-      "symbol": "channels",
-      "type": "export"
-    }
-  ],
-  "whatsapp": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "sessions": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "strategies": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 576,
-      "symbol": "branchStrategies",
-      "type": "export"
-    }
-  ],
-  "budgets": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 597,
-      "symbol": "costBudgets",
-      "type": "export"
     }
   ],
   "purge": [
@@ -52429,28 +52761,6 @@
       "type": "function"
     }
   ],
-  "zoom": [
-    {
-      "file": "src/mainview/lib/use-conv-font-size.ts",
-      "line": 23,
-      "symbol": "zoomIn",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/lib/use-conv-font-size.ts",
-      "line": 24,
-      "symbol": "zoomOut",
-      "type": "function"
-    }
-  ],
-  "out": [
-    {
-      "file": "src/mainview/lib/use-conv-font-size.ts",
-      "line": 24,
-      "symbol": "zoomOut",
-      "type": "function"
-    }
-  ],
   "previews": [
     {
       "file": "src/mainview/components/chat/message-bubble.tsx",
@@ -52519,26 +52829,6 @@
       "type": "function"
     }
   ],
-  "storage": [
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 87,
-      "symbol": "sessionStorageKey",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 88,
-      "symbol": "messagesStorageKey",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
-      "line": 89,
-      "symbol": "unreadStorageKey",
-      "type": "function"
-    }
-  ],
   "widget": [
     {
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
@@ -52556,6 +52846,240 @@
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
       "line": 144,
       "symbol": "PmChatWidget",
+      "type": "function"
+    }
+  ],
+  "titlebar": [
+    {
+      "file": "src/bun/index.ts",
+      "line": 373,
+      "symbol": "setWindowTitlebarIcon",
+      "type": "function"
+    }
+  ],
+  "wide": [
+    {
+      "file": "src/bun/index.ts",
+      "line": 382,
+      "symbol": "toWide",
+      "type": "function"
+    }
+  ],
+  "migration": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 52,
+      "symbol": "Migration",
+      "type": "interface"
+    }
+  ],
+  "migrations": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 95,
+      "symbol": "runMigrations",
+      "type": "function"
+    }
+  ],
+  "runtime": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 157,
+      "symbol": "ensureRuntimeSchema",
+      "type": "function"
+    }
+  ],
+  "channels": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 274,
+      "symbol": "channels",
+      "type": "export"
+    }
+  ],
+  "whatsapp": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "sessions": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "strategies": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 576,
+      "symbol": "branchStrategies",
+      "type": "export"
+    }
+  ],
+  "budgets": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 597,
+      "symbol": "costBudgets",
+      "type": "export"
+    }
+  ],
+  "vars": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 762,
+      "symbol": "customEnvVars",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 160,
+      "symbol": "listCustomEnvVars",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/env-vars.tsx",
+      "line": 214,
+      "symbol": "EnvVarsSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/env-vars.ts",
+      "line": 9,
+      "symbol": "EnvVarsRequests",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 73,
+      "symbol": "EnvVarsRequests",
+      "type": "export"
+    }
+  ],
+  "os": [
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 11,
+      "symbol": "setOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 41,
+      "symbol": "deleteOsEnvVar",
+      "type": "function"
+    }
+  ],
+  "var": [
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 11,
+      "symbol": "setOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 41,
+      "symbol": "deleteOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 164,
+      "symbol": "createCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 177,
+      "symbol": "updateCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 213,
+      "symbol": "deleteCustomEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/env-vars.ts",
+      "line": 1,
+      "symbol": "CustomEnvVar",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 73,
+      "symbol": "CustomEnvVar",
+      "type": "export"
+    }
+  ],
+  "into": [
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 301,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "zoom": [
+    {
+      "file": "src/mainview/lib/use-conv-font-size.ts",
+      "line": 23,
+      "symbol": "zoomIn",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/lib/use-conv-font-size.ts",
+      "line": 24,
+      "symbol": "zoomOut",
+      "type": "function"
+    }
+  ],
+  "out": [
+    {
+      "file": "src/mainview/lib/use-conv-font-size.ts",
+      "line": 24,
+      "symbol": "zoomOut",
+      "type": "function"
+    }
+  ],
+  "storage": [
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 87,
+      "symbol": "sessionStorageKey",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 88,
+      "symbol": "messagesStorageKey",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
+      "line": 89,
+      "symbol": "unreadStorageKey",
       "type": "function"
     }
   ]

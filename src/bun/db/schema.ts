@@ -757,6 +757,16 @@ export const remoteSyncItems = sqliteTable("remote_sync_items", {
 });
 
 // ---------------------------------------------------------------------------
+// custom_env_vars — user-defined environment variables managed from Settings
+// ---------------------------------------------------------------------------
+export const customEnvVars = sqliteTable("custom_env_vars", {
+	id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	name:      text("name").notNull().unique(),
+	value:     text("value").notNull(),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // remote_sync_runs — history/log of remote-sync operations (Activity tab)
 // ---------------------------------------------------------------------------
 export const remoteSyncRuns = sqliteTable("remote_sync_runs", {

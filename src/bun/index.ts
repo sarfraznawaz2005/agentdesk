@@ -32,6 +32,7 @@ import { shutdownPreviewWindow } from "./annotations/preview-window";
 import { startPlaygroundServer, shutdownPlaygroundServer } from "./playground/server";
 import { shutdownPlayground } from "./playground/orchestrator";
 import { isFreelanceEnabled } from "./freelance/feature-flag";
+import { loadCustomEnvVarsIntoProcess } from "./rpc/env-vars";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -139,6 +140,7 @@ initGlobalErrorHandlers();
 // ---------------------------------------------------------------------------
 runMigrations();
 await seedDatabase();
+await loadCustomEnvVarsIntoProcess();
 
 export const FREELANCE_ENABLED = isFreelanceEnabled();
 if (FREELANCE_ENABLED) {

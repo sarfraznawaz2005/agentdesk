@@ -30,6 +30,8 @@ import * as v27 from "./migrations/v27_issue-fixer-tables";
 import * as v28 from "./migrations/v28_project-activity";
 import * as v29 from "./migrations/v29_remote-sync-tables";
 import * as v30 from "./migrations/v30_remote-sync-security-excludes";
+import * as v31 from "./migrations/v31_issue-fixer-notify-enabled";
+import * as v32 from "./migrations/v32_custom-env-vars";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -84,6 +86,8 @@ const migrations: Migration[] = [
 	{ version: 28, name: v28.name, run: v28.run },
 	{ version: 29, name: v29.name, run: v29.run },
 	{ version: 30, name: v30.name, run: v30.run },
+	{ version: 31, name: v31.name, run: v31.run },
+	{ version: 32, name: v32.name, run: v32.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -174,6 +178,13 @@ function ensureRuntimeSchema(): void {
 		v30.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: remote-sync security/excludes columns failed:", err);
+	}
+
+	// Defensive: ensure custom_env_vars table exists (v32 is CREATE TABLE IF NOT EXISTS).
+	try {
+		v32.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: custom-env-vars table failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;
