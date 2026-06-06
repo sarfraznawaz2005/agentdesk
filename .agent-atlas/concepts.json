@@ -1160,7 +1160,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 212,
+      "line": 223,
       "symbol": "deleteAllListings",
       "type": "function"
     },
@@ -1208,7 +1208,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 247,
+      "line": 260,
       "symbol": "handleDeleteAll",
       "type": "function"
     },
@@ -2227,14 +2227,20 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 128,
+      "symbol": "getCurrencyRates",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/settings.ts",
-      "line": 62,
+      "line": 66,
       "symbol": "getFreelanceSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 70,
+      "line": 74,
       "symbol": "get",
       "type": "function"
     },
@@ -2684,25 +2690,31 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 18,
+      "line": 19,
       "symbol": "getFeatureEnabled",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 23,
+      "line": 24,
       "symbol": "getSettings",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 55,
+      "line": 58,
+      "symbol": "getCurrencyRatesHandler",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance.ts",
+      "line": 66,
       "symbol": "getListings",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 133,
+      "line": 144,
       "symbol": "getListingCounts",
       "type": "function"
     },
@@ -3206,7 +3218,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 92,
+      "line": 163,
       "symbol": "getPlatformColor",
       "type": "function"
     },
@@ -3280,6 +3292,18 @@
       "file": "src/mainview/pages/settings/notification-settings.tsx",
       "line": 68,
       "symbol": "getMuteValue",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 159,
+      "symbol": "getCurrencySymbol",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 164,
+      "symbol": "getCurrencyLabel",
       "type": "function"
     },
     {
@@ -5591,6 +5615,12 @@
       "type": "method"
     },
     {
+      "file": "src/bun/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "getCurrencyRatesHandler",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/lsp.ts",
       "line": 70,
       "symbol": "installLspServerHandler",
@@ -5694,13 +5724,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 143,
+      "line": 156,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 151,
+      "line": 164,
       "symbol": "handler",
       "type": "function"
     },
@@ -6418,7 +6448,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 43,
+      "line": 45,
       "symbol": "SettingsState",
       "type": "interface"
     },
@@ -7233,6 +7263,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 32,
+      "symbol": "loadFromDb",
+      "type": "function"
+    },
+    {
       "file": "src/bun/index.ts",
       "line": 55,
       "symbol": "loadWindowState",
@@ -7306,7 +7342,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 103,
+      "line": 213,
       "symbol": "load",
       "type": "function"
     },
@@ -7403,8 +7439,14 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 51,
+      "symbol": "saveToDb",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/settings.ts",
-      "line": 92,
+      "line": 97,
       "symbol": "saveFreelanceSetting",
       "type": "function"
     },
@@ -7458,7 +7500,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 28,
+      "line": 29,
       "symbol": "saveSettings",
       "type": "function"
     },
@@ -7714,7 +7756,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 401,
+      "line": 476,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -7874,13 +7916,13 @@
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 62,
+      "line": 66,
       "symbol": "getFreelanceSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 92,
+      "line": 97,
       "symbol": "saveFreelanceSetting",
       "type": "function"
     },
@@ -7910,13 +7952,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 270,
+      "line": 341,
       "symbol": "FreelanceListingCardProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 285,
+      "line": 358,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -8038,7 +8080,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 18,
+      "line": 19,
       "symbol": "getFeatureEnabled",
       "type": "function"
     },
@@ -8160,7 +8202,7 @@
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 92,
+      "line": 97,
       "symbol": "saveFreelanceSetting",
       "type": "function"
     },
@@ -8324,13 +8366,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 261,
+      "line": 274,
       "symbol": "handleFilterChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 266,
+      "line": 279,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -8580,7 +8622,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 427,
+      "line": 511,
       "symbol": "onError",
       "type": "function"
     },
@@ -11485,6 +11527,36 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 32,
+      "symbol": "loadFromDb",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 69,
+      "symbol": "fetchFromFawazahmed0Primary",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 79,
+      "symbol": "fetchFromFawazahmed0Cloudflare",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 89,
+      "symbol": "fetchFromFrankfurter",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 103,
+      "symbol": "fetchRatesFromNetwork",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/github.ts",
       "line": 79,
       "symbol": "issueNumberFromUrl",
@@ -11596,7 +11668,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 174,
+      "line": 187,
       "symbol": "handleFetchNow",
       "type": "function"
     },
@@ -11642,7 +11714,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 31,
+      "line": 61,
       "symbol": "formatFullDate",
       "type": "function"
     },
@@ -11680,7 +11752,7 @@
   "time": [
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 18,
+      "line": 48,
       "symbol": "relativeTime",
       "type": "function"
     },
@@ -11957,6 +12029,18 @@
       "line": 7,
       "symbol": "db",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 32,
+      "symbol": "loadFromDb",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 51,
+      "symbol": "saveToDb",
+      "type": "function"
     },
     {
       "file": "src/bun/rpc/backup.ts",
@@ -14314,7 +14398,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 37,
+      "line": 39,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -16258,13 +16342,13 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 352,
+      "line": 427,
       "symbol": "FindWorkableModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 358,
+      "line": 433,
       "symbol": "FindWorkableModal",
       "type": "function"
     }
@@ -17165,6 +17249,24 @@
       "line": 158,
       "symbol": "convert_to_images",
       "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 178,
+      "symbol": "convertAmount",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 32,
+      "symbol": "convertAmount",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 23,
+      "symbol": "convertAmount",
+      "type": "function"
     }
   ],
   "validation": [
@@ -17294,7 +17396,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 31,
+      "line": 61,
       "symbol": "formatFullDate",
       "type": "function"
     },
@@ -17386,6 +17488,12 @@
       "file": "src/mainview/pages/plugins.tsx",
       "line": 16,
       "symbol": "PluginInfo",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 5,
+      "symbol": "CurrencyInfo",
       "type": "interface"
     }
   ],
@@ -18488,7 +18596,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 31,
+      "line": 33,
       "symbol": "RssSource",
       "type": "interface"
     },
@@ -19419,6 +19527,12 @@
       "line": 118,
       "symbol": "providerTypeLabel",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 164,
+      "symbol": "getCurrencyLabel",
+      "type": "function"
     }
   ],
   "build": [
@@ -19666,6 +19780,18 @@
       "file": "src/mainview/components/chat/plan-diff.tsx",
       "line": 58,
       "symbol": "buildDiff",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 51,
+      "symbol": "buildBudgetDisplay",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 83,
+      "symbol": "buildBudgetDisplay",
       "type": "function"
     },
     {
@@ -20299,10 +20425,34 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 26,
+      "symbol": "BudgetDisplay",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 51,
+      "symbol": "buildBudgetDisplay",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
       "line": 75,
       "symbol": "DisplayMessage",
       "type": "type"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 77,
+      "symbol": "BudgetDisplay",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 83,
+      "symbol": "buildBudgetDisplay",
+      "type": "function"
     },
     {
       "file": "src/mainview/lib/utils.ts",
@@ -20490,19 +20640,19 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 92,
+      "line": 163,
       "symbol": "getPlatformColor",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 99,
+      "line": 170,
       "symbol": "PlatformBadge",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 401,
+      "line": 476,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -21400,7 +21550,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 206,
+      "line": 318,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -22560,7 +22710,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 261,
+      "line": 274,
       "symbol": "handleFilterChange",
       "type": "function"
     },
@@ -22914,7 +23064,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 219,
+      "line": 280,
       "symbol": "ResultsStep",
       "type": "function"
     }
@@ -24520,14 +24670,26 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 25,
-      "symbol": "formatBudget",
+      "line": 26,
+      "symbol": "BudgetDisplay",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 51,
+      "symbol": "buildBudgetDisplay",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 47,
-      "symbol": "formatBudget",
+      "line": 77,
+      "symbol": "BudgetDisplay",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 83,
+      "symbol": "buildBudgetDisplay",
       "type": "function"
     }
   ],
@@ -25224,7 +25386,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 433,
+      "line": 517,
       "symbol": "onStopped",
       "type": "function"
     },
@@ -25298,7 +25460,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 317,
+      "line": 392,
       "symbol": "onActive",
       "type": "function"
     },
@@ -25930,62 +26092,68 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 355,
+      "line": 430,
       "symbol": "handleApprove",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 364,
+      "line": 439,
       "symbol": "handleShortlist",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 374,
+      "line": 449,
       "symbol": "handleMarkDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 384,
+      "line": 459,
       "symbol": "handleAnalyze",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 391,
+      "line": 466,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 401,
+      "line": 476,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 174,
+      "line": 187,
       "symbol": "handleFetchNow",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 247,
+      "line": 260,
       "symbol": "handleDeleteAll",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 261,
+      "line": 274,
       "symbol": "handleFilterChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 266,
+      "line": 279,
       "symbol": "handleSearchChange",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/settings-tab.tsx",
+      "line": 117,
+      "symbol": "handle",
       "type": "function"
     },
     {
@@ -26862,7 +27030,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 184,
+      "line": 245,
       "symbol": "FailedListingRow",
       "type": "function"
     },
@@ -27068,7 +27236,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 236,
+      "line": 247,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -27493,6 +27661,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 197,
+      "symbol": "invalidateMemCache",
+      "type": "function"
+    },
+    {
       "file": "src/bun/providers/models.ts",
       "line": 63,
       "symbol": "clearContextLimitCache",
@@ -27586,6 +27760,12 @@
       "file": "src/bun/agents/tools/preview.ts",
       "line": 47,
       "symbol": "invalidateSavedConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 197,
+      "symbol": "invalidateMemCache",
       "type": "function"
     }
   ],
@@ -27976,43 +28156,43 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 133,
+      "line": 144,
       "symbol": "getListingCounts",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 157,
+      "line": 168,
       "symbol": "markListingDone",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 185,
+      "line": 196,
       "symbol": "deleteListing",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 257,
+      "line": 268,
       "symbol": "approveListing",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 184,
+      "line": 245,
       "symbol": "FailedListingRow",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 270,
+      "line": 341,
       "symbol": "FreelanceListingCardProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 285,
+      "line": 358,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -28402,7 +28582,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 18,
+      "line": 19,
       "symbol": "getFeatureEnabled",
       "type": "function"
     },
@@ -29214,7 +29394,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 40,
+      "line": 101,
       "symbol": "ConfigStep",
       "type": "function"
     },
@@ -30657,26 +30837,14 @@
       "type": "function"
     },
     {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 25,
-      "symbol": "formatBudget",
-      "type": "function"
-    },
-    {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 31,
+      "line": 61,
       "symbol": "formatFullDate",
       "type": "function"
     },
     {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 47,
-      "symbol": "formatBudget",
-      "type": "function"
-    },
-    {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 206,
+      "line": 318,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -30757,6 +30925,30 @@
       "type": "method"
     },
     {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 69,
+      "symbol": "fetchFromFawazahmed0Primary",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 79,
+      "symbol": "fetchFromFawazahmed0Cloudflare",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 89,
+      "symbol": "fetchFromFrankfurter",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 103,
+      "symbol": "fetchRatesFromNetwork",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/fetcher.ts",
       "line": 46,
       "symbol": "fetchAllPlatforms",
@@ -30806,7 +30998,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 236,
+      "line": 247,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -30824,7 +31016,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 174,
+      "line": 187,
       "symbol": "handleFetchNow",
       "type": "function"
     },
@@ -31152,7 +31344,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 157,
+      "line": 168,
       "symbol": "markListingDone",
       "type": "function"
     },
@@ -31170,13 +31362,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 321,
+      "line": 396,
       "symbol": "onDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 374,
+      "line": 449,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -32338,7 +32530,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 206,
+      "line": 318,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -32364,7 +32556,7 @@
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 62,
+      "line": 66,
       "symbol": "getFreelanceSettings",
       "type": "function"
     },
@@ -32418,13 +32610,13 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 23,
+      "line": 24,
       "symbol": "getSettings",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 28,
+      "line": 29,
       "symbol": "saveSettings",
       "type": "function"
     },
@@ -32478,13 +32670,13 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 43,
+      "line": 45,
       "symbol": "SettingsState",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 89,
+      "line": 199,
       "symbol": "SettingsTab",
       "type": "function"
     },
@@ -34706,13 +34898,13 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 55,
+      "line": 66,
       "symbol": "getListings",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 212,
+      "line": 223,
       "symbol": "deleteAllListings",
       "type": "function"
     },
@@ -35342,13 +35534,13 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 185,
+      "line": 196,
       "symbol": "deleteListing",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 212,
+      "line": 223,
       "symbol": "deleteAllListings",
       "type": "function"
     },
@@ -35486,13 +35678,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 391,
+      "line": 466,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 247,
+      "line": 260,
       "symbol": "handleDeleteAll",
       "type": "function"
     },
@@ -35884,7 +36076,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 31,
+      "line": 33,
       "symbol": "RssSource",
       "type": "interface"
     }
@@ -36018,13 +36210,13 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 14,
+      "line": 15,
       "symbol": "ProgressItem",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 37,
+      "line": 39,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -36497,6 +36689,12 @@
       "line": 37,
       "symbol": "DirtyMap",
       "type": "type"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 154,
+      "symbol": "CURRENCY_MAP",
+      "type": "export"
     }
   ],
   "recent": [
@@ -38189,6 +38387,12 @@
       "line": 375,
       "symbol": "symbolKindLabel",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 159,
+      "symbol": "getCurrencySymbol",
+      "type": "function"
     }
   ],
   "folder": [
@@ -39054,7 +39258,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 89,
+      "line": 199,
       "symbol": "SettingsTab",
       "type": "function"
     },
@@ -40496,7 +40700,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 141,
+      "line": 212,
       "symbol": "code",
       "type": "method"
     },
@@ -40766,7 +40970,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 184,
+      "line": 245,
       "symbol": "FailedListingRow",
       "type": "function"
     },
@@ -40858,6 +41062,12 @@
     }
   ],
   "upsert": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 53,
+      "symbol": "upsert",
+      "type": "function"
+    },
     {
       "file": "src/bun/remote-sync/config.ts",
       "line": 216,
@@ -41716,7 +41926,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 157,
+      "line": 168,
       "symbol": "markListingDone",
       "type": "function"
     },
@@ -41746,7 +41956,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 374,
+      "line": 449,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -41824,6 +42034,12 @@
     }
   ],
   "day": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 19,
+      "symbol": "isSameCalendarDay",
+      "type": "function"
+    },
     {
       "file": "src/bun/rpc/analytics.ts",
       "line": 14,
@@ -42696,7 +42912,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 175,
+      "line": 246,
       "symbol": "AnalysisModal",
       "type": "function"
     }
@@ -42728,7 +42944,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 12,
+      "line": 13,
       "symbol": "WizardStep",
       "type": "type"
     },
@@ -42766,7 +42982,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 384,
+      "line": 459,
       "symbol": "handleAnalyze",
       "type": "function"
     }
@@ -42818,7 +43034,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 364,
+      "line": 439,
       "symbol": "handleShortlist",
       "type": "function"
     }
@@ -42844,7 +43060,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 133,
+      "line": 144,
       "symbol": "getListingCounts",
       "type": "function"
     },
@@ -42864,7 +43080,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 257,
+      "line": 268,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -42876,7 +43092,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 355,
+      "line": 430,
       "symbol": "handleApprove",
       "type": "function"
     }
@@ -43316,7 +43532,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 266,
+      "line": 279,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -43918,7 +44134,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 112,
+      "line": 183,
       "symbol": "SkillChips",
       "type": "function"
     },
@@ -44332,7 +44548,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 352,
+      "line": 427,
       "symbol": "FindWorkableModalProps",
       "type": "interface"
     },
@@ -44350,7 +44566,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 270,
+      "line": 341,
       "symbol": "FreelanceListingCardProps",
       "type": "interface"
     },
@@ -44888,7 +45104,7 @@
   "relative": [
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 18,
+      "line": 48,
       "symbol": "relativeTime",
       "type": "function"
     },
@@ -45092,7 +45308,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 92,
+      "line": 163,
       "symbol": "getPlatformColor",
       "type": "function"
     },
@@ -45488,13 +45704,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 270,
+      "line": 341,
       "symbol": "FreelanceListingCardProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 285,
+      "line": 358,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -45923,6 +46139,18 @@
   ],
   "fmt": [
     {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 47,
+      "symbol": "fmt",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 38,
+      "symbol": "fmtNum",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/remote-sync/push-diff-dialog.tsx",
       "line": 19,
       "symbol": "fmtBytes",
@@ -46248,7 +46476,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 99,
+      "line": 170,
       "symbol": "PlatformBadge",
       "type": "function"
     },
@@ -46568,25 +46796,25 @@
   "step": [
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 12,
+      "line": 13,
       "symbol": "WizardStep",
       "type": "type"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 40,
+      "line": 101,
       "symbol": "ConfigStep",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 96,
+      "line": 157,
       "symbol": "AnalyzingStep",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 219,
+      "line": 280,
       "symbol": "ResultsStep",
       "type": "function"
     },
@@ -46876,7 +47104,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 416,
+      "line": 500,
       "symbol": "onComplete",
       "type": "function"
     },
@@ -47656,13 +47884,13 @@
   "progress": [
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 14,
+      "line": 15,
       "symbol": "ProgressItem",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 392,
+      "line": 476,
       "symbol": "onProgress",
       "type": "function"
     },
@@ -47676,26 +47904,6 @@
       "file": "src/mainview/stores/remote-sync-store.ts",
       "line": 68,
       "symbol": "ProgressDetail",
-      "type": "interface"
-    }
-  ],
-  "workable": [
-    {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 352,
-      "symbol": "FindWorkableModalProps",
-      "type": "interface"
-    },
-    {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 358,
-      "symbol": "FindWorkableModal",
-      "type": "function"
-    },
-    {
-      "file": "src/shared/rpc/freelance.ts",
-      "line": 31,
-      "symbol": "WizardWorkableListing",
       "type": "interface"
     }
   ],
@@ -49430,7 +49638,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 95,
+      "line": 108,
       "symbol": "onScroll",
       "type": "function"
     },
@@ -49713,24 +49921,16 @@
       "type": "function"
     }
   ],
-  "analyzing": [
-    {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 96,
-      "symbol": "AnalyzingStep",
-      "type": "function"
-    }
-  ],
   "modal": [
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 352,
+      "line": 427,
       "symbol": "FindWorkableModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 358,
+      "line": 433,
       "symbol": "FindWorkableModal",
       "type": "function"
     },
@@ -49748,7 +49948,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 175,
+      "line": 246,
       "symbol": "AnalysisModal",
       "type": "function"
     },
@@ -49846,14 +50046,6 @@
       "file": "src/mainview/components/layout/app-shell.tsx",
       "line": 251,
       "symbol": "onBlur",
-      "type": "function"
-    }
-  ],
-  "chips": [
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 112,
-      "symbol": "SkillChips",
       "type": "function"
     }
   ],
@@ -53033,14 +53225,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 301,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "zoom": [
     {
       "file": "src/mainview/lib/use-conv-font-size.ts",
@@ -53080,6 +53264,230 @@
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
       "line": 89,
       "symbol": "unreadStorageKey",
+      "type": "function"
+    }
+  ],
+  "currency": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 128,
+      "symbol": "getCurrencyRates",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "getCurrencyRatesHandler",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/settings-tab.tsx",
+      "line": 93,
+      "symbol": "CurrencyCombobox",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 5,
+      "symbol": "CurrencyInfo",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 154,
+      "symbol": "CURRENCY_MAP",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 159,
+      "symbol": "getCurrencySymbol",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 164,
+      "symbol": "getCurrencyLabel",
+      "type": "function"
+    }
+  ],
+  "currencies": [
+    {
+      "file": "src/shared/freelance-currencies.ts",
+      "line": 149,
+      "symbol": "CURRENCIES",
+      "type": "export"
+    }
+  ],
+  "today": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 15,
+      "symbol": "todayUtc",
+      "type": "function"
+    }
+  ],
+  "utc": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 15,
+      "symbol": "todayUtc",
+      "type": "function"
+    }
+  ],
+  "same": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 19,
+      "symbol": "isSameCalendarDay",
+      "type": "function"
+    }
+  ],
+  "calendar": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 19,
+      "symbol": "isSameCalendarDay",
+      "type": "function"
+    }
+  ],
+  "fawazahmed0primary": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 69,
+      "symbol": "fetchFromFawazahmed0Primary",
+      "type": "function"
+    }
+  ],
+  "fawazahmed0cloudflare": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 79,
+      "symbol": "fetchFromFawazahmed0Cloudflare",
+      "type": "function"
+    }
+  ],
+  "frankfurter": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 89,
+      "symbol": "fetchFromFrankfurter",
+      "type": "function"
+    }
+  ],
+  "rates": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 103,
+      "symbol": "fetchRatesFromNetwork",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 128,
+      "symbol": "getCurrencyRates",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "getCurrencyRatesHandler",
+      "type": "function"
+    }
+  ],
+  "network": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 103,
+      "symbol": "fetchRatesFromNetwork",
+      "type": "function"
+    }
+  ],
+  "amount": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 178,
+      "symbol": "convertAmount",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 32,
+      "symbol": "convertAmount",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 23,
+      "symbol": "convertAmount",
+      "type": "function"
+    }
+  ],
+  "mem": [
+    {
+      "file": "src/bun/freelance/currency-exchange.ts",
+      "line": 197,
+      "symbol": "invalidateMemCache",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 301,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "workable": [
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 427,
+      "symbol": "FindWorkableModalProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 433,
+      "symbol": "FindWorkableModal",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 31,
+      "symbol": "WizardWorkableListing",
+      "type": "interface"
+    }
+  ],
+  "analyzing": [
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 157,
+      "symbol": "AnalyzingStep",
+      "type": "function"
+    }
+  ],
+  "num": [
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 38,
+      "symbol": "fmtNum",
+      "type": "function"
+    }
+  ],
+  "chips": [
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 183,
+      "symbol": "SkillChips",
+      "type": "function"
+    }
+  ],
+  "combobox": [
+    {
+      "file": "src/mainview/components/freelance/settings-tab.tsx",
+      "line": 93,
+      "symbol": "CurrencyCombobox",
       "type": "function"
     }
   ]

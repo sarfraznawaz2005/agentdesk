@@ -22,6 +22,8 @@ export interface FreelanceSettings {
   // null = use default global AI provider
   analysisProviderId: string | null;
   additionalNotes: string;
+  // ISO 4217 currency code — used to show converted amounts on listings
+  preferredCurrency: string;
 }
 
 const DEFAULT_RSS_SOURCES: RssSource[] = [
@@ -42,6 +44,7 @@ const DEFAULTS: FreelanceSettings = {
   autoShortlistLastCount: 0,
   analysisProviderId: null,
   additionalNotes: "",
+  preferredCurrency: "USD",
 };
 
 const KEYS: Record<keyof FreelanceSettings, string> = {
@@ -57,6 +60,7 @@ const KEYS: Record<keyof FreelanceSettings, string> = {
   autoShortlistLastCount: "freelance_auto_shortlist_last_count",
   analysisProviderId: "freelance_analysis_provider_id",
   additionalNotes: "freelance_additional_notes",
+  preferredCurrency: "freelance_preferred_currency",
 };
 
 export async function getFreelanceSettings(): Promise<FreelanceSettings> {
@@ -86,6 +90,7 @@ export async function getFreelanceSettings(): Promise<FreelanceSettings> {
     autoShortlistLastCount: get("autoShortlistLastCount"),
     analysisProviderId: get("analysisProviderId"),
     additionalNotes: get("additionalNotes"),
+    preferredCurrency: get("preferredCurrency"),
   };
 }
 

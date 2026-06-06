@@ -1350,6 +1350,7 @@ export const rpc = {
     autoShortlistOnStartup: boolean;
     analysisProviderId: string | null;
     additionalNotes: string;
+    preferredCurrency: string;
   }) => electroviewRpc.request["freelance.saveSettings"](params),
 
   /** Get counts for each listing filter tab. */
@@ -1415,4 +1416,8 @@ export const rpc = {
   /** Mark an approved listing as done (closed). */
   freelanceMarkListingDone: (listingId: string) =>
     electroviewRpc.request["freelance.markListingDone"]({ listingId }),
+
+  /** Fetch cached USD-based currency rates (fetches from network if stale). */
+  freelanceGetCurrencyRates: () =>
+    electroviewRpc.request["freelance.getCurrencyRates"]({}),
 } as const;

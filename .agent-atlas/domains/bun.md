@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 213
-**Symbols:** 1598
+**Files:** 214
+**Symbols:** 1611
 
 ## Files
 
@@ -1266,6 +1266,23 @@
 - `formatBudget` (line 4)
 
 
+### `src/bun/freelance/currency-exchange.ts`
+
+**Functions:**
+- `todayUtc` (line 15)
+- `isSameCalendarDay` (line 19)
+- `loadFromDb` (line 32)
+- `saveToDb` (line 51)
+- `upsert` (line 53)
+- `fetchFromFawazahmed0Primary` (line 69)
+- `fetchFromFawazahmed0Cloudflare` (line 79)
+- `fetchFromFrankfurter` (line 89)
+- `fetchRatesFromNetwork` (line 103)
+- `getCurrencyRates` (line 128)
+- `convertAmount` (line 178)
+- `invalidateMemCache` (line 197)
+
+
 ### `src/bun/freelance/events.ts`
 
 **Exports:**
@@ -1323,9 +1340,9 @@
 - `FreelanceSettings` (line 11)
 
 **Functions:**
-- `getFreelanceSettings` (line 62)
-- `get` (line 70)
-- `saveFreelanceSetting` (line 92)
+- `getFreelanceSettings` (line 66)
+- `get` (line 74)
+- `saveFreelanceSetting` (line 97)
 
 
 ### `src/bun/index.ts`
@@ -2506,16 +2523,17 @@
 ### `src/bun/rpc/freelance.ts`
 
 **Functions:**
-- `getFeatureEnabled` (line 18)
-- `getSettings` (line 23)
-- `saveSettings` (line 28)
-- `getListings` (line 55)
-- `getListingCounts` (line 133)
-- `markListingDone` (line 157)
-- `deleteListing` (line 185)
-- `deleteAllListings` (line 212)
-- `triggerFetch` (line 236)
-- `approveListing` (line 257)
+- `getFeatureEnabled` (line 19)
+- `getSettings` (line 24)
+- `saveSettings` (line 29)
+- `getCurrencyRatesHandler` (line 58)
+- `getListings` (line 66)
+- `getListingCounts` (line 144)
+- `markListingDone` (line 168)
+- `deleteListing` (line 196)
+- `deleteAllListings` (line 223)
+- `triggerFetch` (line 247)
+- `approveListing` (line 268)
 
 
 ### `src/bun/rpc/git.ts`

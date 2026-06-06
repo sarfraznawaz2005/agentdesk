@@ -82,10 +82,23 @@ export function ListingsTab() {
   const [timezone, setTimezone] = useState("UTC");
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [preferredCurrency, setPreferredCurrency] = useState("USD");
+  const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
 
   useEffect(() => {
     rpc.getSetting("timezone", "general").then((val) => {
       if (val) setTimezone(val as string);
+    }).catch(() => {});
+
+    // Load preferred currency setting + exchange rates in parallel
+    Promise.all([
+      rpc.freelanceGetSettings(),
+      rpc.freelanceGetCurrencyRates(),
+    ]).then(([settings, ratesResult]) => {
+      if (settings.preferredCurrency) setPreferredCurrency(settings.preferredCurrency);
+      if (ratesResult.rates && Object.keys(ratesResult.rates).length > 0) {
+        setCurrencyRates(ratesResult.rates);
+      }
     }).catch(() => {});
   }, []);
 
@@ -412,6 +425,8 @@ export function ListingsTab() {
               autoOpenAnalysis={openModalForId === listing.id}
               onAnalysisModalClose={() => setOpenModalForId(null)}
               timezone={timezone}
+              preferredCurrency={preferredCurrency}
+              currencyRates={currencyRates}
             />
           ))}
         </div>

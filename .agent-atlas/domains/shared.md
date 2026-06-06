@@ -1,10 +1,24 @@
 # Domain: shared
 
 **Directory:** `src/shared`
-**Files:** 28
-**Symbols:** 102
+**Files:** 29
+**Symbols:** 107
 
 ## Files
+
+### `src/shared/freelance-currencies.ts`
+
+**Interfaces:**
+- `CurrencyInfo` (line 5)
+
+**Functions:**
+- `getCurrencySymbol` (line 159)
+- `getCurrencyLabel` (line 164)
+
+**Exports:**
+- `CURRENCIES` (line 149)
+- `CURRENCY_MAP` (line 154)
+
 
 ### `src/shared/rpc.ts`
 

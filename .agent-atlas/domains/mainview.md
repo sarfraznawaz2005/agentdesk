@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 158
-**Symbols:** 1337
+**Symbols:** 1345
 
 ## Files
 
@@ -489,23 +489,26 @@
 ### `src/mainview/components/freelance/find-workable-modal.tsx`
 
 **Interfaces:**
-- `ProgressItem` (line 14)
-- `FindWorkableModalProps` (line 352)
+- `ProgressItem` (line 15)
+- `BudgetDisplay` (line 26)
+- `FindWorkableModalProps` (line 427)
 
 **Types:**
-- `WizardStep` (line 12)
+- `WizardStep` (line 13)
 
 **Functions:**
-- `formatBudget` (line 25)
-- `ConfigStep` (line 40)
-- `AnalyzingStep` (line 96)
-- `FailedListingRow` (line 184)
-- `ResultsStep` (line 219)
-- `FindWorkableModal` (line 358)
-- `onProgress` (line 392)
-- `onComplete` (line 416)
-- `onError` (line 427)
-- `onStopped` (line 433)
+- `convertAmount` (line 32)
+- `fmt` (line 47)
+- `buildBudgetDisplay` (line 51)
+- `ConfigStep` (line 101)
+- `AnalyzingStep` (line 157)
+- `FailedListingRow` (line 245)
+- `ResultsStep` (line 280)
+- `FindWorkableModal` (line 433)
+- `onProgress` (line 476)
+- `onComplete` (line 500)
+- `onError` (line 511)
+- `onStopped` (line 517)
 
 
 ### `src/mainview/components/freelance/freelance-chat-modal.tsx`
@@ -557,28 +560,31 @@
 ### `src/mainview/components/freelance/listing-card.tsx`
 
 **Interfaces:**
-- `FreelanceListingCardProps` (line 270)
+- `BudgetDisplay` (line 77)
+- `FreelanceListingCardProps` (line 341)
 
 **Functions:**
-- `relativeTime` (line 18)
-- `formatFullDate` (line 31)
-- `formatBudget` (line 47)
-- `getPlatformColor` (line 92)
-- `PlatformBadge` (line 99)
-- `SkillChips` (line 112)
-- `AnalysisModal` (line 175)
-- `FreelanceListingCard` (line 285)
-- `onActive` (line 317)
-- `onDone` (line 321)
-- `handleApprove` (line 355)
-- `handleShortlist` (line 364)
-- `handleMarkDone` (line 374)
-- `handleAnalyze` (line 384)
-- `handleDelete` (line 391)
-- `handleViewOnPlatform` (line 401)
+- `convertAmount` (line 23)
+- `fmtNum` (line 38)
+- `relativeTime` (line 48)
+- `formatFullDate` (line 61)
+- `buildBudgetDisplay` (line 83)
+- `getPlatformColor` (line 163)
+- `PlatformBadge` (line 170)
+- `SkillChips` (line 183)
+- `AnalysisModal` (line 246)
+- `FreelanceListingCard` (line 358)
+- `onActive` (line 392)
+- `onDone` (line 396)
+- `handleApprove` (line 430)
+- `handleShortlist` (line 439)
+- `handleMarkDone` (line 449)
+- `handleAnalyze` (line 459)
+- `handleDelete` (line 466)
+- `handleViewOnPlatform` (line 476)
 
 **Methods:**
-- `code` (line 141)
+- `code` (line 212)
 
 
 ### `src/mainview/components/freelance/listings-tab.tsx`
@@ -589,26 +595,28 @@
 **Functions:**
 - `ListingSkeleton` (line 28)
 - `ListingsTab` (line 64)
-- `onScroll` (line 95)
-- `handler` (line 143)
-- `handler` (line 151)
-- `handleFetchNow` (line 174)
-- `handleDeleteAll` (line 247)
-- `handleFilterChange` (line 261)
-- `handleSearchChange` (line 266)
+- `onScroll` (line 108)
+- `handler` (line 156)
+- `handler` (line 164)
+- `handleFetchNow` (line 187)
+- `handleDeleteAll` (line 260)
+- `handleFilterChange` (line 274)
+- `handleSearchChange` (line 279)
 
 
 ### `src/mainview/components/freelance/settings-tab.tsx`
 
 **Interfaces:**
-- `RssSource` (line 31)
-- `ProviderItem` (line 37)
-- `SettingsState` (line 43)
+- `RssSource` (line 33)
+- `ProviderItem` (line 39)
+- `SettingsState` (line 45)
 
 **Functions:**
-- `SettingsTab` (line 89)
-- `load` (line 103)
-- `formatLastRun` (line 206)
+- `CurrencyCombobox` (line 93)
+- `handle` (line 117)
+- `SettingsTab` (line 199)
+- `load` (line 213)
+- `formatLastRun` (line 318)
 
 
 ### `src/mainview/components/git/branch-list.tsx`

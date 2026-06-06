@@ -64,6 +64,7 @@ export type FreelanceRequests = {
       autoShortlistLastCount: number;
       analysisProviderId: string | null;
       additionalNotes: string;
+      preferredCurrency: string;
     };
   };
   "freelance.saveSettings": {
@@ -78,9 +79,17 @@ export type FreelanceRequests = {
       autoShortlistOnStartup: boolean;
       analysisProviderId: string | null;
       additionalNotes: string;
+      preferredCurrency: string;
       // NOTE: lastRun and lastCount are NOT here — set by the runner, not the user
     };
     response: { success: boolean };
+  };
+  "freelance.getCurrencyRates": {
+    params: Record<string, never>;
+    response: {
+      rates: Record<string, number>;
+      fetchedAt: string | null;
+    };
   };
   "freelance.getListings": {
     params: { status?: FreelanceListingStatus; page?: number; search?: string };

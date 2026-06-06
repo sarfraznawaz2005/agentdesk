@@ -4,6 +4,7 @@ import { AlertTriangle, CheckSquare, ChevronDown, ChevronRight, Info, Loader2, S
 import { Button } from "@/components/ui/button";
 import { rpc } from "@/lib/rpc";
 import type { WizardWorkableListing, WizardFailedListing } from "../../../shared/rpc/freelance";
+import { getCurrencySymbol } from "../../../shared/freelance-currencies";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,18 +20,78 @@ interface ProgressItem {
 }
 
 // ---------------------------------------------------------------------------
-// Budget formatter
+// Budget display helpers
 // ---------------------------------------------------------------------------
 
-function formatBudget(listing: WizardWorkableListing): string {
+interface BudgetDisplay {
+  primary: string;
+  converted: string | null;
+  tooltipRate: string | null;
+}
+
+function convertAmount(
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+  rates: Record<string, number>,
+): number | null {
+  const from = fromCurrency.toLowerCase();
+  const to = toCurrency.toLowerCase();
+  if (from === to) return amount;
+  const fromRate = from === "usd" ? 1 : rates[from];
+  const toRate = to === "usd" ? 1 : rates[to];
+  if (fromRate == null || toRate == null || fromRate === 0) return null;
+  return (amount / fromRate) * toRate;
+}
+
+function fmt(value: number): string {
+  return value >= 100 ? Math.round(value).toLocaleString() : value.toFixed(2);
+}
+
+function buildBudgetDisplay(
+  listing: WizardWorkableListing,
+  preferredCurrency: string,
+  rates: Record<string, number>,
+): BudgetDisplay {
   const { budgetMin, budgetMax, budgetType, currency } = listing;
-  if (budgetMin === null && budgetMax === null) return "";
-  const sym = currency === "USD" ? "$" : currency;
-  const rate = budgetType === "hourly" ? "/hr" : "";
+  if (budgetMin === null && budgetMax === null) return { primary: "", converted: null, tooltipRate: null };
+
+  const listingCurrency = (currency || "USD").toUpperCase();
+  const sym = getCurrencySymbol(listingCurrency);
+  const suffix = budgetType === "hourly" ? "/hr" : "";
+
+  let primary: string;
   if (budgetMin !== null && budgetMax !== null)
-    return `${sym}${budgetMin.toLocaleString()}–${sym}${budgetMax.toLocaleString()}${rate}`;
-  if (budgetMin !== null) return `${sym}${budgetMin.toLocaleString()}+${rate}`;
-  return `Up to ${sym}${(budgetMax ?? 0).toLocaleString()}${rate}`;
+    primary = `${sym}${budgetMin.toLocaleString()}–${sym}${budgetMax.toLocaleString()}${suffix}`;
+  else if (budgetMin !== null)
+    primary = `${sym}${budgetMin.toLocaleString()}+${suffix}`;
+  else
+    primary = `Up to ${sym}${(budgetMax ?? 0).toLocaleString()}${suffix}`;
+
+  const prefCode = preferredCurrency.toUpperCase();
+  if (listingCurrency === prefCode || !rates || Object.keys(rates).length === 0)
+    return { primary, converted: null, tooltipRate: null };
+
+  const convertedMin = budgetMin !== null ? convertAmount(budgetMin, listingCurrency, prefCode, rates) : null;
+  const convertedMax = budgetMax !== null ? convertAmount(budgetMax, listingCurrency, prefCode, rates) : null;
+
+  if (convertedMin === null && convertedMax === null)
+    return { primary, converted: null, tooltipRate: null };
+
+let converted: string;
+  if (convertedMin !== null && convertedMax !== null)
+    converted = `${fmt(convertedMin)} – ${fmt(convertedMax)} ${prefCode}${suffix}`;
+  else if (convertedMin !== null)
+    converted = `${fmt(convertedMin)}+ ${prefCode}${suffix}`;
+  else
+    converted = `Up to ${fmt(convertedMax ?? 0)} ${prefCode}${suffix}`;
+
+  const rate1 = convertAmount(1, listingCurrency, prefCode, rates);
+  const tooltipRate = rate1 !== null
+    ? `1 ${listingCurrency} = ${rate1 >= 100 ? Math.round(rate1).toLocaleString() : rate1.toFixed(4)} ${prefCode}`
+    : null;
+
+  return { primary, converted, tooltipRate };
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +285,8 @@ function ResultsStep({
   onToggleAll,
   onShortlist,
   isShortlisting,
+  preferredCurrency,
+  currencyRates,
 }: {
   workableListings: WizardWorkableListing[];
   failedListings: WizardFailedListing[];
@@ -232,6 +295,8 @@ function ResultsStep({
   onToggleAll: () => void;
   onShortlist: () => void;
   isShortlisting: boolean;
+  preferredCurrency: string;
+  currencyRates: Record<string, number>;
 }) {
   const [showFailed, setShowFailed] = useState(workableListings.length === 0);
 
@@ -272,7 +337,7 @@ function ResultsStep({
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {workableListings.map((listing) => {
               const isSelected = selected.has(listing.id);
-              const budget = formatBudget(listing);
+              const budget = buildBudgetDisplay(listing, preferredCurrency, currencyRates);
               return (
                 <button
                   key={listing.id}
@@ -289,8 +354,18 @@ function ResultsStep({
                       {isSelected ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
                     </span>
                     <span className="flex-1 text-sm font-medium text-foreground truncate">{listing.title}</span>
-                    {budget && (
-                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">{budget}</span>
+                    {budget.primary && (
+                      <span className="flex items-center gap-1 shrink-0 tabular-nums">
+                        <span className="text-xs text-muted-foreground">{budget.primary}</span>
+                        {budget.converted && (
+                          <span
+                            className="text-xs font-semibold text-blue-900 dark:text-blue-300 cursor-default"
+                            title={budget.tooltipRate ?? undefined}
+                          >
+                            ({budget.converted})
+                          </span>
+                        )}
+                      </span>
                     )}
                   </div>
                 </button>
@@ -367,9 +442,11 @@ export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkable
   const [isStopping, setIsStopping] = useState(false);
   const [wasStopped, setWasStopped] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [preferredCurrency, setPreferredCurrency] = useState("USD");
+  const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
   const progressRef = useRef<ProgressItem[]>([]);
 
-  // Reset when modal opens
+  // Reset when modal opens and load currency settings
   useEffect(() => {
     if (open) {
       setStep("config");
@@ -384,6 +461,13 @@ export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkable
       setIsStopping(false);
       setWasStopped(false);
       setErrorMsg(null);
+
+      void Promise.all([rpc.freelanceGetSettings(), rpc.freelanceGetCurrencyRates()]).then(
+        ([settings, ratesResult]) => {
+          setPreferredCurrency(settings.preferredCurrency ?? "USD");
+          setCurrencyRates(ratesResult.rates ?? {});
+        },
+      );
     }
   }, [open]);
 
@@ -577,6 +661,8 @@ export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkable
                 onToggleAll={handleToggleAll}
                 onShortlist={() => void handleShortlist()}
                 isShortlisting={isShortlisting}
+                preferredCurrency={preferredCurrency}
+                currencyRates={currencyRates}
               />
               </>
             )}

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronDown, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
@@ -23,6 +23,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { KeywordInput } from "./keyword-input";
+import { CURRENCIES } from "../../../shared/freelance-currencies";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +54,7 @@ interface SettingsState {
   // null = use the global default AI provider
   analysisProviderId: string | null;
   additionalNotes: string;
+  preferredCurrency: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +83,114 @@ const SETTINGS_DEFAULTS: SettingsState = {
   autoShortlistOnStartup: false,
   analysisProviderId: null,
   additionalNotes: "",
+  preferredCurrency: "USD",
 };
+
+// ---------------------------------------------------------------------------
+// CurrencyCombobox — searchable currency picker
+// ---------------------------------------------------------------------------
+
+function CurrencyCombobox({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selected = CURRENCIES.find((c) => c.code === value);
+  const filtered = query.trim()
+    ? CURRENCIES.filter(
+        (c) =>
+          c.code.toLowerCase().includes(query.toLowerCase()) ||
+          c.name.toLowerCase().includes(query.toLowerCase()),
+      )
+    : CURRENCIES;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative w-full max-w-xs">
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((o) => !o);
+          setTimeout(() => inputRef.current?.focus(), 10);
+        }}
+        className={cn(
+          "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm",
+          "hover:bg-accent/30 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+      >
+        <span className="truncate">
+          {selected ? `${selected.code} — ${selected.name}` : "Select currency…"}
+        </span>
+        <ChevronDown className="ml-2 size-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md text-popover-foreground">
+          {/* Search */}
+          <div className="p-2 border-b border-border">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search currency…"
+              className="w-full rounded-sm border border-input bg-transparent px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          {/* List */}
+          <ul className="max-h-56 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-sm text-muted-foreground">No results</li>
+            )}
+            {filtered.map((c) => (
+              <li key={c.code}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onChange(c.code);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-1.5 text-sm",
+                    "hover:bg-accent hover:text-accent-foreground transition-colors",
+                    c.code === value && "bg-accent/50 font-medium",
+                  )}
+                >
+                  <span className="font-mono text-xs text-muted-foreground mr-2">{c.code}</span>
+                  {c.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // SettingsTab
@@ -118,6 +228,7 @@ export function SettingsTab() {
           autoShortlistOnStartup: result.autoShortlistOnStartup,
           analysisProviderId: result.analysisProviderId,
           additionalNotes: result.additionalNotes,
+          preferredCurrency: result.preferredCurrency ?? "USD",
         });
         setAutoShortlistLastRun(result.autoShortlistLastRun);
         setAutoShortlistLastCount(result.autoShortlistLastCount);
@@ -192,6 +303,7 @@ export function SettingsTab() {
         autoShortlistOnStartup: settings.autoShortlistOnStartup,
         analysisProviderId: settings.analysisProviderId,
         additionalNotes: settings.additionalNotes,
+        preferredCurrency: settings.preferredCurrency,
       });
       toast("success", "Freelance settings saved.");
     } catch {
@@ -514,6 +626,25 @@ export function SettingsTab() {
             )}
             <p className="text-xs text-muted-foreground">Used by Find Workable and Auto Shortlist. Chat always uses the global default.</p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Preferred Currency section ------------------------------------ */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Preferred Currency</CardTitle>
+          <CardDescription>
+            Listing bid amounts are shown in their original currency. When a different currency is set here,
+            a converted amount is displayed alongside — e.g. <span className="font-mono text-xs">$10 (2,785 PKR)</span>.
+            Exchange rates are fetched once per day and cached.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="preferred-currency" className="mb-1.5 block">Display currency</Label>
+          <CurrencyCombobox
+            value={settings.preferredCurrency}
+            onChange={(code) => setSettings((prev) => ({ ...prev, preferredCurrency: code }))}
+          />
         </CardContent>
       </Card>
 

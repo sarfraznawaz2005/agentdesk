@@ -88,4 +88,5 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.wizard.analyzeListing": (params) => freelanceWizardRpc.analyzeListing(params),
 	"freelance.shortlistListings": (params) => freelanceWizardRpc.shortlistListings(params),
 	"freelance.markListingDone": (params) => freelanceRpc.markListingDone(params),
+	"freelance.getCurrencyRates": () => freelanceRpc.getCurrencyRatesHandler(),
 };

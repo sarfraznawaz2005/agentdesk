@@ -10,6 +10,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { rpc } from "@/lib/rpc";
 import { FreelanceChatModal } from "./freelance-chat-modal";
 import type { FreelanceListingDto } from "../../../shared/rpc/freelance";
+import { getCurrencySymbol } from "../../../shared/freelance-currencies";
+
+// ---------------------------------------------------------------------------
+// Currency conversion helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert amount using USD-based rates (same algorithm as backend currency-exchange.ts).
+ * rates["pkr"] = 278.5 means 1 USD = 278.5 PKR.
+ */
+function convertAmount(
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+  rates: Record<string, number>,
+): number | null {
+  const from = fromCurrency.toLowerCase();
+  const to = toCurrency.toLowerCase();
+  if (from === to) return amount;
+  const fromRate = from === "usd" ? 1 : rates[from];
+  const toRate = to === "usd" ? 1 : rates[to];
+  if (fromRate == null || toRate == null || fromRate === 0) return null;
+  return (amount / fromRate) * toRate;
+}
+
+function fmtNum(amount: number): string {
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 100) return Math.round(amount).toLocaleString();
+  return amount.toFixed(2);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,27 +74,68 @@ function formatFullDate(isoString: string, timezone: string): string {
   }
 }
 
-function formatBudget(listing: FreelanceListingDto): string {
+interface BudgetDisplay {
+  primary: string;
+  converted: string | null;
+  tooltipRate: string | null; // e.g. "1 USD = 278.5 PKR"
+}
+
+function buildBudgetDisplay(
+  listing: FreelanceListingDto,
+  preferredCurrency: string,
+  rates: Record<string, number>,
+): BudgetDisplay {
   const { budgetMin, budgetMax, budgetType, currency } = listing;
 
   if (budgetMin === null && budgetMax === null) {
-    return "Budget not specified";
+    return { primary: "Budget not specified", converted: null, tooltipRate: null };
   }
 
-  const symbol = currency === "USD" ? "$" : currency;
+  const listingCurrency = currency.toUpperCase();
+  const symbol = getCurrencySymbol(listingCurrency);
   const typeLabel = budgetType === "fixed" ? "Fixed" : "Hourly";
   const rateLabel = budgetType === "hourly" ? "/hr" : "";
 
+  let primary: string;
   if (budgetMin !== null && budgetMax !== null) {
-    return `${symbol}${budgetMin.toLocaleString()}–${symbol}${budgetMax.toLocaleString()}${rateLabel} · ${typeLabel}`;
+    primary = `${symbol}${budgetMin.toLocaleString()}–${symbol}${budgetMax.toLocaleString()}${rateLabel} · ${typeLabel}`;
+  } else if (budgetMin !== null) {
+    primary = `${symbol}${budgetMin.toLocaleString()}+${rateLabel} · ${typeLabel}`;
+  } else {
+    primary = `Up to ${symbol}${(budgetMax ?? 0).toLocaleString()}${rateLabel} · ${typeLabel}`;
   }
 
-  if (budgetMin !== null) {
-    return `${symbol}${budgetMin.toLocaleString()}+${rateLabel} · ${typeLabel}`;
+  // Skip conversion if preferred currency = listing currency or no rates
+  const target = preferredCurrency.toUpperCase();
+  if (target === listingCurrency || !rates || Object.keys(rates).length === 0) {
+    return { primary, converted: null, tooltipRate: null };
   }
 
-  // budgetMax only
-  return `Up to ${symbol}${(budgetMax ?? 0).toLocaleString()}${rateLabel} · ${typeLabel}`;
+  // Build converted annotation
+  let converted: string | null = null;
+  if (budgetMin !== null && budgetMax !== null) {
+    const cvMin = convertAmount(budgetMin, listingCurrency, target, rates);
+    const cvMax = convertAmount(budgetMax, listingCurrency, target, rates);
+    if (cvMin !== null && cvMax !== null) {
+      converted = `${fmtNum(cvMin)} – ${fmtNum(cvMax)} ${target}`;
+    }
+  } else if (budgetMin !== null) {
+    const cv = convertAmount(budgetMin, listingCurrency, target, rates);
+    if (cv !== null) converted = `${fmtNum(cv)}+ ${target}`;
+  } else if (budgetMax !== null) {
+    const cv = convertAmount(budgetMax, listingCurrency, target, rates);
+    if (cv !== null) converted = `up to ${fmtNum(cv)} ${target}`;
+  }
+
+  // Build tooltip: "1 USD = 278.5 PKR"
+  let tooltipRate: string | null = null;
+  const rate = convertAmount(1, listingCurrency, target, rates);
+  if (rate !== null) {
+    const formatted = rate >= 100 ? Math.round(rate).toLocaleString() : rate.toFixed(4).replace(/\.?0+$/, "");
+    tooltipRate = `1 ${listingCurrency} = ${formatted} ${target}`;
+  }
+
+  return { primary, converted, tooltipRate };
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +349,8 @@ export interface FreelanceListingCardProps {
   autoOpenAnalysis?: boolean;
   onAnalysisModalClose?: () => void;
   timezone?: string;
+  preferredCurrency?: string;
+  currencyRates?: Record<string, number>;
 }
 
 const DESCRIPTION_TRUNCATE_LENGTH = 200;
@@ -293,6 +366,8 @@ export function FreelanceListingCard({
   autoOpenAnalysis = false,
   onAnalysisModalClose,
   timezone = "UTC",
+  preferredCurrency = "USD",
+  currencyRates = {},
 }: FreelanceListingCardProps) {
   const [isApproving, setIsApproving] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
@@ -480,14 +555,29 @@ export function FreelanceListingCard({
       </div>
 
       {/* Title row: title (left) | budget (right) */}
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground leading-snug">
-          {listing.title}
-        </h3>
-        <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
-          {formatBudget(listing)}
-        </span>
-      </div>
+      {(() => {
+        const budget = buildBudgetDisplay(listing, preferredCurrency, currencyRates);
+        return (
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-sm font-semibold text-foreground leading-snug">
+              {listing.title}
+            </h3>
+            <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                {budget.primary}
+              </span>
+              {budget.converted && (
+                <span
+                  className="text-sm font-semibold text-blue-900 dark:text-blue-300 tabular-nums cursor-default"
+                  title={budget.tooltipRate ?? undefined}
+                >
+                  ({budget.converted})
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Description */}
       {listing.description && (

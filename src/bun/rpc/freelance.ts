@@ -9,6 +9,7 @@ import { getFreelanceSettings, saveFreelanceSetting } from "../freelance/setting
 import { FREELANCE_EVENTS } from "../freelance/events";
 import { formatBudget } from "../freelance/budget";
 import { fetchAllPlatforms } from "../freelance/fetcher";
+import { getCurrencyRates } from "../freelance/currency-exchange";
 import { getOrCreateEngine, broadcastToWebview } from "../engine-manager";
 import type { FreelanceListingDto, FreelanceListingStatus } from "../../shared/rpc/freelance";
 
@@ -36,6 +37,7 @@ export async function saveSettings(params: {
   autoShortlistOnStartup: boolean;
   analysisProviderId: string | null;
   additionalNotes: string;
+  preferredCurrency: string;
 }): Promise<{ success: boolean }> {
   await saveFreelanceSetting("rssSources", params.rssSources);
   await saveFreelanceSetting("keywords", params.keywords);
@@ -47,7 +49,16 @@ export async function saveSettings(params: {
   await saveFreelanceSetting("autoShortlistOnStartup", params.autoShortlistOnStartup);
   await saveFreelanceSetting("analysisProviderId", params.analysisProviderId);
   await saveFreelanceSetting("additionalNotes", params.additionalNotes);
+  await saveFreelanceSetting("preferredCurrency", params.preferredCurrency);
   return { success: true };
+}
+
+// ─── getCurrencyRates ─────────────────────────────────────────────────────────
+// Returns cached USD-based exchange rates, fetching from network if stale (>24h).
+export async function getCurrencyRatesHandler(): Promise<{ rates: Record<string, number>; fetchedAt: string | null }> {
+  const cached = await getCurrencyRates();
+  if (!cached) return { rates: {}, fetchedAt: null };
+  return { rates: cached.rates, fetchedAt: cached.fetchedAt };
 }
 
 // ─── getListings ─────────────────────────────────────────────────────────────
