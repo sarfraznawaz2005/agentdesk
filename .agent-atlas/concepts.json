@@ -4118,7 +4118,7 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 7,
+      "line": 9,
       "symbol": "relayStatus",
       "type": "function"
     },
@@ -9200,13 +9200,13 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 101,
+      "line": 104,
       "symbol": "windowsDownloadSetup",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 160,
+      "line": 163,
       "symbol": "windowsApplySetup",
       "type": "function"
     },
@@ -12699,20 +12699,32 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 112,
+      "symbol": "portableApplyUpdate",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 198,
+      "symbol": "buildApplyScript",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/updater.ts",
-      "line": 66,
+      "line": 69,
       "symbol": "applyUpdate",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 95,
+      "line": 98,
       "symbol": "applyLog",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 160,
+      "line": 163,
       "symbol": "windowsApplySetup",
       "type": "function"
     },
@@ -14728,7 +14740,7 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 20,
+      "line": 22,
       "symbol": "checkForUpdate",
       "type": "function"
     },
@@ -16272,13 +16284,13 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 101,
+      "line": 104,
       "symbol": "windowsDownloadSetup",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 160,
+      "line": 163,
       "symbol": "windowsApplySetup",
       "type": "function"
     }
@@ -16974,6 +16986,12 @@
       "file": "src/bun/issue-fixer/triggers.ts",
       "line": 51,
       "symbol": "findKeyword",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 38,
+      "symbol": "findBundleRoot",
       "type": "function"
     },
     {
@@ -19763,20 +19781,32 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 52,
+      "symbol": "portableDownloadUpdate",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 112,
+      "symbol": "portableApplyUpdate",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/updater.ts",
-      "line": 20,
+      "line": 22,
       "symbol": "checkForUpdate",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 53,
+      "line": 55,
       "symbol": "downloadUpdate",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 66,
+      "line": 69,
       "symbol": "applyUpdate",
       "type": "function"
     },
@@ -20509,6 +20539,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/lib/install-mode.ts",
+      "line": 19,
+      "symbol": "isInstalledBuild",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/install-mode.ts",
+      "line": 34,
+      "symbol": "isPortableBuild",
+      "type": "function"
+    },
+    {
       "file": "src/bun/playground/orchestrator.ts",
       "line": 132,
       "symbol": "buildWorkspaceContext",
@@ -20566,6 +20608,12 @@
       "file": "src/bun/rpc/recommendations.ts",
       "line": 125,
       "symbol": "buildInstallTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 198,
+      "symbol": "buildApplyScript",
       "type": "function"
     },
     {
@@ -21152,6 +21200,12 @@
       "file": "src/bun/annotations/toolbar-script.ts",
       "line": 5,
       "symbol": "getToolbarScript",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 198,
+      "symbol": "buildApplyScript",
       "type": "function"
     }
   ],
@@ -22897,14 +22951,20 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 26,
+      "symbol": "log",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/updater.ts",
-      "line": 95,
+      "line": 98,
       "symbol": "applyLog",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 224,
+      "line": 227,
       "symbol": "psLog",
       "type": "function"
     },
@@ -28540,7 +28600,7 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 20,
+      "line": 22,
       "symbol": "checkForUpdate",
       "type": "function"
     },
@@ -40100,7 +40160,7 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 172,
+      "line": 175,
       "symbol": "esc",
       "type": "function"
     }
@@ -40579,6 +40639,12 @@
       "line": 19,
       "symbol": "PLAYGROUND_ROOT",
       "type": "export"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 38,
+      "symbol": "findBundleRoot",
+      "type": "function"
     }
   ],
   "meta": [
@@ -42501,14 +42567,20 @@
       "type": "method"
     },
     {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 52,
+      "symbol": "portableDownloadUpdate",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/updater.ts",
-      "line": 53,
+      "line": 55,
       "symbol": "downloadUpdate",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 101,
+      "line": 104,
       "symbol": "windowsDownloadSetup",
       "type": "function"
     },
@@ -45657,6 +45729,12 @@
       "line": 15,
       "symbol": "SettingsBundle",
       "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 38,
+      "symbol": "findBundleRoot",
+      "type": "function"
     }
   ],
   "skill": [
@@ -45866,14 +45944,6 @@
       "file": "src/bun/rpc/skills.ts",
       "line": 88,
       "symbol": "getAvailableTools",
-      "type": "function"
-    }
-  ],
-  "relay": [
-    {
-      "file": "src/bun/rpc/updater.ts",
-      "line": 7,
-      "symbol": "relayStatus",
       "type": "function"
     }
   ],
@@ -55866,6 +55936,42 @@
       "file": "src/mainview/components/issues/issues.tsx",
       "line": 606,
       "symbol": "ConnectPicker",
+      "type": "function"
+    }
+  ],
+  "installed": [
+    {
+      "file": "src/bun/lib/install-mode.ts",
+      "line": 19,
+      "symbol": "isInstalledBuild",
+      "type": "function"
+    }
+  ],
+  "portable": [
+    {
+      "file": "src/bun/lib/install-mode.ts",
+      "line": 34,
+      "symbol": "isPortableBuild",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 52,
+      "symbol": "portableDownloadUpdate",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/updater-portable.ts",
+      "line": 112,
+      "symbol": "portableApplyUpdate",
+      "type": "function"
+    }
+  ],
+  "relay": [
+    {
+      "file": "src/bun/rpc/updater.ts",
+      "line": 9,
+      "symbol": "relayStatus",
       "type": "function"
     }
   ]

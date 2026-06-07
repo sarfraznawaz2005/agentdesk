@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 227
-**Symbols:** 1726
+**Files:** 229
+**Symbols:** 1734
 
 ## Files
 
@@ -1703,6 +1703,13 @@
 - `killProcess` (line 11)
 
 
+### `src/bun/lib/install-mode.ts`
+
+**Functions:**
+- `isInstalledBuild` (line 19)
+- `isPortableBuild` (line 34)
+
+
 ### `src/bun/lsp/client.ts`
 
 **Classes:**
@@ -3148,18 +3155,29 @@
 - `getAvailableTools` (line 88)
 
 
+### `src/bun/rpc/updater-portable.ts`
+
+**Functions:**
+- `log` (line 26)
+- `ps` (line 33)
+- `findBundleRoot` (line 38)
+- `portableDownloadUpdate` (line 52)
+- `portableApplyUpdate` (line 112)
+- `buildApplyScript` (line 198)
+
+
 ### `src/bun/rpc/updater.ts`
 
 **Functions:**
-- `relayStatus` (line 7)
-- `checkForUpdate` (line 20)
-- `downloadUpdate` (line 53)
-- `applyUpdate` (line 66)
-- `applyLog` (line 95)
-- `windowsDownloadSetup` (line 101)
-- `windowsApplySetup` (line 160)
-- `esc` (line 172)
-- `psLog` (line 224)
+- `relayStatus` (line 9)
+- `checkForUpdate` (line 22)
+- `downloadUpdate` (line 55)
+- `applyUpdate` (line 69)
+- `applyLog` (line 98)
+- `windowsDownloadSetup` (line 104)
+- `windowsApplySetup` (line 163)
+- `esc` (line 175)
+- `psLog` (line 227)
 
 
 ### `src/bun/rpc/whatsapp.ts`

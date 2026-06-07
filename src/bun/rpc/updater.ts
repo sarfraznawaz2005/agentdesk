@@ -3,6 +3,8 @@ import { mkdirSync, rmSync, existsSync, appendFileSync } from "fs";
 import { tmpdir } from "os";
 import { Updater } from "electrobun/bun";
 import { broadcastToWebview } from "../engine-manager";
+import { isPortableBuild } from "../lib/install-mode";
+import { portableDownloadUpdate, portableApplyUpdate } from "./updater-portable";
 
 function relayStatus() {
 	Updater.onStatusChange((entry) => {
@@ -52,7 +54,8 @@ export async function checkForUpdate() {
 
 export async function downloadUpdate() {
 	if (process.platform === "win32") {
-		return windowsDownloadSetup();
+		// Portable builds use their own full-zip update path (no installer, no bspatch).
+		return isPortableBuild() ? portableDownloadUpdate() : windowsDownloadSetup();
 	}
 	try {
 		relayStatus();
@@ -66,7 +69,7 @@ export async function downloadUpdate() {
 export async function applyUpdate() {
 	try {
 		if (process.platform === "win32") {
-			const result = await windowsApplySetup();
+			const result = isPortableBuild() ? await portableApplyUpdate() : await windowsApplySetup();
 			if (!result.success) return result;
 			setTimeout(() => process.exit(0), 400);
 			return { success: true };
