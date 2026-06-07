@@ -8,12 +8,11 @@ import { DiffViewer } from "./diff-viewer";
 import { StagedFiles } from "./staged-files";
 import { PullRequests } from "./pull-requests";
 import { ConflictResolver } from "./conflict-resolver";
-import { GithubIssues } from "./github-issues";
 import { IssueFixerProjectTab } from "../issue-fixer/issue-fixer-tab";
 import { useUnreadStore, hasUnreadPrefix } from "../../stores/unread-store";
 import { UnreadDot } from "@/components/ui/unread-dot";
 
-type GitSubTab = "overview" | "pull-requests" | "conflicts" | "issues" | "issue-fixer";
+type GitSubTab = "overview" | "pull-requests" | "conflicts" | "issue-fixer";
 
 interface GitTabProps { projectId: string; }
 
@@ -21,7 +20,6 @@ const GIT_SUBTABS: { id: GitSubTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "pull-requests", label: "Pull Requests" },
   { id: "conflicts", label: "Conflicts Resolver" },
-  { id: "issues", label: "GitHub Issues" },
   { id: "issue-fixer", label: "Auto Issues Fixer" },
 ];
 
@@ -234,14 +232,6 @@ export function GitTab({ projectId }: GitTabProps) {
           <div>
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Merge Conflicts</h3>
             <ConflictResolver projectId={projectId} />
-          </div>
-        )}
-
-        {/* GitHub Issues */}
-        {subTab === "issues" && (
-          <div>
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">GitHub Issues Sync</h3>
-            <GithubIssues projectId={projectId} />
           </div>
         )}
 

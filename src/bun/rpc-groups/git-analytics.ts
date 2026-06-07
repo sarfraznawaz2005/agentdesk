@@ -1,6 +1,7 @@
 import * as gitRpc from "../rpc/git";
 import * as pullsRpc from "../rpc/pulls";
 import * as githubIssuesRpc from "../rpc/github-issues";
+import * as issuesRpc from "../rpc/issues";
 import { validateGithubToken } from "../rpc/github-api";
 import * as branchStrategyRpc from "../rpc/branch-strategy";
 import * as analyticsRpc from "../rpc/analytics";
@@ -43,12 +44,24 @@ export const handlers: Record<string, (params: any) => any> = {
 	deletePrComment: (params) => pullsRpc.deletePrComment(params.id),
 	generatePrDescription: (params) => pullsRpc.generatePrDescription(params.projectId, params.sourceBranch, params.targetBranch),
 
-	// GitHub Issues
+	// GitHub Issues (legacy shim — still used by the kanban task-detail modal)
 	getGithubIssues: (params) => githubIssuesRpc.getGithubIssues(params.projectId, params.state),
 	syncGithubIssues: (params) => githubIssuesRpc.syncGithubIssues(params.projectId),
 	createGithubIssueFromTask: (params) => githubIssuesRpc.createGithubIssueFromTask(params.taskId, params.projectId),
 	linkIssueToTask: (params) => githubIssuesRpc.linkIssueToTask(params.issueId, params.taskId),
 	validateGithubToken: (params) => validateGithubToken(params.token),
+
+	// Multi-source Issues engine
+	listIssueSources: (params) => issuesRpc.listIssueSources(params.projectId),
+	getIssueSourceConfig: (params) => issuesRpc.getIssueSourceConfig(params.projectId, params.source),
+	saveIssueSourceConfig: (params) => issuesRpc.saveIssueSourceConfig(params.projectId, params.source, params.config),
+	deleteIssueSourceConfig: (params) => issuesRpc.deleteIssueSourceConfig(params.projectId, params.source),
+	testIssueSource: (params) => issuesRpc.testIssueSource(params.projectId, params.source, params.config),
+	getExternalIssues: (params) => issuesRpc.getExternalIssues(params.projectId, params.source, params.state),
+	syncIssueSource: (params) => issuesRpc.syncIssueSource(params.projectId, params.source),
+	linkExternalIssueToTask: (params) => issuesRpc.linkExternalIssueToTask(params.issueId, params.taskId),
+	createExternalIssueFromTask: (params) => issuesRpc.createExternalIssueFromTask(params.taskId, params.projectId, params.source),
+	getSourceBuckets: (params) => issuesRpc.getSourceBuckets(params.source, params.config),
 
 	// Branch Strategy
 	getBranchStrategy: (params) => branchStrategyRpc.getBranchStrategy(params.projectId),

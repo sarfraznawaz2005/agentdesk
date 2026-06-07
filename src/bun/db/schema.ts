@@ -509,6 +509,33 @@ export const githubIssues = sqliteTable("github_issues", {
 });
 
 // ---------------------------------------------------------------------------
+// external_issues — issues imported from any external tracker (GitHub, Jira,
+// Linear, GitLab, Trello, Kanboard) normalised into one table. Supersedes
+// github_issues (migration v33 copies that table's rows in with source='github').
+// ---------------------------------------------------------------------------
+export const externalIssues = sqliteTable("external_issues", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id").notNull().references(() => projects.id),
+	// "github" | "jira" | "linear" | "gitlab" | "trello" | "kanboard"
+	source: text("source").notNull(),
+	// platform-specific identifier (GitHub issue #, Jira key, Linear id, card id…)
+	sourceId: text("source_id").notNull(),
+	taskId: text("task_id"), // linked kanban task (null if not linked)
+	title: text("title").notNull(),
+	body: text("body"),
+	state: text("state").notNull().default("open"), // normalised "open" | "closed"
+	url: text("url"), // deep-link back to the original issue
+	labels: text("labels").notNull().default("[]"), // JSON array of label names
+	assignee: text("assignee"),
+	priority: text("priority"), // "critical" | "high" | "medium" | "low" | null
+	dueDate: text("due_date"), // ISO date if the source provides one
+	sourceCreatedAt: text("source_created_at"),
+	syncedAt: text("synced_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	// JSON blob of source-specific extras (sprint, story points, list name…)
+	metadata: text("metadata").notNull().default("{}"),
+});
+
+// ---------------------------------------------------------------------------
 // issue_fixer_config — per-project Issue Fixer configuration (one row/project)
 // ---------------------------------------------------------------------------
 export const issueFixerConfig = sqliteTable("issue_fixer_config", {

@@ -4,6 +4,7 @@ import { ChatLayout } from "../components/chat/chat-layout";
 import { KanbanBoard } from "../components/kanban/kanban-board";
 import { TaskDetailModal } from "../components/kanban/task-detail-modal";
 import { GitTab } from "../components/git/git-tab";
+import { Issues } from "../components/issues/issues";
 import { DeployTab } from "../components/deploy/deploy-tab";
 import { RemoteSyncTab } from "../components/remote-sync/remote-sync-tab";
 import { NotesTab } from "../components/notes/notes-tab";
@@ -14,11 +15,11 @@ import { useUnreadStore, hasUnread, hasUnreadPrefix } from "../stores/unread-sto
 import { UnreadDot } from "../components/ui/unread-dot";
 import { cn } from "../lib/utils";
 import { rpc } from "../lib/rpc";
-import { FileText, Settings, Puzzle, ServerCog, MessageSquare, LayoutGrid, GitBranch, Rocket } from "lucide-react";
+import { FileText, Settings, Puzzle, ServerCog, MessageSquare, LayoutGrid, GitBranch, Rocket, ListChecks } from "lucide-react";
 import { Tip } from "../components/ui/tooltip";
 import { AGENT_BADGE_COLORS } from "../components/chat/message-parts";
 
-type ProjectTab = "chat" | "kanban" | "git" | "deploy" | "remote" | "notes" | "settings" | string;
+type ProjectTab = "chat" | "kanban" | "git" | "issues" | "deploy" | "remote" | "notes" | "settings" | string;
 
 interface PluginTab {
   id: string;
@@ -231,16 +232,16 @@ export function ProjectPage() {
           {gitUnread && activeTab !== "git" && <UnreadDot />}
         </button>
         <button
-          onClick={() => setActiveTab("deploy")}
+          onClick={() => setActiveTab("issues")}
           className={cn(
             "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
-            activeTab === "deploy"
+            activeTab === "issues"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
-          <Rocket className="w-3.5 h-3.5" />
-          Deploy
+          <ListChecks className="w-3.5 h-3.5" />
+          Issue Tracker
         </button>
         <button
           onClick={() => setActiveTab("remote")}
@@ -253,6 +254,18 @@ export function ProjectPage() {
         >
           <ServerCog className="w-3.5 h-3.5" />
           Remote
+        </button>
+        <button
+          onClick={() => setActiveTab("deploy")}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activeTab === "deploy"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Rocket className="w-3.5 h-3.5" />
+          Deploy
         </button>
         <button
           onClick={() => setActiveTab("settings")}
@@ -344,6 +357,11 @@ export function ProjectPage() {
           />
         )}
         {activeTab === "git" && <GitTab projectId={projectId} />}
+        {activeTab === "issues" && (
+          <div className="h-full overflow-y-auto p-4">
+            <Issues projectId={projectId} />
+          </div>
+        )}
         {activeTab === "deploy" && <DeployTab projectId={projectId} />}
         {activeTab === "remote" && <RemoteSyncTab projectId={projectId} />}
         {activeTab === "notes" && <NotesTab projectId={projectId} />}

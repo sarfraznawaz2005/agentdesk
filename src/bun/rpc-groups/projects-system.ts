@@ -235,7 +235,14 @@ export const handlers: Record<string, (params: any) => any> = {
 	openExternalUrl: async (params) => {
 		const { url } = params;
 		if (process.platform === "win32") {
-			Bun.spawn(["cmd", "/c", "start", url]);
+			// Open via PowerShell Start-Process — it invokes the URL's protocol handler
+			// (the default browser). Avoids two Windows traps:
+			//   • `cmd /c start <url>` splits the URL on `&` (truncating query strings,
+			//     e.g. Kanboard's ?controller=...&action=show&task_id=...);
+			//   • `explorer.exe <url>` can open File Explorer instead of the browser.
+			// Single-quote the URL so `&` is literal; double any embedded single quotes.
+			const psUrl = url.replace(/'/g, "''");
+			Bun.spawn(["powershell", "-NoProfile", "-NonInteractive", "-Command", `Start-Process '${psUrl}'`]);
 		} else if (process.platform === "darwin") {
 			Bun.spawn(["open", url]);
 		} else {

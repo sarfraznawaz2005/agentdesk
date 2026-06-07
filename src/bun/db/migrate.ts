@@ -32,6 +32,8 @@ import * as v29 from "./migrations/v29_remote-sync-tables";
 import * as v30 from "./migrations/v30_remote-sync-security-excludes";
 import * as v31 from "./migrations/v31_issue-fixer-notify-enabled";
 import * as v32 from "./migrations/v32_custom-env-vars";
+import * as v33 from "./migrations/v33_external-issues";
+import * as v34 from "./migrations/v34_external-issues-due-date";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -88,6 +90,8 @@ const migrations: Migration[] = [
 	{ version: 30, name: v30.name, run: v30.run },
 	{ version: 31, name: v31.name, run: v31.run },
 	{ version: 32, name: v32.name, run: v32.run },
+	{ version: 33, name: v33.name, run: v33.run },
+	{ version: 34, name: v34.name, run: v34.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -185,6 +189,21 @@ function ensureRuntimeSchema(): void {
 		v32.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: custom-env-vars table failed:", err);
+	}
+
+	// Defensive: ensure external_issues table exists (v33 is CREATE TABLE IF NOT EXISTS
+	// + idempotent github_issues backfill).
+	try {
+		v33.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: external-issues table failed:", err);
+	}
+
+	// Defensive: ensure external_issues.due_date column exists (v34 guards with PRAGMA).
+	try {
+		v34.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: external-issues due_date column failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

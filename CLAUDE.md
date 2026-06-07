@@ -112,7 +112,8 @@ src/
 │   │   ├── skills.ts          # Skills discovery + refresh RPCs
 │   │   ├── lsp.ts             # LSP server management RPCs
 │   │   ├── analytics.ts / audit.ts / automation.ts  # Analytics, audit log, automation RPCs
-│   │   ├── github-issues.ts / github-api.ts / branch-strategy.ts  # GitHub RPCs (github-issues.ts: issue↔kanban two-way sync; github-api.ts: gitAuthArgs/githubAuthPrefix/pushBranchAuthenticated — token auth via inline header w/ credential helper DISABLED, never stores creds/prompts)
+│   │   ├── issues.ts          # Multi-source issue engine (GitHub/Jira/Linear/GitLab/Trello/Kanboard) over the external_issues table: source config CRUD, test connection, getSourceBuckets (column/list/status discovery), sync (open-only + reconcile + 100-cap), issue↔kanban link, create-from-task, closeExternalIssueForTask (auto-close on task done, all sources). Adapters live in src/bun/issue-sources/
+│   │   ├── github-issues.ts / github-api.ts / branch-strategy.ts  # github-issues.ts: legacy shim delegating to issues.ts (source='github'), kept for the kanban task-detail modal; github-api.ts: gitAuthArgs/githubAuthPrefix/pushBranchAuthenticated — token auth via inline header w/ credential helper DISABLED, never stores creds/prompts
 │   │   ├── pulls.ts           # Pull request RPCs
 │   │   ├── notifications.ts   # Notification preference RPCs
 │   │   ├── dashboard.ts / search.ts / providers.ts / prompts.ts  # Misc RPCs
@@ -154,6 +155,16 @@ src/
 │   │   ├── client.ts          # Protocol-agnostic RemoteClient over ssh2-sftp-client (SFTP) + basic-ftp (FTP/FTPS)
 │   │   ├── config.ts          # remote_sync_config + remote_sync_items (manifest) + remote_sync_runs persistence
 │   │   └── engine.ts          # test/browse/pull/diff/push orchestration; per-project lock; broadcast progress
+│   ├── issue-sources/    # Multi-source issue tracker adapters (Issues subtab under Git)
+│   │   ├── types.ts           # IssueSourceAdapter interface (+ optional fetchBuckets), NormalisedIssue, BucketGroup, parseSelectedBuckets(), normalisePriority()
+│   │   ├── config-store.ts    # Per-project source config in settings table (category "issue_sources"). Selected buckets stored as config.buckets (JSON id array)
+│   │   ├── registry.ts        # Adapter map + required-field validation
+│   │   ├── github.ts          # GitHub adapter (reuses global repo URL + PAT, not per-source config); open-only
+│   │   ├── jira.ts            # Jira Cloud REST v3 (email+API token; ADF body; open = statusCategory != Done; OPTIONAL status-bucket filter)
+│   │   ├── linear.ts         # Linear GraphQL (API key; team resolution; open = state.type not completed/canceled)
+│   │   ├── gitlab.ts         # GitLab REST v4 (PRIVATE-TOKEN; state=opened; scoped-label priority)
+│   │   ├── trello.ts         # Trello REST (key+token; lists are REQUIRED buckets; non-archived cards in selected lists, latest 100 by card-id time)
+│   │   └── kanboard.ts        # Kanboard JSON-RPC (HTTP Basic; comma-separated project ids; columns are REQUIRED buckets; latest 100 open tasks; getColumns powers bucket picker)
 │   ├── engine-manager.ts # Creates + caches AgentEngine per project; global abort tracking
 │   ├── rpc-registration.ts  # Registers all RPC handlers with Electrobun
 │   └── index.ts          # Main Bun process entry point
@@ -173,7 +184,9 @@ src/
 │   │   ├── kanban/            # Kanban board, columns, cards, task detail modal, stats bar
 │   │   ├── git/               # Branch list, commit log, diff viewer, PR management,
 │   │   │                      #   conflicts (view + abort + "Resolve with AI" → seeds a PM chat),
-│   │   │                      #   GitHub issues (issue↔kanban link/create/auto-close), branch strategy
+│   │   │                      #   GitHub issue↔kanban link/create/auto-close, branch strategy, Auto Issues Fixer
+│   │   ├── issues/            # issues.tsx — top-level "Issue Tracker" tab (multi-source: source tabs +
+│   │   │                      #   configure dialog w/ bucket picker + search + issue↔kanban link/create/auto-close)
 │   │   ├── deploy/            # Deploy tab
 │   │   ├── remote-sync/       # Remote tab — SFTP/FTP sync (tab + connection form + lazy tree + push diff dialog)
 │   │   ├── modals/            # new-project-modal.tsx, startup-health-dialog.tsx
@@ -227,7 +240,9 @@ src/
 `whatsapp_sessions` · `notification_preferences` · `inbox_rules` ·
 `cron_jobs` · `cron_job_history` · `automation_rules` ·
 `pull_requests` · `pr_comments` · `webhook_configs` · `webhook_events` ·
-`github_issues` · `branch_strategies` · `cost_budgets` · `audit_log` ·
+`github_issues` (deprecated — superseded by `external_issues`; left read-only) ·
+`external_issues` (unified multi-source issue store: GitHub/Jira/Linear/GitLab/Trello/Kanboard) ·
+`branch_strategies` · `cost_budgets` · `audit_log` ·
 `issue_fixer_config` · `issue_fix_runs` · `project_activity` ·
 `remote_sync_config` · `remote_sync_items` · `remote_sync_runs`
 

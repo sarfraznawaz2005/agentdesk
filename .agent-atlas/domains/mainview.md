@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 159
-**Symbols:** 1354
+**Symbols:** 1368
 
 ## Files
 
@@ -690,33 +690,16 @@
 ### `src/mainview/components/git/git-tab.tsx`
 
 **Interfaces:**
-- `GitTabProps` (line 18)
+- `GitTabProps` (line 17)
 
 **Types:**
-- `GitSubTab` (line 16)
+- `GitSubTab` (line 15)
 
 **Functions:**
-- `GitTab` (line 28)
-- `saveAutoCommitSettings` (line 78)
-- `handlePull` (line 87)
-- `handlePullWithBranch` (line 108)
-
-
-### `src/mainview/components/git/github-issues.tsx`
-
-**Interfaces:**
-- `GithubIssuesProps` (line 9)
-
-**Types:**
-- `GhIssue` (line 6)
-- `TaskLite` (line 7)
-
-**Functions:**
-- `IssueCard` (line 13)
-- `onSelectTask` (line 25)
-- `stateColor` (line 91)
-- `GithubIssues` (line 97)
-- `handleSync` (line 122)
+- `GitTab` (line 26)
+- `saveAutoCommitSettings` (line 76)
+- `handlePull` (line 85)
+- `handlePullWithBranch` (line 106)
 
 
 ### `src/mainview/components/git/pull-requests.tsx`
@@ -820,6 +803,37 @@
 - `statusVariant` (line 36)
 - `IssueFixerProjectTab` (line 43)
 - `h` (line 144)
+
+
+### `src/mainview/components/issues/issues.tsx`
+
+**Interfaces:**
+- `IssuesProps` (line 65)
+
+**Types:**
+- `TaskLite` (line 36)
+- `BucketGroupT` (line 337)
+
+**Functions:**
+- `looksLikeHtml` (line 39)
+- `stripHtml` (line 43)
+- `displayBody` (line 60)
+- `stateColor` (line 86)
+- `IssueCard` (line 94)
+- `onSelectTask` (line 121)
+- `onCreateKanbanTask` (line 133)
+- `formatSourceId` (line 308)
+- `ConfigureDialog` (line 316)
+- `requiredFilled` (line 342)
+- `setField` (line 399)
+- `toggleBucket` (line 409)
+- `toggleGroupBuckets` (line 418)
+- `handleTest` (line 429)
+- `handleSave` (line 449)
+- `handleRemove` (line 468)
+- `ConnectPicker` (line 606)
+- `Issues` (line 653)
+- `handleSync` (line 740)
 
 
 ### `src/mainview/components/kanban/kanban-board.tsx`
@@ -2021,15 +2035,15 @@
 ### `src/mainview/pages/project.tsx`
 
 **Interfaces:**
-- `PluginTab` (line 23)
+- `PluginTab` (line 24)
 
 **Types:**
-- `ProjectTab` (line 21)
+- `ProjectTab` (line 22)
 
 **Functions:**
-- `ProjectPage` (line 30)
-- `handler` (line 75)
-- `handleCreateTask` (line 170)
+- `ProjectPage` (line 31)
+- `handler` (line 76)
+- `handleCreateTask` (line 171)
 
 
 ### `src/mainview/pages/prompts.tsx`
@@ -2486,10 +2500,10 @@
 - `TaskPriority` (line 26)
 
 **Functions:**
-- `sortTasksByPosition` (line 73)
+- `sortTasksByPosition` (line 74)
 
 **Exports:**
-- `useKanbanStore` (line 92)
+- `useKanbanStore` (line 93)
 
 
 ### `src/mainview/stores/message-queue.ts`

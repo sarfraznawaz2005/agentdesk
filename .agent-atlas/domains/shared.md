@@ -1,8 +1,8 @@
 # Domain: shared
 
 **Directory:** `src/shared`
-**Files:** 30
-**Symbols:** 113
+**Files:** 31
+**Symbols:** 128
 
 ## Files
 
@@ -107,52 +107,56 @@
 ### `src/shared/rpc/index.ts`
 
 **Types:**
-- `BunRequests` (line 38)
-- `AgentDeskRPC` (line 66)
+- `BunRequests` (line 39)
+- `AgentDeskRPC` (line 68)
 
 **Exports:**
-- `SettingsRequests` (line 75)
-- `ProvidersRequests` (line 75)
-- `ProjectsRequests` (line 75)
-- `ConversationsRequests` (line 75)
-- `AgentsRequests` (line 75)
-- `KanbanRequests` (line 75)
-- `NotesRequests` (line 75)
-- `DeployRequests` (line 75)
-- `GitRequests` (line 75)
-- `IntegrationsRequests` (line 75)
-- `InboxRequests` (line 75)
-- `AnalyticsRequests` (line 75)
-- `SystemRequests` (line 75)
-- `BunMessages` (line 75)
-- `PluginsRequests` (line 75)
-- `LspRequests` (line 75)
-- `DashboardRequests` (line 75)
-- `SkillsRequests` (line 75)
-- `CouncilRequests` (line 75)
-- `UpdaterRequests` (line 75)
-- `FreelanceRequests` (line 75)
-- `FreelanceListingDto` (line 75)
-- `FreelanceChatMessageDto` (line 75)
-- `PlaygroundRequests` (line 75)
-- `PlaygroundPreviewDto` (line 75)
-- `IssueFixerRequests` (line 75)
-- `IssueFixerConfigDto` (line 75)
-- `IssueFixRunDto` (line 75)
-- `RemoteSyncRequests` (line 75)
-- `RemoteSyncConfigDto` (line 75)
-- `RemoteSyncConfigInput` (line 75)
-- `RemoteSyncRunDto` (line 75)
-- `RemoteEntryDto` (line 75)
-- `PushDiffEntry` (line 75)
-- `ActivityRequests` (line 75)
-- `UnreadActivityEntry` (line 75)
-- `EnvVarsRequests` (line 75)
-- `CustomEnvVar` (line 75)
-- `RecommendationsRequests` (line 75)
-- `DependencyId` (line 75)
-- `DependencyStatus` (line 75)
-- `WebviewSchema` (line 75)
+- `SettingsRequests` (line 77)
+- `ProvidersRequests` (line 77)
+- `ProjectsRequests` (line 77)
+- `ConversationsRequests` (line 77)
+- `AgentsRequests` (line 77)
+- `KanbanRequests` (line 77)
+- `NotesRequests` (line 77)
+- `DeployRequests` (line 77)
+- `GitRequests` (line 77)
+- `IntegrationsRequests` (line 77)
+- `InboxRequests` (line 77)
+- `AnalyticsRequests` (line 77)
+- `SystemRequests` (line 77)
+- `BunMessages` (line 77)
+- `PluginsRequests` (line 77)
+- `LspRequests` (line 77)
+- `DashboardRequests` (line 77)
+- `SkillsRequests` (line 77)
+- `CouncilRequests` (line 77)
+- `UpdaterRequests` (line 77)
+- `FreelanceRequests` (line 77)
+- `FreelanceListingDto` (line 77)
+- `FreelanceChatMessageDto` (line 77)
+- `PlaygroundRequests` (line 77)
+- `PlaygroundPreviewDto` (line 77)
+- `IssueFixerRequests` (line 77)
+- `IssueFixerConfigDto` (line 77)
+- `IssueFixRunDto` (line 77)
+- `RemoteSyncRequests` (line 77)
+- `RemoteSyncConfigDto` (line 77)
+- `RemoteSyncConfigInput` (line 77)
+- `RemoteSyncRunDto` (line 77)
+- `RemoteEntryDto` (line 77)
+- `PushDiffEntry` (line 77)
+- `ActivityRequests` (line 77)
+- `UnreadActivityEntry` (line 77)
+- `EnvVarsRequests` (line 77)
+- `CustomEnvVar` (line 77)
+- `RecommendationsRequests` (line 77)
+- `DependencyId` (line 77)
+- `DependencyStatus` (line 77)
+- `IssuesRequests` (line 77)
+- `IssueSource` (line 77)
+- `ExternalIssue` (line 77)
+- `IssueSourceStatus` (line 77)
+- `WebviewSchema` (line 77)
 
 
 ### `src/shared/rpc/integrations.ts`
@@ -172,6 +176,28 @@
 
 **Types:**
 - `IssueFixerRequests` (line 64)
+
+
+### `src/shared/rpc/issues.ts`
+
+**Interfaces:**
+- `IssueSourceFieldDescriptor` (line 14)
+- `IssueSourceCapabilities` (line 23)
+- `BucketSelectionSpec` (line 39)
+- `IssueSourceDescriptor` (line 52)
+- `ExternalIssue` (line 166)
+- `IssueSourceStatus` (line 184)
+
+**Types:**
+- `IssueSource` (line 11)
+- `IssuesRequests` (line 189)
+
+**Functions:**
+- `getIssueSourceDescriptor` (line 154)
+- `requireIssueSourceDescriptor` (line 159)
+
+**Exports:**
+- `ISSUE_SOURCE_DESCRIPTORS` (line 74)
 
 
 ### `src/shared/rpc/kanban.ts`

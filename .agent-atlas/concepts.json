@@ -644,7 +644,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "AgentDeskRPC",
       "type": "type"
     },
@@ -828,19 +828,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     },
@@ -1129,6 +1129,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 26,
+      "symbol": "allSources",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/client.ts",
       "line": 217,
       "symbol": "getAllDiagnostics",
@@ -1324,7 +1330,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "AgentsRequests",
       "type": "export"
     }
@@ -1482,6 +1488,18 @@
     },
     {
       "file": "src/bun/db/migrations/v32_custom-env-vars.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v33_external-issues.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v34_external-issues-due-date.ts",
       "line": 3,
       "symbol": "name",
       "type": "export"
@@ -2287,6 +2305,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 14,
+      "symbol": "getSavedConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 113,
+      "symbol": "getGithubConfigError",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 20,
+      "symbol": "getAdapter",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/client.ts",
       "line": 202,
       "symbol": "getDiagnostics",
@@ -2822,7 +2858,7 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 19,
+      "line": 24,
       "symbol": "getGithubIssues",
       "type": "function"
     },
@@ -2875,6 +2911,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 73,
+      "symbol": "getIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 130,
+      "symbol": "getSourceBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 149,
+      "symbol": "getExternalIssues",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/kanban.ts",
       "line": 71,
       "symbol": "getKanbanTasks",
@@ -2888,13 +2942,13 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 245,
+      "line": 246,
       "symbol": "getTaskActivity",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 256,
+      "line": 257,
       "symbol": "getProjectTaskStats",
       "type": "function"
     },
@@ -3313,6 +3367,12 @@
       "type": "function"
     },
     {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 154,
+      "symbol": "getIssueSourceDescriptor",
+      "type": "function"
+    },
+    {
       "file": "tests/agents/review-cycle.test.ts",
       "line": 206,
       "symbol": "getVerdict",
@@ -3514,7 +3574,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "SystemRequests",
       "type": "export"
     },
@@ -3552,7 +3612,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 692,
+      "line": 719,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -3600,13 +3660,13 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 245,
+      "line": 246,
       "symbol": "getTaskActivity",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 292,
+      "line": 293,
       "symbol": "logActivity",
       "type": "function"
     },
@@ -3648,13 +3708,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ActivityRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     }
@@ -3790,6 +3850,12 @@
       "file": "src/bun/scheduler/task-executor.ts",
       "line": 26,
       "symbol": "setTaskExecutorEngine",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 399,
+      "symbol": "setField",
       "type": "function"
     },
     {
@@ -4286,9 +4352,21 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DependencyStatus",
       "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssueSourceStatus",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 184,
+      "symbol": "IssueSourceStatus",
+      "type": "interface"
     },
     {
       "file": "src/shared/rpc/lsp.ts",
@@ -4472,6 +4550,12 @@
       "file": "src/mainview/components/inbox/inbox-rules-editor.tsx",
       "line": 293,
       "symbol": "removeAction",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 468,
+      "symbol": "handleRemove",
       "type": "function"
     },
     {
@@ -4823,6 +4907,18 @@
       "line": 242,
       "symbol": "getMainWindowRef",
       "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 10,
+      "symbol": "projectRef",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 23,
+      "symbol": "IssueRef",
+      "type": "interface"
     }
   ],
   "broadcast": [
@@ -4878,7 +4974,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "WebviewSchema",
       "type": "export"
     },
@@ -4898,8 +4994,14 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 204,
+      "line": 72,
       "symbol": "linkIssueToTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 275,
+      "symbol": "linkExternalIssueToTask",
       "type": "function"
     }
   ],
@@ -5106,7 +5208,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "InboxRequests",
       "type": "export"
     }
@@ -5177,6 +5279,48 @@
       "line": 88,
       "symbol": "resolveProviderConfig",
       "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 20,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 57,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 104,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 118,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 68,
+      "symbol": "resolveTeamId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 81,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 86,
+      "symbol": "resolveConfig",
+      "type": "method"
     },
     {
       "file": "src/bun/lsp/client.ts",
@@ -5826,7 +5970,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 75,
+      "line": 76,
       "symbol": "handler",
       "type": "function"
     },
@@ -6109,6 +6253,48 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 85,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 100,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 179,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 163,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 156,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 146,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 35,
+      "symbol": "CreateIssueInput",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/plugins/api.ts",
       "line": 20,
       "symbol": "createPluginAPI",
@@ -6260,7 +6446,7 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 136,
+      "line": 53,
       "symbol": "createGithubIssueFromTask",
       "type": "function"
     },
@@ -6268,6 +6454,12 @@
       "file": "src/bun/rpc/inbox-rules.ts",
       "line": 83,
       "symbol": "createInboxRule",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 285,
+      "symbol": "createExternalIssueFromTask",
       "type": "function"
     },
     {
@@ -6337,6 +6529,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 133,
+      "symbol": "onCreateKanbanTask",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/kanban/task-detail-modal.tsx",
       "line": 260,
       "symbol": "createGithubIssue",
@@ -6368,7 +6566,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 170,
+      "line": 171,
       "symbol": "handleCreateTask",
       "type": "function"
     },
@@ -6517,6 +6715,12 @@
       "line": 45,
       "symbol": "FormState",
       "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 86,
+      "symbol": "stateColor",
+      "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
@@ -7517,6 +7721,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 33,
+      "symbol": "saveConfig",
+      "type": "function"
+    },
+    {
       "file": "src/bun/playground/orchestrator.ts",
       "line": 74,
       "symbol": "saveConversation",
@@ -7562,6 +7772,12 @@
       "file": "src/bun/rpc/issue-fixer.ts",
       "line": 51,
       "symbol": "saveIssueFixerConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 83,
+      "symbol": "saveIssueSourceConfig",
       "type": "function"
     },
     {
@@ -7650,7 +7866,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 78,
+      "line": 76,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     },
@@ -7664,6 +7880,12 @@
       "file": "src/mainview/components/inbox/inbox-rules-editor.tsx",
       "line": 761,
       "symbol": "handleSaveEdit",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 449,
+      "symbol": "handleSave",
       "type": "function"
     },
     {
@@ -7859,6 +8081,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 5,
+      "symbol": "baseUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 7,
+      "symbol": "baseUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 59,
+      "symbol": "taskUrl",
+      "type": "function"
+    },
+    {
       "file": "src/bun/providers/openai.ts",
       "line": 12,
       "symbol": "normalizeBaseUrl",
@@ -7922,13 +8162,13 @@
   "freelance": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 648,
+      "line": 675,
       "symbol": "freelanceListings",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 675,
+      "line": 702,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -8048,19 +8288,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceListingDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     }
@@ -8554,7 +8794,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 108,
+      "line": 106,
       "symbol": "handlePullWithBranch",
       "type": "function"
     }
@@ -8607,6 +8847,12 @@
       "line": 121,
       "symbol": "initGlobalErrorHandlers",
       "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 113,
+      "symbol": "getGithubConfigError",
+      "type": "export"
     },
     {
       "file": "src/bun/playground/server.ts",
@@ -8811,6 +9057,12 @@
   ],
   "rpc": [
     {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 21,
+      "symbol": "rpcCall",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/jsonrpc.ts",
       "line": 32,
       "symbol": "JsonRpcTransport",
@@ -8878,7 +9130,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "AgentDeskRPC",
       "type": "type"
     }
@@ -9005,6 +9257,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 43,
+      "symbol": "stripHtml",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/ui/agent-avatar.tsx",
       "line": 28,
       "symbol": "stripInstanceId",
@@ -9072,7 +9330,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 66,
+      "line": 68,
       "symbol": "AgentDeskRPC",
       "type": "type"
     }
@@ -9259,21 +9517,69 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 516,
+      "symbol": "externalIssues",
+      "type": "export"
+    },
+    {
       "file": "src/bun/issue-fixer/github.ts",
       "line": 88,
       "symbol": "listOpenIssuesSince",
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 26,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 61,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 113,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 126,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 85,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 94,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 19,
+      "line": 24,
       "symbol": "getGithubIssues",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 45,
+      "line": 42,
       "symbol": "syncGithubIssues",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 149,
+      "symbol": "getExternalIssues",
       "type": "function"
     },
     {
@@ -9287,6 +9593,30 @@
       "line": 97,
       "symbol": "GithubIssues",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 65,
+      "symbol": "IssuesProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 653,
+      "symbol": "Issues",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssuesRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 189,
+      "symbol": "IssuesRequests",
+      "type": "type"
     },
     {
       "file": "tests/agents/review-cycle.test.ts",
@@ -9391,6 +9721,54 @@
       "line": 9,
       "symbol": "WhatsAppAdapter",
       "type": "class"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 17,
+      "symbol": "githubAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 54,
+      "symbol": "gitlabAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 101,
+      "symbol": "jiraAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 115,
+      "symbol": "kanboardAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 78,
+      "symbol": "linearAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 20,
+      "symbol": "getAdapter",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 83,
+      "symbol": "trelloAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 57,
+      "symbol": "IssueSourceAdapter",
+      "type": "interface"
     },
     {
       "file": "src/bun/providers/anthropic.ts",
@@ -9594,6 +9972,12 @@
       "file": "src/bun/rpc/whatsapp.ts",
       "line": 71,
       "symbol": "connectWhatsApp",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 606,
+      "symbol": "ConnectPicker",
       "type": "function"
     },
     {
@@ -9916,7 +10300,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 626,
+      "line": 653,
       "symbol": "messageParts",
       "type": "export"
     },
@@ -10276,7 +10660,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     },
@@ -10552,7 +10936,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 692,
+      "line": 719,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -10560,6 +10944,18 @@
       "file": "src/bun/issue-fixer/poller.ts",
       "line": 108,
       "symbol": "pollProject",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 10,
+      "symbol": "projectRef",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 52,
+      "symbol": "parseProjectIds",
       "type": "function"
     },
     {
@@ -10642,7 +11038,7 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 256,
+      "line": 257,
       "symbol": "getProjectTaskStats",
       "type": "function"
     },
@@ -10912,13 +11308,13 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 21,
+      "line": 22,
       "symbol": "ProjectTab",
       "type": "type"
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 30,
+      "line": 31,
       "symbol": "ProjectPage",
       "type": "function"
     },
@@ -11179,21 +11575,51 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 36,
+      "symbol": "KanboardTask",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 59,
+      "symbol": "taskUrl",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 136,
+      "line": 53,
       "symbol": "createGithubIssueFromTask",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 204,
+      "line": 72,
       "symbol": "linkIssueToTask",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 215,
+      "line": 76,
       "symbol": "closeGithubIssueForTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 275,
+      "symbol": "linkExternalIssueToTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 285,
+      "symbol": "createExternalIssueFromTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 354,
+      "symbol": "closeExternalIssueForTask",
       "type": "function"
     },
     {
@@ -11240,25 +11666,25 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 233,
+      "line": 234,
       "symbol": "deleteKanbanTask",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 245,
+      "line": 246,
       "symbol": "getTaskActivity",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 256,
+      "line": 257,
       "symbol": "getProjectTaskStats",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 271,
+      "line": 272,
       "symbol": "mapTask",
       "type": "function"
     },
@@ -11335,6 +11761,24 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 36,
+      "symbol": "TaskLite",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 121,
+      "symbol": "onSelectTask",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 133,
+      "symbol": "onCreateKanbanTask",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/kanban/task-detail-modal.tsx",
       "line": 30,
       "symbol": "TaskDetailModalProps",
@@ -11390,7 +11834,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 170,
+      "line": 171,
       "symbol": "handleCreateTask",
       "type": "function"
     },
@@ -11623,6 +12067,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 49,
+      "symbol": "priorityFromLabels",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 11,
+      "symbol": "createdFromId",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 388,
       "symbol": "extractJsonFromText",
@@ -11630,8 +12086,14 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 136,
+      "line": 53,
       "symbol": "createGithubIssueFromTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 285,
+      "symbol": "createExternalIssueFromTask",
       "type": "function"
     },
     {
@@ -11945,6 +12407,48 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 64,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 84,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 149,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 149,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 124,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 131,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 28,
+      "symbol": "TestResult",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/providers/anthropic.ts",
       "line": 56,
       "symbol": "testConnection",
@@ -12029,6 +12533,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 106,
+      "symbol": "testIssueSource",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/providers.ts",
       "line": 172,
       "symbol": "testProviderWithCredentialsHandler",
@@ -12044,6 +12554,12 @@
       "file": "src/bun/rpc/remote-sync.ts",
       "line": 55,
       "symbol": "testRemoteConnection",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 429,
+      "symbol": "handleTest",
       "type": "function"
     },
     {
@@ -12306,13 +12822,13 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 157,
+      "line": 161,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "WebviewSchema",
       "type": "export"
     },
@@ -12525,6 +13041,12 @@
       "type": "export"
     },
     {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 36,
+      "symbol": "GitLabIssue",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/lib/git-runner.ts",
       "line": 4,
       "symbol": "runGit",
@@ -12664,19 +13186,19 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 16,
+      "line": 15,
       "symbol": "GitSubTab",
       "type": "type"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 18,
+      "line": 17,
       "symbol": "GitTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 28,
+      "line": 26,
       "symbol": "GitTab",
       "type": "function"
     },
@@ -12688,7 +13210,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "GitRequests",
       "type": "export"
     },
@@ -12928,7 +13450,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 78,
+      "line": 76,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     },
@@ -13222,7 +13744,7 @@
   "custom": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 762,
+      "line": 789,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -13288,7 +13810,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "CustomEnvVar",
       "type": "export"
     },
@@ -13450,6 +13972,18 @@
       "file": "src/bun/agents/tools/preview.ts",
       "line": 34,
       "symbol": "readText",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 40,
+      "symbol": "adfToText",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 54,
+      "symbol": "textToAdf",
       "type": "function"
     },
     {
@@ -13874,7 +14408,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "CouncilRequests",
       "type": "export"
     },
@@ -14176,8 +14710,14 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 215,
+      "line": 76,
       "symbol": "closeGithubIssueForTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 354,
+      "symbol": "closeExternalIssueForTask",
       "type": "function"
     },
     {
@@ -14610,7 +15150,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ProvidersRequests",
       "type": "export"
     },
@@ -16165,6 +16705,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 68,
+      "symbol": "resolveTeamId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 11,
+      "symbol": "createdFromId",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/github-api.ts",
       "line": 54,
       "symbol": "getProjectIdByWorkspace",
@@ -16195,6 +16747,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 308,
+      "symbol": "formatSourceId",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/ui/agent-avatar.tsx",
       "line": 28,
       "symbol": "stripInstanceId",
@@ -16208,7 +16766,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DependencyId",
       "type": "export"
     },
@@ -16992,7 +17550,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 157,
+      "line": 161,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -17131,6 +17689,12 @@
       "type": "interface"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 399,
+      "symbol": "setField",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/modals/new-project-modal.tsx",
       "line": 92,
       "symbol": "updateField",
@@ -17171,6 +17735,12 @@
       "line": 451,
       "symbol": "updateField",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 14,
+      "symbol": "IssueSourceFieldDescriptor",
+      "type": "interface"
     }
   ],
   "bounding": [
@@ -17216,7 +17786,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 675,
+      "line": 702,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -17294,7 +17864,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "BunMessages",
       "type": "export"
     },
@@ -17626,7 +18196,7 @@
     },
     {
       "file": "src/mainview/stores/kanban-store.ts",
-      "line": 73,
+      "line": 74,
       "symbol": "sortTasksByPosition",
       "type": "function"
     }
@@ -17642,6 +18212,12 @@
       "file": "src/bun/agents/tools/web.ts",
       "line": 13,
       "symbol": "getIntegrationKey",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 9,
+      "symbol": "configKey",
       "type": "function"
     },
     {
@@ -18101,6 +18677,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 34,
+      "symbol": "validateRequiredFields",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/scheduler/automation-rule-form.tsx",
       "line": 203,
       "symbol": "ActionConfigFieldsProps",
@@ -18551,6 +19133,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 52,
+      "symbol": "parseProjectIds",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 91,
+      "symbol": "parseSelectedBuckets",
+      "type": "function"
+    },
+    {
       "file": "src/bun/remote-sync/config.ts",
       "line": 20,
       "symbol": "parseStringArray",
@@ -18673,6 +19267,48 @@
       "type": "interface"
     },
     {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 57,
+      "symbol": "IssueSourceAdapter",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 73,
+      "symbol": "getIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 83,
+      "symbol": "saveIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 98,
+      "symbol": "deleteIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 106,
+      "symbol": "testIssueSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 130,
+      "symbol": "getSourceBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 167,
+      "symbol": "syncIssueSource",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/playground.ts",
       "line": 71,
       "symbol": "readSourceFiles",
@@ -18689,6 +19325,12 @@
       "line": 33,
       "symbol": "RssSource",
       "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 308,
+      "symbol": "formatSourceId",
+      "type": "function"
     },
     {
       "file": "src/mainview/pages/inbox.tsx",
@@ -18725,6 +19367,66 @@
       "line": 1248,
       "symbol": "SourceViewer",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssueSource",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssueSourceStatus",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 11,
+      "symbol": "IssueSource",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 14,
+      "symbol": "IssueSourceFieldDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 23,
+      "symbol": "IssueSourceCapabilities",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 52,
+      "symbol": "IssueSourceDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 74,
+      "symbol": "ISSUE_SOURCE_DESCRIPTORS",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 154,
+      "symbol": "getIssueSourceDescriptor",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 159,
+      "symbol": "requireIssueSourceDescriptor",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 184,
+      "symbol": "IssueSourceStatus",
+      "type": "interface"
     }
   ],
   "slides": [
@@ -19162,6 +19864,12 @@
       "file": "src/bun/freelance/normalizer.ts",
       "line": 50,
       "symbol": "cleanDescription",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 52,
+      "symbol": "cleanConfig",
       "type": "function"
     },
     {
@@ -20031,6 +20739,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 51,
+      "symbol": "TrelloList",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/playground/orchestrator.ts",
       "line": 119,
       "symbol": "listTopLevel",
@@ -20178,6 +20892,12 @@
       "file": "src/bun/rpc/issue-fixer.ts",
       "line": 59,
       "symbol": "listIssueFixRuns",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 58,
+      "symbol": "listIssueSources",
       "type": "function"
     },
     {
@@ -20557,6 +21277,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 60,
+      "symbol": "displayBody",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/lib/utils.ts",
       "line": 11,
       "symbol": "displayAgentName",
@@ -20614,7 +21340,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 762,
+      "line": 789,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -20692,13 +21418,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "EnvVarsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "CustomEnvVar",
       "type": "export"
     }
@@ -20981,6 +21707,12 @@
       "line": 104,
       "symbol": "validate_slide_layout_ids",
       "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 52,
+      "symbol": "parseProjectIds",
+      "type": "function"
     }
   ],
   "timestamp": [
@@ -21274,7 +22006,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 95,
+      "line": 99,
       "symbol": "runMigrations",
       "type": "function"
     },
@@ -21431,6 +22163,18 @@
     {
       "file": "src/bun/db/migrations/v32_custom-env-vars.ts",
       "line": 5,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v33_external-issues.ts",
+      "line": 11,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v34_external-issues-due-date.ts",
+      "line": 10,
       "symbol": "run",
       "type": "function"
     },
@@ -21706,13 +22450,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
@@ -21814,6 +22558,18 @@
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 388,
       "symbol": "extractJsonFromText",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 38,
+      "symbol": "safeJsonArray",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 47,
+      "symbol": "safeJsonObject",
       "type": "function"
     },
     {
@@ -22094,7 +22850,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 612,
+      "line": 639,
       "symbol": "auditLog",
       "type": "export"
     },
@@ -22136,7 +22892,7 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 292,
+      "line": 293,
       "symbol": "logActivity",
       "type": "function"
     },
@@ -22266,6 +23022,12 @@
       "file": "src/bun/issue-fixer/poller.ts",
       "line": 101,
       "symbol": "PollResult",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 28,
+      "symbol": "TestResult",
       "type": "interface"
     },
     {
@@ -23827,6 +24589,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 21,
+      "symbol": "rpcCall",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/chat/tool-call-card.tsx",
       "line": 50,
       "symbol": "ToolCallPartData",
@@ -23904,19 +24672,19 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 706,
+      "line": 733,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 744,
+      "line": 771,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 772,
+      "line": 799,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -23946,8 +24714,14 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 45,
+      "line": 42,
       "symbol": "syncGithubIssues",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 167,
+      "symbol": "syncIssueSource",
       "type": "function"
     },
     {
@@ -23989,6 +24763,12 @@
     {
       "file": "src/mainview/components/git/github-issues.tsx",
       "line": 122,
+      "symbol": "handleSync",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 740,
       "symbol": "handleSync",
       "type": "function"
     },
@@ -24036,25 +24816,25 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
@@ -24310,7 +25090,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "NotesRequests",
       "type": "export"
     },
@@ -24746,7 +25526,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 23,
+      "line": 24,
       "symbol": "PluginTab",
       "type": "interface"
     }
@@ -25028,7 +25808,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
@@ -25828,7 +26608,7 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 233,
+      "line": 234,
       "symbol": "deleteKanbanTask",
       "type": "function"
     },
@@ -25842,6 +26622,12 @@
       "file": "src/mainview/components/activity/files-tab.tsx",
       "line": 293,
       "symbol": "onKanbanMove",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 133,
+      "symbol": "onCreateKanbanTask",
       "type": "function"
     },
     {
@@ -25918,13 +26704,13 @@
     },
     {
       "file": "src/mainview/stores/kanban-store.ts",
-      "line": 92,
+      "line": 93,
       "symbol": "useKanbanStore",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "KanbanRequests",
       "type": "export"
     },
@@ -26314,13 +27100,13 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 87,
+      "line": 85,
       "symbol": "handlePull",
       "type": "function"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 108,
+      "line": 106,
       "symbol": "handlePullWithBranch",
       "type": "function"
     },
@@ -26412,6 +27198,30 @@
       "file": "src/mainview/components/inbox/inbox-rules-editor.tsx",
       "line": 807,
       "symbol": "handleCancelForm",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 429,
+      "symbol": "handleTest",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 449,
+      "symbol": "handleSave",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 468,
+      "symbol": "handleRemove",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 740,
+      "symbol": "handleSync",
       "type": "function"
     },
     {
@@ -26842,7 +27652,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 170,
+      "line": 171,
       "symbol": "handleCreateTask",
       "type": "function"
     },
@@ -27122,6 +27932,12 @@
       "file": "src/bun/rpc/db-viewer.ts",
       "line": 76,
       "symbol": "dbViewerDeleteRow",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 18,
+      "symbol": "rowToDto",
       "type": "function"
     },
     {
@@ -27522,7 +28338,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 78,
+      "line": 76,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     }
@@ -27938,7 +28754,7 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 256,
+      "line": 257,
       "symbol": "getProjectTaskStats",
       "type": "function"
     },
@@ -28354,7 +29170,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceListingDto",
       "type": "export"
     }
@@ -28486,7 +29302,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "SkillsRequests",
       "type": "export"
     },
@@ -28728,7 +29544,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 576,
+      "line": 603,
       "symbol": "branchStrategies",
       "type": "export"
     },
@@ -28842,7 +29658,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 108,
+      "line": 106,
       "symbol": "handlePullWithBranch",
       "type": "function"
     },
@@ -29316,13 +30132,13 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 514,
+      "line": 541,
       "symbol": "issueFixerConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 706,
+      "line": 733,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
@@ -29367,6 +30183,78 @@
       "line": 18,
       "symbol": "TriggerConfig",
       "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 9,
+      "symbol": "configKey",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 14,
+      "symbol": "getSavedConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 33,
+      "symbol": "saveConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 47,
+      "symbol": "deleteConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 52,
+      "symbol": "cleanConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 20,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 113,
+      "symbol": "getGithubConfigError",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 57,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 104,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 118,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 81,
+      "symbol": "resolveConfig",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 86,
+      "symbol": "resolveConfig",
+      "type": "method"
     },
     {
       "file": "src/bun/mcp/client.ts",
@@ -29468,6 +30356,24 @@
       "file": "src/bun/rpc/issue-fixer.ts",
       "line": 51,
       "symbol": "saveIssueFixerConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 73,
+      "symbol": "getIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 83,
+      "symbol": "saveIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 98,
+      "symbol": "deleteIssueSourceConfig",
       "type": "function"
     },
     {
@@ -29682,19 +30588,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
@@ -29820,6 +30726,18 @@
       "file": "src/bun/remote-sync/engine.ts",
       "line": 89,
       "symbol": "isSafeRel",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 38,
+      "symbol": "safeJsonArray",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 47,
+      "symbol": "safeJsonObject",
       "type": "function"
     }
   ],
@@ -30227,6 +31145,42 @@
       "type": "export"
     },
     {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 77,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 94,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 166,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 159,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 135,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 141,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
       "file": "src/bun/lsp/client.ts",
       "line": 188,
       "symbol": "closeDocument",
@@ -30234,8 +31188,14 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 215,
+      "line": 76,
       "symbol": "closeGithubIssueForTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 354,
+      "symbol": "closeExternalIssueForTask",
       "type": "function"
     },
     {
@@ -30822,7 +31782,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
@@ -30981,6 +31941,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 308,
+      "symbol": "formatSourceId",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/lib/date-utils.ts",
       "line": 59,
       "symbol": "formatDateTime",
@@ -31091,6 +32057,102 @@
       "line": 61,
       "symbol": "fetchRssFeed",
       "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 26,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 14,
+      "symbol": "gitlabFetch",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 61,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 16,
+      "symbol": "jiraFetch",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 77,
+      "symbol": "fetchJiraStatuses",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 109,
+      "symbol": "fetchBuckets",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 113,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 95,
+      "symbol": "fetchKanboardBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 122,
+      "symbol": "fetchBuckets",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 126,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 85,
+      "symbol": "fetchIssues",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 20,
+      "symbol": "trelloFetch",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 56,
+      "symbol": "fetchLists",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 64,
+      "symbol": "fetchTrelloBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 90,
+      "symbol": "fetchBuckets",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 94,
+      "symbol": "fetchIssues",
+      "type": "method"
     },
     {
       "file": "src/bun/playground/server.ts",
@@ -31445,6 +32507,12 @@
       "line": 282,
       "symbol": "getChannelStatuses",
       "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 77,
+      "symbol": "fetchJiraStatuses",
+      "type": "function"
     }
   ],
   "factory": [
@@ -31691,6 +32759,42 @@
       "line": 4,
       "symbol": "ConnectionStatus",
       "type": "type"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 64,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 84,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 149,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 149,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 124,
+      "symbol": "testConnection",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 131,
+      "symbol": "testConnection",
+      "type": "method"
     },
     {
       "file": "src/bun/providers/anthropic.ts",
@@ -31946,7 +33050,7 @@
     },
     {
       "file": "src/mainview/stores/kanban-store.ts",
-      "line": 92,
+      "line": 93,
       "symbol": "useKanbanStore",
       "type": "export"
     },
@@ -31987,6 +33091,12 @@
       "line": 7,
       "symbol": "TaskLite",
       "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 36,
+      "symbol": "TaskLite",
+      "type": "type"
     }
   ],
   "auth": [
@@ -32001,6 +33111,24 @@
       "line": 16,
       "symbol": "AuthMode",
       "type": "type"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 11,
+      "symbol": "authHeader",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 14,
+      "symbol": "authHeader",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 16,
+      "symbol": "authQuery",
+      "type": "function"
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
@@ -32096,7 +33224,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 612,
+      "line": 639,
       "symbol": "auditLog",
       "type": "export"
     },
@@ -32342,7 +33470,7 @@
     },
     {
       "file": "src/bun/rpc-groups/git-analytics.ts",
-      "line": 13,
+      "line": 14,
       "symbol": "handlers",
       "type": "export"
     },
@@ -32814,7 +33942,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 78,
+      "line": 76,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     },
@@ -33006,7 +34134,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "SettingsRequests",
       "type": "export"
     },
@@ -33032,7 +34160,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ProjectsRequests",
       "type": "export"
     },
@@ -33082,7 +34210,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ConversationsRequests",
       "type": "export"
     }
@@ -33098,26 +34226,6 @@
       "file": "src/bun/db/summaries.ts",
       "line": 50,
       "symbol": "deleteSummariesForConversation",
-      "type": "function"
-    }
-  ],
-  "tasks": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 200,
-      "symbol": "kanbanTasks",
-      "type": "export"
-    },
-    {
-      "file": "src/bun/rpc/kanban.ts",
-      "line": 71,
-      "symbol": "getKanbanTasks",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/stores/kanban-store.ts",
-      "line": 73,
-      "symbol": "sortTasksByPosition",
       "type": "function"
     }
   ],
@@ -33148,7 +34256,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PluginsRequests",
       "type": "export"
     },
@@ -33228,7 +34336,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DeployRequests",
       "type": "export"
     }
@@ -33770,13 +34878,13 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 87,
+      "line": 85,
       "symbol": "handlePull",
       "type": "function"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 108,
+      "line": 106,
       "symbol": "handlePullWithBranch",
       "type": "function"
     },
@@ -33892,164 +35000,170 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 38,
+      "line": 39,
       "symbol": "BunRequests",
       "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "SettingsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ProvidersRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ProjectsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ConversationsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "AgentsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "KanbanRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "NotesRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DeployRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "GitRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IntegrationsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "InboxRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "AnalyticsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "SystemRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PluginsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "LspRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DashboardRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "SkillsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "CouncilRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "UpdaterRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PlaygroundRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "ActivityRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "EnvVarsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RecommendationsRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssuesRequests",
       "type": "export"
     },
     {
@@ -34062,6 +35176,12 @@
       "file": "src/shared/rpc/issue-fixer.ts",
       "line": 64,
       "symbol": "IssueFixerRequests",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 189,
+      "symbol": "IssuesRequests",
       "type": "type"
     },
     {
@@ -34223,6 +35343,18 @@
       "type": "export"
     },
     {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 17,
+      "symbol": "githubAdapter",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 113,
+      "symbol": "getGithubConfigError",
+      "type": "export"
+    },
+    {
       "file": "src/bun/rpc/github-api.ts",
       "line": 115,
       "symbol": "githubAuthPrefix",
@@ -34260,25 +35392,25 @@
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 19,
+      "line": 24,
       "symbol": "getGithubIssues",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 45,
+      "line": 42,
       "symbol": "syncGithubIssues",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 136,
+      "line": 53,
       "symbol": "createGithubIssueFromTask",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 215,
+      "line": 76,
       "symbol": "closeGithubIssueForTask",
       "type": "function"
     },
@@ -34310,13 +35442,13 @@
   "issue": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 514,
+      "line": 541,
       "symbol": "issueFixerConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 546,
+      "line": 573,
       "symbol": "issueFixRuns",
       "type": "export"
     },
@@ -34453,20 +35585,128 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 77,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/github.ts",
+      "line": 85,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 36,
+      "symbol": "GitLabIssue",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 94,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 100,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 62,
+      "symbol": "JiraIssue",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 166,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 179,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 159,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 163,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 135,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 156,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 141,
+      "symbol": "closeIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 146,
+      "symbol": "createIssue",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 4,
+      "symbol": "NormalisedIssue",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 23,
+      "symbol": "IssueRef",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 35,
+      "symbol": "CreateIssueInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 57,
+      "symbol": "IssueSourceAdapter",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 136,
+      "line": 53,
       "symbol": "createGithubIssueFromTask",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 204,
+      "line": 72,
       "symbol": "linkIssueToTask",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-issues.ts",
-      "line": 215,
+      "line": 76,
       "symbol": "closeGithubIssueForTask",
       "type": "function"
     },
@@ -34525,6 +35765,60 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 58,
+      "symbol": "listIssueSources",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 73,
+      "symbol": "getIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 83,
+      "symbol": "saveIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 98,
+      "symbol": "deleteIssueSourceConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 106,
+      "symbol": "testIssueSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 167,
+      "symbol": "syncIssueSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 275,
+      "symbol": "linkExternalIssueToTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 285,
+      "symbol": "createExternalIssueFromTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 354,
+      "symbol": "closeExternalIssueForTask",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/git/github-issues.tsx",
       "line": 6,
       "symbol": "GhIssue",
@@ -34546,6 +35840,12 @@
       "file": "src/mainview/components/issue-fixer/issue-fixer-tab.tsx",
       "line": 43,
       "symbol": "IssueFixerProjectTab",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 94,
+      "symbol": "IssueCard",
       "type": "function"
     },
     {
@@ -34586,20 +35886,38 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixRunDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssueSource",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "ExternalIssue",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "IssueSourceStatus",
       "type": "export"
     },
     {
@@ -34631,12 +35949,66 @@
       "line": 64,
       "symbol": "IssueFixerRequests",
       "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 11,
+      "symbol": "IssueSource",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 14,
+      "symbol": "IssueSourceFieldDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 23,
+      "symbol": "IssueSourceCapabilities",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 52,
+      "symbol": "IssueSourceDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 74,
+      "symbol": "ISSUE_SOURCE_DESCRIPTORS",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 154,
+      "symbol": "getIssueSourceDescriptor",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 159,
+      "symbol": "requireIssueSourceDescriptor",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 166,
+      "symbol": "ExternalIssue",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 184,
+      "symbol": "IssueSourceStatus",
+      "type": "interface"
     }
   ],
   "fixer": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 514,
+      "line": 541,
       "symbol": "issueFixerConfig",
       "type": "export"
     },
@@ -34744,13 +36116,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
@@ -34776,7 +36148,7 @@
   "fix": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 546,
+      "line": 573,
       "symbol": "issueFixRuns",
       "type": "export"
     },
@@ -34842,7 +36214,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
@@ -34898,13 +36270,13 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 546,
+      "line": 573,
       "symbol": "issueFixRuns",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 772,
+      "line": 799,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -34966,7 +36338,7 @@
   "cost": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 597,
+      "line": 624,
       "symbol": "costBudgets",
       "type": "export"
     },
@@ -34998,7 +36370,7 @@
   "parts": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 626,
+      "line": 653,
       "symbol": "messageParts",
       "type": "export"
     },
@@ -35024,7 +36396,7 @@
   "listings": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 648,
+      "line": 675,
       "symbol": "freelanceListings",
       "type": "export"
     },
@@ -35068,7 +36440,7 @@
   "chat": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 675,
+      "line": 702,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -35218,7 +36590,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     }
@@ -35226,19 +36598,19 @@
   "remote": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 706,
+      "line": 733,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 744,
+      "line": 771,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 772,
+      "line": 799,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -35478,31 +36850,31 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
@@ -35570,7 +36942,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 744,
+      "line": 771,
       "symbol": "remoteSyncItems",
       "type": "export"
     }
@@ -35608,6 +36980,12 @@
       "file": "src/bun/db/summaries.ts",
       "line": 50,
       "symbol": "deleteSummariesForConversation",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 47,
+      "symbol": "deleteConfig",
       "type": "function"
     },
     {
@@ -35719,8 +37097,14 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 98,
+      "symbol": "deleteIssueSourceConfig",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 233,
+      "line": 234,
       "symbol": "deleteKanbanTask",
       "type": "function"
     },
@@ -36615,6 +37999,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 18,
+      "symbol": "rowToDto",
+      "type": "function"
+    },
+    {
       "file": "src/shared/rpc/freelance.ts",
       "line": 3,
       "symbol": "FreelanceChatMessageDto",
@@ -36628,49 +38018,49 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceListingDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
@@ -36753,6 +38143,12 @@
       "line": 20,
       "symbol": "parseStringArray",
       "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 38,
+      "symbol": "safeJsonArray",
+      "type": "function"
     }
   ],
   "map": [
@@ -36772,6 +38168,18 @@
       "file": "src/bun/issue-fixer/github.ts",
       "line": 64,
       "symbol": "mapIssue",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 66,
+      "symbol": "mapKanboardPriority",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 33,
+      "symbol": "mapLinearPriority",
       "type": "function"
     },
     {
@@ -36806,7 +38214,7 @@
     },
     {
       "file": "src/bun/rpc/kanban.ts",
-      "line": 271,
+      "line": 272,
       "symbol": "mapTask",
       "type": "function"
     },
@@ -36933,6 +38341,12 @@
       "line": 46,
       "symbol": "labelsActive",
       "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 49,
+      "symbol": "priorityFromLabels",
+      "type": "function"
     }
   ],
   "since": [
@@ -37042,6 +38456,12 @@
       "file": "src/bun/issue-fixer/orchestrator.ts",
       "line": 28,
       "symbol": "IssueFixInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 35,
+      "symbol": "CreateIssueInput",
       "type": "interface"
     },
     {
@@ -37184,7 +38604,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
@@ -37529,6 +38949,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 5,
+      "symbol": "baseUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 7,
+      "symbol": "baseUrl",
+      "type": "function"
+    },
+    {
       "file": "src/bun/providers/openai.ts",
       "line": 12,
       "symbol": "normalizeBaseUrl",
@@ -37800,7 +39232,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "LspRequests",
       "type": "export"
     },
@@ -38192,13 +39624,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 38,
+      "line": 39,
       "symbol": "BunRequests",
       "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "BunMessages",
       "type": "export"
     },
@@ -38362,7 +39794,7 @@
     },
     {
       "file": "src/mainview/stores/kanban-store.ts",
-      "line": 73,
+      "line": 74,
       "symbol": "sortTasksByPosition",
       "type": "function"
     }
@@ -38576,6 +40008,12 @@
       "file": "src/bun/lsp/types.ts",
       "line": 182,
       "symbol": "ServerCapabilities",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 23,
+      "symbol": "IssueSourceCapabilities",
       "type": "interface"
     }
   ],
@@ -39050,13 +40488,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PlaygroundRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
@@ -39420,19 +40858,19 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 16,
+      "line": 15,
       "symbol": "GitSubTab",
       "type": "type"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 18,
+      "line": 17,
       "symbol": "GitTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 28,
+      "line": 26,
       "symbol": "GitTab",
       "type": "function"
     },
@@ -39534,13 +40972,13 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 21,
+      "line": 22,
       "symbol": "ProjectTab",
       "type": "type"
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 23,
+      "line": 24,
       "symbol": "PluginTab",
       "type": "interface"
     },
@@ -40248,6 +41686,12 @@
       "file": "src/bun/agents/tools/file-ops.ts",
       "line": 79,
       "symbol": "validatePath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 34,
+      "symbol": "validateRequiredFields",
       "type": "function"
     },
     {
@@ -41674,7 +43118,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
@@ -41772,6 +43216,12 @@
       "file": "src/bun/remote-sync/engine.ts",
       "line": 720,
       "symbol": "looksBinary",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 39,
+      "symbol": "looksLikeHtml",
       "type": "function"
     }
   ],
@@ -42062,7 +43512,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     }
@@ -42260,7 +43710,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "AnalyticsRequests",
       "type": "export"
     }
@@ -42686,7 +44136,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DashboardRequests",
       "type": "export"
     }
@@ -42960,7 +44410,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 30,
+      "line": 31,
       "symbol": "ProjectPage",
       "type": "function"
     },
@@ -43570,7 +45020,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "IntegrationsRequests",
       "type": "export"
     },
@@ -43980,6 +45430,18 @@
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
       "line": 225,
       "symbol": "toggleKeyword",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 409,
+      "symbol": "toggleBucket",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 418,
+      "symbol": "toggleGroupBuckets",
       "type": "function"
     },
     {
@@ -44752,7 +46214,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 18,
+      "line": 17,
       "symbol": "GitTabProps",
       "type": "interface"
     },
@@ -44802,6 +46264,12 @@
       "file": "src/mainview/components/inbox/inbox-rules-editor.tsx",
       "line": 644,
       "symbol": "InboxRulesEditorProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 65,
+      "symbol": "IssuesProps",
       "type": "interface"
     },
     {
@@ -45307,6 +46775,18 @@
   ],
   "header": [
     {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 11,
+      "symbol": "authHeader",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 14,
+      "symbol": "authHeader",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/ui/card.tsx",
       "line": 76,
       "symbol": "CardHeader",
@@ -45487,6 +46967,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 86,
+      "symbol": "stateColor",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/ui/agent-avatar.tsx",
       "line": 19,
       "symbol": "hashColor",
@@ -45524,6 +47010,12 @@
       "file": "src/mainview/components/git/staged-files.tsx",
       "line": 5,
       "symbol": "PushDialog",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 316,
+      "symbol": "ConfigureDialog",
       "type": "function"
     },
     {
@@ -45811,6 +47303,12 @@
   ],
   "card": [
     {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 39,
+      "symbol": "TrelloCard",
+      "type": "interface"
+    },
+    {
       "file": "src/mainview/components/analytics/charts.tsx",
       "line": 351,
       "symbol": "StatCardProps",
@@ -45879,6 +47377,12 @@
     {
       "file": "src/mainview/components/git/github-issues.tsx",
       "line": 13,
+      "symbol": "IssueCard",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 94,
       "symbol": "IssueCard",
       "type": "function"
     },
@@ -46265,6 +47769,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/issue-sources/config-store.ts",
+      "line": 14,
+      "symbol": "getSavedConfig",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/agents.tsx",
       "line": 1251,
       "symbol": "handleSaved",
@@ -46272,6 +47782,12 @@
     }
   ],
   "created": [
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 11,
+      "symbol": "createdFromId",
+      "type": "function"
+    },
     {
       "file": "src/mainview/components/chat/message-bubble.tsx",
       "line": 291,
@@ -46288,7 +47804,7 @@
   "sub": [
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 16,
+      "line": 15,
       "symbol": "GitSubTab",
       "type": "type"
     },
@@ -46859,6 +48375,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 121,
+      "symbol": "onSelectTask",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/layout/project-switcher.tsx",
       "line": 38,
       "symbol": "handleSelect",
@@ -47140,6 +48662,12 @@
     }
   ],
   "configure": [
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 316,
+      "symbol": "ConfigureDialog",
+      "type": "function"
+    },
     {
       "file": "src/mainview/pages/onboarding.tsx",
       "line": 472,
@@ -47585,6 +49113,24 @@
   ],
   "group": [
     {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 46,
+      "symbol": "BucketGroup",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 337,
+      "symbol": "BucketGroupT",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 418,
+      "symbol": "toggleGroupBuckets",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/ui/command.tsx",
       "line": 141,
       "symbol": "CommandGroup",
@@ -47892,7 +49438,7 @@
     },
     {
       "file": "src/mainview/stores/kanban-store.ts",
-      "line": 92,
+      "line": 93,
       "symbol": "useKanbanStore",
       "type": "export"
     },
@@ -47986,6 +49532,36 @@
     }
   ],
   "priority": [
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 49,
+      "symbol": "priorityFromLabels",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 66,
+      "symbol": "mapKanboardPriority",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 33,
+      "symbol": "mapLinearPriority",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 43,
+      "symbol": "priorityToLinear",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 102,
+      "symbol": "normalisePriority",
+      "type": "function"
+    },
     {
       "file": "src/mainview/components/kanban/kanban-filters.tsx",
       "line": 6,
@@ -48102,7 +49678,7 @@
   "updater": [
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "UpdaterRequests",
       "type": "export"
     },
@@ -48114,6 +49690,12 @@
     }
   ],
   "selection": [
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 39,
+      "symbol": "BucketSelectionSpec",
+      "type": "interface"
+    },
     {
       "file": "src/shared/rpc/remote-sync.ts",
       "line": 6,
@@ -48364,6 +49946,12 @@
       "file": "src/bun/agents/tools/file-ops.ts",
       "line": 58,
       "symbol": "requireArg",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 159,
+      "symbol": "requireIssueSourceDescriptor",
       "type": "function"
     }
   ],
@@ -49093,6 +50681,18 @@
       "line": 530,
       "symbol": "ansiToHtml",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 39,
+      "symbol": "looksLikeHtml",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 43,
+      "symbol": "stripHtml",
+      "type": "function"
     }
   ],
   "ddg": [
@@ -49183,6 +50783,12 @@
   ],
   "selected": [
     {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 91,
+      "symbol": "parseSelectedBuckets",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/activity/docs-tab.tsx",
       "line": 35,
       "symbol": "SelectedDoc",
@@ -49240,6 +50846,12 @@
     }
   ],
   "node": [
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 53,
+      "symbol": "LinearNode",
+      "type": "interface"
+    },
     {
       "file": "src/mainview/components/activity/files-tab.tsx",
       "line": 36,
@@ -52573,6 +54185,12 @@
       "line": 100,
       "symbol": "_looks_like_uuid",
       "type": "method"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 39,
+      "symbol": "looksLikeHtml",
+      "type": "function"
     }
   ],
   "layouts": [
@@ -53261,74 +54879,10 @@
       "type": "function"
     }
   ],
-  "migration": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 52,
-      "symbol": "Migration",
-      "type": "interface"
-    }
-  ],
-  "migrations": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 95,
-      "symbol": "runMigrations",
-      "type": "function"
-    }
-  ],
-  "runtime": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 157,
-      "symbol": "ensureRuntimeSchema",
-      "type": "function"
-    }
-  ],
-  "channels": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 274,
-      "symbol": "channels",
-      "type": "export"
-    }
-  ],
-  "whatsapp": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "sessions": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "strategies": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 576,
-      "symbol": "branchStrategies",
-      "type": "export"
-    }
-  ],
-  "budgets": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 597,
-      "symbol": "costBudgets",
-      "type": "export"
-    }
-  ],
   "vars": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 762,
+      "line": 789,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -53358,7 +54912,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "EnvVarsRequests",
       "type": "export"
     }
@@ -53402,7 +54956,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "CustomEnvVar",
       "type": "export"
     }
@@ -53728,13 +55282,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DependencyId",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "DependencyStatus",
       "type": "export"
     },
@@ -53759,14 +55313,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 304,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "recommendations": [
     {
       "file": "src/mainview/pages/settings/recommendations.tsx",
@@ -53776,7 +55322,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "RecommendationsRequests",
       "type": "export"
     },
@@ -53792,6 +55338,534 @@
       "file": "src/mainview/pages/settings/recommendations.tsx",
       "line": 65,
       "symbol": "buildInitialCards",
+      "type": "function"
+    }
+  ],
+  "migration": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 54,
+      "symbol": "Migration",
+      "type": "interface"
+    }
+  ],
+  "migrations": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 99,
+      "symbol": "runMigrations",
+      "type": "function"
+    }
+  ],
+  "runtime": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 161,
+      "symbol": "ensureRuntimeSchema",
+      "type": "function"
+    }
+  ],
+  "tasks": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 200,
+      "symbol": "kanbanTasks",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc/kanban.ts",
+      "line": 71,
+      "symbol": "getKanbanTasks",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/stores/kanban-store.ts",
+      "line": 74,
+      "symbol": "sortTasksByPosition",
+      "type": "function"
+    }
+  ],
+  "channels": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 274,
+      "symbol": "channels",
+      "type": "export"
+    }
+  ],
+  "whatsapp": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "sessions": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "external": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 516,
+      "symbol": "externalIssues",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 149,
+      "symbol": "getExternalIssues",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 275,
+      "symbol": "linkExternalIssueToTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 285,
+      "symbol": "createExternalIssueFromTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 354,
+      "symbol": "closeExternalIssueForTask",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "ExternalIssue",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 166,
+      "symbol": "ExternalIssue",
+      "type": "interface"
+    }
+  ],
+  "strategies": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 603,
+      "symbol": "branchStrategies",
+      "type": "export"
+    }
+  ],
+  "budgets": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 624,
+      "symbol": "costBudgets",
+      "type": "export"
+    }
+  ],
+  "gitlab": [
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 14,
+      "symbol": "gitlabFetch",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 54,
+      "symbol": "gitlabAdapter",
+      "type": "export"
+    }
+  ],
+  "lab": [
+    {
+      "file": "src/bun/issue-sources/gitlab.ts",
+      "line": 36,
+      "symbol": "GitLabIssue",
+      "type": "interface"
+    }
+  ],
+  "jira": [
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 16,
+      "symbol": "jiraFetch",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 62,
+      "symbol": "JiraIssue",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 77,
+      "symbol": "fetchJiraStatuses",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 101,
+      "symbol": "jiraAdapter",
+      "type": "export"
+    }
+  ],
+  "adf": [
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 40,
+      "symbol": "adfToText",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 54,
+      "symbol": "textToAdf",
+      "type": "function"
+    }
+  ],
+  "buckets": [
+    {
+      "file": "src/bun/issue-sources/jira.ts",
+      "line": 109,
+      "symbol": "fetchBuckets",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 95,
+      "symbol": "fetchKanboardBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 122,
+      "symbol": "fetchBuckets",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 64,
+      "symbol": "fetchTrelloBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 90,
+      "symbol": "fetchBuckets",
+      "type": "method"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 91,
+      "symbol": "parseSelectedBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 130,
+      "symbol": "getSourceBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 418,
+      "symbol": "toggleGroupBuckets",
+      "type": "function"
+    }
+  ],
+  "endpoint": [
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 8,
+      "symbol": "endpoint",
+      "type": "function"
+    }
+  ],
+  "kanboard": [
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 36,
+      "symbol": "KanboardTask",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 66,
+      "symbol": "mapKanboardPriority",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 95,
+      "symbol": "fetchKanboardBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 115,
+      "symbol": "kanboardAdapter",
+      "type": "export"
+    }
+  ],
+  "normalised": [
+    {
+      "file": "src/bun/issue-sources/kanboard.ts",
+      "line": 74,
+      "symbol": "toNormalised",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 4,
+      "symbol": "NormalisedIssue",
+      "type": "interface"
+    }
+  ],
+  "linear": [
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 6,
+      "symbol": "linearGraphQL",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 33,
+      "symbol": "mapLinearPriority",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 43,
+      "symbol": "priorityToLinear",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 53,
+      "symbol": "LinearNode",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 78,
+      "symbol": "linearAdapter",
+      "type": "export"
+    }
+  ],
+  "graph": [
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 6,
+      "symbol": "linearGraphQL",
+      "type": "function"
+    }
+  ],
+  "team": [
+    {
+      "file": "src/bun/issue-sources/linear.ts",
+      "line": 68,
+      "symbol": "resolveTeamId",
+      "type": "function"
+    }
+  ],
+  "sources": [
+    {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 26,
+      "symbol": "allSources",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 58,
+      "symbol": "listIssueSources",
+      "type": "function"
+    }
+  ],
+  "required": [
+    {
+      "file": "src/bun/issue-sources/registry.ts",
+      "line": 34,
+      "symbol": "validateRequiredFields",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 342,
+      "symbol": "requiredFilled",
+      "type": "function"
+    }
+  ],
+  "query": [
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 16,
+      "symbol": "authQuery",
+      "type": "function"
+    }
+  ],
+  "trello": [
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 20,
+      "symbol": "trelloFetch",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 39,
+      "symbol": "TrelloCard",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 51,
+      "symbol": "TrelloList",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 64,
+      "symbol": "fetchTrelloBuckets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 83,
+      "symbol": "trelloAdapter",
+      "type": "export"
+    }
+  ],
+  "lists": [
+    {
+      "file": "src/bun/issue-sources/trello.ts",
+      "line": 56,
+      "symbol": "fetchLists",
+      "type": "function"
+    }
+  ],
+  "bucket": [
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 46,
+      "symbol": "BucketGroup",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 337,
+      "symbol": "BucketGroupT",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 409,
+      "symbol": "toggleBucket",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 39,
+      "symbol": "BucketSelectionSpec",
+      "type": "interface"
+    }
+  ],
+  "normalise": [
+    {
+      "file": "src/bun/issue-sources/types.ts",
+      "line": 102,
+      "symbol": "normalisePriority",
+      "type": "function"
+    }
+  ],
+  "object": [
+    {
+      "file": "src/bun/rpc/issues.ts",
+      "line": 47,
+      "symbol": "safeJsonObject",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 304,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "descriptor": [
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 14,
+      "symbol": "IssueSourceFieldDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 52,
+      "symbol": "IssueSourceDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 154,
+      "symbol": "getIssueSourceDescriptor",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 159,
+      "symbol": "requireIssueSourceDescriptor",
+      "type": "function"
+    }
+  ],
+  "spec": [
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 39,
+      "symbol": "BucketSelectionSpec",
+      "type": "interface"
+    }
+  ],
+  "descriptors": [
+    {
+      "file": "src/shared/rpc/issues.ts",
+      "line": 74,
+      "symbol": "ISSUE_SOURCE_DESCRIPTORS",
+      "type": "export"
+    }
+  ],
+  "body": [
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 60,
+      "symbol": "displayBody",
+      "type": "function"
+    }
+  ],
+  "filled": [
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 342,
+      "symbol": "requiredFilled",
+      "type": "function"
+    }
+  ],
+  "picker": [
+    {
+      "file": "src/mainview/components/issues/issues.tsx",
+      "line": 606,
+      "symbol": "ConnectPicker",
       "type": "function"
     }
   ]

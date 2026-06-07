@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 215
-**Symbols:** 1618
+**Files:** 227
+**Symbols:** 1726
 
 ## Files
 
@@ -844,11 +844,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 52)
+- `Migration` (line 54)
 
 **Functions:**
-- `runMigrations` (line 95)
-- `ensureRuntimeSchema` (line 157)
+- `runMigrations` (line 99)
+- `ensureRuntimeSchema` (line 161)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1078,6 +1078,24 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v33_external-issues.ts`
+
+**Functions:**
+- `run` (line 11)
+
+**Exports:**
+- `name` (line 3)
+
+
+### `src/bun/db/migrations/v34_external-issues-due-date.ts`
+
+**Functions:**
+- `run` (line 10)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v3_agent-sessions.ts`
 
 **Functions:**
@@ -1172,19 +1190,20 @@
 - `webhookConfigs` (line 463)
 - `webhookEvents` (line 478)
 - `githubIssues` (line 497)
-- `issueFixerConfig` (line 514)
-- `issueFixRuns` (line 546)
-- `branchStrategies` (line 576)
-- `costBudgets` (line 597)
-- `auditLog` (line 612)
-- `messageParts` (line 626)
-- `freelanceListings` (line 648)
-- `freelanceChatMessages` (line 675)
-- `projectActivity` (line 692)
-- `remoteSyncConfig` (line 706)
-- `remoteSyncItems` (line 744)
-- `customEnvVars` (line 762)
-- `remoteSyncRuns` (line 772)
+- `externalIssues` (line 516)
+- `issueFixerConfig` (line 541)
+- `issueFixRuns` (line 573)
+- `branchStrategies` (line 603)
+- `costBudgets` (line 624)
+- `auditLog` (line 639)
+- `messageParts` (line 653)
+- `freelanceListings` (line 675)
+- `freelanceChatMessages` (line 702)
+- `projectActivity` (line 719)
+- `remoteSyncConfig` (line 733)
+- `remoteSyncItems` (line 771)
+- `customEnvVars` (line 789)
+- `remoteSyncRuns` (line 799)
 
 
 ### `src/bun/db/seed.ts`
@@ -1507,6 +1526,174 @@
 - `alreadyProcessed` (line 136)
 - `withinCooldown` (line 171)
 - `runsInLastHour` (line 186)
+
+
+### `src/bun/issue-sources/config-store.ts`
+
+**Functions:**
+- `configKey` (line 9)
+- `getSavedConfig` (line 14)
+- `saveConfig` (line 33)
+- `deleteConfig` (line 47)
+- `cleanConfig` (line 52)
+
+
+### `src/bun/issue-sources/github.ts`
+
+**Methods:**
+- `resolveConfig` (line 20)
+- `fetchIssues` (line 26)
+- `testConnection` (line 64)
+- `closeIssue` (line 77)
+- `createIssue` (line 85)
+
+**Exports:**
+- `githubAdapter` (line 17)
+- `getGithubConfigError` (line 113)
+
+
+### `src/bun/issue-sources/gitlab.ts`
+
+**Interfaces:**
+- `GitLabIssue` (line 36)
+
+**Functions:**
+- `baseUrl` (line 5)
+- `projectRef` (line 10)
+- `gitlabFetch` (line 14)
+- `priorityFromLabels` (line 49)
+
+**Methods:**
+- `resolveConfig` (line 57)
+- `fetchIssues` (line 61)
+- `testConnection` (line 84)
+- `closeIssue` (line 94)
+- `createIssue` (line 100)
+
+**Exports:**
+- `gitlabAdapter` (line 54)
+
+
+### `src/bun/issue-sources/jira.ts`
+
+**Interfaces:**
+- `JiraIssue` (line 62)
+
+**Functions:**
+- `baseUrl` (line 7)
+- `authHeader` (line 11)
+- `jiraFetch` (line 16)
+- `adfToText` (line 40)
+- `textToAdf` (line 54)
+- `fetchJiraStatuses` (line 77)
+
+**Methods:**
+- `resolveConfig` (line 104)
+- `fetchBuckets` (line 109)
+- `fetchIssues` (line 113)
+- `testConnection` (line 149)
+- `closeIssue` (line 166)
+- `createIssue` (line 179)
+
+**Exports:**
+- `jiraAdapter` (line 101)
+
+
+### `src/bun/issue-sources/kanboard.ts`
+
+**Interfaces:**
+- `KanboardTask` (line 36)
+
+**Functions:**
+- `endpoint` (line 8)
+- `authHeader` (line 14)
+- `rpcCall` (line 21)
+- `parseProjectIds` (line 52)
+- `taskUrl` (line 59)
+- `mapKanboardPriority` (line 66)
+- `toNormalised` (line 74)
+- `fetchKanboardBuckets` (line 95)
+
+**Methods:**
+- `resolveConfig` (line 118)
+- `fetchBuckets` (line 122)
+- `fetchIssues` (line 126)
+- `testConnection` (line 149)
+- `closeIssue` (line 159)
+- `createIssue` (line 163)
+
+**Exports:**
+- `kanboardAdapter` (line 115)
+
+
+### `src/bun/issue-sources/linear.ts`
+
+**Interfaces:**
+- `LinearNode` (line 53)
+
+**Functions:**
+- `linearGraphQL` (line 6)
+- `mapLinearPriority` (line 33)
+- `priorityToLinear` (line 43)
+- `resolveTeamId` (line 68)
+
+**Methods:**
+- `resolveConfig` (line 81)
+- `fetchIssues` (line 85)
+- `testConnection` (line 124)
+- `closeIssue` (line 135)
+- `createIssue` (line 156)
+
+**Exports:**
+- `linearAdapter` (line 78)
+
+
+### `src/bun/issue-sources/registry.ts`
+
+**Functions:**
+- `getAdapter` (line 20)
+- `allSources` (line 26)
+- `validateRequiredFields` (line 34)
+
+
+### `src/bun/issue-sources/trello.ts`
+
+**Interfaces:**
+- `TrelloCard` (line 39)
+- `TrelloList` (line 51)
+
+**Functions:**
+- `createdFromId` (line 11)
+- `authQuery` (line 16)
+- `trelloFetch` (line 20)
+- `fetchLists` (line 56)
+- `fetchTrelloBuckets` (line 64)
+
+**Methods:**
+- `resolveConfig` (line 86)
+- `fetchBuckets` (line 90)
+- `fetchIssues` (line 94)
+- `testConnection` (line 131)
+- `closeIssue` (line 141)
+- `createIssue` (line 146)
+
+**Exports:**
+- `trelloAdapter` (line 83)
+
+
+### `src/bun/issue-sources/types.ts`
+
+**Interfaces:**
+- `NormalisedIssue` (line 4)
+- `IssueRef` (line 23)
+- `TestResult` (line 28)
+- `CreateIssueInput` (line 35)
+- `BucketGroup` (line 46)
+- `IssueSourceAdapter` (line 57)
+
+**Functions:**
+- `parseSelectedBuckets` (line 91)
+- `normalisePriority` (line 102)
 
 
 ### `src/bun/lib/git-runner.ts`
@@ -2198,7 +2385,7 @@
 ### `src/bun/rpc-groups/git-analytics.ts`
 
 **Exports:**
-- `handlers` (line 13)
+- `handlers` (line 14)
 
 
 ### `src/bun/rpc-groups/plugins-tools.ts`
@@ -2586,11 +2773,11 @@
 ### `src/bun/rpc/github-issues.ts`
 
 **Functions:**
-- `getGithubIssues` (line 19)
-- `syncGithubIssues` (line 45)
-- `createGithubIssueFromTask` (line 136)
-- `linkIssueToTask` (line 204)
-- `closeGithubIssueForTask` (line 215)
+- `getGithubIssues` (line 24)
+- `syncGithubIssues` (line 42)
+- `createGithubIssueFromTask` (line 53)
+- `linkIssueToTask` (line 72)
+- `closeGithubIssueForTask` (line 76)
 
 
 ### `src/bun/rpc/health.ts`
@@ -2664,6 +2851,25 @@
 - `getIssueFixerKeywordCatalog` (line 132)
 
 
+### `src/bun/rpc/issues.ts`
+
+**Functions:**
+- `rowToDto` (line 18)
+- `safeJsonArray` (line 38)
+- `safeJsonObject` (line 47)
+- `listIssueSources` (line 58)
+- `getIssueSourceConfig` (line 73)
+- `saveIssueSourceConfig` (line 83)
+- `deleteIssueSourceConfig` (line 98)
+- `testIssueSource` (line 106)
+- `getSourceBuckets` (line 130)
+- `getExternalIssues` (line 149)
+- `syncIssueSource` (line 167)
+- `linkExternalIssueToTask` (line 275)
+- `createExternalIssueFromTask` (line 285)
+- `closeExternalIssueForTask` (line 354)
+
+
 ### `src/bun/rpc/kanban.ts`
 
 **Interfaces:**
@@ -2677,11 +2883,11 @@
 - `createKanbanTask` (line 97)
 - `updateKanbanTask` (line 146)
 - `moveKanbanTask` (line 179)
-- `deleteKanbanTask` (line 233)
-- `getTaskActivity` (line 245)
-- `getProjectTaskStats` (line 256)
-- `mapTask` (line 271)
-- `logActivity` (line 292)
+- `deleteKanbanTask` (line 234)
+- `getTaskActivity` (line 246)
+- `getProjectTaskStats` (line 257)
+- `mapTask` (line 272)
+- `logActivity` (line 293)
 
 
 ### `src/bun/rpc/lsp.ts`

@@ -48,6 +48,7 @@ interface KanbanState {
     column?: string;
     priority?: string;
     assignedAgentId?: string;
+    dueDate?: string;
   }) => Promise<string>;
   updateTask: (params: {
     id: string;

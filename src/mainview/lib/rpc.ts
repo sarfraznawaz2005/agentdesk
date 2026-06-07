@@ -992,6 +992,28 @@ export const rpc = {
   validateGithubToken: (token: string) =>
     electroviewRpc.request.validateGithubToken({ token }),
 
+  // ── Multi-source Issues ──
+  listIssueSources: (projectId: string) =>
+    electroviewRpc.request.listIssueSources({ projectId }),
+  getIssueSourceConfig: (projectId: string, source: import("../../shared/rpc/issues").IssueSource) =>
+    electroviewRpc.request.getIssueSourceConfig({ projectId, source }),
+  saveIssueSourceConfig: (projectId: string, source: import("../../shared/rpc/issues").IssueSource, config: Record<string, string>) =>
+    electroviewRpc.request.saveIssueSourceConfig({ projectId, source, config }),
+  deleteIssueSourceConfig: (projectId: string, source: import("../../shared/rpc/issues").IssueSource) =>
+    electroviewRpc.request.deleteIssueSourceConfig({ projectId, source }),
+  testIssueSource: (projectId: string, source: import("../../shared/rpc/issues").IssueSource, config?: Record<string, string>) =>
+    electroviewRpc.request.testIssueSource({ projectId, source, config }),
+  getExternalIssues: (projectId: string, source?: import("../../shared/rpc/issues").IssueSource, state?: string) =>
+    electroviewRpc.request.getExternalIssues({ projectId, source, state }),
+  syncIssueSource: (projectId: string, source: import("../../shared/rpc/issues").IssueSource) =>
+    electroviewRpc.request.syncIssueSource({ projectId, source }),
+  linkExternalIssueToTask: (issueId: string, taskId: string | null) =>
+    electroviewRpc.request.linkExternalIssueToTask({ issueId, taskId }),
+  createExternalIssueFromTask: (taskId: string, projectId: string, source: import("../../shared/rpc/issues").IssueSource) =>
+    electroviewRpc.request.createExternalIssueFromTask({ taskId, projectId, source }),
+  getSourceBuckets: (source: import("../../shared/rpc/issues").IssueSource, config: Record<string, string>) =>
+    electroviewRpc.request.getSourceBuckets({ source, config }),
+
   // ── Branch Strategy ──
   getBranchStrategy: (projectId: string) =>
     electroviewRpc.request.getBranchStrategy({ projectId }),
