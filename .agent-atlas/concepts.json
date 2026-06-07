@@ -644,7 +644,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 64,
+      "line": 66,
       "symbol": "AgentDeskRPC",
       "type": "type"
     },
@@ -828,19 +828,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     },
@@ -1324,7 +1324,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "AgentsRequests",
       "type": "export"
     }
@@ -3073,6 +3073,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 86,
+      "symbol": "tryGetVersion",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/remote-sync.ts",
       "line": 29,
       "symbol": "getRemoteSyncConfig",
@@ -3508,7 +3514,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "SystemRequests",
       "type": "export"
     },
@@ -3642,13 +3648,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ActivityRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     }
@@ -4219,6 +4225,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 61,
+      "symbol": "CardStatus",
+      "type": "interface"
+    },
+    {
       "file": "src/mainview/pages/settings/tavily-settings.tsx",
       "line": 18,
       "symbol": "KeyStatus",
@@ -4273,10 +4285,22 @@
       "type": "type"
     },
     {
+      "file": "src/shared/rpc/index.ts",
+      "line": 75,
+      "symbol": "DependencyStatus",
+      "type": "export"
+    },
+    {
       "file": "src/shared/rpc/lsp.ts",
       "line": 1,
       "symbol": "LspServerStatus",
       "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/recommendations.ts",
+      "line": 3,
+      "symbol": "DependencyStatus",
+      "type": "type"
     },
     {
       "file": "src/shared/rpc/remote-sync.ts",
@@ -4854,7 +4878,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "WebviewSchema",
       "type": "export"
     },
@@ -5082,7 +5106,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "InboxRequests",
       "type": "export"
     }
@@ -5206,6 +5230,12 @@
       "file": "src/bun/rpc/playground.ts",
       "line": 205,
       "symbol": "resolveDownloadsDir",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 157,
+      "symbol": "resolveProviderConfig",
       "type": "function"
     },
     {
@@ -5571,6 +5601,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 125,
+      "symbol": "buildInstallTask",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 175,
+      "symbol": "installDependency",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/plugins.tsx",
       "line": 304,
       "symbol": "handleInstall",
@@ -5791,6 +5833,12 @@
     {
       "file": "src/mainview/pages/settings/appearance.tsx",
       "line": 48,
+      "symbol": "handler",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 116,
       "symbol": "handler",
       "type": "function"
     },
@@ -6553,6 +6601,12 @@
       "line": 1328,
       "symbol": "EmptyState",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 59,
+      "symbol": "CardState",
+      "type": "type"
     },
     {
       "file": "src/mainview/stores/chat-store.ts",
@@ -7994,19 +8048,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceListingDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     }
@@ -8812,7 +8866,7 @@
     },
     {
       "file": "src/mainview/lib/rpc.ts",
-      "line": 310,
+      "line": 313,
       "symbol": "rpc",
       "type": "export"
     },
@@ -8824,7 +8878,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 64,
+      "line": 66,
       "symbol": "AgentDeskRPC",
       "type": "type"
     }
@@ -9018,7 +9072,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 64,
+      "line": 66,
       "symbol": "AgentDeskRPC",
       "type": "type"
     }
@@ -10222,7 +10276,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     },
@@ -11209,6 +11263,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 125,
+      "symbol": "buildInstallTask",
+      "type": "function"
+    },
+    {
       "file": "src/bun/scheduler/index.ts",
       "line": 3,
       "symbol": "executeTask",
@@ -12153,6 +12213,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 69,
+      "symbol": "applyCheckResult",
+      "type": "function"
+    },
+    {
       "file": "tests/helpers/db.ts",
       "line": 28,
       "symbol": "applySchema",
@@ -12246,7 +12312,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "WebviewSchema",
       "type": "export"
     },
@@ -12622,7 +12688,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "GitRequests",
       "type": "export"
     },
@@ -13222,7 +13288,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "CustomEnvVar",
       "type": "export"
     },
@@ -13808,7 +13874,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "CouncilRequests",
       "type": "export"
     },
@@ -14385,6 +14451,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 157,
+      "symbol": "resolveProviderConfig",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/chat/message-actions-context.tsx",
       "line": 22,
       "symbol": "MessageActionsProvider",
@@ -14538,7 +14610,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ProvidersRequests",
       "type": "export"
     },
@@ -16133,6 +16205,18 @@
       "line": 38,
       "symbol": "assignActivityId",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 75,
+      "symbol": "DependencyId",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/recommendations.ts",
+      "line": 1,
+      "symbol": "DependencyId",
+      "type": "type"
     }
   ],
   "smart": [
@@ -17210,7 +17294,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "BunMessages",
       "type": "export"
     },
@@ -17476,6 +17560,12 @@
       "file": "src/bun/freelance/normalizer.ts",
       "line": 18,
       "symbol": "BudgetInfo",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 15,
+      "symbol": "DepInfo",
       "type": "interface"
     },
     {
@@ -19765,6 +19855,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 125,
+      "symbol": "buildInstallTask",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/chat/chat-input-popover.tsx",
       "line": 36,
       "symbol": "buildFileItem",
@@ -19858,6 +19954,12 @@
       "file": "src/mainview/pages/settings/notification-settings.tsx",
       "line": 56,
       "symbol": "buildDefaultDirty",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 65,
+      "symbol": "buildInitialCards",
       "type": "function"
     }
   ],
@@ -20590,13 +20692,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "EnvVarsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "CustomEnvVar",
       "type": "export"
     }
@@ -21604,13 +21706,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
@@ -22248,6 +22350,12 @@
       "file": "src/mainview/pages/settings/providers.tsx",
       "line": 823,
       "symbol": "onResult",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 69,
+      "symbol": "applyCheckResult",
       "type": "function"
     }
   ],
@@ -23928,25 +24036,25 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
@@ -24202,7 +24310,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "NotesRequests",
       "type": "export"
     },
@@ -24920,7 +25028,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
@@ -25816,7 +25924,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "KanbanRequests",
       "type": "export"
     },
@@ -27603,6 +27711,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 99,
+      "symbol": "checkDependency",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 112,
+      "symbol": "checkDependencies",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/updater.ts",
       "line": 20,
       "symbol": "checkForUpdate",
@@ -27612,6 +27732,12 @@
       "file": "src/mainview/components/ui/connection-status.tsx",
       "line": 15,
       "symbol": "check",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 69,
+      "symbol": "applyCheckResult",
       "type": "function"
     }
   ],
@@ -28228,7 +28354,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceListingDto",
       "type": "export"
     }
@@ -28360,7 +28486,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "SkillsRequests",
       "type": "export"
     },
@@ -29363,6 +29489,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 157,
+      "symbol": "resolveProviderConfig",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/remote-sync.ts",
       "line": 29,
       "symbol": "getRemoteSyncConfig",
@@ -29550,19 +29682,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
@@ -30690,7 +30822,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
@@ -32228,7 +32360,7 @@
     },
     {
       "file": "src/bun/rpc-groups/settings-providers.ts",
-      "line": 15,
+      "line": 16,
       "symbol": "handlers",
       "type": "export"
     },
@@ -32748,7 +32880,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 46,
+      "line": 47,
       "symbol": "SettingsPage",
       "type": "function"
     },
@@ -32855,6 +32987,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 84,
+      "symbol": "RecommendationsSettings",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/settings/tavily-settings.tsx",
       "line": 37,
       "symbol": "TavilySettings",
@@ -32868,7 +33006,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "SettingsRequests",
       "type": "export"
     },
@@ -32894,7 +33032,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ProjectsRequests",
       "type": "export"
     },
@@ -32944,7 +33082,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ConversationsRequests",
       "type": "export"
     }
@@ -33010,7 +33148,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PluginsRequests",
       "type": "export"
     },
@@ -33090,7 +33228,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "DeployRequests",
       "type": "export"
     }
@@ -33754,158 +33892,164 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 37,
+      "line": 38,
       "symbol": "BunRequests",
       "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "SettingsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ProvidersRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ProjectsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ConversationsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "AgentsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "KanbanRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "NotesRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "DeployRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "GitRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IntegrationsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "InboxRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "AnalyticsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "SystemRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PluginsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "LspRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "DashboardRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "SkillsRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "CouncilRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "UpdaterRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PlaygroundRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "ActivityRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "EnvVarsRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 75,
+      "symbol": "RecommendationsRequests",
       "type": "export"
     },
     {
@@ -33960,6 +34104,12 @@
       "file": "src/shared/rpc/providers.ts",
       "line": 1,
       "symbol": "ProvidersRequests",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/recommendations.ts",
+      "line": 9,
+      "symbol": "RecommendationsRequests",
       "type": "type"
     },
     {
@@ -34436,19 +34586,19 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
@@ -34594,13 +34744,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
@@ -34692,7 +34842,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
@@ -35068,7 +35218,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     }
@@ -35328,31 +35478,31 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
@@ -36478,49 +36628,49 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceListingDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "FreelanceChatMessageDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixerConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IssueFixRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncRunDto",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteEntryDto",
       "type": "export"
     },
@@ -37034,7 +37184,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "RemoteSyncConfigInput",
       "type": "export"
     },
@@ -37650,7 +37800,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "LspRequests",
       "type": "export"
     },
@@ -38042,13 +38192,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 37,
+      "line": 38,
       "symbol": "BunRequests",
       "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "BunMessages",
       "type": "export"
     },
@@ -38900,13 +39050,13 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PlaygroundRequests",
       "type": "export"
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PlaygroundPreviewDto",
       "type": "export"
     },
@@ -39005,6 +39155,12 @@
       "line": 13,
       "symbol": "TableMeta",
       "type": "type"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 23,
+      "symbol": "DepMeta",
+      "type": "interface"
     }
   ],
   "copy": [
@@ -41518,7 +41674,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "PushDiffEntry",
       "type": "export"
     },
@@ -41906,7 +42062,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "UnreadActivityEntry",
       "type": "export"
     }
@@ -42104,7 +42260,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "AnalyticsRequests",
       "type": "export"
     }
@@ -42530,7 +42686,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "DashboardRequests",
       "type": "export"
     }
@@ -42822,7 +42978,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 46,
+      "line": 47,
       "symbol": "SettingsPage",
       "type": "function"
     },
@@ -43414,7 +43570,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "IntegrationsRequests",
       "type": "export"
     },
@@ -45087,6 +45243,12 @@
       "type": "interface"
     },
     {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 225,
+      "symbol": "DependencyCardProps",
+      "type": "interface"
+    },
+    {
       "file": "src/mainview/pages/settings/whatsapp-settings.tsx",
       "line": 77,
       "symbol": "AddConfigFormProps",
@@ -45979,6 +46141,30 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 59,
+      "symbol": "CardState",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 61,
+      "symbol": "CardStatus",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 225,
+      "symbol": "DependencyCardProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 232,
+      "symbol": "DependencyCard",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/skills.tsx",
       "line": 97,
       "symbol": "SkillCard",
@@ -46132,7 +46318,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 21,
+      "line": 22,
       "symbol": "SubTabs",
       "type": "function"
     }
@@ -46438,6 +46624,12 @@
       "file": "src/mainview/pages/dashboard.tsx",
       "line": 57,
       "symbol": "toggleCardsCollapsed",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 65,
+      "symbol": "buildInitialCards",
       "type": "function"
     }
   ],
@@ -47590,7 +47782,7 @@
     },
     {
       "file": "src/mainview/pages/settings.tsx",
-      "line": 21,
+      "line": 22,
       "symbol": "SubTabs",
       "type": "function"
     }
@@ -47910,7 +48102,7 @@
   "updater": [
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "UpdaterRequests",
       "type": "export"
     },
@@ -49906,6 +50098,12 @@
     }
   ],
   "try": [
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 86,
+      "symbol": "tryGetVersion",
+      "type": "function"
+    },
     {
       "file": "src/mainview/components/chat/tool-call-card.tsx",
       "line": 581,
@@ -52839,6 +53037,12 @@
   ],
   "version": [
     {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 86,
+      "symbol": "tryGetVersion",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/layout/sidebar.tsx",
       "line": 263,
       "symbol": "handleVersionClick",
@@ -53154,7 +53358,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "EnvVarsRequests",
       "type": "export"
     }
@@ -53198,7 +53402,7 @@
     },
     {
       "file": "src/shared/rpc/index.ts",
-      "line": 73,
+      "line": 75,
       "symbol": "CustomEnvVar",
       "type": "export"
     }
@@ -53409,14 +53613,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 301,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "workable": [
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
@@ -53488,6 +53684,114 @@
       "file": "src/bun/rpc/env-vars.ts",
       "line": 132,
       "symbol": "loadCustomEnvVarsIntoProcess",
+      "type": "function"
+    }
+  ],
+  "dep": [
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 15,
+      "symbol": "DepInfo",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 23,
+      "symbol": "DepMeta",
+      "type": "interface"
+    }
+  ],
+  "dependency": [
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 99,
+      "symbol": "checkDependency",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 175,
+      "symbol": "installDependency",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 225,
+      "symbol": "DependencyCardProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 232,
+      "symbol": "DependencyCard",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 75,
+      "symbol": "DependencyId",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 75,
+      "symbol": "DependencyStatus",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/recommendations.ts",
+      "line": 1,
+      "symbol": "DependencyId",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/rpc/recommendations.ts",
+      "line": 3,
+      "symbol": "DependencyStatus",
+      "type": "type"
+    }
+  ],
+  "dependencies": [
+    {
+      "file": "src/bun/rpc/recommendations.ts",
+      "line": 112,
+      "symbol": "checkDependencies",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 304,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "recommendations": [
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 84,
+      "symbol": "RecommendationsSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 75,
+      "symbol": "RecommendationsRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/recommendations.ts",
+      "line": 9,
+      "symbol": "RecommendationsRequests",
+      "type": "type"
+    }
+  ],
+  "initial": [
+    {
+      "file": "src/mainview/pages/settings/recommendations.tsx",
+      "line": 65,
+      "symbol": "buildInitialCards",
       "type": "function"
     }
   ]

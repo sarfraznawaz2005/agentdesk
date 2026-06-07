@@ -243,6 +243,9 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       activityUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:activity-updated", { detail: payload }));
       },
+      recommendationStatusChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:recommendation-status-changed", { detail: payload }));
+      },
       updateStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:update-status", { detail: payload }));
       },
@@ -1155,6 +1158,16 @@ export const rpc = {
   /** Delete a custom environment variable by id. */
   deleteCustomEnvVar: (id: string) =>
     electroviewRpc.request.deleteCustomEnvVar({ id }),
+
+  // ---- Recommendations (system dependencies) --------------------------------
+
+  /** Check installation status of all recommended system dependencies. */
+  checkDependencies: () =>
+    electroviewRpc.request.checkDependencies({}),
+
+  /** Trigger the install agent for a dependency. Returns immediately; result arrives via "agentdesk:recommendation-status-changed". */
+  installDependency: (dependencyId: string) =>
+    electroviewRpc.request.installDependency({ dependencyId: dependencyId as import("../../shared/rpc/recommendations").DependencyId }),
 
   // ---- Updater -------------------------------------------------------------
 

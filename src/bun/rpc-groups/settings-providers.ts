@@ -4,6 +4,7 @@ import * as settingsExportRpc from "../rpc/settings-export";
 import * as resetRpc from "../rpc/reset";
 import * as updaterRpc from "../rpc/updater";
 import * as envVarsRpc from "../rpc/env-vars";
+import * as recommendationsRpc from "../rpc/recommendations";
 import { invalidatePromptLogCache, clearPromptLog, openPromptLog, getPromptLogStats, getPromptLogEntry } from "../agents/prompt-logger";
 import { broadcastToWebview } from "../engine-manager";
 import { db } from "../db";
@@ -157,4 +158,8 @@ When enhancing a prompt:
 	createCustomEnvVar: (params) => envVarsRpc.createCustomEnvVar(params),
 	updateCustomEnvVar: (params) => envVarsRpc.updateCustomEnvVar(params),
 	deleteCustomEnvVar: (params) => envVarsRpc.deleteCustomEnvVar(params),
+
+	// Recommendations — system dependency checks + install
+	checkDependencies: () => recommendationsRpc.checkDependencies(),
+	installDependency: (params) => recommendationsRpc.installDependency(params),
 };

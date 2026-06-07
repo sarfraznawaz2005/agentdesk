@@ -409,6 +409,13 @@ export type WebviewSchema = RPCSchema<{
     // Per-project unread agent activity changed (recorded or marked seen).
     activityUpdated: { projectId: string; location: string };
 
+    // Dependency install completion (from recommendations tab)
+    recommendationStatusChanged: {
+      dependencyId: string;
+      installed: boolean;
+      version?: string;
+    };
+
     // Council multi-agent discussion events
     councilEvent: {
       sessionId: string;

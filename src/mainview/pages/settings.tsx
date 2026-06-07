@@ -13,6 +13,7 @@ import { NotificationSettings } from "./settings/notification-settings";
 import { McpSettings } from "./settings/mcp";
 import { AiDebugSettings } from "./settings/ai-debug";
 import { EnvVarsSettings } from "./settings/env-vars";
+import { RecommendationsSettings } from "./settings/recommendations";
 import { AuditLogSettings } from "./settings/audit-log";
 import { DataSettings } from "./settings/data";
 import { HealthSettings } from "./settings/health";
@@ -71,6 +72,7 @@ export function SettingsPage() {
             { value: "constitution", label: "Constitution", content: <ConstitutionSettings /> },
             { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },
             { value: "debug", label: "Debug", content: <AiDebugSettings /> },
+            { value: "recommendations", label: "Recommendations", content: <RecommendationsSettings /> },
           ]} />
         </TabsContent>
 

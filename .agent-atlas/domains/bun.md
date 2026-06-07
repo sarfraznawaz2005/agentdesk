@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 214
-**Symbols:** 1611
+**Files:** 215
+**Symbols:** 1618
 
 ## Files
 
@@ -2228,7 +2228,7 @@
 ### `src/bun/rpc-groups/settings-providers.ts`
 
 **Exports:**
-- `handlers` (line 15)
+- `handlers` (line 16)
 
 
 ### `src/bun/rpc-registration.ts`
@@ -2862,6 +2862,20 @@
 - `deletePrComment` (line 233)
 - `generatePrDescription` (line 240)
 - `runGitInProject` (line 262)
+
+
+### `src/bun/rpc/recommendations.ts`
+
+**Interfaces:**
+- `DepInfo` (line 15)
+
+**Functions:**
+- `tryGetVersion` (line 86)
+- `checkDependency` (line 99)
+- `checkDependencies` (line 112)
+- `buildInstallTask` (line 125)
+- `resolveProviderConfig` (line 157)
+- `installDependency` (line 175)
 
 
 ### `src/bun/rpc/remote-sync.ts`

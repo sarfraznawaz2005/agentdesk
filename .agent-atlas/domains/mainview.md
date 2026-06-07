@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 158
-**Symbols:** 1345
+**Files:** 159
+**Symbols:** 1354
 
 ## Files
 
@@ -1693,8 +1693,8 @@
 ### `src/mainview/lib/rpc.ts`
 
 **Exports:**
-- `electroview` (line 301)
-- `rpc` (line 310)
+- `electroview` (line 304)
+- `rpc` (line 313)
 
 
 ### `src/mainview/lib/theme.ts`
@@ -2086,8 +2086,8 @@
 ### `src/mainview/pages/settings.tsx`
 
 **Functions:**
-- `SubTabs` (line 21)
-- `SettingsPage` (line 46)
+- `SubTabs` (line 22)
+- `SettingsPage` (line 47)
 
 
 ### `src/mainview/pages/settings/ai-debug.tsx`
@@ -2315,6 +2315,24 @@
 - `handleDeleteConfirm` (line 800)
 - `handleTest` (line 819)
 - `onResult` (line 823)
+
+
+### `src/mainview/pages/settings/recommendations.tsx`
+
+**Interfaces:**
+- `DepMeta` (line 23)
+- `CardStatus` (line 61)
+- `DependencyCardProps` (line 225)
+
+**Types:**
+- `CardState` (line 59)
+
+**Functions:**
+- `buildInitialCards` (line 65)
+- `applyCheckResult` (line 69)
+- `RecommendationsSettings` (line 84)
+- `handler` (line 116)
+- `DependencyCard` (line 232)
 
 
 ### `src/mainview/pages/settings/tavily-settings.tsx`
