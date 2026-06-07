@@ -2,6 +2,7 @@ import { db } from "../db";
 import { settings } from "../db/schema";
 import { eq } from "drizzle-orm";
 import type { IssueSource } from "../../shared/rpc/issues";
+import { encryptSecret, decryptSecret } from "../lib/secret-crypto";
 
 // Per-project, per-source config lives in the settings table as a JSON string.
 const CATEGORY = "issue_sources";
@@ -20,10 +21,12 @@ export async function getSavedConfig(
 		.from(settings)
 		.where(eq(settings.key, configKey(projectId, source)))
 		.limit(1);
-	const raw = rows[0]?.value;
-	if (!raw) return null;
+	const stored = rows[0]?.value;
+	if (!stored) return null;
 	try {
-		const parsed = JSON.parse(raw) as Record<string, string>;
+		// Configs hold API keys/tokens, so the whole blob is encrypted at rest.
+		// decryptSecret tolerates legacy plaintext (returns it unchanged).
+		const parsed = JSON.parse(decryptSecret(stored)) as Record<string, string>;
 		return parsed && Object.keys(parsed).length > 0 ? parsed : null;
 	} catch {
 		return null;
@@ -36,7 +39,7 @@ export async function saveConfig(
 	config: Record<string, string>,
 ): Promise<void> {
 	const key = configKey(projectId, source);
-	const value = JSON.stringify(config);
+	const value = encryptSecret(JSON.stringify(config));
 	const now = new Date().toISOString();
 	await db
 		.insert(settings)

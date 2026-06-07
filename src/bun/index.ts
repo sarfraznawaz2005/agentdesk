@@ -33,6 +33,7 @@ import { startPlaygroundServer, shutdownPlaygroundServer } from "./playground/se
 import { shutdownPlayground } from "./playground/orchestrator";
 import { isFreelanceEnabled } from "./freelance/feature-flag";
 import { loadCustomEnvVarsIntoProcess } from "./rpc/env-vars";
+import { encryptExistingSecrets } from "./lib/encrypt-existing-secrets";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -141,6 +142,7 @@ initGlobalErrorHandlers();
 runMigrations();
 await seedDatabase();
 await loadCustomEnvVarsIntoProcess();
+await encryptExistingSecrets();
 
 export const FREELANCE_ENABLED = isFreelanceEnabled();
 if (FREELANCE_ENABLED) {

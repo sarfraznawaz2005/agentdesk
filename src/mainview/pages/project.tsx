@@ -4,7 +4,7 @@ import { ChatLayout } from "../components/chat/chat-layout";
 import { KanbanBoard } from "../components/kanban/kanban-board";
 import { TaskDetailModal } from "../components/kanban/task-detail-modal";
 import { GitTab } from "../components/git/git-tab";
-import { Issues } from "../components/issues/issues";
+import { IssueTrackerTab } from "../components/issues/issue-tracker-tab";
 import { DeployTab } from "../components/deploy/deploy-tab";
 import { RemoteSyncTab } from "../components/remote-sync/remote-sync-tab";
 import { NotesTab } from "../components/notes/notes-tab";
@@ -35,7 +35,8 @@ export function ProjectPage() {
   // Unread agent-activity dots (per-tab). `chat` clears as soon as the Chat tab is
   // active; the git/issue-fixer dots only clear at their leaf (History inner tab).
   const chatUnread = useUnreadStore(hasUnread(projectId ?? "", "chat"));
-  const gitUnread = useUnreadStore(hasUnreadPrefix(projectId ?? "", "issue-fixer"));
+  // Auto Issues Fixer now lives under the Issue Tracker tab.
+  const issueFixerUnread = useUnreadStore(hasUnreadPrefix(projectId ?? "", "issue-fixer"));
   const markSeen = useUnreadStore((s) => s.markSeen);
   const markCardSeen = useUnreadStore((s) => s.markCardSeen);
   // Tracks which projectId's conversations are fully loaded in the store.
@@ -227,9 +228,6 @@ export function ProjectPage() {
         >
           <GitBranch className="w-3.5 h-3.5" />
           Git
-          {/* Cascade dot — but not while the user is already viewing this tab (the leaf stays
-              unread; the deeper Issue Fixer/History dots still guide them in). */}
-          {gitUnread && activeTab !== "git" && <UnreadDot />}
         </button>
         <button
           onClick={() => setActiveTab("issues")}
@@ -242,6 +240,9 @@ export function ProjectPage() {
         >
           <ListChecks className="w-3.5 h-3.5" />
           Issue Tracker
+          {/* Cascade dot for unseen Auto Issues Fixer activity (the deeper History dot still
+              guides the user to the exact leaf). */}
+          {issueFixerUnread && activeTab !== "issues" && <UnreadDot />}
         </button>
         <button
           onClick={() => setActiveTab("remote")}
@@ -357,11 +358,7 @@ export function ProjectPage() {
           />
         )}
         {activeTab === "git" && <GitTab projectId={projectId} />}
-        {activeTab === "issues" && (
-          <div className="h-full overflow-y-auto p-4">
-            <Issues projectId={projectId} />
-          </div>
-        )}
+        {activeTab === "issues" && <IssueTrackerTab projectId={projectId} />}
         {activeTab === "deploy" && <DeployTab projectId={projectId} />}
         {activeTab === "remote" && <RemoteSyncTab projectId={projectId} />}
         {activeTab === "notes" && <NotesTab projectId={projectId} />}

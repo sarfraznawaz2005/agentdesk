@@ -6,9 +6,10 @@ import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FolderOpen, Download } from "lucide-react";
+import { FolderOpen, Download, Check } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -303,6 +304,11 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
   // null = repo state not yet known (loading); true/false once resolved.
   const [hasGit, setHasGit] = useState<boolean | null>(null);
   const [cloning, setCloning] = useState(false);
+  // Per-project GitHub token (used by ALL GitHub operations). Saved together with
+  // the rest of the form via the single "Save Changes" button.
+  const [tokenSource, setTokenSource] = useState<"global" | "custom">("global");
+  const [customToken, setCustomToken] = useState("");
+  const [hasCustomToken, setHasCustomToken] = useState(false);
 
   // Keep form in sync if project prop changes (e.g. after a save)
   useEffect(() => {
@@ -329,6 +335,24 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
       .catch(() => {
         if (!cancelled) setHasGit(null);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id]);
+
+  // Load the current per-project GitHub token config (source + whether one is saved).
+  useEffect(() => {
+    let cancelled = false;
+    rpc
+      .getProjectGitHubTokenInfo(project.id)
+      .then((info) => {
+        if (cancelled) return;
+        setTokenSource(info.source);
+        setHasCustomToken(info.hasCustomToken);
+        setCustomToken("");
+        setDirty(false);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -388,9 +412,18 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
       githubUrl: form.githubUrl || null,
       workingBranch: form.workingBranch || null,
     });
+
+    // Persist the per-project GitHub token settings alongside the project info.
+    await rpc.saveProjectSetting(project.id, "githubTokenSource", tokenSource);
+    if (tokenSource === "custom" && customToken.trim()) {
+      await rpc.saveProjectSetting(project.id, "githubToken", customToken.trim());
+      setHasCustomToken(true);
+    }
+    setCustomToken("");
+
     setDirty(false);
     return true;
-  }, [form, project, onProjectUpdated]);
+  }, [form, project, onProjectUpdated, tokenSource, customToken]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -544,8 +577,19 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
             </div>
           </FieldRow>
 
-          <Separator />
+        </CardContent>
+      </Card>
 
+      {/* GitHub */}
+      <Card>
+        <CardHeader>
+          <CardTitle>GitHub</CardTitle>
+          <CardDescription>
+            Repository, working branch, and the token used for all GitHub operations in this
+            project — issue sync, pull requests, and the Auto Issues Fixer.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
           <FieldRow
             id="proj-github-url"
             label="GitHub Repository URL"
@@ -590,6 +634,65 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
               placeholder="main"
             />
           </FieldRow>
+
+          <Separator />
+
+          <FieldRow
+            id="gh-token-source"
+            label="Token source"
+            description="Where this project's GitHub token comes from. Global uses Settings → GitHub."
+          >
+            <Select
+              value={tokenSource}
+              onValueChange={(v) => {
+                setTokenSource(v as "global" | "custom");
+                setDirty(true);
+              }}
+            >
+              <SelectTrigger id="gh-token-source" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="global">Use global default (Settings → GitHub)</SelectItem>
+                <SelectItem value="custom">Custom token for this project</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldRow>
+
+          {tokenSource === "custom" && (
+            <>
+              <Separator />
+              <FieldRow
+                id="gh-custom-token"
+                label="Custom token"
+                description="Stored per-project, encrypted at rest. Leave blank to keep the existing one."
+              >
+                <div>
+                  <PasswordInput
+                    id="gh-custom-token"
+                    value={customToken}
+                    onChange={(e) => {
+                      setCustomToken(e.target.value);
+                      setDirty(true);
+                    }}
+                    placeholder={hasCustomToken ? "•••••••••• (saved)" : "ghp_…"}
+                    className="font-mono text-xs"
+                  />
+                  {hasCustomToken && !customToken.trim() && (
+                    <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      A custom token is saved. Leave blank to keep it, or type a new one to replace it.
+                    </p>
+                  )}
+                  {!hasCustomToken && !customToken.trim() && (
+                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                      No custom token saved yet — the global token is used until you add one.
+                    </p>
+                  )}
+                </div>
+              </FieldRow>
+            </>
+          )}
         </CardContent>
       </Card>
 

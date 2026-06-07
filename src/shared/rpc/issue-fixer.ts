@@ -17,6 +17,8 @@ export interface IssueFixerConfigDto {
 	notifyEnabled: boolean;
 	cursorAt: string | null;
 	lastPolledAt: string | null;
+	/** True when a per-project custom GitHub token is already stored (value never sent to the UI). */
+	hasCustomToken?: boolean;
 }
 
 export interface IssueFixRunDto {

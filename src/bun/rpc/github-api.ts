@@ -6,6 +6,7 @@ import { db } from "../db";
 import { settings, projects } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { runGit } from "../lib/git-runner";
+import { decryptSecret } from "../lib/secret-crypto";
 
 async function getGitHubPAT(): Promise<string | null> {
 	const rows = await db
@@ -29,8 +30,10 @@ async function getProjectGitHubToken(projectId: string): Promise<string | null> 
 		.from(settings)
 		.where(eq(settings.key, `project:${projectId}:githubToken`))
 		.limit(1);
-	const raw = rows[0]?.value;
-	if (!raw) return null;
+	const stored = rows[0]?.value;
+	if (!stored) return null;
+	// Decrypt if encrypted; tolerates legacy plaintext (returned unchanged).
+	const raw = decryptSecret(stored);
 	try { return JSON.parse(raw); } catch { return raw; }
 }
 
@@ -61,9 +64,28 @@ async function getProjectIdByWorkspace(workspacePath: string): Promise<string | 
 }
 
 /**
+ * Read the per-project GitHub token source ("global" | "custom"), stored under
+ * `project:<id>:githubTokenSource`. When unset, it is INFERRED for back-compat:
+ * a project that already has a saved custom token defaults to "custom" (the old
+ * behaviour, where a present per-project token was always used), otherwise "global".
+ */
+export async function getProjectGitHubTokenSource(projectId: string): Promise<"global" | "custom"> {
+	const rows = await db
+		.select({ value: settings.value })
+		.from(settings)
+		.where(eq(settings.key, `project:${projectId}:githubTokenSource`))
+		.limit(1);
+	const raw = rows[0]?.value;
+	const explicit = raw ? (() => { try { return JSON.parse(raw); } catch { return raw; } })() : null;
+	if (explicit === "global" || explicit === "custom") return explicit;
+	// No explicit choice — infer from token presence to preserve legacy behaviour.
+	return (await getProjectGitHubToken(projectId)) ? "custom" : "global";
+}
+
+/**
  * Resolve a GitHub token using a single, consistent order so every caller
  * authenticates the same way:
- *   1. per-project custom token (if the project opted into one),
+ *   1. the per-project custom token — ONLY when the project's token source is "custom",
  *   2. the global `github_pat` (what Settings → GitHub saves),
  *   3. the legacy `githubToken`/`git` setting (back-compat).
  *
@@ -76,13 +98,22 @@ export async function resolveGitHubToken(
 	if (!projectId && opts?.workspacePath) {
 		projectId = await getProjectIdByWorkspace(opts.workspacePath);
 	}
-	if (projectId) {
+	if (projectId && (await getProjectGitHubTokenSource(projectId)) === "custom") {
 		const projectToken = await getProjectGitHubToken(projectId);
 		if (projectToken) return projectToken;
 	}
 	const globalToken = await getGitHubPAT();
 	if (globalToken) return globalToken;
 	return await getLegacyGitToken();
+}
+
+/** Token-config status for the Project Settings UI (never returns the token value). */
+export async function getProjectGitHubTokenInfo(
+	projectId: string,
+): Promise<{ source: "global" | "custom"; hasCustomToken: boolean }> {
+	const hasCustomToken = Boolean(await getProjectGitHubToken(projectId));
+	const source = await getProjectGitHubTokenSource(projectId);
+	return { source, hasCustomToken };
 }
 
 /**

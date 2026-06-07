@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 229
-**Symbols:** 1734
+**Files:** 231
+**Symbols:** 1741
 
 ## Files
 
@@ -1367,20 +1367,20 @@
 ### `src/bun/index.ts`
 
 **Interfaces:**
-- `WindowState` (line 41)
+- `WindowState` (line 42)
 
 **Functions:**
-- `getWindowStateFilePath` (line 51)
-- `loadWindowState` (line 55)
-- `saveWindowState` (line 89)
-- `debounce` (line 105)
-- `getMainViewUrl` (line 114)
-- `attachWindowListeners` (line 313)
-- `setWindowTitlebarIcon` (line 373)
-- `toWide` (line 382)
+- `getWindowStateFilePath` (line 52)
+- `loadWindowState` (line 56)
+- `saveWindowState` (line 90)
+- `debounce` (line 106)
+- `getMainViewUrl` (line 115)
+- `attachWindowListeners` (line 315)
+- `setWindowTitlebarIcon` (line 375)
+- `toWide` (line 384)
 
 **Exports:**
-- `FREELANCE_ENABLED` (line 145)
+- `FREELANCE_ENABLED` (line 147)
 
 
 ### `src/bun/issue-fixer/config.ts`
@@ -1389,24 +1389,25 @@
 - `IssueFixerConfigDto` (line 25)
 
 **Types:**
-- `ConfigRow` (line 54)
-- `IssueFixRunRow` (line 158)
+- `ConfigRow` (line 66)
+- `IssueFixRunRow` (line 176)
 
 **Functions:**
 - `sanitizeAgentdesk` (line 12)
-- `parseJsonArray` (line 44)
-- `mapConfig` (line 56)
-- `getIssueFixerConfig` (line 77)
-- `listEnabledConfigs` (line 82)
-- `saveIssueFixerConfig` (line 88)
-- `setCursor` (line 148)
-- `setLastPolled` (line 152)
-- `createRun` (line 160)
-- `updateRun` (line 194)
-- `listRuns` (line 210)
-- `getRun` (line 219)
-- `mostRecentFinishedAt` (line 225)
-- `failInterruptedRuns` (line 242)
+- `hasCustomGitHubToken` (line 47)
+- `parseJsonArray` (line 56)
+- `mapConfig` (line 68)
+- `getIssueFixerConfig` (line 89)
+- `listEnabledConfigs` (line 97)
+- `saveIssueFixerConfig` (line 103)
+- `setCursor` (line 166)
+- `setLastPolled` (line 170)
+- `createRun` (line 178)
+- `updateRun` (line 212)
+- `listRuns` (line 228)
+- `getRun` (line 237)
+- `mostRecentFinishedAt` (line 243)
+- `failInterruptedRuns` (line 260)
 
 
 ### `src/bun/issue-fixer/github.ts`
@@ -1531,11 +1532,11 @@
 ### `src/bun/issue-sources/config-store.ts`
 
 **Functions:**
-- `configKey` (line 9)
-- `getSavedConfig` (line 14)
-- `saveConfig` (line 33)
-- `deleteConfig` (line 47)
-- `cleanConfig` (line 52)
+- `configKey` (line 10)
+- `getSavedConfig` (line 15)
+- `saveConfig` (line 36)
+- `deleteConfig` (line 50)
+- `cleanConfig` (line 55)
 
 
 ### `src/bun/issue-sources/github.ts`
@@ -1696,6 +1697,12 @@
 - `normalisePriority` (line 102)
 
 
+### `src/bun/lib/encrypt-existing-secrets.ts`
+
+**Functions:**
+- `encryptExistingSecrets` (line 15)
+
+
 ### `src/bun/lib/git-runner.ts`
 
 **Functions:**
@@ -1708,6 +1715,15 @@
 **Functions:**
 - `isInstalledBuild` (line 19)
 - `isPortableBuild` (line 34)
+
+
+### `src/bun/lib/secret-crypto.ts`
+
+**Functions:**
+- `getKey` (line 28)
+- `isEncrypted` (line 57)
+- `encryptSecret` (line 62)
+- `decryptSecret` (line 77)
 
 
 ### `src/bun/lsp/client.ts`
@@ -2314,11 +2330,10 @@
 
 ### `src/bun/remote-sync/crypto.ts`
 
-**Functions:**
-- `getKey` (line 24)
-- `isEncrypted` (line 53)
-- `encryptSecret` (line 58)
-- `decryptSecret` (line 73)
+**Exports:**
+- `isEncrypted` (line 10)
+- `encryptSecret` (line 10)
+- `decryptSecret` (line 10)
 
 
 ### `src/bun/remote-sync/engine.ts`
@@ -2761,20 +2776,22 @@
 ### `src/bun/rpc/github-api.ts`
 
 **Functions:**
-- `getGitHubPAT` (line 10)
-- `getProjectGitHubToken` (line 26)
-- `getLegacyGitToken` (line 42)
-- `getProjectIdByWorkspace` (line 54)
-- `resolveGitHubToken` (line 72)
-- `gitAuthArgs` (line 96)
-- `githubAuthPrefix` (line 115)
-- `redactToken` (line 131)
-- `pushBranchAuthenticated` (line 152)
-- `githubFetch` (line 191)
-- `parseGithubUrl` (line 220)
-- `getProjectGithubRepo` (line 229)
-- `validateGithubToken` (line 247)
-- `getGithubConfigError` (line 264)
+- `getGitHubPAT` (line 11)
+- `getProjectGitHubToken` (line 27)
+- `getLegacyGitToken` (line 45)
+- `getProjectIdByWorkspace` (line 57)
+- `getProjectGitHubTokenSource` (line 72)
+- `resolveGitHubToken` (line 94)
+- `getProjectGitHubTokenInfo` (line 111)
+- `gitAuthArgs` (line 127)
+- `githubAuthPrefix` (line 146)
+- `redactToken` (line 162)
+- `pushBranchAuthenticated` (line 183)
+- `githubFetch` (line 222)
+- `parseGithubUrl` (line 251)
+- `getProjectGithubRepo` (line 260)
+- `validateGithubToken` (line 278)
+- `getGithubConfigError` (line 295)
 
 
 ### `src/bun/rpc/github-issues.ts`
@@ -2997,35 +3014,35 @@
 ### `src/bun/rpc/projects.ts`
 
 **Interfaces:**
-- `ProjectListItem` (line 13)
-- `CreateProjectParams` (line 60)
+- `ProjectListItem` (line 17)
+- `CreateProjectParams` (line 64)
 
 **Types:**
-- `StmtCache` (line 508)
+- `StmtCache` (line 512)
 
 **Functions:**
-- `getProjectsList` (line 30)
-- `createProjectHandler` (line 80)
-- `getProjectRepoState` (line 251)
-- `cloneProjectRepo` (line 268)
-- `deleteProjectHandler` (line 325)
-- `cleanupProjectWorkspaceFolder` (line 339)
-- `permanentDeleteProjectHandler` (line 390)
-- `getProject` (line 445)
-- `updateProject` (line 465)
-- `buildStmts` (line 511)
-- `getStmts` (line 543)
-- `deleteProjectCascade` (line 552)
-- `resetProjectData` (line 601)
-- `saveProjectSetting` (line 634)
-- `getProjectSettings` (line 664)
-- `detectVerifyCommand` (line 683)
-- `exists` (line 700)
-- `readJson` (line 701)
-- `listWorkspaceFiles` (line 825)
-- `readWorkspaceFile` (line 897)
-- `readWorkspaceImageFile` (line 936)
-- `syncWorkspaceFolders` (line 976)
+- `getProjectsList` (line 34)
+- `createProjectHandler` (line 84)
+- `getProjectRepoState` (line 255)
+- `cloneProjectRepo` (line 272)
+- `deleteProjectHandler` (line 329)
+- `cleanupProjectWorkspaceFolder` (line 343)
+- `permanentDeleteProjectHandler` (line 394)
+- `getProject` (line 449)
+- `updateProject` (line 469)
+- `buildStmts` (line 515)
+- `getStmts` (line 547)
+- `deleteProjectCascade` (line 556)
+- `resetProjectData` (line 605)
+- `saveProjectSetting` (line 638)
+- `getProjectSettings` (line 670)
+- `detectVerifyCommand` (line 689)
+- `exists` (line 706)
+- `readJson` (line 707)
+- `listWorkspaceFiles` (line 831)
+- `readWorkspaceFile` (line 903)
+- `readWorkspaceImageFile` (line 942)
+- `syncWorkspaceFolders` (line 982)
 
 
 ### `src/bun/rpc/prompts.ts`

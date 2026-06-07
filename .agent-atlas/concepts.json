@@ -2264,25 +2264,25 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 51,
+      "line": 52,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 114,
+      "line": 115,
       "symbol": "getMainViewUrl",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 77,
+      "line": 89,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 219,
+      "line": 237,
       "symbol": "getRun",
       "type": "function"
     },
@@ -2306,7 +2306,7 @@
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 14,
+      "line": 15,
       "symbol": "getSavedConfig",
       "type": "function"
     },
@@ -2320,6 +2320,12 @@
       "file": "src/bun/issue-sources/registry.ts",
       "line": 20,
       "symbol": "getAdapter",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 28,
+      "symbol": "getKey",
       "type": "function"
     },
     {
@@ -2494,12 +2500,6 @@
       "file": "src/bun/remote-sync/config.ts",
       "line": 212,
       "symbol": "getManifest",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/remote-sync/crypto.ts",
-      "line": 24,
-      "symbol": "getKey",
       "type": "function"
     },
     {
@@ -2822,37 +2822,49 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 10,
+      "line": 11,
       "symbol": "getGitHubPAT",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 26,
+      "line": 27,
       "symbol": "getProjectGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 42,
+      "line": 45,
       "symbol": "getLegacyGitToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 54,
+      "line": 57,
       "symbol": "getProjectIdByWorkspace",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 229,
+      "line": 72,
+      "symbol": "getProjectGitHubTokenSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 111,
+      "symbol": "getProjectGitHubTokenInfo",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 260,
       "symbol": "getProjectGithubRepo",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 264,
+      "line": 295,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -3044,31 +3056,31 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 30,
+      "line": 34,
       "symbol": "getProjectsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 251,
+      "line": 255,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 445,
+      "line": 449,
       "symbol": "getProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 543,
+      "line": 547,
       "symbol": "getStmts",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 664,
+      "line": 670,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -3758,19 +3770,19 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 373,
+      "line": 375,
       "symbol": "setWindowTitlebarIcon",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 148,
+      "line": 166,
       "symbol": "setCursor",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 152,
+      "line": 170,
       "symbol": "setLastPolled",
       "type": "function"
     },
@@ -4774,7 +4786,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 114,
+      "line": 115,
       "symbol": "getMainViewUrl",
       "type": "function"
     }
@@ -4860,37 +4872,37 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 41,
+      "line": 42,
       "symbol": "WindowState",
       "type": "interface"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 51,
+      "line": 52,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "loadWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 89,
+      "line": 90,
       "symbol": "saveWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 313,
+      "line": 315,
       "symbol": "attachWindowListeners",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 373,
+      "line": 375,
       "symbol": "setWindowTitlebarIcon",
       "type": "function"
     }
@@ -5366,7 +5378,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 72,
+      "line": 94,
       "symbol": "resolveGitHubToken",
       "type": "function"
     },
@@ -5820,19 +5832,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 80,
+      "line": 84,
       "symbol": "createProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 325,
+      "line": 329,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 390,
+      "line": 394,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
@@ -5970,7 +5982,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 76,
+      "line": 77,
       "symbol": "handler",
       "type": "function"
     },
@@ -6236,7 +6248,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 160,
+      "line": 178,
       "symbol": "createRun",
       "type": "function"
     },
@@ -6488,13 +6500,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 60,
+      "line": 64,
       "symbol": "CreateProjectParams",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 80,
+      "line": 84,
       "symbol": "createProjectHandler",
       "type": "function"
     },
@@ -6566,7 +6578,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 171,
+      "line": 172,
       "symbol": "handleCreateTask",
       "type": "function"
     },
@@ -6622,25 +6634,25 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 41,
+      "line": 42,
       "symbol": "WindowState",
       "type": "interface"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 51,
+      "line": 52,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "loadWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/index.ts",
-      "line": 89,
+      "line": 90,
       "symbol": "saveWindowState",
       "type": "function"
     },
@@ -6676,7 +6688,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 251,
+      "line": 255,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
@@ -7002,7 +7014,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 51,
+      "line": 52,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
@@ -7152,13 +7164,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 897,
+      "line": 903,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 936,
+      "line": 942,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -7364,7 +7376,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 51,
+      "line": 52,
       "symbol": "getWindowStateFilePath",
       "type": "function"
     },
@@ -7528,7 +7540,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "loadWindowState",
       "type": "function"
     },
@@ -7612,7 +7624,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 975,
+      "line": 1078,
       "symbol": "load",
       "type": "function"
     },
@@ -7710,19 +7722,19 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 89,
+      "line": 90,
       "symbol": "saveWindowState",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 88,
+      "line": 103,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 33,
+      "line": 36,
       "symbol": "saveConfig",
       "type": "function"
     },
@@ -7812,7 +7824,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 634,
+      "line": 638,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
@@ -7866,7 +7878,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 76,
+      "line": 70,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     },
@@ -8012,7 +8024,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 105,
+      "line": 106,
       "symbol": "debounce",
       "type": "function"
     }
@@ -8020,7 +8032,7 @@
   "view": [
     {
       "file": "src/bun/index.ts",
-      "line": 114,
+      "line": 115,
       "symbol": "getMainViewUrl",
       "type": "function"
     },
@@ -8035,6 +8047,12 @@
       "line": 476,
       "symbol": "handleViewOnPlatform",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issues/issue-tracker-tab.tsx",
+      "line": 7,
+      "symbol": "IssueTrackerView",
+      "type": "type"
     },
     {
       "file": "src/mainview/components/remote-sync/remote-sync-tab.tsx",
@@ -8070,7 +8088,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 114,
+      "line": 115,
       "symbol": "getMainViewUrl",
       "type": "function"
     },
@@ -8112,7 +8130,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 220,
+      "line": 251,
       "symbol": "parseGithubUrl",
       "type": "function"
     },
@@ -8222,7 +8240,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 145,
+      "line": 147,
       "symbol": "FREELANCE_ENABLED",
       "type": "export"
     },
@@ -8350,13 +8368,13 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 145,
+      "line": 147,
       "symbol": "FREELANCE_ENABLED",
       "type": "export"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 82,
+      "line": 97,
       "symbol": "listEnabledConfigs",
       "type": "function"
     },
@@ -8400,7 +8418,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 313,
+      "line": 315,
       "symbol": "attachWindowListeners",
       "type": "function"
     }
@@ -8414,7 +8432,7 @@
     },
     {
       "file": "src/bun/index.ts",
-      "line": 313,
+      "line": 315,
       "symbol": "attachWindowListeners",
       "type": "function"
     },
@@ -8446,7 +8464,7 @@
   "icon": [
     {
       "file": "src/bun/index.ts",
-      "line": 373,
+      "line": 375,
       "symbol": "setWindowTitlebarIcon",
       "type": "function"
     },
@@ -8526,7 +8544,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 634,
+      "line": 638,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
@@ -8678,13 +8696,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 337,
+      "line": 361,
       "symbol": "handleChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 709,
+      "line": 812,
       "symbol": "handleChange",
       "type": "function"
     },
@@ -8794,7 +8812,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 106,
+      "line": 100,
       "symbol": "handlePullWithBranch",
       "type": "function"
     }
@@ -8886,7 +8904,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 264,
+      "line": 295,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -9470,6 +9488,12 @@
       "file": "src/bun/agents/review-cycle.ts",
       "line": 118,
       "symbol": "reviewSummaryHasIssues",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 47,
+      "symbol": "hasCustomGitHubToken",
       "type": "function"
     },
     {
@@ -11020,19 +11044,31 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 26,
+      "line": 27,
       "symbol": "getProjectGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 54,
+      "line": 57,
       "symbol": "getProjectIdByWorkspace",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 229,
+      "line": 72,
+      "symbol": "getProjectGitHubTokenSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 111,
+      "symbol": "getProjectGitHubTokenInfo",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 260,
       "symbol": "getProjectGithubRepo",
       "type": "function"
     },
@@ -11068,85 +11104,85 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 13,
+      "line": 17,
       "symbol": "ProjectListItem",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 60,
+      "line": 64,
       "symbol": "CreateProjectParams",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 80,
+      "line": 84,
       "symbol": "createProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 251,
+      "line": 255,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 268,
+      "line": 272,
       "symbol": "cloneProjectRepo",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 325,
+      "line": 329,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 339,
+      "line": 343,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 390,
+      "line": 394,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 445,
+      "line": 449,
       "symbol": "getProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 465,
+      "line": 469,
       "symbol": "updateProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 552,
+      "line": 556,
       "symbol": "deleteProjectCascade",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 601,
+      "line": 605,
       "symbol": "resetProjectData",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 634,
+      "line": 638,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 664,
+      "line": 670,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -11236,19 +11272,19 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 43,
+      "line": 44,
       "symbol": "ProjectData",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 960,
+      "line": 1063,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 964,
+      "line": 1067,
       "symbol": "ProjectSettingsTab",
       "type": "function"
     },
@@ -11834,7 +11870,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 171,
+      "line": 172,
       "symbol": "handleCreateTask",
       "type": "function"
     },
@@ -13053,6 +13089,12 @@
       "type": "export"
     },
     {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 47,
+      "symbol": "hasCustomGitHubToken",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-sources/gitlab.ts",
       "line": 36,
       "symbol": "GitLabIssue",
@@ -13156,31 +13198,43 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 10,
+      "line": 11,
       "symbol": "getGitHubPAT",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 26,
+      "line": 27,
       "symbol": "getProjectGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 42,
+      "line": 45,
       "symbol": "getLegacyGitToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
       "line": 72,
+      "symbol": "getProjectGitHubTokenSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 94,
       "symbol": "resolveGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 96,
+      "line": 111,
+      "symbol": "getProjectGitHubTokenInfo",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 127,
       "symbol": "gitAuthArgs",
       "type": "function"
     },
@@ -13198,19 +13252,19 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 15,
+      "line": 12,
       "symbol": "GitSubTab",
       "type": "type"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 17,
+      "line": 14,
       "symbol": "GitTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 26,
+      "line": 22,
       "symbol": "GitTab",
       "type": "function"
     },
@@ -13242,19 +13296,19 @@
   "repo": [
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 229,
+      "line": 260,
       "symbol": "getProjectGithubRepo",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 251,
+      "line": 255,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 268,
+      "line": 272,
       "symbol": "cloneProjectRepo",
       "type": "function"
     },
@@ -13316,13 +13370,13 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 233,
+      "line": 232,
       "symbol": "addCustomKeyword",
       "type": "function"
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 244,
+      "line": 243,
       "symbol": "addLabel",
       "type": "function"
     },
@@ -13462,7 +13516,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 76,
+      "line": 70,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     },
@@ -13538,7 +13592,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 54,
+      "line": 57,
       "symbol": "getProjectIdByWorkspace",
       "type": "function"
     },
@@ -13562,31 +13616,31 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 339,
+      "line": 343,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 825,
+      "line": 831,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 897,
+      "line": 903,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 936,
+      "line": 942,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 976,
+      "line": 982,
       "symbol": "syncWorkspaceFolders",
       "type": "function"
     },
@@ -13761,6 +13815,12 @@
       "type": "export"
     },
     {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 47,
+      "symbol": "hasCustomGitHubToken",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/env-vars.ts",
       "line": 132,
       "symbol": "loadCustomEnvVarsIntoProcess",
@@ -13810,7 +13870,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 233,
+      "line": 232,
       "symbol": "addCustomKeyword",
       "type": "function"
     },
@@ -14092,7 +14152,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 96,
+      "line": 127,
       "symbol": "gitAuthArgs",
       "type": "function"
     },
@@ -15028,7 +15088,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 76,
+      "line": 77,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -16730,7 +16790,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 54,
+      "line": 57,
       "symbol": "getProjectIdByWorkspace",
       "type": "function"
     },
@@ -17720,13 +17780,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 106,
+      "line": 107,
       "symbol": "FieldRowProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 113,
+      "line": 114,
       "symbol": "FieldRow",
       "type": "function"
     },
@@ -18012,7 +18072,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 936,
+      "line": 942,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -18151,6 +18211,12 @@
       "type": "interface"
     },
     {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 111,
+      "symbol": "getProjectGitHubTokenInfo",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/recommendations.ts",
       "line": 15,
       "symbol": "DepInfo",
@@ -18234,8 +18300,14 @@
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 9,
+      "line": 10,
       "symbol": "configKey",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 28,
+      "symbol": "getKey",
       "type": "function"
     },
     {
@@ -18254,12 +18326,6 @@
       "file": "src/bun/remote-sync/config.ts",
       "line": 156,
       "symbol": "setHostKeyFingerprint",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/remote-sync/crypto.ts",
-      "line": 24,
-      "symbol": "getKey",
       "type": "function"
     },
     {
@@ -18538,13 +18604,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 55,
+      "line": 56,
       "symbol": "GeneralForm",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 64,
+      "line": 65,
       "symbol": "AiForm",
       "type": "interface"
     },
@@ -19146,7 +19212,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 44,
+      "line": 56,
       "symbol": "parseJsonArray",
       "type": "function"
     },
@@ -19176,7 +19242,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 220,
+      "line": 251,
       "symbol": "parseGithubUrl",
       "type": "function"
     },
@@ -19289,6 +19355,12 @@
       "line": 57,
       "symbol": "IssueSourceAdapter",
       "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 72,
+      "symbol": "getProjectGitHubTokenSource",
+      "type": "function"
     },
     {
       "file": "src/bun/rpc/issues.ts",
@@ -19624,7 +19696,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 825,
+      "line": 831,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
@@ -19698,7 +19770,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 194,
+      "line": 212,
       "symbol": "updateRun",
       "type": "function"
     },
@@ -19770,7 +19842,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 465,
+      "line": 469,
       "symbol": "updateProject",
       "type": "function"
     },
@@ -19824,7 +19896,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 220,
+      "line": 219,
       "symbol": "update",
       "type": "function"
     },
@@ -19898,7 +19970,7 @@
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 52,
+      "line": 55,
       "symbol": "cleanConfig",
       "type": "function"
     },
@@ -20298,7 +20370,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 244,
+      "line": 243,
       "symbol": "addLabel",
       "type": "function"
     },
@@ -20600,7 +20672,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 511,
+      "line": 515,
       "symbol": "buildStmts",
       "type": "function"
     },
@@ -20764,13 +20836,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 82,
+      "line": 97,
       "symbol": "listEnabledConfigs",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 210,
+      "line": 228,
       "symbol": "listRuns",
       "type": "function"
     },
@@ -20956,19 +21028,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 13,
+      "line": 17,
       "symbol": "ProjectListItem",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 30,
+      "line": 34,
       "symbol": "getProjectsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 825,
+      "line": 831,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
@@ -22270,25 +22342,25 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 158,
+      "line": 176,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 160,
+      "line": 178,
       "symbol": "createRun",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 194,
+      "line": 212,
       "symbol": "updateRun",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 219,
+      "line": 237,
       "symbol": "getRun",
       "type": "function"
     },
@@ -22516,13 +22588,13 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 22,
+      "line": 24,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     },
@@ -22574,7 +22646,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 44,
+      "line": 56,
       "symbol": "parseJsonArray",
       "type": "function"
     },
@@ -22628,7 +22700,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 701,
+      "line": 707,
       "symbol": "readJson",
       "type": "function"
     },
@@ -23146,7 +23218,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 349,
+      "line": 373,
       "symbol": "onResult",
       "type": "function"
     },
@@ -23560,19 +23632,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 701,
+      "line": 707,
       "symbol": "readJson",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 897,
+      "line": 903,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 936,
+      "line": 942,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -24486,7 +24558,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 683,
+      "line": 689,
       "symbol": "detectVerifyCommand",
       "type": "function"
     },
@@ -24786,7 +24858,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 976,
+      "line": 982,
       "symbol": "syncWorkspaceFolders",
       "type": "function"
     },
@@ -26260,7 +26332,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 601,
+      "line": 605,
       "symbol": "resetProjectData",
       "type": "function"
     },
@@ -26278,7 +26350,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 223,
+      "line": 224,
       "symbol": "ResetConfirmDialog",
       "type": "function"
     },
@@ -26426,7 +26498,7 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     }
@@ -27160,13 +27232,13 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 85,
+      "line": 79,
       "symbol": "handlePull",
       "type": "function"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 106,
+      "line": 100,
       "symbol": "handlePullWithBranch",
       "type": "function"
     },
@@ -27364,31 +27436,31 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 154,
+      "line": 155,
       "symbol": "handleConfirm",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 234,
+      "line": 235,
       "symbol": "handleConfirm",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 337,
+      "line": 361,
       "symbol": "handleChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 345,
+      "line": 369,
       "symbol": "handleBrowse",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 709,
+      "line": 812,
       "symbol": "handleChange",
       "type": "function"
     },
@@ -27712,7 +27784,7 @@
     },
     {
       "file": "src/mainview/pages/project.tsx",
-      "line": 171,
+      "line": 172,
       "symbol": "handleCreateTask",
       "type": "function"
     },
@@ -27918,13 +27990,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 54,
+      "line": 66,
       "symbol": "ConfigRow",
       "type": "type"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 158,
+      "line": 176,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
@@ -28056,13 +28128,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 106,
+      "line": 107,
       "symbol": "FieldRowProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 113,
+      "line": 114,
       "symbol": "FieldRow",
       "type": "function"
     },
@@ -28398,7 +28470,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 76,
+      "line": 70,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     }
@@ -28694,7 +28766,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 508,
+      "line": 512,
       "symbol": "StmtCache",
       "type": "type"
     }
@@ -29676,7 +29748,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 152,
+      "line": 183,
       "symbol": "pushBranchAuthenticated",
       "type": "function"
     },
@@ -29718,7 +29790,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 106,
+      "line": 100,
       "symbol": "handlePullWithBranch",
       "type": "function"
     },
@@ -30210,25 +30282,25 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 54,
+      "line": 66,
       "symbol": "ConfigRow",
       "type": "type"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 56,
+      "line": 68,
       "symbol": "mapConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 77,
+      "line": 89,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 88,
+      "line": 103,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
@@ -30246,31 +30318,31 @@
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 9,
+      "line": 10,
       "symbol": "configKey",
       "type": "function"
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 14,
+      "line": 15,
       "symbol": "getSavedConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 33,
+      "line": 36,
       "symbol": "saveConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 47,
+      "line": 50,
       "symbol": "deleteConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 52,
+      "line": 55,
       "symbol": "cleanConfig",
       "type": "function"
     },
@@ -30402,7 +30474,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 264,
+      "line": 295,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -31794,7 +31866,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 152,
+      "line": 183,
       "symbol": "pushBranchAuthenticated",
       "type": "function"
     },
@@ -32258,7 +32330,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 191,
+      "line": 222,
       "symbol": "githubFetch",
       "type": "function"
     },
@@ -33198,13 +33270,13 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 96,
+      "line": 127,
       "symbol": "gitAuthArgs",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 115,
+      "line": 146,
       "symbol": "githubAuthPrefix",
       "type": "function"
     },
@@ -33328,7 +33400,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 508,
+      "line": 512,
       "symbol": "StmtCache",
       "type": "type"
     }
@@ -33722,7 +33794,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 601,
+      "line": 605,
       "symbol": "resetProjectData",
       "type": "function"
     },
@@ -33746,7 +33818,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 43,
+      "line": 44,
       "symbol": "ProjectData",
       "type": "interface"
     },
@@ -33826,7 +33898,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 152,
+      "line": 170,
       "symbol": "setLastPolled",
       "type": "function"
     },
@@ -33960,7 +34032,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 664,
+      "line": 670,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -34002,7 +34074,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 76,
+      "line": 70,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
     },
@@ -34014,13 +34086,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 960,
+      "line": 1063,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 964,
+      "line": 1067,
       "symbol": "ProjectSettingsTab",
       "type": "function"
     },
@@ -34214,7 +34286,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 30,
+      "line": 34,
       "symbol": "getProjectsList",
       "type": "function"
     },
@@ -34938,13 +35010,13 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 85,
+      "line": 79,
       "symbol": "handlePull",
       "type": "function"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 106,
+      "line": 100,
       "symbol": "handlePullWithBranch",
       "type": "function"
     },
@@ -35234,7 +35306,7 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 64,
+      "line": 66,
       "symbol": "IssueFixerRequests",
       "type": "type"
     },
@@ -35372,7 +35444,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 82,
+      "line": 97,
       "symbol": "listEnabledConfigs",
       "type": "function"
     },
@@ -35416,37 +35488,37 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 115,
+      "line": 146,
       "symbol": "githubAuthPrefix",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 191,
+      "line": 222,
       "symbol": "githubFetch",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 220,
+      "line": 251,
       "symbol": "parseGithubUrl",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 229,
+      "line": 260,
       "symbol": "getProjectGithubRepo",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 247,
+      "line": 278,
       "symbol": "validateGithubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 264,
+      "line": 295,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -35520,19 +35592,19 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 77,
+      "line": 89,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 88,
+      "line": 103,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 158,
+      "line": 176,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
@@ -35903,6 +35975,18 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issue-tracker-tab.tsx",
+      "line": 7,
+      "symbol": "IssueTrackerView",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issue-tracker-tab.tsx",
+      "line": 19,
+      "symbol": "IssueTrackerTab",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/issues/issues.tsx",
       "line": 94,
       "symbol": "IssueCard",
@@ -35988,25 +36072,25 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 22,
+      "line": 24,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 44,
+      "line": 46,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 64,
+      "line": 66,
       "symbol": "IssueFixerRequests",
       "type": "type"
     },
@@ -36080,13 +36164,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 77,
+      "line": 89,
       "symbol": "getIssueFixerConfig",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 88,
+      "line": 103,
       "symbol": "saveIssueFixerConfig",
       "type": "function"
     },
@@ -36194,13 +36278,13 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 44,
+      "line": 46,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 64,
+      "line": 66,
       "symbol": "IssueFixerRequests",
       "type": "type"
     }
@@ -36214,7 +36298,7 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 158,
+      "line": 176,
       "symbol": "IssueFixRunRow",
       "type": "type"
     },
@@ -36280,13 +36364,13 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 22,
+      "line": 24,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     }
@@ -36342,13 +36426,13 @@
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 210,
+      "line": 228,
       "symbol": "listRuns",
       "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 242,
+      "line": 260,
       "symbol": "failInterruptedRuns",
       "type": "function"
     },
@@ -37044,7 +37128,7 @@
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 47,
+      "line": 50,
       "symbol": "deleteConfig",
       "type": "function"
     },
@@ -37182,19 +37266,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 325,
+      "line": 329,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 390,
+      "line": 394,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 552,
+      "line": 556,
       "symbol": "deleteProjectCascade",
       "type": "function"
     },
@@ -37320,13 +37404,13 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 131,
+      "line": 132,
       "symbol": "DeleteConfirmDialogProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 138,
+      "line": 139,
       "symbol": "DeleteConfirmDialog",
       "type": "function"
     },
@@ -37762,7 +37846,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 13,
+      "line": 17,
       "symbol": "ProjectListItem",
       "type": "interface"
     },
@@ -37846,7 +37930,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 76,
+      "line": 77,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -38132,19 +38216,19 @@
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 22,
+      "line": 24,
       "symbol": "IssueFixRunDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 44,
+      "line": 46,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "ActiveIssueFixRunDto",
       "type": "interface"
     },
@@ -38194,7 +38278,7 @@
   "array": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 44,
+      "line": 56,
       "symbol": "parseJsonArray",
       "type": "function"
     },
@@ -38214,7 +38298,7 @@
   "map": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 56,
+      "line": 68,
       "symbol": "mapConfig",
       "type": "function"
     },
@@ -38318,7 +38402,7 @@
   "recent": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 225,
+      "line": 243,
       "symbol": "mostRecentFinishedAt",
       "type": "function"
     },
@@ -38338,7 +38422,7 @@
   "fail": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 242,
+      "line": 260,
       "symbol": "failInterruptedRuns",
       "type": "function"
     },
@@ -38358,7 +38442,7 @@
   "interrupted": [
     {
       "file": "src/bun/issue-fixer/config.ts",
-      "line": 242,
+      "line": 260,
       "symbol": "failInterruptedRuns",
       "type": "function"
     },
@@ -38882,19 +38966,19 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 225,
+      "line": 224,
       "symbol": "toggleKeyword",
       "type": "function"
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 233,
+      "line": 232,
       "symbol": "addCustomKeyword",
       "type": "function"
     },
     {
       "file": "src/shared/rpc/issue-fixer.ts",
-      "line": 44,
+      "line": 46,
       "symbol": "IssueFixerKeywordDto",
       "type": "interface"
     }
@@ -38908,7 +38992,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 115,
+      "line": 146,
       "symbol": "githubAuthPrefix",
       "type": "function"
     },
@@ -38928,7 +39012,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 277,
+      "line": 272,
       "symbol": "isPredefined",
       "type": "function"
     }
@@ -39703,6 +39787,12 @@
   ],
   "hub": [
     {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 47,
+      "symbol": "hasCustomGitHubToken",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/installer.ts",
       "line": 232,
       "symbol": "installViaGitHub",
@@ -39710,20 +39800,32 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 10,
+      "line": 11,
       "symbol": "getGitHubPAT",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 26,
+      "line": 27,
       "symbol": "getProjectGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
       "line": 72,
+      "symbol": "getProjectGitHubTokenSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 94,
       "symbol": "resolveGitHubToken",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 111,
+      "symbol": "getProjectGitHubTokenInfo",
       "type": "function"
     }
   ],
@@ -39934,7 +40036,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 60,
+      "line": 64,
       "symbol": "CreateProjectParams",
       "type": "interface"
     },
@@ -40046,7 +40148,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 339,
+      "line": 343,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
@@ -40730,7 +40832,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 700,
+      "line": 706,
       "symbol": "exists",
       "type": "function"
     }
@@ -40924,19 +41026,19 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 15,
+      "line": 12,
       "symbol": "GitSubTab",
       "type": "type"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 17,
+      "line": 14,
       "symbol": "GitTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 26,
+      "line": 22,
       "symbol": "GitTab",
       "type": "function"
     },
@@ -40953,6 +41055,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/issues/issue-tracker-tab.tsx",
+      "line": 19,
+      "symbol": "IssueTrackerTab",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/notes/notes-tab.tsx",
       "line": 41,
       "symbol": "NotesTabProps",
@@ -40966,37 +41074,37 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 283,
+      "line": 284,
       "symbol": "GeneralTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 288,
+      "line": 289,
       "symbol": "GeneralTab",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 679,
+      "line": 782,
       "symbol": "AiTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 685,
+      "line": 788,
       "symbol": "AiTab",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 960,
+      "line": 1063,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 964,
+      "line": 1067,
       "symbol": "ProjectSettingsTab",
       "type": "function"
     },
@@ -41768,7 +41876,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 247,
+      "line": 278,
       "symbol": "validateGithubToken",
       "type": "function"
     },
@@ -42073,6 +42181,12 @@
   ],
   "token": [
     {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 47,
+      "symbol": "hasCustomGitHubToken",
+      "type": "function"
+    },
+    {
       "file": "src/bun/providers/claude-subscription.ts",
       "line": 24,
       "symbol": "loadOAuthToken",
@@ -42080,31 +42194,43 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 26,
+      "line": 27,
       "symbol": "getProjectGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 42,
+      "line": 45,
       "symbol": "getLegacyGitToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
       "line": 72,
+      "symbol": "getProjectGitHubTokenSource",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 94,
       "symbol": "resolveGitHubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 131,
+      "line": 111,
+      "symbol": "getProjectGitHubTokenInfo",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 162,
       "symbol": "redactToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 247,
+      "line": 278,
       "symbol": "validateGithubToken",
       "type": "function"
     },
@@ -42677,6 +42803,18 @@
   ],
   "secret": [
     {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 62,
+      "symbol": "encryptSecret",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 77,
+      "symbol": "decryptSecret",
+      "type": "function"
+    },
+    {
       "file": "src/bun/remote-sync/config.ts",
       "line": 106,
       "symbol": "resolveSecret",
@@ -42684,15 +42822,15 @@
     },
     {
       "file": "src/bun/remote-sync/crypto.ts",
-      "line": 58,
+      "line": 10,
       "symbol": "encryptSecret",
-      "type": "function"
+      "type": "export"
     },
     {
       "file": "src/bun/remote-sync/crypto.ts",
-      "line": 73,
+      "line": 10,
       "symbol": "decryptSecret",
-      "type": "function"
+      "type": "export"
     },
     {
       "file": "src/bun/rpc/remote-sync.ts",
@@ -42750,30 +42888,6 @@
       "file": "src/bun/rpc/env-vars.ts",
       "line": 80,
       "symbol": "upsertShellProfileLine",
-      "type": "function"
-    }
-  ],
-  "encrypted": [
-    {
-      "file": "src/bun/remote-sync/crypto.ts",
-      "line": 53,
-      "symbol": "isEncrypted",
-      "type": "function"
-    }
-  ],
-  "encrypt": [
-    {
-      "file": "src/bun/remote-sync/crypto.ts",
-      "line": 58,
-      "symbol": "encryptSecret",
-      "type": "function"
-    }
-  ],
-  "decrypt": [
-    {
-      "file": "src/bun/remote-sync/crypto.ts",
-      "line": 73,
-      "symbol": "decryptSecret",
       "type": "function"
     }
   ],
@@ -42970,7 +43084,7 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 345,
+      "line": 369,
       "symbol": "handleBrowse",
       "type": "function"
     },
@@ -44008,7 +44122,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 339,
+      "line": 343,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
@@ -44951,38 +45065,6 @@
       "type": "function"
     }
   ],
-  "pat": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 10,
-      "symbol": "getGitHubPAT",
-      "type": "function"
-    }
-  ],
-  "legacy": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 42,
-      "symbol": "getLegacyGitToken",
-      "type": "function"
-    }
-  ],
-  "redact": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 131,
-      "symbol": "redactToken",
-      "type": "function"
-    }
-  ],
-  "authenticated": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 152,
-      "symbol": "pushBranchAuthenticated",
-      "type": "function"
-    }
-  ],
   "health": [
     {
       "file": "src/bun/rpc/health.ts",
@@ -45500,7 +45582,7 @@
     },
     {
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 225,
+      "line": 224,
       "symbol": "toggleKeyword",
       "type": "function"
     },
@@ -45640,7 +45722,7 @@
   "permanent": [
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 390,
+      "line": 394,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
@@ -45660,7 +45742,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 683,
+      "line": 689,
       "symbol": "detectVerifyCommand",
       "type": "function"
     },
@@ -46284,7 +46366,7 @@
     },
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 17,
+      "line": 14,
       "symbol": "GitTabProps",
       "type": "interface"
     },
@@ -46422,31 +46504,31 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 106,
+      "line": 107,
       "symbol": "FieldRowProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 131,
+      "line": 132,
       "symbol": "DeleteConfirmDialogProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 283,
+      "line": 284,
       "symbol": "GeneralTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 679,
+      "line": 782,
       "symbol": "AiTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 960,
+      "line": 1063,
       "symbol": "ProjectSettingsTabProps",
       "type": "interface"
     },
@@ -47102,19 +47184,19 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 131,
+      "line": 132,
       "symbol": "DeleteConfirmDialogProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 138,
+      "line": 139,
       "symbol": "DeleteConfirmDialog",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 223,
+      "line": 224,
       "symbol": "ResetConfirmDialog",
       "type": "function"
     },
@@ -47840,7 +47922,7 @@
     },
     {
       "file": "src/bun/issue-sources/config-store.ts",
-      "line": 14,
+      "line": 15,
       "symbol": "getSavedConfig",
       "type": "function"
     },
@@ -47874,7 +47956,7 @@
   "sub": [
     {
       "file": "src/mainview/components/git/git-tab.tsx",
-      "line": 15,
+      "line": 12,
       "symbol": "GitSubTab",
       "type": "type"
     },
@@ -49312,31 +49394,31 @@
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 131,
+      "line": 132,
       "symbol": "DeleteConfirmDialogProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 138,
+      "line": 139,
       "symbol": "DeleteConfirmDialog",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 154,
+      "line": 155,
       "symbol": "handleConfirm",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 223,
+      "line": 224,
       "symbol": "ResetConfirmDialog",
       "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 234,
+      "line": 235,
       "symbol": "handleConfirm",
       "type": "function"
     },
@@ -50293,6 +50375,18 @@
       "line": 31,
       "symbol": "FileTracker",
       "type": "class"
+    },
+    {
+      "file": "src/mainview/components/issues/issue-tracker-tab.tsx",
+      "line": 7,
+      "symbol": "IssueTrackerView",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/issues/issue-tracker-tab.tsx",
+      "line": 19,
+      "symbol": "IssueTrackerTab",
+      "type": "function"
     }
   ],
   "track": [
@@ -52178,19 +52272,19 @@
   "general": [
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 55,
+      "line": 56,
       "symbol": "GeneralForm",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 283,
+      "line": 284,
       "symbol": "GeneralTabProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
-      "line": 288,
+      "line": 289,
       "symbol": "GeneralTab",
       "type": "function"
     },
@@ -54371,52 +54465,6 @@
       "type": "function"
     }
   ],
-  "clone": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 268,
-      "symbol": "cloneProjectRepo",
-      "type": "function"
-    }
-  ],
-  "stmts": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 511,
-      "symbol": "buildStmts",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 543,
-      "symbol": "getStmts",
-      "type": "function"
-    }
-  ],
-  "cascade": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 552,
-      "symbol": "deleteProjectCascade",
-      "type": "function"
-    }
-  ],
-  "verify": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 683,
-      "symbol": "detectVerifyCommand",
-      "type": "function"
-    }
-  ],
-  "folders": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 976,
-      "symbol": "syncWorkspaceFolders",
-      "type": "function"
-    }
-  ],
   "processing": [
     {
       "file": "src/bun/agents/engine.ts",
@@ -54621,46 +54669,6 @@
       "type": "function"
     }
   ],
-  "agentdesk": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 12,
-      "symbol": "sanitizeAgentdesk",
-      "type": "function"
-    }
-  ],
-  "cursor": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 148,
-      "symbol": "setCursor",
-      "type": "function"
-    }
-  ],
-  "polled": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 152,
-      "symbol": "setLastPolled",
-      "type": "function"
-    }
-  ],
-  "most": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 225,
-      "symbol": "mostRecentFinishedAt",
-      "type": "function"
-    }
-  ],
-  "finished": [
-    {
-      "file": "src/bun/issue-fixer/config.ts",
-      "line": 225,
-      "symbol": "mostRecentFinishedAt",
-      "type": "function"
-    }
-  ],
   "live": [
     {
       "file": "src/bun/issue-fixer/orchestrator.ts",
@@ -54697,6 +54705,12 @@
       "line": 229,
       "symbol": "checkoutExisting",
       "type": "function"
+    },
+    {
+      "file": "src/bun/lib/encrypt-existing-secrets.ts",
+      "line": 15,
+      "symbol": "encryptExistingSecrets",
+      "type": "function"
     }
   ],
   "categorize": [
@@ -54712,14 +54726,6 @@
       "file": "src/mainview/components/chat/chat-input.tsx",
       "line": 411,
       "symbol": "handleFileSelect_mention",
-      "type": "function"
-    }
-  ],
-  "help": [
-    {
-      "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 48,
-      "symbol": "OptionHelp",
       "type": "function"
     }
   ],
@@ -54930,22 +54936,6 @@
       "file": "src/mainview/components/dashboard/pm-chat-widget.tsx",
       "line": 144,
       "symbol": "PmChatWidget",
-      "type": "function"
-    }
-  ],
-  "titlebar": [
-    {
-      "file": "src/bun/index.ts",
-      "line": 373,
-      "symbol": "setWindowTitlebarIcon",
-      "type": "function"
-    }
-  ],
-  "wide": [
-    {
-      "file": "src/bun/index.ts",
-      "line": 382,
-      "symbol": "toWide",
       "type": "function"
     }
   ],
@@ -55865,14 +55855,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 304,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "descriptor": [
     {
       "file": "src/shared/rpc/issues.ts",
@@ -55972,6 +55954,212 @@
       "file": "src/bun/rpc/updater.ts",
       "line": 9,
       "symbol": "relayStatus",
+      "type": "function"
+    }
+  ],
+  "titlebar": [
+    {
+      "file": "src/bun/index.ts",
+      "line": 375,
+      "symbol": "setWindowTitlebarIcon",
+      "type": "function"
+    }
+  ],
+  "wide": [
+    {
+      "file": "src/bun/index.ts",
+      "line": 384,
+      "symbol": "toWide",
+      "type": "function"
+    }
+  ],
+  "agentdesk": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 12,
+      "symbol": "sanitizeAgentdesk",
+      "type": "function"
+    }
+  ],
+  "cursor": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 166,
+      "symbol": "setCursor",
+      "type": "function"
+    }
+  ],
+  "polled": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 170,
+      "symbol": "setLastPolled",
+      "type": "function"
+    }
+  ],
+  "most": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 243,
+      "symbol": "mostRecentFinishedAt",
+      "type": "function"
+    }
+  ],
+  "finished": [
+    {
+      "file": "src/bun/issue-fixer/config.ts",
+      "line": 243,
+      "symbol": "mostRecentFinishedAt",
+      "type": "function"
+    }
+  ],
+  "encrypt": [
+    {
+      "file": "src/bun/lib/encrypt-existing-secrets.ts",
+      "line": 15,
+      "symbol": "encryptExistingSecrets",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 62,
+      "symbol": "encryptSecret",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/remote-sync/crypto.ts",
+      "line": 10,
+      "symbol": "encryptSecret",
+      "type": "export"
+    }
+  ],
+  "secrets": [
+    {
+      "file": "src/bun/lib/encrypt-existing-secrets.ts",
+      "line": 15,
+      "symbol": "encryptExistingSecrets",
+      "type": "function"
+    }
+  ],
+  "encrypted": [
+    {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 57,
+      "symbol": "isEncrypted",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/remote-sync/crypto.ts",
+      "line": 10,
+      "symbol": "isEncrypted",
+      "type": "export"
+    }
+  ],
+  "decrypt": [
+    {
+      "file": "src/bun/lib/secret-crypto.ts",
+      "line": 77,
+      "symbol": "decryptSecret",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/remote-sync/crypto.ts",
+      "line": 10,
+      "symbol": "decryptSecret",
+      "type": "export"
+    }
+  ],
+  "pat": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 11,
+      "symbol": "getGitHubPAT",
+      "type": "function"
+    }
+  ],
+  "legacy": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 45,
+      "symbol": "getLegacyGitToken",
+      "type": "function"
+    }
+  ],
+  "redact": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 162,
+      "symbol": "redactToken",
+      "type": "function"
+    }
+  ],
+  "authenticated": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 183,
+      "symbol": "pushBranchAuthenticated",
+      "type": "function"
+    }
+  ],
+  "clone": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 272,
+      "symbol": "cloneProjectRepo",
+      "type": "function"
+    }
+  ],
+  "stmts": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 515,
+      "symbol": "buildStmts",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 547,
+      "symbol": "getStmts",
+      "type": "function"
+    }
+  ],
+  "cascade": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 556,
+      "symbol": "deleteProjectCascade",
+      "type": "function"
+    }
+  ],
+  "verify": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 689,
+      "symbol": "detectVerifyCommand",
+      "type": "function"
+    }
+  ],
+  "folders": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 982,
+      "symbol": "syncWorkspaceFolders",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 304,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "help": [
+    {
+      "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
+      "line": 48,
+      "symbol": "OptionHelp",
       "type": "function"
     }
   ]

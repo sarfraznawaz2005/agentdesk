@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 159
-**Symbols:** 1368
+**Files:** 160
+**Symbols:** 1370
 
 ## Files
 
@@ -690,16 +690,16 @@
 ### `src/mainview/components/git/git-tab.tsx`
 
 **Interfaces:**
-- `GitTabProps` (line 17)
+- `GitTabProps` (line 14)
 
 **Types:**
-- `GitSubTab` (line 15)
+- `GitSubTab` (line 12)
 
 **Functions:**
-- `GitTab` (line 26)
-- `saveAutoCommitSettings` (line 76)
-- `handlePull` (line 85)
-- `handlePullWithBranch` (line 106)
+- `GitTab` (line 22)
+- `saveAutoCommitSettings` (line 70)
+- `handlePull` (line 79)
+- `handlePullWithBranch` (line 100)
 
 
 ### `src/mainview/components/git/pull-requests.tsx`
@@ -789,11 +789,11 @@
 - `OptionHelp` (line 48)
 - `Row` (line 115)
 - `IssueFixerSettingsTab` (line 151)
-- `update` (line 220)
-- `toggleKeyword` (line 225)
-- `addCustomKeyword` (line 233)
-- `addLabel` (line 244)
-- `isPredefined` (line 277)
+- `update` (line 219)
+- `toggleKeyword` (line 224)
+- `addCustomKeyword` (line 232)
+- `addLabel` (line 243)
+- `isPredefined` (line 272)
 
 
 ### `src/mainview/components/issue-fixer/issue-fixer-tab.tsx`
@@ -803,6 +803,15 @@
 - `statusVariant` (line 36)
 - `IssueFixerProjectTab` (line 43)
 - `h` (line 144)
+
+
+### `src/mainview/components/issues/issue-tracker-tab.tsx`
+
+**Types:**
+- `IssueTrackerView` (line 7)
+
+**Functions:**
+- `IssueTrackerTab` (line 19)
 
 
 ### `src/mainview/components/issues/issues.tsx`
@@ -1066,30 +1075,30 @@
 ### `src/mainview/components/project-settings/project-settings-tab.tsx`
 
 **Interfaces:**
-- `ProjectData` (line 43)
-- `GeneralForm` (line 55)
-- `AiForm` (line 64)
-- `ProviderItem` (line 76)
-- `FieldRowProps` (line 106)
-- `DeleteConfirmDialogProps` (line 131)
-- `GeneralTabProps` (line 283)
-- `AiTabProps` (line 679)
-- `ProjectSettingsTabProps` (line 960)
+- `ProjectData` (line 44)
+- `GeneralForm` (line 56)
+- `AiForm` (line 65)
+- `ProviderItem` (line 77)
+- `FieldRowProps` (line 107)
+- `DeleteConfirmDialogProps` (line 132)
+- `GeneralTabProps` (line 284)
+- `AiTabProps` (line 782)
+- `ProjectSettingsTabProps` (line 1063)
 
 **Functions:**
-- `FieldRow` (line 113)
-- `DeleteConfirmDialog` (line 138)
-- `handleConfirm` (line 154)
-- `ResetConfirmDialog` (line 223)
-- `handleConfirm` (line 234)
-- `GeneralTab` (line 288)
-- `handleChange` (line 337)
-- `handleBrowse` (line 345)
-- `onResult` (line 349)
-- `AiTab` (line 685)
-- `handleChange` (line 709)
-- `ProjectSettingsTab` (line 964)
-- `load` (line 975)
+- `FieldRow` (line 114)
+- `DeleteConfirmDialog` (line 139)
+- `handleConfirm` (line 155)
+- `ResetConfirmDialog` (line 224)
+- `handleConfirm` (line 235)
+- `GeneralTab` (line 289)
+- `handleChange` (line 361)
+- `handleBrowse` (line 369)
+- `onResult` (line 373)
+- `AiTab` (line 788)
+- `handleChange` (line 812)
+- `ProjectSettingsTab` (line 1067)
+- `load` (line 1078)
 
 
 ### `src/mainview/components/remote-sync/connection-form.tsx`
@@ -2042,8 +2051,8 @@
 
 **Functions:**
 - `ProjectPage` (line 31)
-- `handler` (line 76)
-- `handleCreateTask` (line 171)
+- `handler` (line 77)
+- `handleCreateTask` (line 172)
 
 
 ### `src/mainview/pages/prompts.tsx`

@@ -8,11 +8,8 @@ import { DiffViewer } from "./diff-viewer";
 import { StagedFiles } from "./staged-files";
 import { PullRequests } from "./pull-requests";
 import { ConflictResolver } from "./conflict-resolver";
-import { IssueFixerProjectTab } from "../issue-fixer/issue-fixer-tab";
-import { useUnreadStore, hasUnreadPrefix } from "../../stores/unread-store";
-import { UnreadDot } from "@/components/ui/unread-dot";
 
-type GitSubTab = "overview" | "pull-requests" | "conflicts" | "issue-fixer";
+type GitSubTab = "overview" | "pull-requests" | "conflicts";
 
 interface GitTabProps { projectId: string; }
 
@@ -20,7 +17,6 @@ const GIT_SUBTABS: { id: GitSubTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "pull-requests", label: "Pull Requests" },
   { id: "conflicts", label: "Conflicts Resolver" },
-  { id: "issue-fixer", label: "Auto Issues Fixer" },
 ];
 
 export function GitTab({ projectId }: GitTabProps) {
@@ -34,8 +30,6 @@ export function GitTab({ projectId }: GitTabProps) {
   const [pullBranchDialog, setPullBranchDialog] = useState<{ currentBranch: string } | null>(null);
   const [pullBranchInput, setPullBranchInput] = useState("");
   const [subTab, setSubTab] = useState<GitSubTab>("overview");
-  // Unread agent activity under Auto Issues Fixer (cleared at its History inner tab).
-  const issueFixerUnread = useUnreadStore(hasUnreadPrefix(projectId, "issue-fixer"));
 
   // Auto-commit settings state
   const [autoCommitEnabled, setAutoCommitEnabled] = useState(false);
@@ -125,9 +119,6 @@ export function GitTab({ projectId }: GitTabProps) {
             }`}
           >
             {tab.label}
-            {/* Suppress the dot on the Issue Fixer sub-tab while it's the active sub-tab —
-                the History inner-tab dot still indicates the unseen activity. */}
-            {tab.id === "issue-fixer" && issueFixerUnread && subTab !== "issue-fixer" && <UnreadDot />}
           </button>
         ))}
         {subTab === "overview" && (
@@ -147,13 +138,6 @@ export function GitTab({ projectId }: GitTabProps) {
         )}
       </div>
 
-      {subTab === "issue-fixer" ? (
-        /* Issue Fixer ships its own full-height scroll container + padding, so render
-           it outside the padded list wrapper used by the other sub-tabs. */
-        <div className="flex-1 overflow-hidden">
-          <IssueFixerProjectTab projectId={projectId} />
-        </div>
-      ) : (
       <div className="flex-1 overflow-y-auto p-4">
         {/* Overview */}
         {subTab === "overview" && (
@@ -236,7 +220,6 @@ export function GitTab({ projectId }: GitTabProps) {
         )}
 
       </div>
-      )}
 
       {/* Pull branch prompt — shown when current branch has no upstream tracking */}
       {pullBranchDialog && (

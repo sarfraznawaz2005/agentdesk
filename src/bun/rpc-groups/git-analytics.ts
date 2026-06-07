@@ -2,7 +2,7 @@ import * as gitRpc from "../rpc/git";
 import * as pullsRpc from "../rpc/pulls";
 import * as githubIssuesRpc from "../rpc/github-issues";
 import * as issuesRpc from "../rpc/issues";
-import { validateGithubToken } from "../rpc/github-api";
+import { validateGithubToken, getProjectGitHubTokenInfo } from "../rpc/github-api";
 import * as branchStrategyRpc from "../rpc/branch-strategy";
 import * as analyticsRpc from "../rpc/analytics";
 import * as auditRpc from "../rpc/audit";
@@ -50,6 +50,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	createGithubIssueFromTask: (params) => githubIssuesRpc.createGithubIssueFromTask(params.taskId, params.projectId),
 	linkIssueToTask: (params) => githubIssuesRpc.linkIssueToTask(params.issueId, params.taskId),
 	validateGithubToken: (params) => validateGithubToken(params.token),
+	getProjectGitHubTokenInfo: (params) => getProjectGitHubTokenInfo(params.projectId),
 
 	// Multi-source Issues engine
 	listIssueSources: (params) => issuesRpc.listIssueSources(params.projectId),

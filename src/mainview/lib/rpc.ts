@@ -991,6 +991,8 @@ export const rpc = {
     electroviewRpc.request.linkIssueToTask({ issueId, taskId }),
   validateGithubToken: (token: string) =>
     electroviewRpc.request.validateGithubToken({ token }),
+  getProjectGitHubTokenInfo: (projectId: string) =>
+    electroviewRpc.request.getProjectGitHubTokenInfo({ projectId }),
 
   // ── Multi-source Issues ──
   listIssueSources: (projectId: string) =>

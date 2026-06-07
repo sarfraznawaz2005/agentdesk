@@ -170,12 +170,12 @@
 
 **Interfaces:**
 - `IssueFixerConfigDto` (line 3)
-- `IssueFixRunDto` (line 22)
-- `IssueFixerKeywordDto` (line 44)
-- `ActiveIssueFixRunDto` (line 51)
+- `IssueFixRunDto` (line 24)
+- `IssueFixerKeywordDto` (line 46)
+- `ActiveIssueFixRunDto` (line 53)
 
 **Types:**
-- `IssueFixerRequests` (line 64)
+- `IssueFixerRequests` (line 66)
 
 
 ### `src/shared/rpc/issues.ts`

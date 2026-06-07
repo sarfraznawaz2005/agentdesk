@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import { db } from "../db";
-import { issueFixerConfig, issueFixRuns } from "../db/schema";
+import { issueFixerConfig, issueFixRuns, settings } from "../db/schema";
 import { eq, desc, inArray, and, ne } from "drizzle-orm";
 import type { AuthMode } from "./triggers";
 
@@ -39,6 +39,18 @@ export interface IssueFixerConfigDto {
 	notifyEnabled: boolean;
 	cursorAt: string | null;
 	lastPolledAt: string | null;
+	/** True when a per-project custom GitHub token is already stored. */
+	hasCustomToken?: boolean;
+}
+
+/** Whether a per-project custom GitHub token is saved (key: project:<id>:githubToken). */
+async function hasCustomGitHubToken(projectId: string): Promise<boolean> {
+	const rows = await db
+		.select({ value: settings.value })
+		.from(settings)
+		.where(eq(settings.key, `project:${projectId}:githubToken`))
+		.limit(1);
+	return Boolean(rows[0]?.value && rows[0].value.trim());
 }
 
 function parseJsonArray(raw: string | null | undefined): string[] {
@@ -76,7 +88,10 @@ function mapConfig(row: ConfigRow): IssueFixerConfigDto {
 
 export async function getIssueFixerConfig(projectId: string): Promise<IssueFixerConfigDto | null> {
 	const rows = await db.select().from(issueFixerConfig).where(eq(issueFixerConfig.projectId, projectId)).limit(1);
-	return rows[0] ? mapConfig(rows[0]) : null;
+	if (!rows[0]) return null;
+	const dto = mapConfig(rows[0]);
+	dto.hasCustomToken = await hasCustomGitHubToken(projectId);
+	return dto;
 }
 
 export async function listEnabledConfigs(): Promise<IssueFixerConfigDto[]> {
@@ -142,6 +157,9 @@ export async function saveIssueFixerConfig(
 	} else {
 		await db.insert(issueFixerConfig).values({ projectId, ...values, createdAt: now });
 	}
+	// The frontend persists the custom token (saveProjectSetting) before calling this,
+	// so this reflects the just-saved state.
+	merged.hasCustomToken = await hasCustomGitHubToken(projectId);
 	return merged;
 }
 

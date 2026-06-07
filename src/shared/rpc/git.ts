@@ -206,4 +206,9 @@ export type GitRequests = {
     params: { token: string };
     response: { valid: boolean; username?: string; error?: string };
   };
+  /** Per-project GitHub token config for the Project Settings UI (token value never returned). */
+  getProjectGitHubTokenInfo: {
+    params: { projectId: string };
+    response: { source: "global" | "custom"; hasCustomToken: boolean };
+  };
 };

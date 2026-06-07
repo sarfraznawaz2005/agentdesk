@@ -183,10 +183,11 @@ src/
 │   │   ├── notes/             # Full Docs page (notes-tab.tsx — list + markdown preview)
 │   │   ├── kanban/            # Kanban board, columns, cards, task detail modal, stats bar
 │   │   ├── git/               # Branch list, commit log, diff viewer, PR management,
-│   │   │                      #   conflicts (view + abort + "Resolve with AI" → seeds a PM chat),
-│   │   │                      #   GitHub issue↔kanban link/create/auto-close, branch strategy, Auto Issues Fixer
-│   │   ├── issues/            # issues.tsx — top-level "Issue Tracker" tab (multi-source: source tabs +
-│   │   │                      #   configure dialog w/ bucket picker + search + issue↔kanban link/create/auto-close)
+│   │   │                      #   conflicts (view + abort + "Resolve with AI" → seeds a PM chat), branch strategy
+│   │   ├── issues/            # Top-level "Issue Tracker" tab. issue-tracker-tab.tsx hosts two sub-views:
+│   │   │                      #   issues.tsx (multi-source: source tabs + configure dialog w/ bucket picker + search +
+│   │   │                      #   issue↔kanban link/create/auto-close) and the Auto Issues Fixer (issue-fixer/)
+│   │   ├── issue-fixer/        # Auto Issues Fixer UI (issue-fixer-tab.tsx + settings) — rendered inside the Issue Tracker tab
 │   │   ├── deploy/            # Deploy tab
 │   │   ├── remote-sync/       # Remote tab — SFTP/FTP sync (tab + connection form + lazy tree + push diff dialog)
 │   │   ├── modals/            # new-project-modal.tsx, startup-health-dialog.tsx

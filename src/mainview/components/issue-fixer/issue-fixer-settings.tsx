@@ -170,7 +170,6 @@ export function IssueFixerSettingsTab({
 	const [dirty, setDirty] = useState(false);
 	const [customKeyword, setCustomKeyword] = useState("");
 	const [customLabel, setCustomLabel] = useState("");
-	const [customToken, setCustomToken] = useState("");
 
 	const loading = !configLoaded || !catalogLoaded;
 
@@ -255,12 +254,8 @@ export function IssueFixerSettingsTab({
 	const handleSave = useCallback(async () => {
 		setSaving(true);
 		try {
-			if (form.tokenSource === "custom" && customToken.trim()) {
-				await rpc.saveProjectSetting(projectId, "githubToken", customToken.trim());
-			}
 			await rpc.saveIssueFixerConfig(projectId, form);
 			setDirty(false);
-			setCustomToken("");
 			toast("success", "Issue Fixer settings saved.");
 			onSaved?.();
 		} catch {
@@ -268,7 +263,7 @@ export function IssueFixerSettingsTab({
 		} finally {
 			setSaving(false);
 		}
-	}, [form, customToken, projectId, onSaved]);
+	}, [form, projectId, onSaved]);
 
 	if (loading) {
 		return <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">Loading…</div>;
@@ -452,38 +447,6 @@ export function IssueFixerSettingsTab({
 					<Row label="Notify on completion" description="Send run results to all connected channels (Discord, email, etc.) on success and failure.">
 						<Switch checked={form.notifyEnabled} onCheckedChange={(v) => update("notifyEnabled", v)} />
 					</Row>
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardHeader>
-					<CardTitle>GitHub Token</CardTitle>
-					<CardDescription>Used to read issues and open the PR.</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-5">
-					<Row label="Token source">
-						<Select value={form.tokenSource} onValueChange={(v) => update("tokenSource", v as FormState["tokenSource"])}>
-							<SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-							<SelectContent>
-								<SelectItem value="global">Use global default (Settings → GitHub)</SelectItem>
-								<SelectItem value="custom">Custom token for this project</SelectItem>
-							</SelectContent>
-						</Select>
-					</Row>
-					{form.tokenSource === "custom" && (
-						<>
-							<Separator />
-							<Row label="Custom token" description="Stored per-project. Leave blank to keep the existing one.">
-								<Input
-									type="password"
-									value={customToken}
-									onChange={(e) => setCustomToken(e.target.value)}
-									placeholder="ghp_…"
-									className="font-mono text-xs"
-								/>
-							</Row>
-						</>
-					)}
 				</CardContent>
 			</Card>
 

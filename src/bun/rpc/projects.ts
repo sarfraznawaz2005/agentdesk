@@ -9,6 +9,10 @@ import { logAudit } from "../db/audit";
 import { clearContextLimitCache } from "../providers/models";
 import { runGit } from "../lib/git-runner";
 import { gitAuthArgs, resolveGitHubToken } from "./github-api";
+import { encryptSecret } from "../lib/secret-crypto";
+
+/** Per-project setting keys whose values are secrets and must be encrypted at rest. */
+const PROJECT_SECRET_KEYS = new Set(["githubToken"]);
 
 export interface ProjectListItem {
 	id: string;
@@ -637,6 +641,8 @@ export async function saveProjectSetting(
 	value: string,
 ): Promise<{ success: boolean }> {
 	const fullKey = `project:${projectId}:${key}`;
+	// Encrypt secret values (e.g. the per-project GitHub token) before they touch the DB.
+	const storedValue = PROJECT_SECRET_KEYS.has(key) && value ? encryptSecret(value) : value;
 	const existing = await db
 		.select()
 		.from(settings)
@@ -644,13 +650,13 @@ export async function saveProjectSetting(
 	if (existing.length > 0) {
 		await db
 			.update(settings)
-			.set({ value, updatedAt: new Date().toISOString() })
+			.set({ value: storedValue, updatedAt: new Date().toISOString() })
 			.where(eq(settings.key, fullKey));
 	} else {
 		await db.insert(settings).values({
 			id: crypto.randomUUID(),
 			key: fullKey,
-			value,
+			value: storedValue,
 			category: "project",
 		});
 	}
