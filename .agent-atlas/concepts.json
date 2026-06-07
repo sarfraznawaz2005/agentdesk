@@ -2864,7 +2864,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 295,
+      "line": 297,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -8904,7 +8904,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 295,
+      "line": 297,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -30474,7 +30474,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 295,
+      "line": 297,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -35512,13 +35512,13 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 278,
+      "line": 280,
       "symbol": "validateGithubToken",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 295,
+      "line": 297,
       "symbol": "getGithubConfigError",
       "type": "function"
     },
@@ -41876,7 +41876,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 278,
+      "line": 280,
       "symbol": "validateGithubToken",
       "type": "function"
     },
@@ -42230,7 +42230,7 @@
     },
     {
       "file": "src/bun/rpc/github-api.ts",
-      "line": 278,
+      "line": 280,
       "symbol": "validateGithubToken",
       "type": "function"
     },
@@ -56069,38 +56069,6 @@
       "type": "export"
     }
   ],
-  "pat": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 11,
-      "symbol": "getGitHubPAT",
-      "type": "function"
-    }
-  ],
-  "legacy": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 45,
-      "symbol": "getLegacyGitToken",
-      "type": "function"
-    }
-  ],
-  "redact": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 162,
-      "symbol": "redactToken",
-      "type": "function"
-    }
-  ],
-  "authenticated": [
-    {
-      "file": "src/bun/rpc/github-api.ts",
-      "line": 183,
-      "symbol": "pushBranchAuthenticated",
-      "type": "function"
-    }
-  ],
   "clone": [
     {
       "file": "src/bun/rpc/projects.ts",
@@ -56160,6 +56128,38 @@
       "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
       "line": 48,
       "symbol": "OptionHelp",
+      "type": "function"
+    }
+  ],
+  "pat": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 11,
+      "symbol": "getGitHubPAT",
+      "type": "function"
+    }
+  ],
+  "legacy": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 45,
+      "symbol": "getLegacyGitToken",
+      "type": "function"
+    }
+  ],
+  "redact": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 162,
+      "symbol": "redactToken",
+      "type": "function"
+    }
+  ],
+  "authenticated": [
+    {
+      "file": "src/bun/rpc/github-api.ts",
+      "line": 183,
+      "symbol": "pushBranchAuthenticated",
       "type": "function"
     }
   ]

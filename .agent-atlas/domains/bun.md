@@ -2790,8 +2790,8 @@
 - `githubFetch` (line 222)
 - `parseGithubUrl` (line 251)
 - `getProjectGithubRepo` (line 260)
-- `validateGithubToken` (line 278)
-- `getGithubConfigError` (line 295)
+- `validateGithubToken` (line 280)
+- `getGithubConfigError` (line 297)
 
 
 ### `src/bun/rpc/github-issues.ts`

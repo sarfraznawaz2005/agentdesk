@@ -269,7 +269,9 @@ export async function getProjectGithubRepo(
 	if (!url) return null;
 	const parsed = parseGithubUrl(url);
 	if (!parsed) return null;
-	const pat = await getGitHubPAT();
+	// Honor the project's token source (per-project custom token when selected),
+	// not just the global PAT — so org repos reachable only by a custom token work.
+	const pat = await resolveGitHubToken({ projectId });
 	if (!pat) return null;
 	return { ...parsed, pat };
 }
@@ -301,7 +303,8 @@ export async function getGithubConfigError(projectId: string): Promise<string | 
 	const url = rows[0]?.githubUrl;
 	if (!url) return "GitHub Repository URL not set — add it in Project Settings > General";
 	if (!parseGithubUrl(url)) return "Invalid GitHub Repository URL — expected https://github.com/owner/repo";
-	const pat = await getGitHubPAT();
-	if (!pat) return "GitHub Personal Access Token not configured — add it in Settings > GitHub";
+	// Resolve via the project's token source (per-project custom token or global default).
+	const pat = await resolveGitHubToken({ projectId });
+	if (!pat) return "GitHub token not configured — set a token in Project Settings > General, or a global PAT in Settings > GitHub";
 	return null;
 }
