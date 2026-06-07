@@ -4,7 +4,7 @@ export default {
 	app: {
 		name: "AgentDesk",
 		identifier: "com.sarfrazai.agentdesk",
-		version: "1.3.5",
+		version: "1.3.6",
 	},
 	build: {
 		// Vite builds to dist/, we copy from there
