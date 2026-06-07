@@ -13180,13 +13180,13 @@
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 177,
+      "line": 180,
       "symbol": "updateCustomEnvVar",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 213,
+      "line": 220,
       "symbol": "deleteCustomEnvVar",
       "type": "function"
     },
@@ -18924,7 +18924,7 @@
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 177,
+      "line": 180,
       "symbol": "updateCustomEnvVar",
       "type": "function"
     },
@@ -20548,13 +20548,13 @@
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 177,
+      "line": 180,
       "symbol": "updateCustomEnvVar",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 213,
+      "line": 220,
       "symbol": "deleteCustomEnvVar",
       "type": "function"
     },
@@ -35528,7 +35528,7 @@
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 213,
+      "line": 220,
       "symbol": "deleteCustomEnvVar",
       "type": "function"
     },
@@ -53159,20 +53159,6 @@
       "type": "export"
     }
   ],
-  "os": [
-    {
-      "file": "src/bun/rpc/env-vars.ts",
-      "line": 11,
-      "symbol": "setOsEnvVar",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/env-vars.ts",
-      "line": 41,
-      "symbol": "deleteOsEnvVar",
-      "type": "function"
-    }
-  ],
   "var": [
     {
       "file": "src/bun/rpc/env-vars.ts",
@@ -53194,13 +53180,13 @@
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 177,
+      "line": 180,
       "symbol": "updateCustomEnvVar",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/env-vars.ts",
-      "line": 213,
+      "line": 220,
       "symbol": "deleteCustomEnvVar",
       "type": "function"
     },
@@ -53215,14 +53201,6 @@
       "line": 73,
       "symbol": "CustomEnvVar",
       "type": "export"
-    }
-  ],
-  "into": [
-    {
-      "file": "src/bun/rpc/env-vars.ts",
-      "line": 132,
-      "symbol": "loadCustomEnvVarsIntoProcess",
-      "type": "function"
     }
   ],
   "zoom": [
@@ -53488,6 +53466,28 @@
       "file": "src/mainview/components/freelance/settings-tab.tsx",
       "line": 93,
       "symbol": "CurrencyCombobox",
+      "type": "function"
+    }
+  ],
+  "os": [
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 11,
+      "symbol": "setOsEnvVar",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 41,
+      "symbol": "deleteOsEnvVar",
+      "type": "function"
+    }
+  ],
+  "into": [
+    {
+      "file": "src/bun/rpc/env-vars.ts",
+      "line": 132,
+      "symbol": "loadCustomEnvVarsIntoProcess",
       "type": "function"
     }
   ]

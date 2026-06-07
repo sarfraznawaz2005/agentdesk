@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { customEnvVars } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { CustomEnvVar } from "../../shared/rpc/env-vars";
 
 // ---------------------------------------------------------------------------
@@ -165,6 +165,9 @@ export async function createCustomEnvVar(params: { name: string; value: string }
 	const trimmedName = params.name.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
 	if (!trimmedName) throw new Error("Variable name cannot be empty.");
 
+	const existing = db.select().from(customEnvVars).where(eq(customEnvVars.name, trimmedName)).get();
+	if (existing) throw new Error(`A variable named "${trimmedName}" already exists.`);
+
 	const [row] = await db
 		.insert(customEnvVars)
 		.values({ name: trimmedName, value: params.value })
@@ -188,6 +191,10 @@ export async function updateCustomEnvVar(params: { id: string; name?: string; va
 	if (params.name !== undefined) {
 		newName = params.name.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
 		if (!newName) throw new Error("Variable name cannot be empty.");
+		const conflict = db.select().from(customEnvVars)
+			.where(and(eq(customEnvVars.name, newName), ne(customEnvVars.id, params.id)))
+			.get();
+		if (conflict) throw new Error(`A variable named "${newName}" already exists.`);
 		updates.name = newName;
 	}
 	if (params.value !== undefined) {

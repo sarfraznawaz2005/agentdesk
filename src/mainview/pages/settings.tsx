@@ -61,7 +61,6 @@ export function SettingsPage() {
           <SubTabs tabs={[
             { value: "general", label: "General", content: <GeneralSettings /> },
             { value: "appearance", label: "Appearance", content: <AppearanceSettings /> },
-            { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },
           ]} />
         </TabsContent>
 
@@ -70,6 +69,7 @@ export function SettingsPage() {
             { value: "providers", label: "AI Providers", content: <ProvidersSettings /> },
             { value: "mcp", label: "MCP Servers", content: <McpSettings /> },
             { value: "constitution", label: "Constitution", content: <ConstitutionSettings /> },
+            { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },
             { value: "debug", label: "Debug", content: <AiDebugSettings /> },
           ]} />
         </TabsContent>
