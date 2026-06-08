@@ -6,24 +6,70 @@
 // real composer via the write-step script → markResult finalizes the status.
 // ---------------------------------------------------------------------------
 
+import { eq } from "drizzle-orm";
+import { db } from "../db";
+import { settings } from "../db/schema";
 import { sqlite } from "../db/connection";
 import { broadcastToWebview } from "../engine-manager";
 import { FREELANCE_EVENTS } from "../freelance/events";
-import { gateSend, recordAction } from "../freelance/session/governor";
+import { gateSend, recordAction, getGovernorState, setPause, clearPause, getPauseUntilMs, type GovernorState } from "../freelance/session/governor";
 import { isConnectedPlatform } from "./freelance-inbox";
 import { draftReplyForThread } from "../freelance/reply-pipeline";
 import { getAutoEarnSettings } from "../freelance/auto-earn-settings";
+import { escalateToHuman } from "../freelance/expert/notify";
 import { sendDesktopNotification } from "../notifications/desktop";
 import type { FreelanceOutboxItemDto } from "../../shared/rpc/freelance";
 
 const DEFAULT_PLATFORM = "freelancer";
 const DEFAULT_BID_DAYS = 7;
 
-/** avg(min,max) | single value | null (no budget → user fills the amount). */
-function computeBidAmount(min: number | null, max: number | null): number | null {
-	if (min != null && max != null) return Math.round((min + max) / 2);
-	if (max != null) return max;
-	if (min != null) return min;
+interface BidPricing {
+	mode: string; // avg | min | max | percentile
+	percentile: number;
+	minClamp: number;
+	maxClamp: number;
+	hourlyRate: number;
+}
+
+/**
+ * Strategy-driven bid amount. Hourly projects use the configured hourly rate (if
+ * set). For fixed budgets the base comes from the pricing mode (avg/min/max/
+ * percentile of the range, or the single value), then absolute min/max clamps are
+ * applied. Returns null when there is no budget and no fallback (user fills it in).
+ */
+function computeBidAmount(min: number | null, max: number | null, budgetType: string, s: BidPricing): number | null {
+	if (budgetType === "hourly" && s.hourlyRate > 0) return Math.round(s.hourlyRate);
+	let base: number | null;
+	if (min != null && max != null) {
+		switch (s.mode) {
+			case "min": base = min; break;
+			case "max": base = max; break;
+			case "percentile": {
+				const p = Math.max(0, Math.min(100, s.percentile)) / 100;
+				base = min + (max - min) * p;
+				break;
+			}
+			default: base = (min + max) / 2; // avg
+		}
+	} else {
+		base = max ?? min; // single value, or null
+	}
+	if (base == null) return null;
+	if (s.minClamp > 0) base = Math.max(base, s.minClamp);
+	if (s.maxClamp > 0) base = Math.min(base, s.maxClamp);
+	return Math.round(base);
+}
+
+/** Best-effort delivery-days estimate from a project's text (heuristic). */
+function extractDeliveryDays(text: string): number | null {
+	if (!text) return null;
+	const t = text.toLowerCase();
+	let m = t.match(/(?:within|in|deliver(?:ed|y)?(?:\s+(?:in|within))?|deadline[^.\d]{0,20})\s*(\d{1,3})\s*(?:business\s+|working\s+)?days?/);
+	if (m) { const n = parseInt(m[1], 10); if (n >= 1 && n <= 365) return n; }
+	m = t.match(/(?:within|in)\s*(\d{1,2})\s*weeks?/);
+	if (m) { const n = parseInt(m[1], 10) * 7; if (n >= 1 && n <= 365) return n; }
+	m = t.match(/(\d{1,3})\s*hours?\b/);
+	if (m) { const h = parseInt(m[1], 10); if (h > 0 && h <= 24 * 60) return Math.max(1, Math.ceil(h / 24)); }
 	return null;
 }
 
@@ -49,8 +95,38 @@ function notifyUpdated(): void {
 	broadcastToWebview(FREELANCE_EVENTS.OUTBOX_UPDATED, { count: c?.c ?? 0 });
 }
 
+// ─── dismissStaleBids ──────────────────────────────────────────────────────────
+// Auto-dismiss bids parked in `awaiting_review` longer than `bidStaleHours` — the
+// project has very likely been awarded to someone else by then, so placing the bid
+// would be pointless. Runs lazily whenever the outbox is listed (cheap, no
+// scheduler). Disabled when bidStaleHours <= 0.
+export async function dismissStaleBids(): Promise<number> {
+	let hours = 24;
+	try {
+		hours = (await getAutoEarnSettings()).bidStaleHours;
+	} catch {
+		/* default */
+	}
+	if (!hours || hours <= 0) return 0;
+	// Compare via julianday so ISO ('…T…Z') updated_at values parse correctly against
+	// the cutoff (a plain string <= comparison would mismatch the 'T'/space formats).
+	const res = sqlite
+		.prepare(
+			`UPDATE freelance_outbox SET status = 'rejected', updated_at = ?
+			 WHERE status = 'awaiting_review' AND julianday(updated_at) <= julianday('now', ?)`,
+		)
+		.run(new Date().toISOString(), `-${Math.floor(hours)} hours`) as { changes?: number };
+	const n = res.changes ?? 0;
+	if (n > 0) {
+		recordAction(DEFAULT_PLATFORM, "blocked", "ok", `auto-dismissed ${n} stale bid(s) (> ${hours}h in review)`);
+		notifyUpdated();
+	}
+	return n;
+}
+
 // ─── list ─────────────────────────────────────────────────────────────────────
 export async function list(params: { status?: string }): Promise<{ items: FreelanceOutboxItemDto[] }> {
+	await dismissStaleBids(); // lazy sweep — never surface a long-dead bid
 	let rows: Array<Record<string, unknown>>;
 	if (params.status) {
 		rows = sqlite
@@ -165,14 +241,29 @@ export async function approveSend(params: { id: string }): Promise<{
 	const listingRow =
 		isBid && listingId
 			? (sqlite
-					.prepare(`SELECT url, budget_min, budget_max FROM freelance_listings WHERE id = ?`)
-					.get(listingId) as { url: string; budget_min: number | null; budget_max: number | null } | undefined)
+					.prepare(`SELECT url, budget_min, budget_max, budget_type, full_description, description FROM freelance_listings WHERE id = ?`)
+					.get(listingId) as
+					| { url: string; budget_min: number | null; budget_max: number | null; budget_type: string | null; full_description: string | null; description: string | null }
+					| undefined)
 			: undefined;
 	const listingUrl = listingRow?.url ?? null;
-	// Bid amount = average of the budget range, or the single value, or null (the
-	// project listed no budget → the user must type the amount before placing).
-	const bidAmount = computeBidAmount(listingRow?.budget_min ?? null, listingRow?.budget_max ?? null);
-	const bidDays = isBid ? (await getAutoEarnSettings()).bidDeliveryDays || DEFAULT_BID_DAYS : DEFAULT_BID_DAYS;
+	const ae = isBid ? await getAutoEarnSettings() : null;
+	// Bid amount: strategy-driven from the budget (or hourly rate), clamped; null
+	// when the project lists no budget (the user types it before placing).
+	const bidAmount =
+		isBid && ae
+			? computeBidAmount(listingRow?.budget_min ?? null, listingRow?.budget_max ?? null, listingRow?.budget_type ?? "fixed", {
+					mode: ae.bidPricingMode,
+					percentile: ae.bidPercentile,
+					minClamp: ae.bidMinClamp,
+					maxClamp: ae.bidMaxClamp,
+					hourlyRate: ae.bidHourlyRate,
+				})
+			: null;
+	// Delivery days: derived from the project's stated timeframe if present, else the default.
+	const bidDays = isBid
+		? extractDeliveryDays(listingRow?.full_description ?? listingRow?.description ?? "") ?? ae?.bidDeliveryDays ?? DEFAULT_BID_DAYS
+		: DEFAULT_BID_DAYS;
 	// Bids are NEVER auto-submitted: even in full-auto we only PREFILL the form and
 	// notify — the user always clicks "Place Bid" themselves (it moves real money).
 	const autoPlace = false;
@@ -244,3 +335,79 @@ export async function killSwitch(): Promise<{ success: boolean; halted: number }
 	notifyUpdated();
 	return { success: true, halted: res.changes ?? 0 };
 }
+
+// ─── Governor visibility + global pause ────────────────────────────────────────
+const GOV_PLATFORM = DEFAULT_PLATFORM;
+
+/** Snapshot of governor usage/caps + active pause, for the UI. */
+export async function governorState(): Promise<GovernorState> {
+	return getGovernorState(GOV_PLATFORM);
+}
+
+/** Pause all autonomy (sends + full-auto + the expert agent) for `hours`; sync keeps running. */
+export async function pauseAutonomy(params: { hours: number }): Promise<{ pausedUntil: string | null }> {
+	const untilMs = await setPause(params.hours);
+	broadcastToWebview(FREELANCE_EVENTS.OUTBOX_UPDATED, { count: 0 }); // nudge UI to refresh governor state
+	return { pausedUntil: untilMs > Date.now() ? new Date(untilMs).toISOString() : null };
+}
+
+/** Resume autonomy immediately (clear any pause). */
+export async function resumeAutonomy(): Promise<{ success: boolean }> {
+	await clearPause();
+	broadcastToWebview(FREELANCE_EVENTS.OUTBOX_UPDATED, { count: 0 });
+	return { success: true };
+}
+
+// ─── Stuck-queue detection ──────────────────────────────────────────────────
+// In full-auto, if queued auto-work hasn't gone out in a long time (logged out,
+// active-hours misconfigured, paused-and-forgotten), the user should be told.
+const STUCK_HOURS = 3;
+const STUCK_COOLDOWN_MS = 6 * 3_600_000;
+const STUCK_KEY = "freelance_stuck_escalated_at";
+
+export async function checkStuckQueue(): Promise<void> {
+	// Oldest still-pending outbox item, in hours (julianday handles ISO/space formats).
+	const row = sqlite
+		.prepare(
+			`SELECT (julianday('now') - julianday(MIN(created_at))) * 24.0 AS hours FROM freelance_outbox WHERE status IN ('draft','approved','sending')`,
+		)
+		.get() as { hours: number | null } | undefined;
+	const hours = row?.hours ?? null;
+	if (hours == null || hours < STUCK_HOURS) return;
+	// A successful send inside the window means the queue is draining — not stuck.
+	const okRecent = sqlite
+		.prepare(
+			`SELECT 1 FROM freelance_action_log WHERE action IN ('send_reply','submit_bid') AND outcome = 'ok' AND julianday(created_at) >= julianday('now', ?) LIMIT 1`,
+		)
+		.get(`-${STUCK_HOURS} hours`);
+	if (okRecent) return;
+	// Dedup via cooldown.
+	const last = (await db.select().from(settings).where(eq(settings.key, STUCK_KEY)).limit(1))[0];
+	if (last?.value) {
+		try {
+			const t = Date.parse(JSON.parse(last.value) as string);
+			if (Number.isFinite(t) && Date.now() - t < STUCK_COOLDOWN_MS) return;
+		} catch {
+			/* re-escalate */
+		}
+	}
+	const now = new Date().toISOString();
+	await db
+		.insert(settings)
+		.values({ id: crypto.randomUUID(), key: STUCK_KEY, value: JSON.stringify(now), category: "freelance", updatedAt: now })
+		.onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(now), updatedAt: now } });
+	await escalateToHuman({
+		platform: DEFAULT_PLATFORM,
+		reason: "Auto-Earn queue is stuck",
+		detail: `Queued auto-work hasn't been sent in over ${STUCK_HOURS} hours. Check the live session is logged in, and your active-hours / pause settings.`,
+		severity: "warn",
+	});
+}
+
+/** RPC wrapper for the full-auto loop to ping periodically. */
+export async function checkStuck(): Promise<{ success: boolean }> {
+	await checkStuckQueue();
+	return { success: true };
+}
+
+export { getPauseUntilMs };

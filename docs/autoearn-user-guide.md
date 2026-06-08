@@ -132,10 +132,16 @@ normal message from you.
 
 > **Bids always need your click — in both modes.** Because a bid commits real money
 > and terms, the app **never** presses **Place Bid** for you. Even in Full-auto it
-> fills everything in and waits for you. The amount comes from the job's budget (the
-> middle of the range, or the single amount); if the job lists no budget, the amount
-> is left **blank** for you to type. The default delivery days can be changed in
-> Auto-Earn settings.
+> fills everything in and waits for you. The amount is set from the job's budget
+> using your **Bid pricing** settings (average of the range by default — you can
+> switch to min/max/a percentile, set a **floor/ceiling**, or a fixed **hourly
+> rate**). If the job lists no budget, the amount is left **blank** for you to type.
+> Delivery days follow the job's stated timeframe when it mentions one, otherwise
+> your default.
+
+You can also enable **"Auto-draft proposals for shortlisted listings"** in settings:
+when the app auto-shortlists a promising job, it writes the proposal for you
+automatically so it's ready in your Drafts — you still place the bid.
 
 Bids are paced more carefully than replies (spaced out more), because a flood of
 proposals is the biggest "bot" red flag.
@@ -174,9 +180,16 @@ until you tick the **"Full-auto risk acknowledgment"** checkbox — on purpose.
 
 > **Honest advice:** start with Assisted. Only move to Full-auto once you trust the
 > drafts, and keep an eye on the **Auto-Earn** tab (below) — especially the
-> **Needs attention** list. Two things still need you in the loop today: pressing
-> the platform's formal "deliver/milestone" button, and anything the agent
-> escalates.
+> **Needs attention** list.
+>
+> **Things that always need you, even in Full-auto:**
+> - **Placing every bid** — the AI fills the bid form; *you* click **Place Bid**.
+> - **Approving any delivery** — before handing work to a client, the AI runs a
+>   strict quality review and then asks you to approve; it never delivers on its own.
+> - **Sensitive messages** — anything about **money, contracts, going off-platform,
+>   or a dispute/complaint** is handed to you (Needs attention), never auto-answered.
+> - Pressing the platform's formal **deliver/milestone** button, and anything else
+>   the agent escalates.
 
 ---
 
@@ -186,10 +199,22 @@ When Auto-Earn is on, a new **Auto-Earn** tab appears on the Freelance page. It
 shows you, at a glance, what the AI is doing on your behalf:
 
 - **Metrics** — bids sent, jobs won, projects delivered, money earned, and how
-  many alerts are waiting.
-- **Needs attention** — anything the agent got stuck on or refused to do (with the
-  reason). Read it, sort it out, and click **Resolve** so the agent can carry on.
-  These also reach you by desktop notification (and channels, if enabled).
+  many alerts are waiting. A second row shows **performance**: your **win rate**,
+  the **bids → won** ratio, and your **average response time** to clients.
+- **Needs attention** — the alerts the agent raises. Each shows a reason; click
+  **Resolve** once you've handled it (alerts also reach you by desktop notification,
+  and channels if enabled). The kinds you'll see:
+  - **"Ready to deliver — approve"** — the AI finished and quality-checked the work
+    and wants your go-ahead. Click **Approve delivery** and it delivers for you. (It
+    **cannot** upload or hand over work until you approve — this is enforced, not just
+    a polite request.)
+  - **A sensitive message** — anything about money, contracts, going off-platform, or
+    a dispute is handed to you instead of being auto-answered.
+  - **"Queue is stuck"** — in Full-auto, nothing has sent for a few hours (usually
+    you're logged out, outside your active hours, or paused). Fix that and it carries on.
+  - **"Auto-bid couldn't draft proposals"** — proposal drafting failed (often an AI
+    provider problem).
+  - Anything else the agent got stuck on or refused to do.
 - **Jobs** — every opportunity and its current stage (lead → negotiating →
   awarded → in progress → delivered → complete). Click a job to see a **timeline**
   of exactly what the agent did, step by step.
@@ -215,6 +240,15 @@ This is the screen to glance at once a day if you're running Full-auto.
 - **You can stop everything instantly.** The **Kill-switch** button in the Drafts
   box halts anything queued or in progress. To stop the whole thing, untick the
   **Enable Auto-Earn** master switch in Settings and Save.
+- **Need a break? Pause it.** The Inbox status bar has a **Pause…** dropdown
+  (1 / 3 / 8 / 24 hours). While paused, no messages or bids are sent and the AI
+  agent stays quiet — but your inbox keeps syncing, so you still see new messages.
+  It resumes by itself, or click **Resume now**.
+- **See the pacing.** The status bar shows how many sends you've used this hour and
+  when the next one is allowed, so the safety throttle isn't a mystery.
+- **Stale bids clean themselves up.** A bid you filled but never placed is
+  auto-dismissed after a while (24h by default — change it in settings), because by
+  then the job is usually already taken.
 - **In Full-auto, the AI works quietly in the background** while the app is open —
   on **any page**, reading messages, replying, building, delivering. You don't drive
   it; you **supervise** it from the **Auto-Earn** tab and clear anything in **Needs
@@ -250,6 +284,8 @@ In **Auto-Earn settings** there are two notification options:
 | **"Send timed out"** | The message box on the page didn't load in time. | Make sure the conversation is open in the Live session, then try Approve & Send again. |
 | **Inbox stays empty after syncing** while logged in | The website may have changed its layout. | Click **Sync now**. If it's still empty, let us know so we can re-tune it. |
 | A **"Needs attention" alert** (Auto-Earn tab + desktop) | In Full-auto, the AI got stuck or hit something it must not do on its own. | Read the reason, handle it (answer the client, fix access, etc.), then click **Resolve** so the agent continues. |
+| A **"Ready to deliver — approve"** alert | The AI finished and reviewed the work and is waiting for your go-ahead. | Review it, then click **Approve delivery** on the Auto-Earn tab — it delivers for you. It can't hand over work until you do this. |
+| A **"Queue is stuck"** alert | In Full-auto, nothing has been sent for a few hours. | You're usually logged out, outside your active hours, or paused. Log in / adjust active hours / **Resume**, and it carries on. |
 | A job sits at **"delivered"** but the client hasn't been paid/closed | The AI delivered the files and messaged the client, but pressing the platform's formal **deliver/milestone** button is still your step today. | Open the job on the platform and confirm the milestone yourself. |
 
 ---

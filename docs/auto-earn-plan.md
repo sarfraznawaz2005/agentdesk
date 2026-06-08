@@ -361,7 +361,14 @@ Broadcasts (extend `freelance/events.ts`):
 | `freelance_fullauto_ack` | `false` | user accepted full-auto risk |
 | `freelance_notify_desktop` | `true` | desktop notification on a new client reply |
 | `freelance_notify_channels` | `false` | also forward new client reply to connected channels |
-| `freelance_bid_delivery_days` | 7 | default "delivered in" days prefilled on a bid |
+| `freelance_bid_delivery_days` | 7 | default "delivered in" days prefilled on a bid (overridden when the project text states a timeframe) |
+| `freelance_bid_stale_hours` | 24 | auto-dismiss `awaiting_review` bids older than this (0 = never) |
+| `freelance_auto_bid_shortlisted` | `false` | opt-in: auto-draft a proposal when a listing is auto-shortlisted |
+| `freelance_bid_pricing_mode` | `avg` | bid amount from budget: `avg` \| `min` \| `max` \| `percentile` |
+| `freelance_bid_percentile` | 50 | position in the budget range when mode = `percentile` |
+| `freelance_bid_min_clamp` / `_max_clamp` | 0 / 0 | absolute floor / ceiling for the bid amount (0 = none) |
+| `freelance_bid_hourly_rate` | 0 | rate to bid on hourly projects (0 = use the budget) |
+| `freelance_pause_until` | `""` | global quiet/pause window (ISO ts); blocks all sends + the expert, sync keeps running |
 
 > **Feature gate:** the entire Auto-Earn surface (settings card, Inbox/Auto-Earn
 > tabs, background engine) only appears when an `autoearn` flag file (no extension)
@@ -457,52 +464,51 @@ What actually shipped on top of the original P1–P5 plan, for accuracy:
 
 ---
 
-## 13. Known limitations & future revisions (2026-06-08)
+## 13. Round-2 improvements & residual caveats (2026-06-08)
 
-Captured after the autonomous + bid + background work shipped. None block current
-use — these are the next improvements when we revisit.
+The limitations originally captured here were **addressed** in a second round of
+work (TASK-452…462). This section now records **what was done** and the **residual
+caveats** that genuinely remain. (Earlier revisions of this doc framed these as
+"future" work — that is no longer accurate.)
 
-### 13.1 The big one — reactive, not proactive (top backlog item)
+### 13.1 Implemented (TASK-452…465)
 
-**Neither mode auto-bids on *new* listings.** Full-auto only handles **existing
-conversations** (inbound messages). To generate leads you must click **Create
-Proposal** on shortlisted listings yourself. There is **no "bid while I sleep"
-trigger wired.** For someone trying to *earn*, this is the most important gap.
+| Original gap | How it's addressed now | Task |
+|---|---|---|
+| **Reactive, not proactive** (no cold-bid) | Opt-in **"Auto-draft proposals for shortlisted listings"** — when a listing is auto-shortlisted, a proposal is drafted/queued automatically (capped per run, deduped). Still **human-placed**; wires the `freelance-expert` `bid_request` path. | TASK-452 |
+| **Heuristic bid-form selectors** | Stable Freelancer `formcontrolname`/`id` selectors tried first, label/placeholder heuristics as fallback; missing proposal field → clean failure (Retry) instead of silent partial fill. | TASK-453 |
+| **Naive bid pricing** | **Bid pricing** strategy: avg / min / max / percentile of the budget + absolute floor/ceiling clamps + an hourly rate for hourly projects. | TASK-454 |
+| **Flat delivery days** | Derived from the project's stated timeframe (days/weeks/hours) when present; else the configured default. | TASK-455 |
+| **Full-auto delivery risk** | **Human-gated delivery**: mandatory strict `freelance_self_review` + a `notify_human` sign-off before any push/upload — the agent stops and waits for approval. | TASK-456 |
+| **No message triage** | Inbound messages about **money / contracts / off-platform / disputes** are classified and **escalated**, never auto-replied. Fails open. | TASK-457 |
+| **No proposal QA** | `qaRevise()` pass on every reply + proposal before it enters the outbox — strips over-promising / unverifiable claims / AI tells. | TASK-458 |
+| **Governor was a black box** | Status bar shows **sends used / cap this hour** + **next-allowed** countdown per stream. | TASK-459 |
+| **No global pause** | **Pause 1/3/8/24h** — suspends all sends + the expert agent; inbox sync keeps running; auto-resumes. | TASK-460 |
+| **Stale prefilled bids** | `awaiting_review` bids auto-dismissed after `bidStaleHours` (default 24, 0 = off), with an audit entry. | TASK-461 |
+| **Counts only, no quality signal** | Dashboard adds **win-rate**, **bids → won**, and **avg response time**. | TASK-462 |
+| **Delivery gate was prompt-only** | **Code-enforced**: `freelance_jobs.delivery_approved` flag (migration v40); `remote_upload` + `mark_state('delivered')` are blocked until approved; a `freelance_request_delivery_approval` tool escalates + parks; an **"Approve delivery"** dashboard button lifts the gate, resolves the escalation, and re-runs the expert to deliver. | TASK-463 |
+| **Stalled queue invisible** | In full-auto, if queued work hasn't sent in >3h (logged out / active-hours / paused), an escalation fires (6h cooldown). | TASK-464 |
+| **Auto-bid drafting failed silently** | Cold-bid drafting failures escalate once per run with the first error. | TASK-465 |
 
-> **Future:** wire auto-shortlist → optionally auto-**draft/prefill** proposals for
-> shortlisted listings, governor-capped, **still human-placed** (stays within the
-> "bids are human-placed" rule). The `freelance-expert` already exposes a
-> `bid_request` trigger that nothing calls yet — this is where to hook it.
+### 13.2 Residual caveats (still genuinely true)
 
-### 13.2 Known limitations
+- **Bid-form selectors are hardened but unverified against the *live* DOM.** Stable
+  selectors + fallback make it far more robust, but the exact Freelancer
+  `formcontrolname`/`id`s were inferred, not captured from the running page. Unusual
+  project types (sealed/NDA bids, forms with extra required fields) may still need
+  handling. Capture the live bid-form HTML to lock the selectors in.
+- **Full-auto remains the highest-risk surface.** Delivery is now **code-gated**
+  (the agent literally cannot upload or mark delivered without your approval) and
+  strictly reviewed — but the broader autonomous worker (cloning repos, building,
+  operating client systems) still acts on real client work. The delivery code-gate
+  covers `remote_upload` + `mark_delivered`; a `git push` to a client repo is still
+  only prompt-gated. Supervise it; graduate accounts to full-auto slowly.
+- **Single platform** — Freelancer.com only.
+- **Session fragility** — a logout / CAPTCHA pauses the engine until you re-login in
+  the live session (detected + prompted in-app, never auto-solved).
 
-- **Bid form selectors are heuristic** — validated on a couple of real forms, but
-  Freelancer DOM changes (or unusual project types: hourly, sealed/NDA bids,
-  extra-field forms) could make fills silently fail. Mitigated by
-  assisted-stops-for-review + the failed/retry UI, but not hardened for every variant.
-- **Bid pricing is naive** — avg-of-budget / single / blank. No undercutting, no
-  floor/ceiling, no hourly handling.
-- **Delivery days is a flat default** — not derived from the project's stated timeframe.
-- **Session fragility** — everything depends on the live Freelancer session. If it
-  logs out or hits a CAPTCHA, the engine pauses and waits for you to re-login in the
-  live session (it detects + prompts, but can't auto-solve).
-- **Full-auto worker is genuinely high-risk** — autonomously cloning repos, building,
-  and delivering to real paying clients is the riskiest surface. It has guardrails
-  (self-review before delivery, escalate-on-uncertainty, never sign/pay/go
-  off-platform), but mistakes reach real clients and your reputation.
+### 13.3 Considered but not pursued
 
-### 13.3 Future enhancements (backlog)
-
-- **Cold-bid trigger** — see §13.1 (highest leverage).
-- **Message triage before auto-reply** — classify inbound messages; route
-  payment/contract/off-platform/scope-dispute ones to escalation instead of
-  auto-replying (extra safety on top of the agent's guardrails).
-- **Proposal QA pass** — a quick self-check before queueing to catch over-promising
-  or hallucinated claims (reputation protection at scale).
-- **Governor visibility** — surface "next send allowed in X / sends used this hour"
-  so the throttling isn't a black box.
-- **Global quiet/pause** — a "pause all autonomy for X hours" beyond the kill-switch.
-- **Stale-bid expiry** — auto-dismiss or re-alert `awaiting_review` bids older than
-  N hours (the project is probably already awarded).
-- **Bid strategy settings** — undercut-average %, min/max clamps, hourly vs. fixed.
-- **Dashboard analytics** — win-rate, response time, bids→won conversion.
+- **Re-auth alerts via channels** (for the session-fragility caveat above) — pushing
+  a Discord/WhatsApp/email alert when the session drops while you're away. Decided
+  **not** to build for now.

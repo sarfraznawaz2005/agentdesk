@@ -160,6 +160,18 @@ export function setJobState(jobId: string, state: JobState, detail?: string): vo
 	logJobAction(jobId, "state", detail ? `→ ${state}: ${detail}` : `→ ${state}`);
 }
 
+/** Human delivery gate: has the user approved delivering this job's work? */
+export function isDeliveryApproved(jobId: string): boolean {
+	const r = sqlite.prepare(`SELECT delivery_approved AS d FROM freelance_jobs WHERE id = ?`).get(jobId) as { d: number } | undefined;
+	return !!(r && r.d);
+}
+
+export function setDeliveryApproved(jobId: string, approved: boolean): void {
+	sqlite
+		.prepare(`UPDATE freelance_jobs SET delivery_approved = ?, updated_at = ? WHERE id = ?`)
+		.run(approved ? 1 : 0, new Date().toISOString(), jobId);
+}
+
 export function logJobAction(
 	jobId: string,
 	action: string,

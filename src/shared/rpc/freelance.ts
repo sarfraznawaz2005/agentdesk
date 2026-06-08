@@ -84,6 +84,25 @@ export interface FreelanceAutoEarnSettingsDto {
   notifyDesktop: boolean;   // desktop notification on a new client reply
   notifyChannels: boolean;  // forward new client reply to connected channels
   bidDeliveryDays: number;  // default "delivered in" days prefilled on a bid
+  bidStaleHours: number;    // auto-dismiss awaiting_review bids older than this (0 = never)
+  autoBidShortlisted: boolean; // auto-draft a proposal when a listing is auto-shortlisted
+  bidPricingMode: string;   // "avg" | "min" | "max" | "percentile"
+  bidPercentile: number;    // 0-100 position in the budget range (mode = percentile)
+  bidMinClamp: number;      // absolute floor for the bid amount (0 = none)
+  bidMaxClamp: number;      // absolute ceiling for the bid amount (0 = none)
+  bidHourlyRate: number;    // rate to bid on hourly projects (0 = use the budget)
+}
+
+export interface FreelanceGovernorActionStateDto {
+  usedThisHour: number;
+  cap: number;
+  nextAllowedInMs: number;
+}
+export interface FreelanceGovernorStateDto {
+  withinActiveHours: boolean;
+  pausedUntilMs: number; // 0 if not paused
+  reply: FreelanceGovernorActionStateDto;
+  bid: FreelanceGovernorActionStateDto;
 }
 
 export interface FreelanceOutboxItemDto {
@@ -147,6 +166,8 @@ export interface FreelanceEarningsDto {
   delivered: number;
   openEscalations: number;
   earned: number;
+  conversionPct: number;       // bids → jobs won (%)
+  avgResponseMinutes: number;  // avg time from a client message to our reply (0 = n/a)
 }
 
 export type FreelanceRequests = {
@@ -156,6 +177,10 @@ export type FreelanceRequests = {
   };
   "freelance.expert.resolveEscalation": {
     params: { id: string };
+    response: { success: boolean };
+  };
+  "freelance.expert.approveDelivery": {
+    params: { jobId: string };
     response: { success: boolean };
   };
   "freelance.expert.getJobs": {
@@ -253,6 +278,22 @@ export type FreelanceRequests = {
   "freelance.outbox.killSwitch": {
     params: Record<string, never>;
     response: { success: boolean; halted: number };
+  };
+  "freelance.governor.getState": {
+    params: Record<string, never>;
+    response: FreelanceGovernorStateDto;
+  };
+  "freelance.governor.pause": {
+    params: { hours: number };
+    response: { pausedUntil: string | null };
+  };
+  "freelance.governor.resume": {
+    params: Record<string, never>;
+    response: { success: boolean };
+  };
+  "freelance.governor.checkStuck": {
+    params: Record<string, never>;
+    response: { success: boolean };
   };
   "freelance.inbox.getThreads": {
     params: { platform?: string; search?: string };

@@ -9,6 +9,7 @@ import { rpc } from "@/lib/rpc";
 import { ListingsTab } from "../components/freelance/listings-tab";
 import { SettingsTab } from "../components/freelance/settings-tab";
 import { ExpertDashboard } from "../components/freelance/expert-dashboard";
+import { AutoEarnHelp } from "../components/freelance/auto-earn-help";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
 
 export function FreelancePage() {
@@ -79,7 +80,28 @@ export function FreelancePage() {
 
         {autoEarnEnabled && (
           <TabsContent value="auto-earn">
-            <ExpertDashboard />
+            <Tabs defaultValue="dashboard">
+              <TabsList className="mb-4 h-auto gap-1 bg-transparent p-0">
+                <TabsTrigger
+                  value="dashboard"
+                  className="rounded-md border border-transparent px-3 py-1 text-xs data-[state=active]:border-border data-[state=active]:bg-accent"
+                >
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger
+                  value="help"
+                  className="rounded-md border border-transparent px-3 py-1 text-xs data-[state=active]:border-border data-[state=active]:bg-accent"
+                >
+                  Help
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="dashboard">
+                <ExpertDashboard />
+              </TabsContent>
+              <TabsContent value="help">
+                <AutoEarnHelp />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         )}
 

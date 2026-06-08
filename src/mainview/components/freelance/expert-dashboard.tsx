@@ -54,15 +54,25 @@ export function ExpertDashboard() {
     rpc.freelanceResolveEscalation(id).then(refresh).catch(() => {});
   };
 
+  const approveDelivery = (jobId: string) => {
+    rpc.freelanceApproveDelivery(jobId).then(refresh).catch(() => {});
+  };
+
   return (
     <div className="flex flex-col gap-5">
-      {/* Earnings / metrics */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {/* Earnings + performance metrics — 4 per row */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Metric label="Bids sent" value={earnings?.bidsSent ?? 0} />
         <Metric label="Jobs won" value={earnings?.jobsWon ?? 0} />
         <Metric label="Delivered" value={earnings?.delivered ?? 0} />
         <Metric label="Earned" value={earnings?.earned ?? 0} prefix={currencySym} />
         <Metric label="Open alerts" value={earnings?.openEscalations ?? 0} highlight={(earnings?.openEscalations ?? 0) > 0} />
+        <Metric label="Win rate" value={earnings?.conversionPct ?? 0} suffix="%" />
+        <Metric label="Bids → won" value={`${earnings?.jobsWon ?? 0}/${earnings?.bidsSent ?? 0}`} />
+        <Metric
+          label="Avg response"
+          value={earnings?.avgResponseMinutes ? formatMinutes(earnings.avgResponseMinutes) : "—"}
+        />
       </div>
 
       {/* Escalations / needs-attention */}
@@ -85,9 +95,19 @@ export function ExpertDashboard() {
                     {e.detail && <div className="mt-0.5 text-muted-foreground">{e.detail}</div>}
                     <div className="mt-0.5 text-[10px] text-muted-foreground">{new Date(e.createdAt).toLocaleString()}</div>
                   </div>
-                  <button onClick={() => resolve(e.id)} className="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent">
-                    Resolve
-                  </button>
+                  <div className="flex shrink-0 flex-col gap-1">
+                    {e.reason.startsWith("Ready to deliver") && e.jobId && (
+                      <button
+                        onClick={() => approveDelivery(e.jobId as string)}
+                        className="rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground hover:opacity-90"
+                      >
+                        Approve delivery
+                      </button>
+                    )}
+                    <button onClick={() => resolve(e.id)} className="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent">
+                      Resolve
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -134,11 +154,33 @@ export function ExpertDashboard() {
   );
 }
 
-function Metric({ label, value, prefix, highlight }: { label: string; value: number; prefix?: string; highlight?: boolean }) {
+function Metric({
+  label,
+  value,
+  prefix,
+  suffix,
+  highlight,
+}: {
+  label: string;
+  value: number | string;
+  prefix?: string;
+  suffix?: string;
+  highlight?: boolean;
+}) {
   return (
     <div className={`rounded-md border p-3 ${highlight ? "border-amber-500/50 bg-amber-500/10" : "border-border"}`}>
-      <div className="text-xl font-semibold">{prefix}{value}</div>
+      <div className="text-xl font-semibold">{prefix}{value}{suffix}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
+}
+
+function formatMinutes(m: number): string {
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h < 24) return rem ? `${h}h ${rem}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const hr = h % 24;
+  return hr ? `${d}d ${hr}h` : `${d}d`;
 }

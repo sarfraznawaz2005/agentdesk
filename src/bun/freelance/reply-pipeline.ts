@@ -15,6 +15,7 @@ import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getFreelanceSettings } from "./settings";
 import { HUMANIZER_WRITING_RULES } from "./humanizer-prompt";
+import { qaRevise } from "./qa";
 
 const STRATEGIST_SYSTEM = `You are an experienced freelancer replying to a client on a freelancing platform.
 Write a concise, professional reply to the client's latest message — usually 2 to 6 sentences. Address the client's actual question; if a key detail is missing, ask one specific clarifying question. Do not over-promise on timeline or price unless the context provides them. Output ONLY the reply text — no preamble, no quotes, no signature block.
@@ -128,7 +129,7 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 		prompt,
 		temperature: 0.7,
 	});
-	const draftBody = text.trim();
+	const draftBody = await qaRevise(adapter, modelId, "reply", text.trim());
 
 	const id = crypto.randomUUID();
 	const now = new Date().toISOString();

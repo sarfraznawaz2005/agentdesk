@@ -23,7 +23,10 @@ import { createRemoteClient, type RemoteCredentials, type RemoteProtocol } from 
 import { createProjectFromListing } from "../project-bootstrap";
 import { storeCredential, getCredential, listCredentialSummaries } from "./vault";
 import { escalateToHuman, notifyJobEvent, type Severity } from "./notify";
-import { setJobState, logJobAction, getJobById, saveJobFact, listJobFacts, type JobState, type FactCategory } from "./jobs";
+import { setJobState, logJobAction, getJobById, saveJobFact, listJobFacts, isDeliveryApproved, type JobState, type FactCategory } from "./jobs";
+
+const DELIVERY_GATE_MSG =
+	"Delivery requires the user's approval. Call freelance_request_delivery_approval with a summary of what you'll hand over, then STOP. The user approves and you are re-run to deliver. Do not push/upload/hand over before approval.";
 
 export interface FxToolContext {
 	jobId: string;
@@ -121,6 +124,27 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 			},
 		}),
 
+		freelance_request_delivery_approval: tool({
+			description:
+				"Request the user's approval to deliver finished work. Call this ONLY after a passing freelance_self_review and BEFORE any push/upload/hand-over. It escalates to the user and PARKS the job — then STOP. The user approves (a button in the dashboard) and you are re-run to actually deliver.",
+			inputSchema: z.object({
+				summary: z.string().describe("Exactly what you will deliver and how (files, repo, on-platform, etc.)"),
+			}),
+			execute: async ({ summary }): Promise<string> => {
+				await escalateToHuman({
+					jobId: ctx.jobId,
+					platform: ctx.platform,
+					threadId: ctx.threadId ?? undefined,
+					reason: "Ready to deliver — approve",
+					detail: summary,
+					severity: "warn",
+					park: true,
+				});
+				log("delivery_approval_requested", summary.slice(0, 200));
+				return ok({ requested: true, note: "Escalated for delivery approval. Stop now — you'll be re-run after the user approves." });
+			},
+		}),
+
 		freelance_mark_state: tool({
 			description:
 				"Move this job to a new lifecycle state: lead, negotiating, awarded, in_progress, delivered, " +
@@ -139,6 +163,8 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 				detail: z.string().optional(),
 			}),
 			execute: async ({ state, detail }): Promise<string> => {
+				// Recording a delivery is itself gated — never mark delivered without approval.
+				if (state === "delivered" && !isDeliveryApproved(ctx.jobId)) return err(DELIVERY_GATE_MSG);
 				setJobState(ctx.jobId, state as JobState, detail);
 				const job = getJobById(ctx.jobId);
 				const title = job?.title || "a job";
@@ -285,9 +311,10 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 		}),
 
 		remote_upload: tool({
-			description: "Upload a deliverable from the workspace to a client SFTP/FTP server.",
+			description: "Upload a deliverable from the workspace to a client SFTP/FTP server. (Requires delivery approval.)",
 			inputSchema: z.object({ credentialId: z.string(), localPath: z.string(), remotePath: z.string() }),
 			execute: async ({ credentialId, localPath, remotePath }): Promise<string> => {
+				if (!isDeliveryApproved(ctx.jobId)) return err(DELIVERY_GATE_MSG);
 				const rc = createRemoteClient(credToRemote(credentialId));
 				try {
 					const src = safeDest(ctx.workspacePath, localPath);

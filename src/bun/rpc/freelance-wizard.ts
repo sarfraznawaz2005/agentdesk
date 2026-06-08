@@ -12,6 +12,10 @@ import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
 import { buildSkillsDescriptionSection } from "../agents/prompts";
 import { getFreelanceSettings, saveFreelanceSetting } from "../freelance/settings";
+import { getAutoEarnSettings } from "../freelance/auto-earn-settings";
+import { isAutoEarnFeatureAvailable } from "../freelance/feature-flag";
+import { draftBidForListing } from "../freelance/bid-pipeline";
+import { escalateToHuman } from "../freelance/expert/notify";
 import { FREELANCE_EVENTS } from "../freelance/events";
 import { formatBudget } from "../freelance/budget";
 import { sendDesktopNotification } from "../notifications/desktop";
@@ -927,6 +931,46 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
           ? `"${workableListings[0].title}" has been auto-shortlisted.`
           : `${workableListings.length} listings have been auto-shortlisted.`;
         sendDesktopNotification("Auto Shortlist", body).catch(() => {});
+
+        // Auto-bid (opt-in): draft a proposal for each newly shortlisted listing so
+        // the user just reviews + places it. Off by default; gated on the autoearn
+        // flag + master switch. Capped per run so the queue is never flooded; bids
+        // are still never auto-placed.
+        try {
+          const ae = await getAutoEarnSettings();
+          if (ae.enabled && ae.autoBidShortlisted && isAutoEarnFeatureAvailable()) {
+            let drafted = 0;
+            let failed = 0;
+            let firstErr = "";
+            for (const listing of workableListings) {
+              if (drafted >= 5) break;
+              const dup = sqlite
+                .prepare(`SELECT 1 FROM freelance_outbox WHERE listing_id = ? AND kind = 'bid' AND status != 'rejected' LIMIT 1`)
+                .get(listing.id);
+              if (dup) continue;
+              try {
+                await draftBidForListing("freelancer", listing.id);
+                drafted++;
+              } catch (e) {
+                failed++;
+                if (!firstErr) firstErr = e instanceof Error ? e.message : String(e);
+                console.error("[auto-bid] draft failed:", e);
+              }
+            }
+            if (drafted > 0) broadcastToWebview(FREELANCE_EVENTS.OUTBOX_UPDATED, { count: drafted });
+            // Surface drafting failures (provider down / config) instead of failing silently.
+            if (failed > 0) {
+              await escalateToHuman({
+                platform: "freelancer",
+                reason: "Auto-bid couldn't draft proposals",
+                detail: `Failed to draft ${failed} proposal(s) for shortlisted listings. First error: ${firstErr}`,
+                severity: "warn",
+              });
+            }
+          }
+        } catch (e) {
+          console.error("[auto-bid] error:", e);
+        }
       }
 
       // Update last run metadata

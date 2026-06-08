@@ -110,11 +110,12 @@ export function buildSubmitBidScript(_platformId: string, opts: BidFillOptions):
     el.dispatchEvent(new Event('input',{bubbles:true}));
     el.dispatchEvent(new Event('change',{bubbles:true}));
   }
-  function findProposal(){
-    var t = document.querySelector('textarea[placeholder*="candidate" i], textarea[placeholder*="proposal" i]');
-    if (t && visible(t)) return t;
-    var tas = Array.prototype.slice.call(document.querySelectorAll('textarea')).filter(visible);
-    return tas[0] || null;
+  // Try a prioritised list of CSS selectors, returning the first visible match.
+  function qFirst(sels){
+    for (var i=0;i<sels.length;i++){
+      try { var el = document.querySelector(sels[i]); if (el && visible(el)) return el; } catch(e){}
+    }
+    return null;
   }
   // Find a number/text input whose surrounding section text matches \`re\`.
   function findInputByLabel(re){
@@ -127,6 +128,35 @@ export function buildSubmitBidScript(_platformId: string, opts: BidFillOptions):
       }
     }
     return null;
+  }
+  // Stable Freelancer selectors first (Angular formcontrolname/id), then resilient
+  // placeholder/label heuristics — so a DOM tweak degrades instead of breaking.
+  function findProposal(){
+    return qFirst([
+      'textarea[formcontrolname="descriptionTextArea"]',
+      'textarea[formcontrolname="description"]',
+      '#descriptionTextArea',
+      'textarea[name="description"]',
+      'textarea[placeholder*="candidate" i]',
+      'textarea[placeholder*="proposal" i]'
+    ]) || (Array.prototype.slice.call(document.querySelectorAll('textarea')).filter(visible)[0] || null);
+  }
+  function findAmount(){
+    return qFirst([
+      'input[formcontrolname="amount"]',
+      '#bidAmountInput',
+      'input[id*="amount" i]',
+      'input[name*="amount" i]'
+    ]) || findInputByLabel(/bid amount/i);
+  }
+  function findDays(){
+    return qFirst([
+      'input[formcontrolname="period"]',
+      '#periodInput',
+      'input[id*="period" i]',
+      'input[name*="period" i]',
+      'input[name*="day" i]'
+    ]) || findInputByLabel(/deliver/i);
   }
   function findPlaceBidBtn(){
     var btns = Array.prototype.slice.call(document.querySelectorAll('button, [role=button]')).filter(visible);
@@ -151,8 +181,8 @@ export function buildSubmitBidScript(_platformId: string, opts: BidFillOptions):
       waited += 400; setTimeout(waitForm, 400); return;
     }
     try {
-      if (AMOUNT !== null){ var amt = findInputByLabel(/bid amount/i); if (amt) setNative(amt, AMOUNT); }
-      var days = findInputByLabel(/deliver/i); if (days) setNative(days, DAYS);
+      if (AMOUNT !== null){ var amt = findAmount(); if (amt) setNative(amt, AMOUNT); }
+      var days = findDays(); if (days) setNative(days, DAYS);
       proposal.focus(); setNative(proposal, '');
       setTimeout(function(){
         typeHuman(proposal, PROPOSAL, function(){

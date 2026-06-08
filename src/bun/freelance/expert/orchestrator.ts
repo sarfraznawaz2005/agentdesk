@@ -8,17 +8,20 @@
 // ---------------------------------------------------------------------------
 
 import { eq } from "drizzle-orm";
+import { generateText } from "ai";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { Utils } from "electrobun/bun";
 import { db } from "../../db";
 import { sqlite } from "../../db/connection";
 import { aiProviders } from "../../db/schema";
+import { createProviderAdapter } from "../../providers";
 import { getDefaultModel } from "../../providers/models";
 import type { ProviderConfig } from "../../providers/types";
 import { runInlineAgent, type InlineAgentCallbacks } from "../../agents/agent-loop";
 import { getFreelanceSettings } from "../settings";
 import { getAutoEarnSettings } from "../auto-earn-settings";
+import { getPauseUntilMs } from "../session/governor";
 import { isAutoEarnFeatureAvailable } from "../feature-flag";
 import { upsertJobForThread, getJobByThread, logJobAction, listJobFacts, type FreelanceJob } from "./jobs";
 import { listCredentialSummaries } from "./vault";
@@ -87,6 +90,49 @@ function buildThreadTranscript(threadId: string, selfUserId: string | null): str
 		.join("\n");
 }
 
+function latestInboundBody(threadId: string, selfUserId: string | null): string | null {
+	const r = (
+		selfUserId
+			? sqlite
+					.prepare(
+						`SELECT body FROM freelance_inbox_messages WHERE thread_id = ? AND (from_user IS NULL OR from_user != ?) ORDER BY sent_at DESC LIMIT 1`,
+					)
+					.get(threadId, selfUserId)
+			: sqlite.prepare(`SELECT body FROM freelance_inbox_messages WHERE thread_id = ? ORDER BY sent_at DESC LIMIT 1`).get(threadId)
+	) as { body: string } | undefined;
+	return r?.body ?? null;
+}
+
+const SENSITIVE_CATEGORIES = ["payment", "contract", "off_platform", "scope_dispute"];
+
+/**
+ * Triage an inbound client message. Sensitive types (money, contracts, off-platform
+ * requests, scope disputes) must NOT be auto-replied — they go to the human. Returns
+ * the category, or "normal". Fails open (returns null) so a classifier outage never
+ * blocks normal replies (the agent's own guardrails remain the backstop).
+ */
+async function triageMessage(config: ProviderConfig, modelId: string, body: string): Promise<string | null> {
+	try {
+		const adapter = createProviderAdapter(config);
+		const { text } = await generateText({
+			model: adapter.createModel(modelId),
+			system: `Classify a client's freelance message into exactly ONE category:
+- payment: anything about money, invoices, deposits, releasing/holding funds, payment methods.
+- contract: signing agreements, NDAs, or legal terms.
+- off_platform: asking to move to WhatsApp/email/phone/Telegram, or to share contact details.
+- scope_dispute: disagreement about scope, refunds, dissatisfaction, complaints, or threats.
+- normal: everything else.
+Output ONLY the single category word.`,
+			prompt: body.slice(0, 2000),
+			temperature: 0,
+		});
+		const cat = text.trim().toLowerCase().replace(/[^a-z_]/g, "");
+		return [...SENSITIVE_CATEGORIES, "normal"].includes(cat) ? cat : "normal";
+	} catch {
+		return null;
+	}
+}
+
 function getSelfUserId(platform: string): string | null {
 	const r = sqlite.prepare(`SELECT self_user_id FROM freelance_accounts WHERE platform = ?`).get(platform) as
 		| { self_user_id: string | null }
@@ -140,6 +186,9 @@ export async function runFreelanceExpert(input: RunExpertInput): Promise<{ jobId
 	const fullAuto = acct === "full_auto" || (acct == null && ae.autonomyMode === "full_auto");
 	if (!fullAuto) return null;
 
+	// Global quiet/pause: suspend all autonomous work (sync keeps running elsewhere).
+	if ((await getPauseUntilMs()) > Date.now()) return null;
+
 	const threadId = input.threadId ?? null;
 	let job: FreelanceJob;
 	if (threadId) {
@@ -157,6 +206,29 @@ export async function runFreelanceExpert(input: RunExpertInput): Promise<{ jobId
 		const { config: providerConfig, modelId } = await resolveProviderConfig();
 		const fl = await getFreelanceSettings();
 		const selfUserId = threadId ? getSelfUserId(platform) : null;
+
+		// Message triage: a new client message that touches money, contracts, going
+		// off-platform, or a scope dispute must NOT be auto-replied — escalate to the
+		// human instead of letting the agent answer.
+		if (input.trigger === "new_message" && threadId) {
+			const body = latestInboundBody(threadId, selfUserId);
+			if (body) {
+				const cat = await triageMessage(providerConfig, modelId, body);
+				if (cat && SENSITIVE_CATEGORIES.includes(cat)) {
+					await escalateToHuman({
+						jobId: job.id,
+						platform,
+						threadId,
+						reason: `Client message needs you (${cat.replace(/_/g, " ")})`,
+						detail: body.slice(0, 400),
+						severity: "warn",
+					});
+					logJobAction(job.id, "triage_escalate", cat);
+					return { jobId: job.id };
+				}
+			}
+		}
+
 		const listing = getListingFullDescription(job.listingId);
 		const transcript = threadId ? buildThreadTranscript(threadId, selfUserId) : "";
 		const creds = listCredentialSummaries(job.id);

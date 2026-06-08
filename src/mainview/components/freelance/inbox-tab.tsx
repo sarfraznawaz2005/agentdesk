@@ -28,6 +28,7 @@ import type {
   FreelanceInboxThreadDto,
   FreelanceInboxMessageDto,
   FreelanceOutboxItemDto,
+  FreelanceGovernorStateDto,
 } from "../../../shared/rpc/freelance";
 
 const PLATFORM = "freelancer";
@@ -257,6 +258,24 @@ export function InboxTab() {
       .then((r) => setOutbox(r.items))
       .catch(() => {});
   }, []);
+
+  // Governor visibility (sends used / caps / next-allowed / pause) — polled so the
+  // figures stay current, and refreshed on outbox changes.
+  const [gov, setGov] = useState<FreelanceGovernorStateDto | null>(null);
+  const refreshGov = useCallback(() => {
+    rpc.freelanceGovernorGetState().then(setGov).catch(() => {});
+  }, []);
+  useEffect(() => {
+    refreshGov();
+    const t = setInterval(refreshGov, 15_000);
+    return () => clearInterval(t);
+  }, [refreshGov]);
+  const pauseFor = useCallback((hours: number) => {
+    rpc.freelanceGovernorPause(hours).then(refreshGov).catch(() => {});
+  }, [refreshGov]);
+  const resumeAutonomy = useCallback(() => {
+    rpc.freelanceGovernorResume().then(refreshGov).catch(() => {});
+  }, [refreshGov]);
 
   const draftReply = useCallback(
     (threadId: string) => {
@@ -575,6 +594,8 @@ export function InboxTab() {
           if (queued) {
             await approveSendRef.current(queued); // governor-gated inside
           }
+          // Surface a stalled queue (logged out / active hours / paused) to the user.
+          rpc.freelanceGovernorCheckStuck().catch(() => {});
         }
       } catch {
         /* idle */
@@ -681,6 +702,45 @@ export function InboxTab() {
           {sessionOpen ? "Hide live session" : "Show live session"}
         </button>
       </div>
+
+      {/* Governor visibility + global pause */}
+      {account?.connected && gov && (
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          {gov.pausedUntilMs > 0 ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/15 px-2.5 py-1 text-amber-700 dark:text-amber-400">
+              Autonomy paused until {new Date(gov.pausedUntilMs).toLocaleTimeString()}
+              <button onClick={resumeAutonomy} className="underline hover:no-underline">Resume now</button>
+            </span>
+          ) : (
+            <>
+              <span
+                className="text-muted-foreground"
+                title="Sends used this hour vs cap (reply / bid). Bids are throttled harder. 'next in' is the minimum gap remaining."
+              >
+                Sends this hour — reply {gov.reply.usedThisHour}/{gov.reply.cap} · bid{" "}
+                {gov.bid.usedThisHour}/{gov.bid.cap}
+                {gov.reply.nextAllowedInMs > 0 ? ` · next in ${Math.ceil(gov.reply.nextAllowedInMs / 1000)}s` : ""}
+                {!gov.withinActiveHours ? " · outside active hours" : ""}
+              </span>
+              <select
+                value=""
+                onChange={(e) => {
+                  const h = Number(e.target.value);
+                  if (h > 0) pauseFor(h);
+                }}
+                title="Pause all sending + full-auto for a while. Inbox sync keeps running."
+                className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+              >
+                <option value="">Pause…</option>
+                <option value="1">1 hour</option>
+                <option value="3">3 hours</option>
+                <option value="8">8 hours</option>
+                <option value="24">24 hours</option>
+              </select>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Inbox: threads | conversation */}
       <div className="grid h-[44vh] grid-cols-1 gap-3 lg:grid-cols-3">

@@ -1545,12 +1545,22 @@ export const rpc = {
     electroviewRpc.request["freelance.outbox.reject"]({ id }),
   freelanceOutboxKillSwitch: () =>
     electroviewRpc.request["freelance.outbox.killSwitch"]({}),
+  freelanceGovernorGetState: () =>
+    electroviewRpc.request["freelance.governor.getState"]({}),
+  freelanceGovernorPause: (hours: number) =>
+    electroviewRpc.request["freelance.governor.pause"]({ hours }),
+  freelanceGovernorResume: () =>
+    electroviewRpc.request["freelance.governor.resume"]({}),
+  freelanceGovernorCheckStuck: () =>
+    electroviewRpc.request["freelance.governor.checkStuck"]({}),
 
   // ---- Auto-Earn freelance-expert (jobs / escalations / earnings) ----------
   freelanceGetEscalations: (status?: "open" | "resolved" | "all") =>
     electroviewRpc.request["freelance.expert.getEscalations"]({ status }),
   freelanceResolveEscalation: (id: string) =>
     electroviewRpc.request["freelance.expert.resolveEscalation"]({ id }),
+  freelanceApproveDelivery: (jobId: string) =>
+    electroviewRpc.request["freelance.expert.approveDelivery"]({ jobId }),
   freelanceGetJobs: (state?: string) =>
     electroviewRpc.request["freelance.expert.getJobs"]({ state }),
   freelanceGetJobTimeline: (jobId: string) =>

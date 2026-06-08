@@ -38,6 +38,13 @@ const AUTO_EARN_DEFAULTS: FreelanceAutoEarnSettingsDto = {
   notifyDesktop: true,
   notifyChannels: false,
   bidDeliveryDays: 7,
+  bidStaleHours: 24,
+  autoBidShortlisted: false,
+  bidPricingMode: "avg",
+  bidPercentile: 50,
+  bidMinClamp: 0,
+  bidMaxClamp: 0,
+  bidHourlyRate: 0,
 };
 import { CURRENCIES } from "../../../shared/freelance-currencies";
 import { cn } from "@/lib/utils";

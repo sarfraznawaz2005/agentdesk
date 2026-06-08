@@ -14,6 +14,7 @@ import { aiProviders, freelanceListings } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getFreelanceSettings } from "./settings";
 import { HUMANIZER_WRITING_RULES } from "./humanizer-prompt";
+import { qaRevise } from "./qa";
 import type { OutboxItem } from "./reply-pipeline";
 
 const PROPOSAL_SYSTEM = `You are an experienced freelancer writing a winning proposal (bid) for a job post.
@@ -63,7 +64,7 @@ export async function draftBidForListing(platform: string, listingId: string): P
 		prompt,
 		temperature: 0.75,
 	});
-	const draftBody = text.trim();
+	const draftBody = await qaRevise(adapter, modelId, "proposal", text.trim());
 
 	const id = crypto.randomUUID();
 	const now = new Date().toISOString();

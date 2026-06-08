@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 253
-**Symbols:** 1902
+**Files:** 255
+**Symbols:** 1928
 
 ## Files
 
@@ -844,11 +844,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 59)
+- `Migration` (line 60)
 
 **Functions:**
-- `runMigrations` (line 109)
-- `ensureRuntimeSchema` (line 171)
+- `runMigrations` (line 111)
+- `ensureRuntimeSchema` (line 173)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1151,6 +1151,15 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v40_freelance-delivery-approval.ts`
+
+**Functions:**
+- `run` (line 7)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v4_inline-agents.ts`
 
 **Functions:**
@@ -1342,19 +1351,19 @@
 - `AutoEarnSettings` (line 13)
 
 **Functions:**
-- `getAutoEarnSettings` (line 55)
-- `get` (line 58)
-- `saveAutoEarnSetting` (line 82)
-- `saveAutoEarnSettings` (line 94)
-- `isAutoEarnEnabled` (line 116)
+- `getAutoEarnSettings` (line 76)
+- `get` (line 79)
+- `saveAutoEarnSetting` (line 110)
+- `saveAutoEarnSettings` (line 122)
+- `isAutoEarnEnabled` (line 151)
 
 
 ### `src/bun/freelance/bid-pipeline.ts`
 
 **Functions:**
-- `resolveProviderAndModel` (line 24)
-- `getAccountAutonomy` (line 38)
-- `draftBidForListing` (line 46)
+- `resolveProviderAndModel` (line 25)
+- `getAccountAutonomy` (line 39)
+- `draftBidForListing` (line 47)
 
 
 ### `src/bun/freelance/budget.ts`
@@ -1393,7 +1402,7 @@
 
 **Types:**
 - `JobState` (line 12)
-- `FactCategory` (line 194)
+- `FactCategory` (line 206)
 
 **Functions:**
 - `rowToJob` (line 42)
@@ -1401,11 +1410,13 @@
 - `getJobByThread` (line 71)
 - `upsertJobForThread` (line 79)
 - `setJobState` (line 144)
-- `logJobAction` (line 163)
-- `getJobLog` (line 180)
-- `saveJobFact` (line 196)
-- `listJobFacts` (line 210)
-- `listJobs` (line 217)
+- `isDeliveryApproved` (line 164)
+- `setDeliveryApproved` (line 169)
+- `logJobAction` (line 175)
+- `getJobLog` (line 192)
+- `saveJobFact` (line 208)
+- `listJobFacts` (line 222)
+- `listJobs` (line 229)
 
 
 ### `src/bun/freelance/expert/notify.ts`
@@ -1428,34 +1439,36 @@
 ### `src/bun/freelance/expert/orchestrator.ts`
 
 **Interfaces:**
-- `RunExpertInput` (line 115)
+- `RunExpertInput` (line 161)
 
 **Functions:**
-- `resolveProviderConfig` (line 45)
-- `getPersona` (line 62)
-- `buildThreadTranscript` (line 77)
-- `getSelfUserId` (line 90)
-- `getListingFullDescription` (line 97)
-- `runFreelanceExpert` (line 128)
+- `resolveProviderConfig` (line 48)
+- `getPersona` (line 65)
+- `buildThreadTranscript` (line 80)
+- `latestInboundBody` (line 93)
+- `triageMessage` (line 114)
+- `getSelfUserId` (line 136)
+- `getListingFullDescription` (line 143)
+- `runFreelanceExpert` (line 174)
 
 **Exports:**
-- `getJobByThread` (line 264)
+- `getJobByThread` (line 336)
 
 
 ### `src/bun/freelance/expert/tools.ts`
 
 **Interfaces:**
-- `FxToolContext` (line 28)
+- `FxToolContext` (line 31)
 
 **Functions:**
-- `ok` (line 36)
-- `err` (line 39)
-- `safeDest` (line 43)
-- `authUrl` (line 50)
-- `runGit` (line 71)
-- `credToRemote` (line 78)
-- `buildFreelanceExpertTools` (line 95)
-- `log` (line 96)
+- `ok` (line 39)
+- `err` (line 42)
+- `safeDest` (line 46)
+- `authUrl` (line 53)
+- `runGit` (line 74)
+- `credToRemote` (line 81)
+- `buildFreelanceExpertTools` (line 98)
+- `log` (line 99)
 
 
 ### `src/bun/freelance/expert/vault.ts`
@@ -1521,19 +1534,28 @@
 - `createProjectFromListing` (line 30)
 
 
+### `src/bun/freelance/qa.ts`
+
+**Types:**
+- `ProviderAdapter` (line 14)
+
+**Functions:**
+- `qaRevise` (line 16)
+
+
 ### `src/bun/freelance/reply-pipeline.ts`
 
 **Interfaces:**
-- `ThreadCtx` (line 45)
-- `OutboxItem` (line 97)
+- `ThreadCtx` (line 46)
+- `OutboxItem` (line 98)
 
 **Functions:**
-- `resolveProviderAndModel` (line 24)
-- `loadThreadContext` (line 53)
-- `buildConversationText` (line 69)
-- `listingBrief` (line 88)
-- `getAccountAutonomy` (line 109)
-- `draftReplyForThread` (line 117)
+- `resolveProviderAndModel` (line 25)
+- `loadThreadContext` (line 54)
+- `buildConversationText` (line 70)
+- `listingBrief` (line 89)
+- `getAccountAutonomy` (line 110)
+- `draftReplyForThread` (line 118)
 
 
 ### `src/bun/freelance/rss-fetcher.ts`
@@ -1555,7 +1577,9 @@
 
 **Interfaces:**
 - `GovernorSettings` (line 24)
-- `SendDecision` (line 158)
+- `SendDecision` (line 198)
+- `GovernorActionState` (line 261)
+- `GovernorState` (line 266)
 
 **Types:**
 - `GovernorAction` (line 22)
@@ -1565,13 +1589,19 @@
 - `getGovernorSettings` (line 65)
 - `num` (line 68)
 - `hourInTimezone` (line 93)
-- `recordAction` (line 106)
-- `secondsSinceLastSend` (line 127)
-- `sendsInLastHour` (line 138)
-- `isWithinActiveHours` (line 149)
-- `evaluateSend` (line 169)
-- `gateSend` (line 202)
-- `jitter` (line 216)
+- `getPauseUntilMs` (line 113)
+- `writePause` (line 125)
+- `setPause` (line 134)
+- `clearPause` (line 141)
+- `recordAction` (line 146)
+- `secondsSinceLastSend` (line 167)
+- `sendsInLastHour` (line 178)
+- `isWithinActiveHours` (line 189)
+- `evaluateSend` (line 209)
+- `gateSend` (line 247)
+- `getGovernorState` (line 274)
+- `forAction` (line 277)
+- `jitter` (line 293)
 
 
 ### `src/bun/freelance/session/humanize.ts`
@@ -2967,14 +2997,15 @@
 ### `src/bun/rpc/freelance-expert.ts`
 
 **Interfaces:**
-- `EarningsSummary` (line 28)
+- `EarningsSummary` (line 54)
 
 **Functions:**
-- `getEscalations` (line 9)
-- `resolveEscalation` (line 13)
-- `getJobs` (line 18)
-- `getJobTimeline` (line 22)
-- `getEarningsSummary` (line 36)
+- `getEscalations` (line 12)
+- `resolveEscalation` (line 16)
+- `approveDelivery` (line 26)
+- `getJobs` (line 44)
+- `getJobTimeline` (line 48)
+- `getEarningsSummary` (line 64)
 
 
 ### `src/bun/rpc/freelance-inbox.ts`
@@ -2999,51 +3030,64 @@
 
 ### `src/bun/rpc/freelance-outbox.ts`
 
+**Interfaces:**
+- `BidPricing` (line 26)
+
 **Functions:**
-- `computeBidAmount` (line 23)
-- `rowToDto` (line 30)
-- `notifyUpdated` (line 45)
-- `list` (line 53)
-- `draftReply` (line 68)
-- `draftBid` (line 83)
-- `updateDraft` (line 91)
-- `retry` (line 101)
-- `markBidPrefilled` (line 113)
-- `reject` (line 126)
-- `approveSend` (line 137)
-- `markResult` (line 218)
-- `killSwitch` (line 240)
+- `computeBidAmount` (line 40)
+- `extractDeliveryDays` (line 64)
+- `rowToDto` (line 76)
+- `notifyUpdated` (line 91)
+- `dismissStaleBids` (line 103)
+- `list` (line 128)
+- `draftReply` (line 144)
+- `draftBid` (line 159)
+- `updateDraft` (line 167)
+- `retry` (line 177)
+- `markBidPrefilled` (line 189)
+- `reject` (line 202)
+- `approveSend` (line 213)
+- `markResult` (line 309)
+- `killSwitch` (line 331)
+- `governorState` (line 343)
+- `pauseAutonomy` (line 348)
+- `resumeAutonomy` (line 355)
+- `checkStuckQueue` (line 368)
+- `checkStuck` (line 408)
+
+**Exports:**
+- `getPauseUntilMs` (line 413)
 
 
 ### `src/bun/rpc/freelance-wizard.ts`
 
 **Types:**
-- `Verdict` (line 345)
+- `Verdict` (line 349)
 
 **Functions:**
-- `getAnalysisProviderAndModel` (line 25)
-- `isObviouslyNonSoftware` (line 82)
-- `buildWizardTools` (line 102)
-- `isAbortError` (line 119)
-- `fetchPageText` (line 127)
-- `extractDescription` (line 148)
-- `buildAnalysisSystemPrompt` (line 177)
-- `buildUserMessage` (line 244)
-- `buildAnalysisWritePrompt` (line 297)
-- `coerceVerdict` (line 347)
-- `extractJsonFromText` (line 388)
-- `formatToolOutput` (line 407)
-- `clean` (line 411)
-- `analyzeListingWorkability` (line 423)
-- `collectToolResults` (line 448)
-- `normalizeNewlines` (line 553)
-- `isCacheValid` (line 567)
-- `runWizard` (line 577)
-- `startWizard` (line 780)
-- `stopWizard` (line 786)
-- `runAutoShortlist` (line 800)
-- `analyzeListing` (line 950)
-- `shortlistListings` (line 1014)
+- `getAnalysisProviderAndModel` (line 29)
+- `isObviouslyNonSoftware` (line 86)
+- `buildWizardTools` (line 106)
+- `isAbortError` (line 123)
+- `fetchPageText` (line 131)
+- `extractDescription` (line 152)
+- `buildAnalysisSystemPrompt` (line 181)
+- `buildUserMessage` (line 248)
+- `buildAnalysisWritePrompt` (line 301)
+- `coerceVerdict` (line 351)
+- `extractJsonFromText` (line 392)
+- `formatToolOutput` (line 411)
+- `clean` (line 415)
+- `analyzeListingWorkability` (line 427)
+- `collectToolResults` (line 452)
+- `normalizeNewlines` (line 557)
+- `isCacheValid` (line 571)
+- `runWizard` (line 581)
+- `startWizard` (line 784)
+- `stopWizard` (line 790)
+- `runAutoShortlist` (line 804)
+- `analyzeListing` (line 994)
+- `shortlistListings` (line 1058)
 
 
 ### `src/bun/rpc/freelance.ts`

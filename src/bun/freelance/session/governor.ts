@@ -102,6 +102,46 @@ export function hourInTimezone(tz: string, date = new Date()): number {
 	}
 }
 
+// ─── Global quiet/pause ───────────────────────────────────────────────────────
+// A user-set "pause all autonomy for X hours" window. Stored as an ISO timestamp
+// in the freelance settings. While active it blocks every send (assisted approve +
+// full-auto) AND the freelance-expert agent — but NOT inbox sync (sync never calls
+// the governor), so the inbox keeps refreshing while autonomy is paused.
+const PAUSE_KEY = "freelance_pause_until";
+
+/** Epoch-ms the pause runs until, or 0 if not paused / already expired. */
+export async function getPauseUntilMs(): Promise<number> {
+	try {
+		const row = (await db.select().from(settings).where(eq(settings.key, PAUSE_KEY)).limit(1))[0];
+		if (!row?.value) return 0;
+		const raw = JSON.parse(row.value) as string;
+		const ts = raw ? Date.parse(raw) : 0;
+		return Number.isFinite(ts) && ts > Date.now() ? ts : 0;
+	} catch {
+		return 0;
+	}
+}
+
+async function writePause(value: string): Promise<void> {
+	const now = new Date().toISOString();
+	await db
+		.insert(settings)
+		.values({ id: crypto.randomUUID(), key: PAUSE_KEY, value: JSON.stringify(value), category: "freelance", updatedAt: now })
+		.onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(value), updatedAt: now } });
+}
+
+/** Pause autonomy for `hours`; returns the epoch-ms it runs until. */
+export async function setPause(hours: number): Promise<number> {
+	const untilMs = Date.now() + Math.max(0, hours) * 3_600_000;
+	await writePause(new Date(untilMs).toISOString());
+	return untilMs;
+}
+
+/** Clear any active pause (resume autonomy). */
+export async function clearPause(): Promise<void> {
+	await writePause("");
+}
+
 /** Record an action + outcome for forensics and rate-limit queries. */
 export function recordAction(
 	platform: string,
@@ -174,6 +214,11 @@ export async function evaluateSend(platform: string, opts: { isBid?: boolean } =
 	const minGap = opts.isBid ? g.minGapSeconds * 3 : g.minGapSeconds;
 	const hourlyCap = opts.isBid ? Math.max(1, Math.floor(g.maxSendsPerHour / 2)) : g.maxSendsPerHour;
 
+	const pausedUntil = await getPauseUntilMs();
+	if (pausedUntil > Date.now()) {
+		return { allowed: false, reason: "autonomy paused", retryAfterMs: pausedUntil - Date.now() };
+	}
+
 	if (!isWithinActiveHours(g)) {
 		return { allowed: false, reason: "outside active hours", retryAfterMs: 15 * 60_000 };
 	}
@@ -210,6 +255,38 @@ export async function gateSend(platform: string, detail?: string, opts: { isBid?
 		});
 	}
 	return decision;
+}
+
+// ─── Governor state (UI visibility) ───────────────────────────────────────────
+export interface GovernorActionState {
+	usedThisHour: number;
+	cap: number;
+	nextAllowedInMs: number; // min-gap wait remaining (0 = ready now, gap-wise)
+}
+export interface GovernorState {
+	withinActiveHours: boolean;
+	pausedUntilMs: number; // 0 if not paused
+	reply: GovernorActionState;
+	bid: GovernorActionState;
+}
+
+/** Snapshot of the governor for the UI: per-stream usage, caps, and next-allowed. */
+export async function getGovernorState(platform: string): Promise<GovernorState> {
+	const g = await getGovernorSettings();
+	const pausedUntilMs = await getPauseUntilMs();
+	const forAction = (action: "send_reply" | "submit_bid", isBid: boolean): GovernorActionState => {
+		const minGap = isBid ? g.minGapSeconds * 3 : g.minGapSeconds;
+		const cap = isBid ? Math.max(1, Math.floor(g.maxSendsPerHour / 2)) : g.maxSendsPerHour;
+		const since = secondsSinceLastSend(platform, action);
+		const nextAllowedInMs = since !== null && since < minGap ? Math.ceil((minGap - since) * 1000) : 0;
+		return { usedThisHour: sendsInLastHour(platform, action), cap, nextAllowedInMs };
+	};
+	return {
+		withinActiveHours: isWithinActiveHours(g),
+		pausedUntilMs,
+		reply: forAction("send_reply", false),
+		bid: forAction("submit_bid", true),
+	};
 }
 
 /** Uniform jitter in [minMs, maxMs]. Index varies the seed so callers differ. */

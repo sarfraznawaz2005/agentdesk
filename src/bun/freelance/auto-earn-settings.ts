@@ -22,6 +22,13 @@ export interface AutoEarnSettings {
 	notifyDesktop: boolean;         // desktop notification on a new client reply
 	notifyChannels: boolean;        // forward new client reply to connected channels
 	bidDeliveryDays: number;        // default "delivered in" days prefilled on a bid
+	bidStaleHours: number;          // auto-dismiss awaiting_review bids older than this (0 = never)
+	autoBidShortlisted: boolean;    // auto-draft a proposal when a listing is auto-shortlisted (off by default)
+	bidPricingMode: string;         // "avg" | "min" | "max" | "percentile"
+	bidPercentile: number;          // 0-100 position in the budget range (mode = percentile)
+	bidMinClamp: number;            // absolute floor for the bid amount (0 = none)
+	bidMaxClamp: number;            // absolute ceiling for the bid amount (0 = none)
+	bidHourlyRate: number;          // rate to bid on hourly projects (0 = use the budget)
 }
 
 const DEFAULTS: AutoEarnSettings = {
@@ -36,6 +43,13 @@ const DEFAULTS: AutoEarnSettings = {
 	notifyDesktop: true,
 	notifyChannels: false,
 	bidDeliveryDays: 7,
+	bidStaleHours: 24,
+	autoBidShortlisted: false,
+	bidPricingMode: "avg",
+	bidPercentile: 50,
+	bidMinClamp: 0,
+	bidMaxClamp: 0,
+	bidHourlyRate: 0,
 };
 
 const KEYS: Record<keyof AutoEarnSettings, string> = {
@@ -50,6 +64,13 @@ const KEYS: Record<keyof AutoEarnSettings, string> = {
 	notifyDesktop: "freelance_notify_desktop",
 	notifyChannels: "freelance_notify_channels",
 	bidDeliveryDays: "freelance_bid_delivery_days",
+	bidStaleHours: "freelance_bid_stale_hours",
+	autoBidShortlisted: "freelance_auto_bid_shortlisted",
+	bidPricingMode: "freelance_bid_pricing_mode",
+	bidPercentile: "freelance_bid_percentile",
+	bidMinClamp: "freelance_bid_min_clamp",
+	bidMaxClamp: "freelance_bid_max_clamp",
+	bidHourlyRate: "freelance_bid_hourly_rate",
 };
 
 export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
@@ -76,6 +97,13 @@ export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
 		notifyDesktop: get("notifyDesktop"),
 		notifyChannels: get("notifyChannels"),
 		bidDeliveryDays: get("bidDeliveryDays"),
+		bidStaleHours: get("bidStaleHours"),
+		autoBidShortlisted: get("autoBidShortlisted"),
+		bidPricingMode: get("bidPricingMode"),
+		bidPercentile: get("bidPercentile"),
+		bidMinClamp: get("bidMinClamp"),
+		bidMaxClamp: get("bidMaxClamp"),
+		bidHourlyRate: get("bidHourlyRate"),
 	};
 }
 
@@ -109,6 +137,13 @@ export async function saveAutoEarnSettings(input: AutoEarnSettings): Promise<voi
 		saveAutoEarnSetting("notifyDesktop", safe.notifyDesktop),
 		saveAutoEarnSetting("notifyChannels", safe.notifyChannels),
 		saveAutoEarnSetting("bidDeliveryDays", safe.bidDeliveryDays),
+		saveAutoEarnSetting("bidStaleHours", safe.bidStaleHours),
+		saveAutoEarnSetting("autoBidShortlisted", safe.autoBidShortlisted),
+		saveAutoEarnSetting("bidPricingMode", safe.bidPricingMode),
+		saveAutoEarnSetting("bidPercentile", safe.bidPercentile),
+		saveAutoEarnSetting("bidMinClamp", safe.bidMinClamp),
+		saveAutoEarnSetting("bidMaxClamp", safe.bidMaxClamp),
+		saveAutoEarnSetting("bidHourlyRate", safe.bidHourlyRate),
 	]);
 }
 
