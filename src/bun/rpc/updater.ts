@@ -212,6 +212,11 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 		const hadClaudeFlag = existsSync(claudeFlagPath);
 		applyLog(`Claude subscription flag present: ${hadClaudeFlag}`);
 
+		// Preserve Auto-Earn feature flag the same way.
+		const autoearnFlagPath = join(dirname(process.execPath), "autoearn");
+		const hadAutoearnFlag = existsSync(autoearnFlagPath);
+		applyLog(`Auto-Earn flag present: ${hadAutoearnFlag}`);
+
 		// Derive the launcher path for relaunch once the installer finishes.
 		// Updater.appDataFolder() returns e.g. %LOCALAPPDATA%\com.sarfrazai.agentdesk\stable
 		const appDataFolder = await Updater.appDataFolder();
@@ -244,6 +249,9 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 				: "") +
 			(hadClaudeFlag
 				? `New-Item -ItemType File -Path '${esc(claudeFlagPath)}' -Force | Out-Null; ${psLog("Restored claude subscription feature flag")}`
+				: "") +
+			(hadAutoearnFlag
+				? `New-Item -ItemType File -Path '${esc(autoearnFlagPath)}' -Force | Out-Null; ${psLog("Restored Auto-Earn feature flag")}`
 				: "") +
 			`Write-Host '  [2/2]  Launching AgentDesk...' -ForegroundColor Yellow; ` +
 			`if (Test-Path '${esc(launcherPath)}') { ` +

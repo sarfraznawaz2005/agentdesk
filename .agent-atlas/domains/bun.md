@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 231
-**Symbols:** 1741
+**Files:** 253
+**Symbols:** 1899
 
 ## Files
 
@@ -844,11 +844,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 54)
+- `Migration` (line 59)
 
 **Functions:**
-- `runMigrations` (line 99)
-- `ensureRuntimeSchema` (line 161)
+- `runMigrations` (line 109)
+- `ensureRuntimeSchema` (line 171)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1096,6 +1096,52 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v35_freelance-auto-earn-inbox.ts`
+
+**Functions:**
+- `run` (line 8)
+
+**Exports:**
+- `name` (line 3)
+
+
+### `src/bun/db/migrations/v36_freelance-auto-earn-outbox.ts`
+
+**Functions:**
+- `run` (line 9)
+- `addColumn` (line 50)
+
+**Exports:**
+- `name` (line 3)
+
+
+### `src/bun/db/migrations/v37_freelance-remove-peopleperhour.ts`
+
+**Functions:**
+- `run` (line 9)
+
+**Exports:**
+- `name` (line 3)
+
+
+### `src/bun/db/migrations/v38_freelance-expert-pipeline.ts`
+
+**Functions:**
+- `run` (line 8)
+
+**Exports:**
+- `name` (line 3)
+
+
+### `src/bun/db/migrations/v39_freelance-job-facts.ts`
+
+**Functions:**
+- `run` (line 8)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v3_agent-sessions.ts`
 
 **Functions:**
@@ -1199,11 +1245,22 @@
 - `messageParts` (line 653)
 - `freelanceListings` (line 675)
 - `freelanceChatMessages` (line 702)
-- `projectActivity` (line 719)
-- `remoteSyncConfig` (line 733)
-- `remoteSyncItems` (line 771)
-- `customEnvVars` (line 789)
-- `remoteSyncRuns` (line 799)
+- `freelanceAccounts` (line 718)
+- `freelanceInboxThreads` (line 730)
+- `freelanceInboxMessages` (line 753)
+- `freelanceInboxUsers` (line 764)
+- `freelanceOutbox` (line 777)
+- `freelanceActionLog` (line 795)
+- `freelanceJobs` (line 810)
+- `freelanceCredentials` (line 833)
+- `freelanceJobLog` (line 848)
+- `freelanceJobFacts` (line 861)
+- `freelanceEscalations` (line 870)
+- `projectActivity` (line 892)
+- `remoteSyncConfig` (line 906)
+- `remoteSyncItems` (line 944)
+- `customEnvVars` (line 962)
+- `remoteSyncRuns` (line 972)
 
 
 ### `src/bun/db/seed.ts`
@@ -1213,9 +1270,9 @@
 - `hashAgentDefs` (line 25)
 - `loadBuiltinPromptsHash` (line 31)
 - `saveBuiltinPromptsHash` (line 37)
-- `getDefaultAgentTools` (line 1363)
-- `seedDatabase` (line 1378)
-- `seedAgentTools` (line 1608)
+- `getDefaultAgentTools` (line 1393)
+- `seedDatabase` (line 1408)
+- `seedAgentTools` (line 1646)
 
 
 ### `src/bun/db/summaries.ts`
@@ -1279,6 +1336,27 @@
 - `engines` (line 19)
 
 
+### `src/bun/freelance/auto-earn-settings.ts`
+
+**Interfaces:**
+- `AutoEarnSettings` (line 13)
+
+**Functions:**
+- `getAutoEarnSettings` (line 52)
+- `get` (line 55)
+- `saveAutoEarnSetting` (line 78)
+- `saveAutoEarnSettings` (line 90)
+- `isAutoEarnEnabled` (line 111)
+
+
+### `src/bun/freelance/bid-pipeline.ts`
+
+**Functions:**
+- `resolveProviderAndModel` (line 24)
+- `getAccountAutonomy` (line 38)
+- `draftBidForListing` (line 46)
+
+
 ### `src/bun/freelance/budget.ts`
 
 **Functions:**
@@ -1308,10 +1386,101 @@
 - `FREELANCE_EVENTS` (line 4)
 
 
+### `src/bun/freelance/expert/jobs.ts`
+
+**Interfaces:**
+- `FreelanceJob` (line 22)
+
+**Types:**
+- `JobState` (line 12)
+- `FactCategory` (line 194)
+
+**Functions:**
+- `rowToJob` (line 42)
+- `getJobById` (line 64)
+- `getJobByThread` (line 71)
+- `upsertJobForThread` (line 79)
+- `setJobState` (line 144)
+- `logJobAction` (line 163)
+- `getJobLog` (line 180)
+- `saveJobFact` (line 196)
+- `listJobFacts` (line 210)
+- `listJobs` (line 217)
+
+
+### `src/bun/freelance/expert/notify.ts`
+
+**Interfaces:**
+- `EscalateInput` (line 20)
+- `EscalationDto` (line 31)
+
+**Types:**
+- `Severity` (line 18)
+
+**Functions:**
+- `escalateToHuman` (line 44)
+- `listEscalations` (line 97)
+- `resolveEscalation` (line 116)
+- `notifyJobEvent` (line 128)
+- `openEscalationCount` (line 158)
+
+
+### `src/bun/freelance/expert/orchestrator.ts`
+
+**Interfaces:**
+- `RunExpertInput` (line 115)
+
+**Functions:**
+- `resolveProviderConfig` (line 45)
+- `getPersona` (line 62)
+- `buildThreadTranscript` (line 77)
+- `getSelfUserId` (line 90)
+- `getListingFullDescription` (line 97)
+- `runFreelanceExpert` (line 128)
+
+**Exports:**
+- `getJobByThread` (line 264)
+
+
+### `src/bun/freelance/expert/tools.ts`
+
+**Interfaces:**
+- `FxToolContext` (line 28)
+
+**Functions:**
+- `ok` (line 36)
+- `err` (line 39)
+- `safeDest` (line 43)
+- `authUrl` (line 50)
+- `runGit` (line 71)
+- `credToRemote` (line 78)
+- `buildFreelanceExpertTools` (line 95)
+- `log` (line 96)
+
+
+### `src/bun/freelance/expert/vault.ts`
+
+**Interfaces:**
+- `StoreCredentialInput` (line 15)
+- `ResolvedCredential` (line 26)
+- `CredentialSummary` (line 39)
+
+**Types:**
+- `CredentialKind` (line 13)
+
+**Functions:**
+- `storeCredential` (line 51)
+- `parseMeta` (line 75)
+- `getCredential` (line 84)
+- `getCredentialsForJob` (line 102)
+- `listCredentialSummaries` (line 120)
+
+
 ### `src/bun/freelance/feature-flag.ts`
 
 **Functions:**
 - `isFreelanceEnabled` (line 4)
+- `isAutoEarnFeatureAvailable` (line 17)
 
 
 ### `src/bun/freelance/fetcher.ts`
@@ -1325,6 +1494,12 @@
 - `scheduleNextPoll` (line 188)
 
 
+### `src/bun/freelance/humanizer-prompt.ts`
+
+**Exports:**
+- `HUMANIZER_WRITING_RULES` (line 10)
+
+
 ### `src/bun/freelance/normalizer.ts`
 
 **Interfaces:**
@@ -1335,6 +1510,30 @@
 - `parseBudget` (line 26)
 - `cleanDescription` (line 50)
 - `normalizeRssItem` (line 54)
+
+
+### `src/bun/freelance/project-bootstrap.ts`
+
+**Interfaces:**
+- `BootstrapResult` (line 20)
+
+**Functions:**
+- `createProjectFromListing` (line 30)
+
+
+### `src/bun/freelance/reply-pipeline.ts`
+
+**Interfaces:**
+- `ThreadCtx` (line 45)
+- `OutboxItem` (line 97)
+
+**Functions:**
+- `resolveProviderAndModel` (line 24)
+- `loadThreadContext` (line 53)
+- `buildConversationText` (line 69)
+- `listingBrief` (line 88)
+- `getAccountAutonomy` (line 109)
+- `draftReplyForThread` (line 117)
 
 
 ### `src/bun/freelance/rss-fetcher.ts`
@@ -1352,6 +1551,73 @@
 - `fetchRssFeed` (line 61)
 
 
+### `src/bun/freelance/session/governor.ts`
+
+**Interfaces:**
+- `GovernorSettings` (line 24)
+- `SendDecision` (line 158)
+
+**Types:**
+- `GovernorAction` (line 22)
+
+**Functions:**
+- `getGlobalTimezone` (line 51)
+- `getGovernorSettings` (line 65)
+- `num` (line 68)
+- `hourInTimezone` (line 93)
+- `recordAction` (line 106)
+- `secondsSinceLastSend` (line 127)
+- `sendsInLastHour` (line 138)
+- `isWithinActiveHours` (line 149)
+- `evaluateSend` (line 169)
+- `gateSend` (line 202)
+- `jitter` (line 216)
+
+
+### `src/bun/freelance/session/humanize.ts`
+
+**Functions:**
+- `sleep` (line 9)
+- `humanGapMs` (line 14)
+- `humanPause` (line 20)
+
+
+### `src/bun/freelance/session/ingest.ts`
+
+**Interfaces:**
+- `NewInboundMessage` (line 20)
+- `IngestResult` (line 26)
+
+**Functions:**
+- `threadUrl` (line 35)
+- `getSelfUserId` (line 39)
+- `ingestCaptures` (line 50)
+
+
+### `src/bun/freelance/session/normalizer.ts`
+
+**Interfaces:**
+- `CaptureRecord` (line 12)
+- `NormalizedThread` (line 17)
+- `NormalizedMessage` (line 31)
+- `NormalizedUser` (line 39)
+- `NormalizedSelf` (line 48)
+- `NormalizedProject` (line 53)
+
+**Functions:**
+- `asString` (line 59)
+- `toIntOrNull` (line 64)
+- `getResult` (line 69)
+- `parseThreads` (line 78)
+- `parseMessages` (line 108)
+- `parseUsers` (line 128)
+- `parseSelf` (line 150)
+- `parseProjects` (line 158)
+
+**Exports:**
+- `CaptureEndpoint` (line 10)
+
+
 ### `src/bun/freelance/settings.ts`
 
 **Interfaces:**
@@ -1359,9 +1625,9 @@
 - `FreelanceSettings` (line 11)
 
 **Functions:**
-- `getFreelanceSettings` (line 66)
-- `get` (line 74)
-- `saveFreelanceSetting` (line 97)
+- `getFreelanceSettings` (line 65)
+- `get` (line 73)
+- `saveFreelanceSetting` (line 96)
 
 
 ### `src/bun/index.ts`
@@ -2401,7 +2667,7 @@
 ### `src/bun/rpc-groups/features.ts`
 
 **Exports:**
-- `handlers` (line 10)
+- `handlers` (line 13)
 
 
 ### `src/bun/rpc-groups/git-analytics.ts`
@@ -2696,6 +2962,54 @@
 - `sendMessage` (line 405)
 - `regenerate` (line 450)
 - `stopChat` (line 493)
+
+
+### `src/bun/rpc/freelance-expert.ts`
+
+**Interfaces:**
+- `EarningsSummary` (line 28)
+
+**Functions:**
+- `getEscalations` (line 9)
+- `resolveEscalation` (line 13)
+- `getJobs` (line 18)
+- `getJobTimeline` (line 22)
+- `getEarningsSummary` (line 36)
+
+
+### `src/bun/rpc/freelance-inbox.ts`
+
+**Functions:**
+- `partitionFor` (line 30)
+- `isConnectedPlatform` (line 35)
+- `hasAuthCookie` (line 45)
+- `ingest` (line 57)
+- `clientNameForThread` (line 99)
+- `notifyNewInbound` (line 112)
+- `getAccount` (line 149)
+- `disconnect` (line 184)
+- `logSync` (line 201)
+- `getAutoEarnAvailable` (line 209)
+- `getAutoEarn` (line 214)
+- `saveAutoEarn` (line 218)
+- `setAutonomy` (line 224)
+- `getThreads` (line 242)
+- `getMessages` (line 294)
+
+
+### `src/bun/rpc/freelance-outbox.ts`
+
+**Functions:**
+- `rowToDto` (line 19)
+- `notifyUpdated` (line 33)
+- `list` (line 41)
+- `draftReply` (line 56)
+- `draftBid` (line 71)
+- `updateDraft` (line 79)
+- `reject` (line 87)
+- `approveSend` (line 98)
+- `markResult` (line 157)
+- `killSwitch` (line 179)
 
 
 ### `src/bun/rpc/freelance-wizard.ts`
@@ -3180,7 +3494,7 @@
 - `findBundleRoot` (line 38)
 - `portableDownloadUpdate` (line 52)
 - `portableApplyUpdate` (line 112)
-- `buildApplyScript` (line 198)
+- `buildApplyScript` (line 200)
 
 
 ### `src/bun/rpc/updater.ts`
@@ -3194,7 +3508,7 @@
 - `windowsDownloadSetup` (line 104)
 - `windowsApplySetup` (line 163)
 - `esc` (line 175)
-- `psLog` (line 227)
+- `psLog` (line 232)
 
 
 ### `src/bun/rpc/whatsapp.ts`

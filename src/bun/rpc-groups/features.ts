@@ -5,6 +5,9 @@ import * as activityRpc from "../rpc/activity";
 import * as freelanceRpc from "../rpc/freelance";
 import * as freelanceChatRpc from "../rpc/freelance-chat";
 import * as freelanceWizardRpc from "../rpc/freelance-wizard";
+import * as freelanceInboxRpc from "../rpc/freelance-inbox";
+import * as freelanceOutboxRpc from "../rpc/freelance-outbox";
+import * as freelanceExpertRpc from "../rpc/freelance-expert";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handlers: Record<string, (params: any) => any> = {
@@ -89,4 +92,27 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.shortlistListings": (params) => freelanceWizardRpc.shortlistListings(params),
 	"freelance.markListingDone": (params) => freelanceRpc.markListingDone(params),
 	"freelance.getCurrencyRates": () => freelanceRpc.getCurrencyRatesHandler(),
+	"freelance.inbox.ingest": (params) => freelanceInboxRpc.ingest(params),
+	"freelance.inbox.getAccount": (params) => freelanceInboxRpc.getAccount(params),
+	"freelance.inbox.getThreads": (params) => freelanceInboxRpc.getThreads(params),
+	"freelance.inbox.getMessages": (params) => freelanceInboxRpc.getMessages(params),
+	"freelance.inbox.logSync": (params) => freelanceInboxRpc.logSync(params),
+	"freelance.account.disconnect": (params) => freelanceInboxRpc.disconnect(params),
+	"freelance.account.setAutonomy": (params) => freelanceInboxRpc.setAutonomy(params),
+	"freelance.autoearn.isAvailable": () => freelanceInboxRpc.getAutoEarnAvailable(),
+	"freelance.autoearn.getSettings": () => freelanceInboxRpc.getAutoEarn(),
+	"freelance.autoearn.saveSettings": (params) => freelanceInboxRpc.saveAutoEarn(params),
+	"freelance.outbox.list": (params) => freelanceOutboxRpc.list(params),
+	"freelance.outbox.draftReply": (params) => freelanceOutboxRpc.draftReply(params),
+	"freelance.outbox.draftBid": (params) => freelanceOutboxRpc.draftBid(params),
+	"freelance.outbox.updateDraft": (params) => freelanceOutboxRpc.updateDraft(params),
+	"freelance.outbox.approveSend": (params) => freelanceOutboxRpc.approveSend(params),
+	"freelance.outbox.markResult": (params) => freelanceOutboxRpc.markResult(params),
+	"freelance.outbox.reject": (params) => freelanceOutboxRpc.reject(params),
+	"freelance.outbox.killSwitch": () => freelanceOutboxRpc.killSwitch(),
+	"freelance.expert.getEscalations": (params) => freelanceExpertRpc.getEscalations(params),
+	"freelance.expert.resolveEscalation": (params) => freelanceExpertRpc.resolveEscalation(params),
+	"freelance.expert.getJobs": (params) => freelanceExpertRpc.getJobs(params),
+	"freelance.expert.getJobTimeline": (params) => freelanceExpertRpc.getJobTimeline(params),
+	"freelance.expert.getEarnings": () => freelanceExpertRpc.getEarningsSummary(),
 };

@@ -28,7 +28,6 @@ export interface FreelanceSettings {
 
 const DEFAULT_RSS_SOURCES: RssSource[] = [
   { name: "Freelancer.com", url: "https://www.freelancer.com/rss.xml", enabled: true },
-  { name: "PeoplePerHour", url: "https://www.peopleperhour.com/feed/jobs", enabled: true },
 ];
 
 const DEFAULTS: FreelanceSettings = {

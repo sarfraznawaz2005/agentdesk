@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 160
-**Symbols:** 1370
+**Files:** 164
+**Symbols:** 1413
 
 ## Files
 
@@ -486,6 +486,29 @@
 - `formatDate` (line 180)
 
 
+### `src/mainview/components/freelance/auto-earn-settings.tsx`
+
+**Interfaces:**
+- `Props` (line 23)
+
+**Functions:**
+- `HelpIcon` (line 13)
+- `AutoEarnSettings` (line 28)
+- `patch` (line 29)
+- `num` (line 31)
+- `Field` (line 145)
+
+
+### `src/mainview/components/freelance/expert-dashboard.tsx`
+
+**Functions:**
+- `ExpertDashboard` (line 16)
+- `on` (line 31)
+- `openTimeline` (line 44)
+- `resolve` (line 49)
+- `Metric` (line 133)
+
+
 ### `src/mainview/components/freelance/find-workable-modal.tsx`
 
 **Interfaces:**
@@ -544,6 +567,32 @@
 - `code` (line 90)
 
 
+### `src/mainview/components/freelance/inbox-tab.tsx`
+
+**Types:**
+- `WebviewTagEl` (line 103)
+
+**Functions:**
+- `parseHostMessage` (line 112)
+- `navUrl` (line 128)
+- `hourInTz` (line 141)
+- `fmtTime` (line 153)
+- `InboxTab` (line 162)
+- `inject` (line 321)
+- `onNav` (line 331)
+- `onHostMessage` (line 340)
+- `onUpdated` (line 402)
+- `onOutbox` (line 407)
+- `onStatus` (line 408)
+- `withinActiveHours` (line 437)
+- `schedule` (line 443)
+- `tick` (line 486)
+- `selectThread` (line 513)
+- `syncNow` (line 522)
+- `setAutonomy` (line 530)
+- `disconnect` (line 534)
+
+
 ### `src/mainview/components/freelance/keyword-input.tsx`
 
 **Interfaces:**
@@ -560,28 +609,28 @@
 ### `src/mainview/components/freelance/listing-card.tsx`
 
 **Interfaces:**
-- `BudgetDisplay` (line 77)
+- `BudgetDisplay` (line 78)
 - `FreelanceListingCardProps` (line 341)
 
 **Functions:**
-- `convertAmount` (line 23)
-- `fmtNum` (line 38)
-- `relativeTime` (line 48)
-- `formatFullDate` (line 61)
-- `buildBudgetDisplay` (line 83)
+- `convertAmount` (line 24)
+- `fmtNum` (line 39)
+- `relativeTime` (line 49)
+- `formatFullDate` (line 62)
+- `buildBudgetDisplay` (line 84)
 - `getPlatformColor` (line 163)
 - `PlatformBadge` (line 170)
 - `SkillChips` (line 183)
 - `AnalysisModal` (line 246)
-- `FreelanceListingCard` (line 358)
-- `onActive` (line 392)
-- `onDone` (line 396)
-- `handleApprove` (line 430)
-- `handleShortlist` (line 439)
-- `handleMarkDone` (line 449)
-- `handleAnalyze` (line 459)
-- `handleDelete` (line 466)
-- `handleViewOnPlatform` (line 476)
+- `FreelanceListingCard` (line 359)
+- `onActive` (line 394)
+- `onDone` (line 398)
+- `handleApprove` (line 432)
+- `handleShortlist` (line 441)
+- `handleMarkDone` (line 451)
+- `handleAnalyze` (line 461)
+- `handleDelete` (line 468)
+- `handleViewOnPlatform` (line 478)
 
 **Methods:**
 - `code` (line 212)
@@ -595,28 +644,46 @@
 **Functions:**
 - `ListingSkeleton` (line 28)
 - `ListingsTab` (line 64)
-- `onScroll` (line 108)
-- `handler` (line 156)
-- `handler` (line 164)
-- `handleFetchNow` (line 187)
-- `handleDeleteAll` (line 260)
-- `handleFilterChange` (line 274)
-- `handleSearchChange` (line 279)
+- `loadAutoEarn` (line 96)
+- `onScroll` (line 120)
+- `handler` (line 168)
+- `handler` (line 176)
+- `handleFetchNow` (line 199)
+- `handleDeleteAll` (line 272)
+- `handleFilterChange` (line 286)
+- `handleSearchChange` (line 291)
+
+
+### `src/mainview/components/freelance/session-webview-host.ts`
+
+**Types:**
+- `SessionWebview` (line 22)
+
+**Functions:**
+- `runtimeAvailable` (line 35)
+- `getSessionWebview` (line 40)
+- `syncRect` (line 67)
+- `startSync` (line 82)
+- `loop` (line 84)
+- `stopSync` (line 91)
+- `attachSessionWebview` (line 97)
+- `detachSessionWebview` (line 112)
+- `setSessionWebviewVisible` (line 126)
 
 
 ### `src/mainview/components/freelance/settings-tab.tsx`
 
 **Interfaces:**
-- `RssSource` (line 33)
-- `ProviderItem` (line 39)
-- `SettingsState` (line 45)
+- `RssSource` (line 48)
+- `ProviderItem` (line 54)
+- `SettingsState` (line 60)
 
 **Functions:**
-- `CurrencyCombobox` (line 93)
-- `handle` (line 117)
-- `SettingsTab` (line 199)
-- `load` (line 213)
-- `formatLastRun` (line 318)
+- `CurrencyCombobox` (line 108)
+- `handle` (line 132)
+- `SettingsTab` (line 214)
+- `load` (line 232)
+- `formatLastRun` (line 348)
 
 
 ### `src/mainview/components/git/branch-list.tsx`
@@ -1716,8 +1783,8 @@
 ### `src/mainview/lib/rpc.ts`
 
 **Exports:**
-- `electroview` (line 304)
-- `rpc` (line 313)
+- `electroview` (line 328)
+- `rpc` (line 337)
 
 
 ### `src/mainview/lib/theme.ts`
@@ -1885,7 +1952,9 @@
 ### `src/mainview/pages/freelance.tsx`
 
 **Functions:**
-- `FreelancePage` (line 11)
+- `FreelancePage` (line 14)
+- `load` (line 24)
+- `onSettings` (line 29)
 
 
 ### `src/mainview/pages/inbox.tsx`

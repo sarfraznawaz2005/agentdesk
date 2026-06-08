@@ -1,8 +1,8 @@
 # Domain: shared
 
 **Directory:** `src/shared`
-**Files:** 31
-**Symbols:** 128
+**Files:** 33
+**Symbols:** 151
 
 ## Files
 
@@ -18,6 +18,36 @@
 **Exports:**
 - `CURRENCIES` (line 149)
 - `CURRENCY_MAP` (line 154)
+
+
+### `src/shared/freelance/platforms.ts`
+
+**Interfaces:**
+- `EndpointRule` (line 18)
+- `ComposerConfig` (line 25)
+- `PlatformDescriptor` (line 32)
+
+**Types:**
+- `PlatformId` (line 14)
+- `CaptureEndpoint` (line 16)
+
+**Functions:**
+- `getPlatform` (line 84)
+- `classifyEndpoint` (line 89)
+- `endpointPaths` (line 98)
+
+**Exports:**
+- `FREELANCER` (line 49)
+
+
+### `src/shared/freelance/write-steps.ts`
+
+**Interfaces:**
+- `WriteResult` (line 15)
+
+**Functions:**
+- `buildSendReplyScript` (line 31)
+- `buildSubmitBidScript` (line 75)
 
 
 ### `src/shared/rpc.ts`
@@ -86,10 +116,18 @@
 - `FreelanceListingDto` (line 10)
 - `WizardWorkableListing` (line 31)
 - `WizardFailedListing` (line 40)
+- `FreelanceAccountDto` (line 49)
+- `FreelanceInboxThreadDto` (line 58)
+- `FreelanceAutoEarnSettingsDto` (line 75)
+- `FreelanceOutboxItemDto` (line 88)
+- `FreelanceInboxMessageDto` (line 100)
+- `FreelanceEscalationDto` (line 112)
+- `FreelanceJobDto` (line 125)
+- `FreelanceEarningsDto` (line 142)
 
 **Types:**
 - `FreelanceListingStatus` (line 1)
-- `FreelanceRequests` (line 47)
+- `FreelanceRequests` (line 150)
 
 
 ### `src/shared/rpc/git.ts`
@@ -134,6 +172,9 @@
 - `FreelanceRequests` (line 77)
 - `FreelanceListingDto` (line 77)
 - `FreelanceChatMessageDto` (line 77)
+- `FreelanceAccountDto` (line 77)
+- `FreelanceInboxThreadDto` (line 77)
+- `FreelanceInboxMessageDto` (line 77)
 - `PlaygroundRequests` (line 77)
 - `PlaygroundPreviewDto` (line 77)
 - `IssueFixerRequests` (line 77)

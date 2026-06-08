@@ -231,9 +231,9 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 		// when their availableToPm flag is set (default 1, controlled per-agent
 		// in Settings → Agents). This lets users add custom agents they don't
 		// want the PM to orchestrate (e.g. chat-only assistants).
-		// playground-agent and issue-fixer are page-exclusive built-ins — never orchestrated by the PM.
+		// playground-agent, issue-fixer, freelance-expert are page-exclusive built-ins — never orchestrated by the PM.
 		const agentRows = allAgentRows.filter(
-			(a) => a.name !== "playground-agent" && a.name !== "issue-fixer" && (a.isBuiltin === 1 || a.availableToPm === 1),
+			(a) => a.name !== "playground-agent" && a.name !== "issue-fixer" && a.name !== "freelance-expert" && (a.isBuiltin === 1 || a.availableToPm === 1),
 		);
 
 		if (agentRows.length === 0) return { section: "", agentNames: [] };

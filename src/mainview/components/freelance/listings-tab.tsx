@@ -84,11 +84,21 @@ export function ListingsTab() {
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [preferredCurrency, setPreferredCurrency] = useState("USD");
   const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
+  const [autoEarnEnabled, setAutoEarnEnabled] = useState(false);
 
   useEffect(() => {
     rpc.getSetting("timezone", "general").then((val) => {
       if (val) setTimezone(val as string);
     }).catch(() => {});
+
+    // Whether Auto-Earn is on — gates the "Draft Proposal" button (which feeds
+    // the Auto-Earn outbox/Inbox). Re-checked when settings change.
+    const loadAutoEarn = () =>
+      Promise.all([rpc.freelanceAutoEarnAvailable(), rpc.freelanceGetAutoEarnSettings()])
+        .then(([avail, s]) => setAutoEarnEnabled(avail.available && s.enabled))
+        .catch(() => {});
+    loadAutoEarn();
+    window.addEventListener("agentdesk:settings-changed", loadAutoEarn);
 
     // Load preferred currency setting + exchange rates in parallel
     Promise.all([
@@ -100,6 +110,8 @@ export function ListingsTab() {
         setCurrencyRates(ratesResult.rates);
       }
     }).catch(() => {});
+
+    return () => window.removeEventListener("agentdesk:settings-changed", loadAutoEarn);
   }, []);
 
   useEffect(() => {
@@ -427,6 +439,7 @@ export function ListingsTab() {
               timezone={timezone}
               preferredCurrency={preferredCurrency}
               currencyRates={currencyRates}
+              autoEarnEnabled={autoEarnEnabled}
             />
           ))}
         </div>

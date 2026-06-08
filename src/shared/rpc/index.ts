@@ -19,7 +19,7 @@ import type { DashboardRequests } from "./dashboard";
 import type { SkillsRequests } from "./skills";
 import type { CouncilRequests } from "./council";
 import type { UpdaterRequests } from "./updater";
-import type { FreelanceRequests, FreelanceListingDto, FreelanceChatMessageDto } from "./freelance";
+import type { FreelanceRequests, FreelanceListingDto, FreelanceChatMessageDto, FreelanceAccountDto, FreelanceInboxThreadDto, FreelanceInboxMessageDto } from "./freelance";
 import type { PlaygroundRequests, PlaygroundPreviewDto } from "./playground";
 import type { IssueFixerRequests, IssueFixerConfigDto, IssueFixRunDto } from "./issue-fixer";
 import type {
@@ -98,6 +98,9 @@ export type {
   FreelanceRequests,
   FreelanceListingDto,
   FreelanceChatMessageDto,
+  FreelanceAccountDto,
+  FreelanceInboxThreadDto,
+  FreelanceInboxMessageDto,
   PlaygroundRequests,
   PlaygroundPreviewDto,
   IssueFixerRequests,

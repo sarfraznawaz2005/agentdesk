@@ -245,7 +245,26 @@ src/
 `external_issues` (unified multi-source issue store: GitHub/Jira/Linear/GitLab/Trello/Kanboard) ·
 `branch_strategies` · `cost_budgets` · `audit_log` ·
 `issue_fixer_config` · `issue_fix_runs` · `project_activity` ·
-`remote_sync_config` · `remote_sync_items` · `remote_sync_runs`
+`remote_sync_config` · `remote_sync_items` · `remote_sync_runs` ·
+`freelance_listings` · `freelance_chat_messages` ·
+`freelance_accounts` · `freelance_inbox_threads` · `freelance_inbox_messages` ·
+`freelance_inbox_users` · `freelance_outbox` · `freelance_action_log` (Auto-Earn)
+
+> **Auto-Earn (Freelance):** opt-in (gated by `freelance_autoearn_enabled`, default
+> off) extension that reads the platform inbox in-app and drafts/sends replies + bids
+> WITHOUT being flagged as a bot. Substrate: an `<electrobun-webview partition="persist:freelance-<platform>">`
+> embedded in the Freelance page (one persistent real session; never fingerprint-spoofed).
+> READ = a fetch/XHR/WebSocket interceptor (injected via `executeJavascript`) tees the
+> platform's OWN messaging JSON → `__electrobunSendToHost` → `freelance.inbox.ingest` →
+> normalize/correlate → DB. WRITE = human-paced typing into the real composer (never a
+> direct API call). Every send passes the **Behavior Governor** (`freelance/session/governor.ts`):
+> min-gap, hourly caps (stricter for bids), active-hours, audit in `freelance_action_log`.
+> Autonomy is per-account: **Assisted** (AI drafts → user edits → user clicks Send) or
+> **Full-auto** (opt-in behind a risk ack). Platform specifics live in one descriptor
+> (`src/shared/freelance/platforms.ts`); Freelancer.com only (PeoplePerHour was removed — may return later).
+> Key files: `src/bun/freelance/{session/{governor,humanize,ingest,normalizer},reply-pipeline,bid-pipeline,auto-earn-settings}.ts`,
+> `src/bun/rpc/{freelance-inbox,freelance-outbox}.ts`, `src/mainview/components/freelance/{inbox-tab,auto-earn-settings}.tsx`.
+> Plan: `auto-earn-plan.md`.
 
 **Raw SQL migrations** (created by migration files, not in schema.ts):
 

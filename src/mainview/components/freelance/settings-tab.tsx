@@ -23,6 +23,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { KeywordInput } from "./keyword-input";
+import { AutoEarnSettings } from "./auto-earn-settings";
+import type { FreelanceAutoEarnSettingsDto } from "../../../shared/rpc/freelance";
+
+const AUTO_EARN_DEFAULTS: FreelanceAutoEarnSettingsDto = {
+  enabled: false,
+  autonomyMode: "assisted",
+  pollMin: 180,
+  pollMax: 480,
+  activeHours: { start: 9, end: 22 },
+  maxSendsPerHour: 1,
+  minGapSeconds: 90,
+  fullautoAck: false,
+  notifyDesktop: true,
+  notifyChannels: false,
+};
 import { CURRENCIES } from "../../../shared/freelance-currencies";
 import { cn } from "@/lib/utils";
 
@@ -204,6 +219,10 @@ export function SettingsTab() {
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
   const [autoShortlistLastRun, setAutoShortlistLastRun] = useState<string | null>(null);
   const [autoShortlistLastCount, setAutoShortlistLastCount] = useState(0);
+  const [autoEarn, setAutoEarn] = useState<FreelanceAutoEarnSettingsDto>(AUTO_EARN_DEFAULTS);
+  // Auto-Earn is gated by the `autoearn` flag file next to the exe — the whole
+  // section only appears when that file is present.
+  const [autoEarnAvailable, setAutoEarnAvailable] = useState(false);
 
   // ---- Load on mount -------------------------------------------------------
 
@@ -212,11 +231,15 @@ export function SettingsTab() {
 
     async function load() {
       try {
-        const [result, providerList] = await Promise.all([
+        const [result, providerList, autoEarnResult, autoEarnAvail] = await Promise.all([
           rpc.freelanceGetSettings(),
           rpc.getProviders(),
+          rpc.freelanceGetAutoEarnSettings(),
+          rpc.freelanceAutoEarnAvailable(),
         ]);
         if (cancelled) return;
+        setAutoEarn(autoEarnResult);
+        setAutoEarnAvailable(autoEarnAvail.available);
         setSettings({
           rssSources: result.rssSources,
           keywords: result.keywords,
@@ -305,13 +328,20 @@ export function SettingsTab() {
         additionalNotes: settings.additionalNotes,
         preferredCurrency: settings.preferredCurrency,
       });
+      await rpc.freelanceSaveAutoEarnSettings(autoEarn);
+      // Let the Freelance page re-evaluate whether to show the Inbox tab.
+      window.dispatchEvent(
+        new CustomEvent("agentdesk:settings-changed", {
+          detail: { key: "freelance_autoearn_enabled", value: autoEarn.enabled },
+        }),
+      );
       toast("success", "Freelance settings saved.");
     } catch {
       toast("error", "Failed to save freelance settings. Please try again.");
     } finally {
       setSaving(false);
     }
-  }, [settings]);
+  }, [settings, autoEarn]);
 
   // ---- Helpers -------------------------------------------------------------
 
@@ -701,7 +731,17 @@ export function SettingsTab() {
         </CardContent>
       </Card>
 
-      {/* ---- Footer actions ------------------------------------------------- */}
+      {/* ---- Auto-Earn section (gated by the `autoearn` flag file) ---------- */}
+      {autoEarnAvailable && (
+        <Card>
+          <CardContent className="pt-6">
+            <AutoEarnSettings value={autoEarn} onChange={setAutoEarn} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ---- Footer actions (bottom of everything) ------------------------- */}
+      {/* This single Save persists ALL freelance settings AND the Auto-Earn options above. */}
       <div className="flex items-center justify-end">
         <Button
           type="button"

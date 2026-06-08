@@ -270,6 +270,16 @@ export type WebviewSchema = RPCSchema<{
       errors?: number;
     };
 
+    // Auto-Earn inbox (read-only v1)
+    "freelance.inbox.updated": { threads: number; messages: number };
+    "freelance.inbox.newMessage": { threadId: string; messageId: string };
+    "freelance.outbox.updated": { count?: number };
+    "freelance.governor.blocked": { platform: string; reason: string; retryAfterMs: number | null };
+    "freelance.account.statusChanged": { platform: string; status: string };
+    "freelance.escalation.created": { id: string; severity: string; reason: string };
+    "freelance.escalation.resolved": { id: string };
+    "freelance.job.updated": { jobId?: string };
+
     // Freelance chat streaming
     "freelance.chat.fetching": { listingId: string };
     "freelance.chat.fetch_done": { listingId: string };

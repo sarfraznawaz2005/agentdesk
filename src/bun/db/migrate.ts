@@ -34,6 +34,11 @@ import * as v31 from "./migrations/v31_issue-fixer-notify-enabled";
 import * as v32 from "./migrations/v32_custom-env-vars";
 import * as v33 from "./migrations/v33_external-issues";
 import * as v34 from "./migrations/v34_external-issues-due-date";
+import * as v35 from "./migrations/v35_freelance-auto-earn-inbox";
+import * as v36 from "./migrations/v36_freelance-auto-earn-outbox";
+import * as v37 from "./migrations/v37_freelance-remove-peopleperhour";
+import * as v38 from "./migrations/v38_freelance-expert-pipeline";
+import * as v39 from "./migrations/v39_freelance-job-facts";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -92,6 +97,11 @@ const migrations: Migration[] = [
 	{ version: 32, name: v32.name, run: v32.run },
 	{ version: 33, name: v33.name, run: v33.run },
 	{ version: 34, name: v34.name, run: v34.run },
+	{ version: 35, name: v35.name, run: v35.run },
+	{ version: 36, name: v36.name, run: v36.run },
+	{ version: 37, name: v37.name, run: v37.run },
+	{ version: 38, name: v38.name, run: v38.run },
+	{ version: 39, name: v39.name, run: v39.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -204,6 +214,34 @@ function ensureRuntimeSchema(): void {
 		v34.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: external-issues due_date column failed:", err);
+	}
+
+	// Defensive: ensure the Auto-Earn inbox tables exist (v35 is CREATE TABLE IF NOT EXISTS).
+	try {
+		v35.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance auto-earn inbox tables failed:", err);
+	}
+
+	// Defensive: ensure outbox/action_log tables + autonomy/correlation columns exist (v36 is idempotent).
+	try {
+		v36.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance auto-earn outbox tables failed:", err);
+	}
+
+	// Defensive: ensure the freelance-expert pipeline tables exist (v38 is CREATE TABLE IF NOT EXISTS).
+	try {
+		v38.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance-expert pipeline tables failed:", err);
+	}
+
+	// Defensive: ensure the freelance_job_facts table exists (v39 is CREATE TABLE IF NOT EXISTS).
+	try {
+		v39.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance job-facts table failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

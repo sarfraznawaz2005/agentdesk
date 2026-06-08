@@ -8,6 +8,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { rpc } from "@/lib/rpc";
+import { toast } from "@/components/ui/toast";
 import { FreelanceChatModal } from "./freelance-chat-modal";
 import type { FreelanceListingDto } from "../../../shared/rpc/freelance";
 import { getCurrencySymbol } from "../../../shared/freelance-currencies";
@@ -146,7 +147,6 @@ const TEXT = "text-foreground";
 
 const PLATFORM_COLORS: Record<string, { bg: string; border: string }> = {
   "freelancer.com": { bg: "bg-green-100  dark:bg-green-500/20",  border: "border-green-200  dark:border-green-500/30"  },
-  "peopleperhour":  { bg: "bg-orange-100 dark:bg-orange-500/20", border: "border-orange-200 dark:border-orange-500/30" },
   "upwork":         { bg: "bg-teal-100   dark:bg-teal-500/20",   border: "border-teal-200   dark:border-teal-500/30"   },
   "guru":           { bg: "bg-violet-100 dark:bg-violet-500/20", border: "border-violet-200 dark:border-violet-500/30" },
   "toptal":         { bg: "bg-cyan-100   dark:bg-cyan-500/20",   border: "border-cyan-200   dark:border-cyan-500/30"   },
@@ -351,6 +351,7 @@ export interface FreelanceListingCardProps {
   timezone?: string;
   preferredCurrency?: string;
   currencyRates?: Record<string, number>;
+  autoEarnEnabled?: boolean;
 }
 
 const DESCRIPTION_TRUNCATE_LENGTH = 200;
@@ -368,6 +369,7 @@ export function FreelanceListingCard({
   timezone = "UTC",
   preferredCurrency = "USD",
   currencyRates = {},
+  autoEarnEnabled = false,
 }: FreelanceListingCardProps) {
   const [isApproving, setIsApproving] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
@@ -640,6 +642,26 @@ export function FreelanceListingCard({
           >
             {isApproving && <Loader2 className="size-3.5 animate-spin" />}
             {isApproving ? "Approving…" : "Approve"}
+          </Button>
+        )}
+
+        {/* Draft Proposal (bid) — Auto-Earn only: queue an AI proposal to review in Inbox → Drafts */}
+        {autoEarnEnabled && (isNew || isShortlisted) && !isClosed && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                await rpc.freelanceOutboxDraftBid(listing.id);
+                toast("success", "Proposal drafted — review it in Inbox → Drafts.");
+              } catch (err) {
+                toast("error", `Draft failed: ${String((err as Error)?.message ?? err)}`);
+              }
+            }}
+            className="gap-1.5"
+            aria-label="Draft Proposal for listing"
+          >
+            Draft Proposal
           </Button>
         )}
 

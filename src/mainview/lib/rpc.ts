@@ -255,6 +255,30 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       "freelance.listingsUpdated": (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:freelance-listings-updated", { detail: payload }));
       },
+      "freelance.inbox.updated": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-inbox-updated", { detail: payload }));
+      },
+      "freelance.inbox.newMessage": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-inbox-new-message", { detail: payload }));
+      },
+      "freelance.outbox.updated": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-outbox-updated", { detail: payload }));
+      },
+      "freelance.governor.blocked": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-governor-blocked", { detail: payload }));
+      },
+      "freelance.account.statusChanged": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-account-status-changed", { detail: payload }));
+      },
+      "freelance.escalation.created": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-escalation-created", { detail: payload }));
+      },
+      "freelance.escalation.resolved": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-escalation-resolved", { detail: payload }));
+      },
+      "freelance.job.updated": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:freelance-job-updated", { detail: payload }));
+      },
       "freelance.chat.fetching": (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-fetching", { detail: payload }));
       },
@@ -1457,4 +1481,76 @@ export const rpc = {
   /** Fetch cached USD-based currency rates (fetches from network if stale). */
   freelanceGetCurrencyRates: () =>
     electroviewRpc.request["freelance.getCurrencyRates"]({}),
+
+  // ---- Auto-Earn inbox (read-only v1) --------------------------------------
+
+  /** Forward intercepted platform JSON to be normalized + stored. */
+  freelanceInboxIngest: (records: Array<{ url: string; body: string }>, platform?: string) =>
+    electroviewRpc.request["freelance.inbox.ingest"]({ records, platform }),
+
+  /** Connection status + identity of the connected freelance account. */
+  freelanceInboxGetAccount: (platform?: string) =>
+    electroviewRpc.request["freelance.inbox.getAccount"]({ platform }),
+
+  /** List normalized inbox threads (optionally filtered by search). */
+  freelanceInboxGetThreads: (search?: string, platform?: string) =>
+    electroviewRpc.request["freelance.inbox.getThreads"]({ search, platform }),
+
+  /** Fetch normalized messages for a thread. */
+  freelanceInboxGetMessages: (threadId: string, platform?: string) =>
+    electroviewRpc.request["freelance.inbox.getMessages"]({ threadId, platform }),
+
+  /** Log an inbox sync (auto/manual) to the governor audit trail. */
+  freelanceLogInboxSync: (source?: string, platform?: string) =>
+    electroviewRpc.request["freelance.inbox.logSync"]({ source, platform }),
+
+  /** Clear the partition session (cookies/storage) for a platform. */
+  freelanceAccountDisconnect: (platform?: string) =>
+    electroviewRpc.request["freelance.account.disconnect"]({ platform }),
+
+  /** Set per-account autonomy mode (assisted or full_auto). */
+  freelanceAccountSetAutonomy: (mode: "assisted" | "full_auto", platform?: string) =>
+    electroviewRpc.request["freelance.account.setAutonomy"]({ mode, platform }),
+
+  /** Whether the Auto-Earn feature is available (gated by the `autoearn` flag file). */
+  freelanceAutoEarnAvailable: () =>
+    electroviewRpc.request["freelance.autoearn.isAvailable"]({}),
+
+  /** Fetch Auto-Earn settings (master switch, governor knobs). */
+  freelanceGetAutoEarnSettings: () =>
+    electroviewRpc.request["freelance.autoearn.getSettings"]({}),
+
+  /** Persist Auto-Earn settings. */
+  freelanceSaveAutoEarnSettings: (params: import("../../shared/rpc/freelance").FreelanceAutoEarnSettingsDto) =>
+    electroviewRpc.request["freelance.autoearn.saveSettings"](params),
+
+  // ---- Auto-Earn outbox (approval queue) -----------------------------------
+  freelanceOutboxList: (status?: string) =>
+    electroviewRpc.request["freelance.outbox.list"]({ status }),
+  freelanceOutboxDraftReply: (threadId: string, platform?: string) =>
+    electroviewRpc.request["freelance.outbox.draftReply"]({ threadId, platform }),
+  freelanceOutboxDraftBid: (listingId: string, platform?: string) =>
+    electroviewRpc.request["freelance.outbox.draftBid"]({ listingId, platform }),
+  freelanceOutboxUpdateDraft: (id: string, body: string) =>
+    electroviewRpc.request["freelance.outbox.updateDraft"]({ id, body }),
+  freelanceOutboxApproveSend: (id: string) =>
+    electroviewRpc.request["freelance.outbox.approveSend"]({ id }),
+  freelanceOutboxMarkResult: (id: string, ok: boolean, error?: string) =>
+    electroviewRpc.request["freelance.outbox.markResult"]({ id, ok, error }),
+  freelanceOutboxReject: (id: string) =>
+    electroviewRpc.request["freelance.outbox.reject"]({ id }),
+  freelanceOutboxKillSwitch: () =>
+    electroviewRpc.request["freelance.outbox.killSwitch"]({}),
+
+  // ---- Auto-Earn freelance-expert (jobs / escalations / earnings) ----------
+  freelanceGetEscalations: (status?: "open" | "resolved" | "all") =>
+    electroviewRpc.request["freelance.expert.getEscalations"]({ status }),
+  freelanceResolveEscalation: (id: string) =>
+    electroviewRpc.request["freelance.expert.resolveEscalation"]({ id }),
+  freelanceGetJobs: (state?: string) =>
+    electroviewRpc.request["freelance.expert.getJobs"]({ state }),
+  freelanceGetJobTimeline: (jobId: string) =>
+    electroviewRpc.request["freelance.expert.getJobTimeline"]({ jobId }),
+  freelanceGetEarnings: () =>
+    electroviewRpc.request["freelance.expert.getEarnings"]({}),
 } as const;

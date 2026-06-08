@@ -444,7 +444,7 @@ export function IssueFixerSettingsTab({
 						/>
 					</Row>
 					<Separator />
-					<Row label="Notify on completion" description="Send run results to all connected channels (Discord, email, etc.) on success and failure.">
+					<Row label="Notify on channels" description="Send run results to all connected channels (Discord, email, etc.) on success and failure.">
 						<Switch checked={form.notifyEnabled} onCheckedChange={(v) => update("notifyEnabled", v)} />
 					</Row>
 				</CardContent>

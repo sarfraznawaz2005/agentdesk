@@ -254,13 +254,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1363,
+      "line": 1393,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1608,
+      "line": 1646,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -1214,7 +1214,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 260,
+      "line": 272,
       "symbol": "handleDeleteAll",
       "type": "function"
     },
@@ -1505,6 +1505,36 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/migrations/v35_freelance-auto-earn-inbox.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v36_freelance-auto-earn-outbox.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v37_freelance-remove-peopleperhour.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v38_freelance-expert-pipeline.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v39_freelance-job-facts.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
       "file": "src/bun/db/migrations/v4_inline-agents.ts",
       "line": 3,
       "symbol": "name",
@@ -1544,6 +1574,12 @@
       "file": "src/bun/engine-manager.ts",
       "line": 56,
       "symbol": "abortAgentByName",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 99,
+      "symbol": "clientNameForThread",
       "type": "function"
     },
     {
@@ -2180,7 +2216,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1363,
+      "line": 1393,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -2245,20 +2281,122 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 52,
+      "symbol": "getAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 55,
+      "symbol": "get",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 38,
+      "symbol": "getAccountAutonomy",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/currency-exchange.ts",
       "line": 128,
       "symbol": "getCurrencyRates",
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 64,
+      "symbol": "getJobById",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 71,
+      "symbol": "getJobByThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 180,
+      "symbol": "getJobLog",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 62,
+      "symbol": "getPersona",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 90,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 97,
+      "symbol": "getListingFullDescription",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 264,
+      "symbol": "getJobByThread",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 84,
+      "symbol": "getCredential",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 102,
+      "symbol": "getCredentialsForJob",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 109,
+      "symbol": "getAccountAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 51,
+      "symbol": "getGlobalTimezone",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 65,
+      "symbol": "getGovernorSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 39,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 69,
+      "symbol": "getResult",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/settings.ts",
-      "line": 66,
+      "line": 65,
       "symbol": "getFreelanceSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 74,
+      "line": 73,
       "symbol": "get",
       "type": "function"
     },
@@ -2715,6 +2853,60 @@
     {
       "file": "src/bun/rpc/freelance-chat.ts",
       "line": 243,
+      "symbol": "getMessages",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 9,
+      "symbol": "getEscalations",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 18,
+      "symbol": "getJobs",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 22,
+      "symbol": "getJobTimeline",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 36,
+      "symbol": "getEarningsSummary",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 149,
+      "symbol": "getAccount",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 209,
+      "symbol": "getAutoEarnAvailable",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 214,
+      "symbol": "getAutoEarn",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 242,
+      "symbol": "getThreads",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 294,
       "symbol": "getMessages",
       "type": "function"
     },
@@ -3295,6 +3487,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 40,
+      "symbol": "getSessionWebview",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/notes/notes-tab.tsx",
       "line": 129,
       "symbol": "getItemKey",
@@ -3376,6 +3574,12 @@
       "file": "src/shared/freelance-currencies.ts",
       "line": 164,
       "symbol": "getCurrencyLabel",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 84,
+      "symbol": "getPlatform",
       "type": "function"
     },
     {
@@ -3527,6 +3731,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 158,
+      "symbol": "openEscalationCount",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/inbox.ts",
       "line": 59,
       "symbol": "getUnreadCount",
@@ -3624,7 +3834,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 719,
+      "line": 892,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -3769,6 +3979,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 144,
+      "symbol": "setJobState",
+      "type": "function"
+    },
+    {
       "file": "src/bun/index.ts",
       "line": 375,
       "symbol": "setWindowTitlebarIcon",
@@ -3835,6 +4051,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 224,
+      "symbol": "setAutonomy",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/health.ts",
       "line": 55,
       "symbol": "setSchedulerRunning",
@@ -3862,6 +4084,18 @@
       "file": "src/bun/scheduler/task-executor.ts",
       "line": 26,
       "symbol": "setTaskExecutorEngine",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 530,
+      "symbol": "setAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 126,
+      "symbol": "setSessionWebviewVisible",
       "type": "function"
     },
     {
@@ -4150,6 +4384,12 @@
       "file": "src/mainview/components/dashboard/project-card.tsx",
       "line": 65,
       "symbol": "toStatus",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 408,
+      "symbol": "onStatus",
       "type": "function"
     },
     {
@@ -4985,6 +5225,42 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 103,
+      "symbol": "WebviewTagEl",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 22,
+      "symbol": "SessionWebview",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 40,
+      "symbol": "getSessionWebview",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 97,
+      "symbol": "attachSessionWebview",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 112,
+      "symbol": "detachSessionWebview",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 126,
+      "symbol": "setSessionWebviewVisible",
+      "type": "function"
+    },
+    {
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "WebviewSchema",
@@ -5078,6 +5354,24 @@
       "file": "src/bun/db/schema.ts",
       "line": 366,
       "symbol": "inboxRules",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 730,
+      "symbol": "freelanceInboxThreads",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 753,
+      "symbol": "freelanceInboxMessages",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 764,
+      "symbol": "freelanceInboxUsers",
       "type": "export"
     },
     {
@@ -5183,6 +5477,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 162,
+      "symbol": "InboxTab",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/inbox/inbox-rules-editor.tsx",
       "line": 23,
       "symbol": "InboxRule",
@@ -5213,6 +5513,18 @@
       "type": "function"
     },
     {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 100,
+      "symbol": "FreelanceInboxMessageDto",
+      "type": "interface"
+    },
+    {
       "file": "src/shared/rpc/inbox.ts",
       "line": 1,
       "symbol": "InboxRequests",
@@ -5222,6 +5534,18 @@
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "InboxRequests",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxMessageDto",
       "type": "export"
     }
   ],
@@ -5284,6 +5608,30 @@
       "file": "src/bun/engine-manager.ts",
       "line": 388,
       "symbol": "resolveUserQuestion",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 116,
+      "symbol": "resolveEscalation",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 45,
+      "symbol": "resolveProviderConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
       "type": "function"
     },
     {
@@ -5377,6 +5725,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 13,
+      "symbol": "resolveEscalation",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/github-api.ts",
       "line": 94,
       "symbol": "resolveGitHubToken",
@@ -5411,6 +5765,12 @@
       "line": 117,
       "symbol": "resolveContent",
       "type": "method"
+    },
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 49,
+      "symbol": "resolve",
+      "type": "function"
     },
     {
       "file": "src/mainview/components/git/conflict-resolver.tsx",
@@ -5922,13 +6282,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 156,
+      "line": 168,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 164,
+      "line": 176,
       "symbol": "handler",
       "type": "function"
     },
@@ -6053,6 +6413,24 @@
       "line": 404,
       "symbol": "askUserQuestion",
       "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 90,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 39,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 39,
+      "symbol": "NormalizedUser",
+      "type": "interface"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -6244,6 +6622,12 @@
       "file": "src/bun/engine-manager.ts",
       "line": 433,
       "symbol": "getOrCreateEngine",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/project-bootstrap.ts",
+      "line": 30,
+      "symbol": "createProjectFromListing",
       "type": "function"
     },
     {
@@ -6633,6 +7017,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 12,
+      "symbol": "JobState",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 144,
+      "symbol": "setJobState",
+      "type": "function"
+    },
+    {
       "file": "src/bun/index.ts",
       "line": 42,
       "symbol": "WindowState",
@@ -6706,7 +7102,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 45,
+      "line": 60,
       "symbol": "SettingsState",
       "type": "interface"
     },
@@ -7539,6 +7935,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 53,
+      "symbol": "loadThreadContext",
+      "type": "function"
+    },
+    {
       "file": "src/bun/index.ts",
       "line": 56,
       "symbol": "loadWindowState",
@@ -7611,8 +8013,14 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/listings-tab.tsx",
+      "line": 96,
+      "symbol": "loadAutoEarn",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 213,
+      "line": 232,
       "symbol": "load",
       "type": "function"
     },
@@ -7631,6 +8039,12 @@
     {
       "file": "src/mainview/components/scheduler/automation-templates.tsx",
       "line": 153,
+      "symbol": "load",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/freelance.tsx",
+      "line": 24,
       "symbol": "load",
       "type": "function"
     },
@@ -7709,14 +8123,32 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 78,
+      "symbol": "saveAutoEarnSetting",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 90,
+      "symbol": "saveAutoEarnSettings",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/currency-exchange.ts",
       "line": 51,
       "symbol": "saveToDb",
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 196,
+      "symbol": "saveJobFact",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/settings.ts",
-      "line": 97,
+      "line": 96,
       "symbol": "saveFreelanceSetting",
       "type": "function"
     },
@@ -7772,6 +8204,12 @@
       "file": "src/bun/rpc/email.ts",
       "line": 9,
       "symbol": "saveEmailConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 218,
+      "symbol": "saveAutoEarn",
       "type": "function"
     },
     {
@@ -8044,7 +8482,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 476,
+      "line": 478,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -8084,6 +8522,18 @@
       "file": "src/bun/agents/tools/screenshot.ts",
       "line": 112,
       "symbol": "getDevServerUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 50,
+      "symbol": "authUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 35,
+      "symbol": "threadUrl",
       "type": "function"
     },
     {
@@ -8153,6 +8603,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 128,
+      "symbol": "navUrl",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/onboarding.tsx",
       "line": 84,
       "symbol": "isValidUrl",
@@ -8191,10 +8647,94 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 718,
+      "symbol": "freelanceAccounts",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 730,
+      "symbol": "freelanceInboxThreads",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 753,
+      "symbol": "freelanceInboxMessages",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 764,
+      "symbol": "freelanceInboxUsers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 777,
+      "symbol": "freelanceOutbox",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 795,
+      "symbol": "freelanceActionLog",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 810,
+      "symbol": "freelanceJobs",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 833,
+      "symbol": "freelanceCredentials",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 848,
+      "symbol": "freelanceJobLog",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 861,
+      "symbol": "freelanceJobFacts",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 870,
+      "symbol": "freelanceEscalations",
+      "type": "export"
+    },
+    {
       "file": "src/bun/freelance/events.ts",
       "line": 4,
       "symbol": "FREELANCE_EVENTS",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 22,
+      "symbol": "FreelanceJob",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 128,
+      "symbol": "runFreelanceExpert",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 95,
+      "symbol": "buildFreelanceExpertTools",
+      "type": "function"
     },
     {
       "file": "src/bun/freelance/feature-flag.ts",
@@ -8228,13 +8768,13 @@
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 66,
+      "line": 65,
       "symbol": "getFreelanceSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 97,
+      "line": 96,
       "symbol": "saveFreelanceSetting",
       "type": "function"
     },
@@ -8270,13 +8810,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 358,
+      "line": 359,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 11,
+      "line": 14,
       "symbol": "FreelancePage",
       "type": "function"
     },
@@ -8300,7 +8840,55 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 47,
+      "line": 49,
+      "symbol": "FreelanceAccountDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 75,
+      "symbol": "FreelanceAutoEarnSettingsDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 88,
+      "symbol": "FreelanceOutboxItemDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 100,
+      "symbol": "FreelanceInboxMessageDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 112,
+      "symbol": "FreelanceEscalationDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 125,
+      "symbol": "FreelanceJobDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 142,
+      "symbol": "FreelanceEarningsDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 150,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -8320,6 +8908,24 @@
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "FreelanceChatMessageDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceAccountDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxMessageDto",
       "type": "export"
     }
   ],
@@ -8358,6 +8964,12 @@
       "file": "src/bun/claude/feature-flag.ts",
       "line": 4,
       "symbol": "isClaudeSubscriptionEnabled",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 111,
+      "symbol": "isAutoEarnEnabled",
       "type": "function"
     },
     {
@@ -8420,6 +9032,12 @@
       "file": "src/bun/index.ts",
       "line": 315,
       "symbol": "attachWindowListeners",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 97,
+      "symbol": "attachSessionWebview",
       "type": "function"
     }
   ],
@@ -8487,6 +9105,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 13,
+      "symbol": "HelpIcon",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/layout/sidebar.tsx",
       "line": 119,
       "symbol": "resolveIcon",
@@ -8513,8 +9137,14 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 78,
+      "symbol": "saveAutoEarnSetting",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/settings.ts",
-      "line": 97,
+      "line": 96,
       "symbol": "saveFreelanceSetting",
       "type": "function"
     },
@@ -8678,13 +9308,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 274,
+      "line": 286,
       "symbol": "handleFilterChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 279,
+      "line": 291,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -9136,7 +9766,7 @@
     },
     {
       "file": "src/mainview/lib/rpc.ts",
-      "line": 313,
+      "line": 337,
       "symbol": "rpc",
       "type": "export"
     },
@@ -9441,6 +10071,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 39,
+      "symbol": "CredentialSummary",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/rpc/analytics.ts",
       "line": 55,
       "symbol": "getAnalyticsSummary",
@@ -9451,6 +10087,18 @@
       "line": 56,
       "symbol": "SummaryRow",
       "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 28,
+      "symbol": "EarningsSummary",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 36,
+      "symbol": "getEarningsSummary",
+      "type": "function"
     },
     {
       "file": "src/mainview/pages/skills.tsx",
@@ -9500,6 +10148,12 @@
       "file": "src/bun/playground/paths.ts",
       "line": 50,
       "symbol": "hasPlaygroundFiles",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 45,
+      "symbol": "hasAuthCookie",
       "type": "function"
     },
     {
@@ -10061,9 +10715,21 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 184,
+      "symbol": "disconnect",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/mcp.ts",
       "line": 57,
       "symbol": "disconnectMcpServerRpc",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 534,
+      "symbol": "disconnect",
       "type": "function"
     },
     {
@@ -10123,6 +10789,30 @@
       "type": "method"
     },
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 127,
+      "symbol": "secondsSinceLastSend",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 158,
+      "symbol": "SendDecision",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 169,
+      "symbol": "evaluateSend",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 202,
+      "symbol": "gateSend",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/jsonrpc.ts",
       "line": 49,
       "symbol": "sendRequest",
@@ -10171,6 +10861,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 98,
+      "symbol": "approveSend",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/playground.ts",
       "line": 28,
       "symbol": "playgroundSend",
@@ -10186,6 +10882,12 @@
       "file": "src/mainview/pages/council.tsx",
       "line": 783,
       "symbol": "handleSend",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 31,
+      "symbol": "buildSendReplyScript",
       "type": "function"
     },
     {
@@ -10327,6 +11029,18 @@
       "line": 653,
       "symbol": "messageParts",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 20,
+      "symbol": "NewInboundMessage",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 31,
+      "symbol": "NormalizedMessage",
+      "type": "interface"
     },
     {
       "file": "src/bun/issue-fixer/notify.ts",
@@ -10575,6 +11289,18 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 112,
+      "symbol": "parseHostMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 340,
+      "symbol": "onHostMessage",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/scheduler/automation-rule-form.tsx",
       "line": 70,
       "symbol": "SendChannelMessageConfig",
@@ -10683,9 +11409,21 @@
       "type": "interface"
     },
     {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 100,
+      "symbol": "FreelanceInboxMessageDto",
+      "type": "interface"
+    },
+    {
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "FreelanceChatMessageDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxMessageDto",
       "type": "export"
     },
     {
@@ -10960,9 +11698,21 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 719,
+      "line": 892,
       "symbol": "projectActivity",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/project-bootstrap.ts",
+      "line": 30,
+      "symbol": "createProjectFromListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 53,
+      "symbol": "NormalizedProject",
+      "type": "interface"
     },
     {
       "file": "src/bun/issue-fixer/poller.ts",
@@ -11979,6 +12729,18 @@
   ],
   "hours": [
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 149,
+      "symbol": "isWithinActiveHours",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 437,
+      "symbol": "withinActiveHours",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/analytics.tsx",
       "line": 20,
       "symbol": "fmtHours",
@@ -12094,6 +12856,12 @@
       "file": "src/bun/freelance/currency-exchange.ts",
       "line": 103,
       "symbol": "fetchRatesFromNetwork",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/project-bootstrap.ts",
+      "line": 30,
+      "symbol": "createProjectFromListing",
       "type": "function"
     },
     {
@@ -12225,8 +12993,14 @@
       "type": "export"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 522,
+      "symbol": "syncNow",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 187,
+      "line": 199,
       "symbol": "handleFetchNow",
       "type": "function"
     },
@@ -12272,7 +13046,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 61,
+      "line": 62,
       "symbol": "formatFullDate",
       "type": "function"
     },
@@ -12309,8 +13083,14 @@
   ],
   "time": [
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 153,
+      "symbol": "fmtTime",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 48,
+      "line": 49,
       "symbol": "relativeTime",
       "type": "function"
     },
@@ -12742,7 +13522,7 @@
     },
     {
       "file": "src/bun/rpc/updater-portable.ts",
-      "line": 198,
+      "line": 200,
       "symbol": "buildApplyScript",
       "type": "function"
     },
@@ -12870,7 +13650,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 161,
+      "line": 171,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -13087,6 +13867,12 @@
       "line": 728,
       "symbol": "gitTools",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 71,
+      "symbol": "runGit",
+      "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
@@ -13342,6 +14128,12 @@
       "file": "src/bun/db/migrations/v30_remote-sync-security-excludes.ts",
       "line": 6,
       "symbol": "addColumnIfMissing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v36_freelance-auto-earn-outbox.ts",
+      "line": 50,
+      "symbol": "addColumn",
       "type": "function"
     },
     {
@@ -13725,6 +14517,12 @@
       "type": "function"
     },
     {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 15,
+      "symbol": "WriteResult",
+      "type": "interface"
+    },
+    {
       "file": "tests/helpers/workspace.ts",
       "line": 36,
       "symbol": "writeFile",
@@ -13746,13 +14544,13 @@
   "seed": [
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1378,
+      "line": 1408,
       "symbol": "seedDatabase",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1608,
+      "line": 1646,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -13810,7 +14608,7 @@
   "custom": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 789,
+      "line": 962,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -14044,6 +14842,12 @@
       "file": "src/bun/agents/tools/preview.ts",
       "line": 34,
       "symbol": "readText",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 69,
+      "symbol": "buildConversationText",
       "type": "function"
     },
     {
@@ -14517,6 +15321,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 128,
+      "symbol": "notifyJobEvent",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/types.ts",
       "line": 68,
       "symbol": "TextDocumentContentChangeEvent",
@@ -14745,6 +15555,30 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 46,
+      "symbol": "draftBidForListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 79,
+      "symbol": "upsertJobForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 102,
+      "symbol": "getCredentialsForJob",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 117,
+      "symbol": "draftReplyForThread",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/prompts.ts",
       "line": 36,
       "symbol": "intentForKeyword",
@@ -14778,6 +15612,18 @@
       "file": "src/bun/rpc/dashboard-agent.ts",
       "line": 35,
       "symbol": "getProviderForAgent",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 30,
+      "symbol": "partitionFor",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 99,
+      "symbol": "clientNameForThread",
       "type": "function"
     },
     {
@@ -14885,6 +15731,36 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 22,
+      "symbol": "SessionWebview",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 40,
+      "symbol": "getSessionWebview",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 97,
+      "symbol": "attachSessionWebview",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 112,
+      "symbol": "detachSessionWebview",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 126,
+      "symbol": "setSessionWebviewVisible",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/council.tsx",
       "line": 17,
       "symbol": "SessionState",
@@ -14911,6 +15787,24 @@
       "line": 1047,
       "symbol": "getDefaultProviderRow",
       "type": "method"
+    },
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 45,
+      "symbol": "resolveProviderConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
+      "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/orchestrator.ts",
@@ -15082,7 +15976,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 39,
+      "line": 54,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -15493,6 +16387,102 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 848,
+      "symbol": "freelanceJobLog",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 861,
+      "symbol": "freelanceJobFacts",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 12,
+      "symbol": "JobState",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 22,
+      "symbol": "FreelanceJob",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 42,
+      "symbol": "rowToJob",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 64,
+      "symbol": "getJobById",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 71,
+      "symbol": "getJobByThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 79,
+      "symbol": "upsertJobForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 144,
+      "symbol": "setJobState",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 163,
+      "symbol": "logJobAction",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 180,
+      "symbol": "getJobLog",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 196,
+      "symbol": "saveJobFact",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 210,
+      "symbol": "listJobFacts",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 128,
+      "symbol": "notifyJobEvent",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 264,
+      "symbol": "getJobByThread",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 102,
+      "symbol": "getCredentialsForJob",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/cron.ts",
       "line": 38,
       "symbol": "createCronJob",
@@ -15526,6 +16516,12 @@
       "file": "src/bun/rpc/cron.ts",
       "line": 120,
       "symbol": "triggerCronJob",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 22,
+      "symbol": "getJobTimeline",
       "type": "function"
     },
     {
@@ -15641,6 +16637,12 @@
       "line": 757,
       "symbol": "confirmDeleteJob",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 125,
+      "symbol": "FreelanceJobDto",
+      "type": "interface"
     },
     {
       "file": "tests/scheduler/cron.test.ts",
@@ -15895,6 +16897,12 @@
       "line": 284,
       "symbol": "autoApprovedShellTool",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 28,
+      "symbol": "FxToolContext",
+      "type": "interface"
     },
     {
       "file": "src/bun/issue-fixer/shell-guard.ts",
@@ -16635,9 +17643,27 @@
       "type": "variable"
     },
     {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 117,
+      "symbol": "draftReplyForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 56,
+      "symbol": "draftReply",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/inbox.ts",
       "line": 129,
       "symbol": "replyToInboxMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 31,
+      "symbol": "buildSendReplyScript",
       "type": "function"
     }
   ],
@@ -16777,6 +17803,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 64,
+      "symbol": "getJobById",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 90,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 39,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-sources/linear.ts",
       "line": 68,
       "symbol": "resolveTeamId",
@@ -16835,6 +17879,12 @@
       "line": 38,
       "symbol": "assignActivityId",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 14,
+      "symbol": "PlatformId",
+      "type": "type"
     },
     {
       "file": "src/shared/rpc/index.ts",
@@ -17628,7 +18678,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 161,
+      "line": 171,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -17677,6 +18727,12 @@
       "line": 9,
       "symbol": "RectAndField",
       "type": "class"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 67,
+      "symbol": "syncRect",
+      "type": "function"
     }
   ],
   "and": [
@@ -17702,6 +18758,18 @@
       "file": "src/bun/agents/tools/preview.ts",
       "line": 351,
       "symbol": "startAndWaitForServer",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
       "type": "function"
     },
     {
@@ -17765,6 +18833,12 @@
       "line": 19,
       "symbol": "PluginSettingsField",
       "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 145,
+      "symbol": "Field",
+      "type": "function"
     },
     {
       "file": "src/mainview/components/issues/issues.tsx",
@@ -17869,6 +18943,18 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 753,
+      "symbol": "freelanceInboxMessages",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 108,
+      "symbol": "parseMessages",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/conversations.ts",
       "line": 122,
       "symbol": "clearConversationMessages",
@@ -17890,6 +18976,12 @@
       "file": "src/bun/rpc/freelance-chat.ts",
       "line": 264,
       "symbol": "clearMessages",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 294,
+      "symbol": "getMessages",
       "type": "function"
     },
     {
@@ -17996,7 +19088,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 23,
+      "line": 24,
       "symbol": "convertAmount",
       "type": "function"
     }
@@ -18127,8 +19219,14 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 97,
+      "symbol": "getListingFullDescription",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 61,
+      "line": 62,
       "symbol": "formatFullDate",
       "type": "function"
     },
@@ -19205,9 +20303,45 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 75,
+      "symbol": "parseMeta",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/normalizer.ts",
       "line": 26,
       "symbol": "parseBudget",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 78,
+      "symbol": "parseThreads",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 108,
+      "symbol": "parseMessages",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 128,
+      "symbol": "parseUsers",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 150,
+      "symbol": "parseSelf",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 158,
+      "symbol": "parseProjects",
       "type": "function"
     },
     {
@@ -19256,6 +20390,12 @@
       "file": "src/mainview/components/chat/tool-call-card.tsx",
       "line": 156,
       "symbol": "parseInput",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 112,
+      "symbol": "parseHostMessage",
       "type": "function"
     },
     {
@@ -19412,7 +20552,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 33,
+      "line": 48,
       "symbol": "RssSource",
       "type": "interface"
     },
@@ -19811,6 +20951,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 79,
+      "symbol": "updateDraft",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/inbox-rules.ts",
       "line": 94,
       "symbol": "updateInboxRule",
@@ -20124,7 +21270,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1363,
+      "line": 1393,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -20587,6 +21733,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 77,
+      "symbol": "buildThreadTranscript",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 95,
+      "symbol": "buildFreelanceExpertTools",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 69,
+      "symbol": "buildConversationText",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/notify.ts",
       "line": 18,
       "symbol": "buildMessage",
@@ -20684,7 +21848,7 @@
     },
     {
       "file": "src/bun/rpc/updater-portable.ts",
-      "line": 198,
+      "line": 200,
       "symbol": "buildApplyScript",
       "type": "function"
     },
@@ -20714,7 +21878,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 83,
+      "line": 84,
       "symbol": "buildBudgetDisplay",
       "type": "function"
     },
@@ -20789,6 +21953,18 @@
       "line": 65,
       "symbol": "buildInitialCards",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 31,
+      "symbol": "buildSendReplyScript",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 75,
+      "symbol": "buildSubmitBidScript",
+      "type": "function"
     }
   ],
   "list": [
@@ -20832,6 +22008,30 @@
       "file": "src/bun/agents/tools/preview.ts",
       "line": 80,
       "symbol": "listTopLevel",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 210,
+      "symbol": "listJobFacts",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 217,
+      "symbol": "listJobs",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 97,
+      "symbol": "listEscalations",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 120,
+      "symbol": "listCredentialSummaries",
       "type": "function"
     },
     {
@@ -21000,6 +22200,12 @@
       "file": "src/bun/rpc/env-vars.ts",
       "line": 160,
       "symbol": "listCustomEnvVars",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 41,
+      "symbol": "list",
       "type": "function"
     },
     {
@@ -21201,10 +22407,28 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 10,
+      "symbol": "CaptureEndpoint",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 12,
+      "symbol": "CaptureRecord",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/playground/server.ts",
       "line": 67,
       "symbol": "injectConsoleCapture",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 16,
+      "symbol": "CaptureEndpoint",
+      "type": "type"
     }
   ],
   "granted": [
@@ -21276,8 +22500,20 @@
     },
     {
       "file": "src/bun/rpc/updater-portable.ts",
-      "line": 198,
+      "line": 200,
       "symbol": "buildApplyScript",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 31,
+      "symbol": "buildSendReplyScript",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 75,
+      "symbol": "buildSubmitBidScript",
       "type": "function"
     }
   ],
@@ -21392,13 +22628,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 77,
+      "line": 78,
       "symbol": "BudgetDisplay",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 83,
+      "line": 84,
       "symbol": "buildBudgetDisplay",
       "type": "function"
     },
@@ -21466,7 +22702,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 789,
+      "line": 962,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -21593,6 +22829,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 35,
+      "symbol": "isConnectedPlatform",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listing-card.tsx",
       "line": 163,
       "symbol": "getPlatformColor",
@@ -21606,7 +22848,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 476,
+      "line": 478,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -21632,6 +22874,24 @@
       "file": "src/mainview/pages/settings/notification-settings.tsx",
       "line": 199,
       "symbol": "PlatformCard",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 14,
+      "symbol": "PlatformId",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 32,
+      "symbol": "PlatformDescriptor",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 84,
+      "symbol": "getPlatform",
       "type": "function"
     }
   ],
@@ -21740,6 +23000,12 @@
       "file": "skills/screenshot/scripts/take_screenshot.py",
       "line": 69,
       "symbol": "parse_int_list",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 64,
+      "symbol": "toIntOrNull",
       "type": "function"
     }
   ],
@@ -21953,6 +23219,12 @@
       "line": 180,
       "symbol": "multi_output_paths",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 98,
+      "symbol": "endpointPaths",
+      "type": "function"
     }
   ],
   "run": [
@@ -22132,7 +23404,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 99,
+      "line": 109,
       "symbol": "runMigrations",
       "type": "function"
     },
@@ -22305,6 +23577,36 @@
       "type": "function"
     },
     {
+      "file": "src/bun/db/migrations/v35_freelance-auto-earn-inbox.ts",
+      "line": 8,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v36_freelance-auto-earn-outbox.ts",
+      "line": 9,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v37_freelance-remove-peopleperhour.ts",
+      "line": 9,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v38_freelance-expert-pipeline.ts",
+      "line": 8,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v39_freelance-job-facts.ts",
+      "line": 8,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
       "file": "src/bun/db/migrations/v4_inline-agents.ts",
       "line": 5,
       "symbol": "run",
@@ -22338,6 +23640,24 @@
       "file": "src/bun/db/migrations/v9_fix-mcp-config-encoding.ts",
       "line": 18,
       "symbol": "run",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 115,
+      "symbol": "RunExpertInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 128,
+      "symbol": "runFreelanceExpert",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 71,
+      "symbol": "runGit",
       "type": "function"
     },
     {
@@ -22522,7 +23842,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 318,
+      "line": 348,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -22981,6 +24301,36 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 795,
+      "symbol": "freelanceActionLog",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 848,
+      "symbol": "freelanceJobLog",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 163,
+      "symbol": "logJobAction",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 180,
+      "symbol": "getJobLog",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 96,
+      "symbol": "log",
+      "type": "function"
+    },
+    {
       "file": "src/bun/plugins/api.ts",
       "line": 64,
       "symbol": "log",
@@ -23011,6 +24361,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 201,
+      "symbol": "logSync",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/git.ts",
       "line": 70,
       "symbol": "getGitLog",
@@ -23036,7 +24392,7 @@
     },
     {
       "file": "src/bun/rpc/updater.ts",
-      "line": 227,
+      "line": 232,
       "symbol": "psLog",
       "type": "function"
     },
@@ -23139,6 +24495,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/project-bootstrap.ts",
+      "line": 20,
+      "symbol": "BootstrapResult",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 26,
+      "symbol": "IngestResult",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 69,
+      "symbol": "getResult",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/notify.ts",
       "line": 6,
       "symbol": "RunResult",
@@ -23173,6 +24547,12 @@
       "line": 25,
       "symbol": "SpawnResult",
       "type": "type"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 157,
+      "symbol": "markResult",
+      "type": "function"
     },
     {
       "file": "src/bun/rpc/search.ts",
@@ -23251,6 +24631,12 @@
       "line": 69,
       "symbol": "applyCheckResult",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 15,
+      "symbol": "WriteResult",
+      "type": "interface"
     }
   ],
   "part": [
@@ -23712,7 +25098,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 274,
+      "line": 286,
       "symbol": "handleFilterChange",
       "type": "function"
     },
@@ -23924,14 +25310,20 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1363,
+      "line": 1393,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1608,
+      "line": 1646,
       "symbol": "seedAgentTools",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 95,
+      "symbol": "buildFreelanceExpertTools",
       "type": "function"
     },
     {
@@ -24271,6 +25663,12 @@
       "line": 820,
       "symbol": "handleToggleRule",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 18,
+      "symbol": "EndpointRule",
+      "type": "interface"
     }
   ],
   "compaction": [
@@ -24340,6 +25738,12 @@
       "file": "src/bun/db/summaries.ts",
       "line": 50,
       "symbol": "deleteSummariesForConversation",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 69,
+      "symbol": "buildConversationText",
       "type": "function"
     },
     {
@@ -24804,19 +26208,19 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 733,
+      "line": 906,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 771,
+      "line": 944,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 799,
+      "line": 972,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -24842,6 +26246,12 @@
       "file": "src/bun/remote-sync/config.ts",
       "line": 96,
       "symbol": "saveRemoteSyncConfig",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 201,
+      "symbol": "logSync",
       "type": "function"
     },
     {
@@ -24890,6 +26300,30 @@
       "file": "src/bun/rpc/remote-sync.ts",
       "line": 107,
       "symbol": "cancelRemoteSync",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 522,
+      "symbol": "syncNow",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 67,
+      "symbol": "syncRect",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 82,
+      "symbol": "startSync",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 91,
+      "symbol": "stopSync",
       "type": "function"
     },
     {
@@ -25048,6 +26482,18 @@
       "file": "src/bun/agents/tools/preview.ts",
       "line": 87,
       "symbol": "buildWorkspaceContext",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 28,
+      "symbol": "FxToolContext",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 53,
+      "symbol": "loadThreadContext",
       "type": "function"
     },
     {
@@ -25702,13 +27148,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 77,
+      "line": 78,
       "symbol": "BudgetDisplay",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 83,
+      "line": 84,
       "symbol": "buildBudgetDisplay",
       "type": "function"
     }
@@ -26299,6 +27745,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 91,
+      "symbol": "stopSync",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/council.tsx",
       "line": 839,
       "symbol": "handleStop",
@@ -26461,6 +27913,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 149,
+      "symbol": "isWithinActiveHours",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/triggers.ts",
       "line": 41,
       "symbol": "keywordsActive",
@@ -26479,8 +27937,14 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 437,
+      "symbol": "withinActiveHours",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 392,
+      "line": 394,
       "symbol": "onActive",
       "type": "function"
     },
@@ -27118,67 +28582,67 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 430,
+      "line": 432,
       "symbol": "handleApprove",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 439,
+      "line": 441,
       "symbol": "handleShortlist",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 449,
+      "line": 451,
       "symbol": "handleMarkDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 459,
+      "line": 461,
       "symbol": "handleAnalyze",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 466,
+      "line": 468,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 476,
+      "line": 478,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 187,
+      "line": 199,
       "symbol": "handleFetchNow",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 260,
+      "line": 272,
       "symbol": "handleDeleteAll",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 274,
+      "line": 286,
       "symbol": "handleFilterChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 279,
+      "line": 291,
       "symbol": "handleSearchChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 117,
+      "line": 132,
       "symbol": "handle",
       "type": "function"
     },
@@ -27989,6 +29453,12 @@
       "type": "interface"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 42,
+      "symbol": "rowToJob",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/config.ts",
       "line": 66,
       "symbol": "ConfigRow",
@@ -28064,6 +29534,12 @@
       "file": "src/bun/rpc/db-viewer.ts",
       "line": 76,
       "symbol": "dbViewerDeleteRow",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 19,
+      "symbol": "rowToDto",
       "type": "function"
     },
     {
@@ -28463,9 +29939,75 @@
       "type": "export"
     },
     {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 13,
+      "symbol": "AutoEarnSettings",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 52,
+      "symbol": "getAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 78,
+      "symbol": "saveAutoEarnSetting",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 90,
+      "symbol": "saveAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 111,
+      "symbol": "isAutoEarnEnabled",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/feature-flag.ts",
+      "line": 17,
+      "symbol": "isAutoEarnFeatureAvailable",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 209,
+      "symbol": "getAutoEarnAvailable",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 214,
+      "symbol": "getAutoEarn",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 218,
+      "symbol": "saveAutoEarn",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 800,
       "symbol": "runAutoShortlist",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 28,
+      "symbol": "AutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listings-tab.tsx",
+      "line": 96,
+      "symbol": "loadAutoEarn",
       "type": "function"
     },
     {
@@ -28473,6 +30015,12 @@
       "line": 70,
       "symbol": "saveAutoCommitSettings",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 75,
+      "symbol": "FreelanceAutoEarnSettingsDto",
+      "type": "interface"
     }
   ],
   "title": [
@@ -28559,6 +30107,24 @@
       "line": 48,
       "symbol": "handleHumanMove",
       "type": "method"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 44,
+      "symbol": "escalateToHuman",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/humanize.ts",
+      "line": 14,
+      "symbol": "humanGapMs",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/humanize.ts",
+      "line": 20,
+      "symbol": "humanPause",
+      "type": "function"
     }
   ],
   "check": [
@@ -28935,6 +30501,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 158,
+      "symbol": "openEscalationCount",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/github.ts",
       "line": 88,
       "symbol": "listOpenIssuesSince",
@@ -29004,6 +30576,12 @@
       "file": "src/mainview/components/activity/docs-tab.tsx",
       "line": 116,
       "symbol": "openPlan",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 44,
+      "symbol": "openTimeline",
       "type": "function"
     },
     {
@@ -29083,17 +30661,21 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 51,
+      "symbol": "getGlobalTimezone",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 93,
+      "symbol": "hourInTimezone",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/cron.ts",
       "line": 11,
       "symbol": "getGlobalTimezone",
-      "type": "function"
-    }
-  ],
-  "city": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 46,
-      "symbol": "cityFromTimezone",
       "type": "function"
     }
   ],
@@ -29189,20 +30771,6 @@
       "type": "function"
     }
   ],
-  "knowledge": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 100,
-      "symbol": "loadAgentKnowledgeListing",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 132,
-      "symbol": "isAgentKnowledgeUpdateEnabled",
-      "type": "function"
-    }
-  ],
   "listing": [
     {
       "file": "src/bun/agents/prompts.ts",
@@ -29211,10 +30779,34 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 46,
+      "symbol": "draftBidForListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 97,
+      "symbol": "getListingFullDescription",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/normalizer.ts",
       "line": 4,
       "symbol": "FreelanceListing",
       "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/project-bootstrap.ts",
+      "line": 30,
+      "symbol": "createProjectFromListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 88,
+      "symbol": "listingBrief",
+      "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -29266,7 +30858,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 358,
+      "line": 359,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -29339,28 +30931,6 @@
       "type": "function"
     }
   ],
-  "sentence": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 217,
-      "symbol": "extractFirstSentence",
-      "type": "function"
-    }
-  ],
-  "instructions": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 448,
-      "symbol": "clearWorkspaceInstructionsCache",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 456,
-      "symbol": "loadWorkspaceInstructions",
-      "type": "function"
-    }
-  ],
   "decisions": [
     {
       "file": "src/bun/agents/prompts.ts",
@@ -29372,14 +30942,6 @@
       "file": "src/bun/agents/tools/notes.ts",
       "line": 171,
       "symbol": "createDecisionsTool",
-      "type": "function"
-    }
-  ],
-  "direct": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 610,
-      "symbol": "buildDirectToolsSection",
       "type": "function"
     }
   ],
@@ -29450,6 +31012,12 @@
       "file": "src/bun/agents/prompts.ts",
       "line": 640,
       "symbol": "buildSkillsDescriptionSection",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 97,
+      "symbol": "getListingFullDescription",
       "type": "function"
     },
     {
@@ -29649,6 +31217,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/feature-flag.ts",
+      "line": 17,
+      "symbol": "isAutoEarnFeatureAvailable",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/branch-strategy.ts",
       "line": 90,
       "symbol": "createFeatureBranch",
@@ -29801,14 +31375,6 @@
       "type": "function"
     }
   ],
-  "workflow": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 733,
-      "symbol": "isFeatureBranchWorkflowEnabled",
-      "type": "function"
-    }
-  ],
   "prompts": [
     {
       "file": "src/bun/agents/prompts.ts",
@@ -29915,6 +31481,12 @@
       "line": 38,
       "symbol": "handleSubmit",
       "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 75,
+      "symbol": "buildSubmitBidScript",
+      "type": "function"
     }
   ],
   "details": [
@@ -29979,6 +31551,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 128,
+      "symbol": "notifyJobEvent",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/notify.ts",
       "line": 33,
       "symbol": "notifyIssueFixResult",
@@ -30000,6 +31578,18 @@
       "file": "src/bun/plugins/registry.ts",
       "line": 139,
       "symbol": "notifyFileChange",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 112,
+      "symbol": "notifyNewInbound",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 33,
+      "symbol": "notifyUpdated",
       "type": "function"
     },
     {
@@ -30026,6 +31616,30 @@
       "file": "src/bun/agents/safety.ts",
       "line": 118,
       "symbol": "createActionTimeout",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 795,
+      "symbol": "freelanceActionLog",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 163,
+      "symbol": "logJobAction",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 22,
+      "symbol": "GovernorAction",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 106,
+      "symbol": "recordAction",
       "type": "function"
     },
     {
@@ -30169,6 +31783,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 106,
+      "symbol": "recordAction",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 12,
+      "symbol": "CaptureRecord",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/rpc/activity.ts",
       "line": 36,
       "symbol": "recordActivity",
@@ -30270,9 +31896,15 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 733,
+      "line": 906,
       "symbol": "remoteSyncConfig",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 45,
+      "symbol": "resolveProviderConfig",
+      "type": "function"
     },
     {
       "file": "src/bun/issue-fixer/config.ts",
@@ -30719,6 +32351,12 @@
       "type": "function"
     },
     {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 25,
+      "symbol": "ComposerConfig",
+      "type": "interface"
+    },
+    {
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "IssueFixerConfigDto",
@@ -30821,6 +32459,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 77,
+      "symbol": "buildThreadTranscript",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/playground.tsx",
       "line": 1102,
       "symbol": "Transcript",
@@ -30840,6 +32484,12 @@
       "file": "src/bun/agents/summarizer.ts",
       "line": 313,
       "symbol": "safeParseJson",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 43,
+      "symbol": "safeDest",
       "type": "function"
     },
     {
@@ -31032,6 +32682,12 @@
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
       "line": 366,
       "symbol": "onToolStart",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 82,
+      "symbol": "startSync",
       "type": "function"
     },
     {
@@ -31743,6 +33399,12 @@
       "line": 356,
       "symbol": "inject",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 321,
+      "symbol": "inject",
+      "type": "function"
     }
   ],
   "toolbar": [
@@ -32062,13 +33724,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 61,
+      "line": 62,
       "symbol": "formatFullDate",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 318,
+      "line": 348,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -32342,7 +34004,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 187,
+      "line": 199,
       "symbol": "handleFetchNow",
       "type": "function"
     },
@@ -32519,6 +34181,12 @@
       "line": 64,
       "symbol": "startIdleLoop",
       "type": "method"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 84,
+      "symbol": "loop",
+      "type": "function"
     }
   ],
   "process": [
@@ -32694,13 +34362,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 396,
+      "line": 398,
       "symbol": "onDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 449,
+      "line": 451,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -33239,6 +34907,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 50,
+      "symbol": "authUrl",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/triggers.ts",
       "line": 16,
       "symbol": "AuthMode",
@@ -33266,6 +34940,12 @@
       "file": "src/bun/providers/claude-subscription.ts",
       "line": 24,
       "symbol": "loadOAuthToken",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 45,
+      "symbol": "hasAuthCookie",
       "type": "function"
     },
     {
@@ -33440,7 +35120,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1378,
+      "line": 1408,
       "symbol": "seedDatabase",
       "type": "function"
     },
@@ -33557,6 +35237,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 51,
+      "symbol": "getGlobalTimezone",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/cron.ts",
       "line": 11,
       "symbol": "getGlobalTimezone",
@@ -33596,7 +35282,7 @@
     },
     {
       "file": "src/bun/rpc-groups/features.ts",
-      "line": 10,
+      "line": 13,
       "symbol": "handlers",
       "type": "export"
     },
@@ -33897,6 +35583,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 127,
+      "symbol": "secondsSinceLastSend",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 138,
+      "symbol": "sendsInLastHour",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/config.ts",
       "line": 170,
       "symbol": "setLastPolled",
@@ -33922,7 +35620,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 318,
+      "line": 348,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -33941,6 +35639,36 @@
       "type": "export"
     },
     {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 13,
+      "symbol": "AutoEarnSettings",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 52,
+      "symbol": "getAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 90,
+      "symbol": "saveAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 24,
+      "symbol": "GovernorSettings",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 65,
+      "symbol": "getGovernorSettings",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/settings.ts",
       "line": 11,
       "symbol": "FreelanceSettings",
@@ -33948,7 +35676,7 @@
     },
     {
       "file": "src/bun/freelance/settings.ts",
-      "line": 66,
+      "line": 65,
       "symbol": "getFreelanceSettings",
       "type": "function"
     },
@@ -34061,14 +35789,20 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 28,
+      "symbol": "AutoEarnSettings",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 45,
+      "line": 60,
       "symbol": "SettingsState",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 199,
+      "line": 214,
       "symbol": "SettingsTab",
       "type": "function"
     },
@@ -34106,6 +35840,12 @@
       "file": "src/mainview/pages/agents.tsx",
       "line": 318,
       "symbol": "AgentSettingsDialog",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/freelance.tsx",
+      "line": 29,
+      "symbol": "onSettings",
       "type": "function"
     },
     {
@@ -34265,6 +36005,12 @@
       "type": "function"
     },
     {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 75,
+      "symbol": "FreelanceAutoEarnSettingsDto",
+      "type": "interface"
+    },
+    {
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "SettingsRequests",
@@ -34283,6 +36029,12 @@
       "line": 59,
       "symbol": "projects",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 158,
+      "symbol": "parseProjects",
+      "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
@@ -34358,6 +36110,12 @@
       "file": "src/bun/db/summaries.ts",
       "line": 50,
       "symbol": "deleteSummariesForConversation",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 120,
+      "symbol": "listCredentialSummaries",
       "type": "function"
     }
   ],
@@ -34512,6 +36270,12 @@
       "file": "src/bun/db/schema.ts",
       "line": 413,
       "symbol": "automationRules",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/humanizer-prompt.ts",
+      "line": 10,
+      "symbol": "HUMANIZER_WRITING_RULES",
       "type": "export"
     },
     {
@@ -34759,9 +36523,27 @@
       "type": "export"
     },
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 810,
+      "symbol": "freelanceJobs",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 217,
+      "symbol": "listJobs",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/cron.ts",
       "line": 26,
       "symbol": "getCronJobs",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 18,
+      "symbol": "getJobs",
       "type": "function"
     },
     {
@@ -35114,7 +36896,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 47,
+      "line": 150,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -36420,7 +38202,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 799,
+      "line": 972,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -36742,21 +38524,27 @@
   "remote": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 733,
+      "line": 906,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 771,
+      "line": 944,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 799,
+      "line": 972,
       "symbol": "remoteSyncRuns",
       "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 78,
+      "symbol": "credToRemote",
+      "type": "function"
     },
     {
       "file": "src/bun/mcp/client.ts",
@@ -37086,7 +38874,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 771,
+      "line": 944,
       "symbol": "remoteSyncItems",
       "type": "export"
     }
@@ -37356,13 +39144,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 466,
+      "line": 468,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 260,
+      "line": 272,
       "symbol": "handleDeleteAll",
       "type": "function"
     },
@@ -37599,6 +39387,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 99,
+      "symbol": "clientNameForThread",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/lib/global-error-handler.ts",
       "line": 10,
       "symbol": "initClientErrorHandler",
@@ -37634,6 +39428,12 @@
       "file": "src/bun/rpc/cron.ts",
       "line": 116,
       "symbol": "previewCronSchedule",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 443,
+      "symbol": "schedule",
       "type": "function"
     },
     {
@@ -37754,7 +39554,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 33,
+      "line": 48,
       "symbol": "RssSource",
       "type": "interface"
     }
@@ -37771,6 +39571,12 @@
       "line": 54,
       "symbol": "normalizeRssItem",
       "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 97,
+      "symbol": "OutboxItem",
+      "type": "interface"
     },
     {
       "file": "src/bun/freelance/rss-fetcher.ts",
@@ -37894,7 +39700,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 39,
+      "line": 54,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -37975,6 +39781,12 @@
       "line": 87,
       "symbol": "ToastItem",
       "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 88,
+      "symbol": "FreelanceOutboxItemDto",
+      "type": "interface"
     }
   ],
   "retry": [
@@ -38025,6 +39837,12 @@
       "type": "type"
     },
     {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 194,
+      "symbol": "FactCategory",
+      "type": "type"
+    },
+    {
       "file": "src/bun/freelance/rss-fetcher.ts",
       "line": 51,
       "symbol": "categoryToString",
@@ -38042,6 +39860,12 @@
       "file": "src/bun/freelance/rss-fetcher.ts",
       "line": 51,
       "symbol": "categoryToString",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 59,
+      "symbol": "asString",
       "type": "function"
     },
     {
@@ -38131,6 +39955,12 @@
   ],
   "dto": [
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 31,
+      "symbol": "EscalationDto",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/issue-fixer/config.ts",
       "line": 25,
       "symbol": "IssueFixerConfigDto",
@@ -38140,6 +39970,12 @@
       "file": "src/bun/rpc/env-vars.ts",
       "line": 150,
       "symbol": "toDto",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 19,
+      "symbol": "rowToDto",
       "type": "function"
     },
     {
@@ -38161,6 +39997,54 @@
       "type": "interface"
     },
     {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 49,
+      "symbol": "FreelanceAccountDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 75,
+      "symbol": "FreelanceAutoEarnSettingsDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 88,
+      "symbol": "FreelanceOutboxItemDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 100,
+      "symbol": "FreelanceInboxMessageDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 112,
+      "symbol": "FreelanceEscalationDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 125,
+      "symbol": "FreelanceJobDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 142,
+      "symbol": "FreelanceEarningsDto",
+      "type": "interface"
+    },
+    {
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "FreelanceListingDto",
@@ -38170,6 +40054,24 @@
       "file": "src/shared/rpc/index.ts",
       "line": 77,
       "symbol": "FreelanceChatMessageDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceAccountDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxMessageDto",
       "type": "export"
     },
     {
@@ -38495,6 +40397,12 @@
   ],
   "since": [
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 127,
+      "symbol": "secondsSinceLastSend",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/github.ts",
       "line": 88,
       "symbol": "listOpenIssuesSince",
@@ -38596,6 +40504,24 @@
     }
   ],
   "input": [
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 20,
+      "symbol": "EscalateInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 115,
+      "symbol": "RunExpertInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 15,
+      "symbol": "StoreCredentialInput",
+      "type": "interface"
+    },
     {
       "file": "src/bun/issue-fixer/orchestrator.ts",
       "line": 28,
@@ -38813,6 +40739,12 @@
       "line": 78,
       "symbol": "tick",
       "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 486,
+      "symbol": "tick",
+      "type": "function"
     }
   ],
   "tally": [
@@ -38824,6 +40756,12 @@
     }
   ],
   "ctx": [
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 45,
+      "symbol": "ThreadCtx",
+      "type": "interface"
+    },
     {
       "file": "src/bun/issue-fixer/poller.ts",
       "line": 182,
@@ -39179,9 +41117,21 @@
   ],
   "within": [
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 149,
+      "symbol": "isWithinActiveHours",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/triggers.ts",
       "line": 171,
       "symbol": "withinCooldown",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 437,
+      "symbol": "withinActiveHours",
       "type": "function"
     }
   ],
@@ -39195,6 +41145,18 @@
   ],
   "hour": [
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 93,
+      "symbol": "hourInTimezone",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 138,
+      "symbol": "sendsInLastHour",
+      "type": "function"
+    },
+    {
       "file": "src/bun/issue-fixer/triggers.ts",
       "line": 186,
       "symbol": "runsInLastHour",
@@ -39204,6 +41166,12 @@
       "file": "src/mainview/components/analytics/charts.tsx",
       "line": 306,
       "symbol": "showHour",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 141,
+      "symbol": "hourInTz",
       "type": "function"
     }
   ],
@@ -39242,6 +41210,12 @@
       "file": "src/bun/lib/git-runner.ts",
       "line": 11,
       "symbol": "killProcess",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 179,
+      "symbol": "killSwitch",
       "type": "function"
     }
   ],
@@ -40693,6 +42667,12 @@
   ],
   "new": [
     {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 20,
+      "symbol": "NewInboundMessage",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/playground/orchestrator.ts",
       "line": 350,
       "symbol": "newPlayground",
@@ -40702,6 +42682,12 @@
       "file": "src/bun/remote-sync/engine.ts",
       "line": 166,
       "symbol": "pinHostKeyIfNew",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 112,
+      "symbol": "notifyNewInbound",
       "type": "function"
     },
     {
@@ -40750,6 +42736,12 @@
     }
   ],
   "meta": [
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 75,
+      "symbol": "parseMeta",
+      "type": "function"
+    },
     {
       "file": "src/bun/playground/paths.ts",
       "line": 21,
@@ -41013,6 +43005,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 162,
+      "symbol": "InboxTab",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
       "line": 64,
       "symbol": "ListingsTab",
@@ -41020,7 +43018,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 199,
+      "line": 214,
       "symbol": "SettingsTab",
       "type": "function"
     },
@@ -41943,6 +43941,18 @@
   ],
   "model": [
     {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 24,
+      "symbol": "resolveProviderAndModel",
+      "type": "function"
+    },
+    {
       "file": "src/bun/providers/anthropic.ts",
       "line": 32,
       "symbol": "createModel",
@@ -42559,6 +44569,18 @@
   ],
   "credentials": [
     {
+      "file": "src/bun/db/schema.ts",
+      "line": 833,
+      "symbol": "freelanceCredentials",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 102,
+      "symbol": "getCredentialsForJob",
+      "type": "function"
+    },
+    {
       "file": "src/bun/remote-sync/client.ts",
       "line": 20,
       "symbol": "RemoteCredentials",
@@ -42624,6 +44646,18 @@
       "file": "src/bun/remote-sync/engine.ts",
       "line": 176,
       "symbol": "hostKeyMismatchMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 112,
+      "symbol": "parseHostMessage",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 340,
+      "symbol": "onHostMessage",
       "type": "function"
     }
   ],
@@ -42857,6 +44891,12 @@
   ],
   "resolved": [
     {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 26,
+      "symbol": "ResolvedCredential",
+      "type": "interface"
+    },
+    {
       "file": "src/bun/remote-sync/config.ts",
       "line": 164,
       "symbol": "ResolvedRemoteConfig",
@@ -42876,6 +44916,12 @@
       "file": "src/bun/freelance/currency-exchange.ts",
       "line": 53,
       "symbol": "upsert",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 79,
+      "symbol": "upsertJobForThread",
       "type": "function"
     },
     {
@@ -43493,6 +45539,12 @@
   ],
   "evaluate": [
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 169,
+      "symbol": "evaluateSend",
+      "type": "function"
+    },
+    {
       "file": "src/bun/scheduler/automation-engine.ts",
       "line": 42,
       "symbol": "evaluateRules",
@@ -43717,6 +45769,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 157,
+      "symbol": "markResult",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/freelance.ts",
       "line": 168,
       "symbol": "markListingDone",
@@ -43748,7 +45806,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 449,
+      "line": 451,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -43814,14 +45872,6 @@
       "file": "src/bun/rpc/agents.ts",
       "line": 267,
       "symbol": "getAllToolDefinitions",
-      "type": "function"
-    }
-  ],
-  "defaults": [
-    {
-      "file": "src/bun/rpc/agents.ts",
-      "line": 274,
-      "symbol": "resetAgentToolsToDefaults",
       "type": "function"
     }
   ],
@@ -44291,6 +46341,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 16,
+      "symbol": "ExpertDashboard",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/layout/project-switcher.tsx",
       "line": 45,
       "symbol": "handleGoToDashboard",
@@ -44554,7 +46610,7 @@
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 11,
+      "line": 14,
       "symbol": "FreelancePage",
       "type": "function"
     },
@@ -44774,7 +46830,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 459,
+      "line": 461,
       "symbol": "handleAnalyze",
       "type": "function"
     }
@@ -44826,7 +46882,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 439,
+      "line": 441,
       "symbol": "handleShortlist",
       "type": "function"
     }
@@ -44871,6 +46927,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 98,
+      "symbol": "approveSend",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/freelance.ts",
       "line": 268,
       "symbol": "approveListing",
@@ -44884,7 +46946,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 430,
+      "line": 432,
       "symbol": "handleApprove",
       "type": "function"
     }
@@ -45292,7 +47354,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 279,
+      "line": 291,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -45763,6 +47825,12 @@
   ],
   "connected": [
     {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 35,
+      "symbol": "isConnectedPlatform",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/providers.ts",
       "line": 256,
       "symbol": "getConnectedProviderModelsHandler",
@@ -46023,9 +48091,27 @@
   ],
   "available": [
     {
+      "file": "src/bun/freelance/feature-flag.ts",
+      "line": 17,
+      "symbol": "isAutoEarnFeatureAvailable",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 209,
+      "symbol": "getAutoEarnAvailable",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/skills.ts",
       "line": 88,
       "symbol": "getAvailableTools",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 35,
+      "symbol": "runtimeAvailable",
       "type": "function"
     }
   ],
@@ -46314,6 +48400,12 @@
       "file": "src/mainview/components/deploy/deploy-tab.tsx",
       "line": 9,
       "symbol": "DeployTabProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 23,
+      "symbol": "Props",
       "type": "interface"
     },
     {
@@ -46886,7 +48978,7 @@
   "relative": [
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 48,
+      "line": 49,
       "symbol": "relativeTime",
       "type": "function"
     },
@@ -47522,7 +49614,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 358,
+      "line": 359,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -47999,8 +50091,14 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 153,
+      "symbol": "fmtTime",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 38,
+      "line": 39,
       "symbol": "fmtNum",
       "type": "function"
     },
@@ -48509,6 +50607,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 513,
+      "symbol": "selectThread",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/git/github-issues.tsx",
       "line": 25,
       "symbol": "onSelectTask",
@@ -48937,9 +51041,21 @@
   ],
   "updated": [
     {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 33,
+      "symbol": "notifyUpdated",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/chat/message-bubble.tsx",
       "line": 311,
       "symbol": "onPartUpdated",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 402,
+      "symbol": "onUpdated",
       "type": "function"
     },
     {
@@ -49513,6 +51629,12 @@
   ],
   "switch": [
     {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 179,
+      "symbol": "killSwitch",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/git/branch-list.tsx",
       "line": 29,
       "symbol": "handleSwitch",
@@ -49545,6 +51667,12 @@
   ],
   "decision": [
     {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 158,
+      "symbol": "SendDecision",
+      "type": "interface"
+    },
+    {
       "file": "src/mainview/components/chat/shell-approval-card.tsx",
       "line": 19,
       "symbol": "handleDecision",
@@ -49558,6 +51686,18 @@
     }
   ],
   "store": [
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 15,
+      "symbol": "StoreCredentialInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 51,
+      "symbol": "storeCredential",
+      "type": "function"
+    },
     {
       "file": "src/mainview/components/ui/toast.tsx",
       "line": 17,
@@ -49645,6 +51785,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 29,
+      "symbol": "patch",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/stores/issue-fixer-store.ts",
       "line": 116,
       "symbol": "patch",
@@ -49656,6 +51802,12 @@
       "file": "src/bun/db/migrations/v30_remote-sync-security-excludes.ts",
       "line": 6,
       "symbol": "addColumnIfMissing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/db/migrations/v36_freelance-auto-earn-outbox.ts",
+      "line": 50,
+      "symbol": "addColumn",
       "type": "function"
     },
     {
@@ -50487,6 +52639,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 18,
+      "symbol": "Severity",
+      "type": "type"
+    },
+    {
       "file": "src/bun/plugins/lsp-manager/index.ts",
       "line": 387,
       "symbol": "severityLabel",
@@ -50504,6 +52662,12 @@
       "file": "src/bun/agents/tools/playground.ts",
       "line": 21,
       "symbol": "PlaygroundPreviewKind",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 13,
+      "symbol": "CredentialKind",
       "type": "type"
     },
     {
@@ -51606,7 +53770,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 108,
+      "line": 120,
       "symbol": "onScroll",
       "type": "function"
     },
@@ -52229,6 +54393,18 @@
   ],
   "nav": [
     {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 128,
+      "symbol": "navUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 331,
+      "symbol": "onNav",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/layout/sidebar.tsx",
       "line": 32,
       "symbol": "NavItem",
@@ -52326,6 +54502,12 @@
     }
   ],
   "err": [
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 39,
+      "symbol": "err",
+      "type": "function"
+    },
     {
       "file": "src/mainview/components/remote-sync/remote-sync-tab.tsx",
       "line": 133,
@@ -54795,14 +56977,6 @@
       "type": "function"
     }
   ],
-  "fnv1a": [
-    {
-      "file": "src/bun/db/seed.ts",
-      "line": 16,
-      "symbol": "fnv1a",
-      "type": "function"
-    }
-  ],
   "conv": [
     {
       "file": "src/bun/playground/orchestrator.ts",
@@ -54860,6 +57034,12 @@
     }
   ],
   "reject": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 87,
+      "symbol": "reject",
+      "type": "function"
+    },
     {
       "file": "src/mainview/components/chat/message-bubble.tsx",
       "line": 138,
@@ -54942,7 +57122,7 @@
   "vars": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 789,
+      "line": 962,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -55078,7 +57258,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 93,
+      "line": 108,
       "symbol": "CurrencyCombobox",
       "type": "function"
     },
@@ -55214,7 +57394,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 23,
+      "line": 24,
       "symbol": "convertAmount",
       "type": "function"
     }
@@ -55252,30 +57432,6 @@
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
       "line": 157,
       "symbol": "AnalyzingStep",
-      "type": "function"
-    }
-  ],
-  "num": [
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 38,
-      "symbol": "fmtNum",
-      "type": "function"
-    }
-  ],
-  "chips": [
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 183,
-      "symbol": "SkillChips",
-      "type": "function"
-    }
-  ],
-  "combobox": [
-    {
-      "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 93,
-      "symbol": "CurrencyCombobox",
       "type": "function"
     }
   ],
@@ -55401,30 +57557,6 @@
       "type": "function"
     }
   ],
-  "migration": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 54,
-      "symbol": "Migration",
-      "type": "interface"
-    }
-  ],
-  "migrations": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 99,
-      "symbol": "runMigrations",
-      "type": "function"
-    }
-  ],
-  "runtime": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 161,
-      "symbol": "ensureRuntimeSchema",
-      "type": "function"
-    }
-  ],
   "tasks": [
     {
       "file": "src/bun/db/schema.ts",
@@ -55443,30 +57575,6 @@
       "line": 74,
       "symbol": "sortTasksByPosition",
       "type": "function"
-    }
-  ],
-  "channels": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 274,
-      "symbol": "channels",
-      "type": "export"
-    }
-  ],
-  "whatsapp": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "sessions": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
     }
   ],
   "external": [
@@ -55511,22 +57619,6 @@
       "line": 166,
       "symbol": "ExternalIssue",
       "type": "interface"
-    }
-  ],
-  "strategies": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 603,
-      "symbol": "branchStrategies",
-      "type": "export"
-    }
-  ],
-  "budgets": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 624,
-      "symbol": "costBudgets",
-      "type": "export"
     }
   ],
   "gitlab": [
@@ -55643,9 +57735,39 @@
   ],
   "endpoint": [
     {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 10,
+      "symbol": "CaptureEndpoint",
+      "type": "export"
+    },
+    {
       "file": "src/bun/issue-sources/kanboard.ts",
       "line": 8,
       "symbol": "endpoint",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 16,
+      "symbol": "CaptureEndpoint",
+      "type": "type"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 18,
+      "symbol": "EndpointRule",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 89,
+      "symbol": "classifyEndpoint",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 98,
+      "symbol": "endpointPaths",
       "type": "function"
     }
   ],
@@ -55857,6 +57979,12 @@
   ],
   "descriptor": [
     {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 32,
+      "symbol": "PlatformDescriptor",
+      "type": "interface"
+    },
+    {
       "file": "src/shared/rpc/issues.ts",
       "line": 14,
       "symbol": "IssueSourceFieldDescriptor",
@@ -55946,14 +58074,6 @@
       "file": "src/bun/rpc/updater-portable.ts",
       "line": 112,
       "symbol": "portableApplyUpdate",
-      "type": "function"
-    }
-  ],
-  "relay": [
-    {
-      "file": "src/bun/rpc/updater.ts",
-      "line": 9,
-      "symbol": "relayStatus",
       "type": "function"
     }
   ],
@@ -56115,22 +58235,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 304,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
-  "help": [
-    {
-      "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
-      "line": 48,
-      "symbol": "OptionHelp",
-      "type": "function"
-    }
-  ],
   "pat": [
     {
       "file": "src/bun/rpc/github-api.ts",
@@ -56160,6 +58264,1060 @@
       "file": "src/bun/rpc/github-api.ts",
       "line": 183,
       "symbol": "pushBranchAuthenticated",
+      "type": "function"
+    }
+  ],
+  "city": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 46,
+      "symbol": "cityFromTimezone",
+      "type": "function"
+    }
+  ],
+  "knowledge": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 100,
+      "symbol": "loadAgentKnowledgeListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 132,
+      "symbol": "isAgentKnowledgeUpdateEnabled",
+      "type": "function"
+    }
+  ],
+  "sentence": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 217,
+      "symbol": "extractFirstSentence",
+      "type": "function"
+    }
+  ],
+  "instructions": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 448,
+      "symbol": "clearWorkspaceInstructionsCache",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 456,
+      "symbol": "loadWorkspaceInstructions",
+      "type": "function"
+    }
+  ],
+  "direct": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 610,
+      "symbol": "buildDirectToolsSection",
+      "type": "function"
+    }
+  ],
+  "workflow": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 733,
+      "symbol": "isFeatureBranchWorkflowEnabled",
+      "type": "function"
+    }
+  ],
+  "migration": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 59,
+      "symbol": "Migration",
+      "type": "interface"
+    }
+  ],
+  "migrations": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 109,
+      "symbol": "runMigrations",
+      "type": "function"
+    }
+  ],
+  "runtime": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 171,
+      "symbol": "ensureRuntimeSchema",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 35,
+      "symbol": "runtimeAvailable",
+      "type": "function"
+    }
+  ],
+  "channels": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 274,
+      "symbol": "channels",
+      "type": "export"
+    }
+  ],
+  "whatsapp": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "sessions": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "strategies": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 603,
+      "symbol": "branchStrategies",
+      "type": "export"
+    }
+  ],
+  "budgets": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 624,
+      "symbol": "costBudgets",
+      "type": "export"
+    }
+  ],
+  "accounts": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 718,
+      "symbol": "freelanceAccounts",
+      "type": "export"
+    }
+  ],
+  "threads": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 730,
+      "symbol": "freelanceInboxThreads",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 78,
+      "symbol": "parseThreads",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 242,
+      "symbol": "getThreads",
+      "type": "function"
+    }
+  ],
+  "users": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 764,
+      "symbol": "freelanceInboxUsers",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 128,
+      "symbol": "parseUsers",
+      "type": "function"
+    }
+  ],
+  "outbox": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 777,
+      "symbol": "freelanceOutbox",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 97,
+      "symbol": "OutboxItem",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 407,
+      "symbol": "onOutbox",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 88,
+      "symbol": "FreelanceOutboxItemDto",
+      "type": "interface"
+    }
+  ],
+  "facts": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 861,
+      "symbol": "freelanceJobFacts",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 210,
+      "symbol": "listJobFacts",
+      "type": "function"
+    }
+  ],
+  "escalations": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 870,
+      "symbol": "freelanceEscalations",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 97,
+      "symbol": "listEscalations",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 9,
+      "symbol": "getEscalations",
+      "type": "function"
+    }
+  ],
+  "fnv1a": [
+    {
+      "file": "src/bun/db/seed.ts",
+      "line": 16,
+      "symbol": "fnv1a",
+      "type": "function"
+    }
+  ],
+  "earn": [
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 13,
+      "symbol": "AutoEarnSettings",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 52,
+      "symbol": "getAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 78,
+      "symbol": "saveAutoEarnSetting",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 90,
+      "symbol": "saveAutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/auto-earn-settings.ts",
+      "line": 111,
+      "symbol": "isAutoEarnEnabled",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/feature-flag.ts",
+      "line": 17,
+      "symbol": "isAutoEarnFeatureAvailable",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 209,
+      "symbol": "getAutoEarnAvailable",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 214,
+      "symbol": "getAutoEarn",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 218,
+      "symbol": "saveAutoEarn",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 28,
+      "symbol": "AutoEarnSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listings-tab.tsx",
+      "line": 96,
+      "symbol": "loadAutoEarn",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 75,
+      "symbol": "FreelanceAutoEarnSettingsDto",
+      "type": "interface"
+    }
+  ],
+  "account": [
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 38,
+      "symbol": "getAccountAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 109,
+      "symbol": "getAccountAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 149,
+      "symbol": "getAccount",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 49,
+      "symbol": "FreelanceAccountDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceAccountDto",
+      "type": "export"
+    }
+  ],
+  "autonomy": [
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 38,
+      "symbol": "getAccountAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 109,
+      "symbol": "getAccountAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 224,
+      "symbol": "setAutonomy",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 530,
+      "symbol": "setAutonomy",
+      "type": "function"
+    }
+  ],
+  "draft": [
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 46,
+      "symbol": "draftBidForListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 117,
+      "symbol": "draftReplyForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 56,
+      "symbol": "draftReply",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 71,
+      "symbol": "draftBid",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 79,
+      "symbol": "updateDraft",
+      "type": "function"
+    }
+  ],
+  "bid": [
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 46,
+      "symbol": "draftBidForListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 71,
+      "symbol": "draftBid",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/freelance/write-steps.ts",
+      "line": 75,
+      "symbol": "buildSubmitBidScript",
+      "type": "function"
+    }
+  ],
+  "humanizer": [
+    {
+      "file": "src/bun/freelance/humanizer-prompt.ts",
+      "line": 10,
+      "symbol": "HUMANIZER_WRITING_RULES",
+      "type": "export"
+    }
+  ],
+  "writing": [
+    {
+      "file": "src/bun/freelance/humanizer-prompt.ts",
+      "line": 10,
+      "symbol": "HUMANIZER_WRITING_RULES",
+      "type": "export"
+    }
+  ],
+  "bootstrap": [
+    {
+      "file": "src/bun/freelance/project-bootstrap.ts",
+      "line": 20,
+      "symbol": "BootstrapResult",
+      "type": "interface"
+    }
+  ],
+  "thread": [
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 71,
+      "symbol": "getJobByThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 79,
+      "symbol": "upsertJobForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 77,
+      "symbol": "buildThreadTranscript",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 264,
+      "symbol": "getJobByThread",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 45,
+      "symbol": "ThreadCtx",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 53,
+      "symbol": "loadThreadContext",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 117,
+      "symbol": "draftReplyForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 35,
+      "symbol": "threadUrl",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 17,
+      "symbol": "NormalizedThread",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 99,
+      "symbol": "clientNameForThread",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 513,
+      "symbol": "selectThread",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 58,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/index.ts",
+      "line": 77,
+      "symbol": "FreelanceInboxThreadDto",
+      "type": "export"
+    }
+  ],
+  "brief": [
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 88,
+      "symbol": "listingBrief",
+      "type": "function"
+    }
+  ],
+  "defaults": [
+    {
+      "file": "src/bun/rpc/agents.ts",
+      "line": 274,
+      "symbol": "resetAgentToolsToDefaults",
+      "type": "function"
+    }
+  ],
+  "escalation": [
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 31,
+      "symbol": "EscalationDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 116,
+      "symbol": "resolveEscalation",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 158,
+      "symbol": "openEscalationCount",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 13,
+      "symbol": "resolveEscalation",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 112,
+      "symbol": "FreelanceEscalationDto",
+      "type": "interface"
+    }
+  ],
+  "timeline": [
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 22,
+      "symbol": "getJobTimeline",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 44,
+      "symbol": "openTimeline",
+      "type": "function"
+    }
+  ],
+  "earnings": [
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 28,
+      "symbol": "EarningsSummary",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 36,
+      "symbol": "getEarningsSummary",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 142,
+      "symbol": "FreelanceEarningsDto",
+      "type": "interface"
+    }
+  ],
+  "partition": [
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 30,
+      "symbol": "partitionFor",
+      "type": "function"
+    }
+  ],
+  "cookie": [
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 45,
+      "symbol": "hasAuthCookie",
+      "type": "function"
+    }
+  ],
+  "ingest": [
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 26,
+      "symbol": "IngestResult",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 50,
+      "symbol": "ingestCaptures",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 57,
+      "symbol": "ingest",
+      "type": "function"
+    }
+  ],
+  "inbound": [
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 20,
+      "symbol": "NewInboundMessage",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-inbox.ts",
+      "line": 112,
+      "symbol": "notifyNewInbound",
+      "type": "function"
+    }
+  ],
+  "relay": [
+    {
+      "file": "src/bun/rpc/updater.ts",
+      "line": 9,
+      "symbol": "relayStatus",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 328,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "composer": [
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 25,
+      "symbol": "ComposerConfig",
+      "type": "interface"
+    }
+  ],
+  "freelancer": [
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 49,
+      "symbol": "FREELANCER",
+      "type": "export"
+    }
+  ],
+  "classify": [
+    {
+      "file": "src/shared/freelance/platforms.ts",
+      "line": 89,
+      "symbol": "classifyEndpoint",
+      "type": "function"
+    }
+  ],
+  "fact": [
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 194,
+      "symbol": "FactCategory",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/expert/jobs.ts",
+      "line": 196,
+      "symbol": "saveJobFact",
+      "type": "function"
+    }
+  ],
+  "escalate": [
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 20,
+      "symbol": "EscalateInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 44,
+      "symbol": "escalateToHuman",
+      "type": "function"
+    }
+  ],
+  "persona": [
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 62,
+      "symbol": "getPersona",
+      "type": "function"
+    }
+  ],
+  "self": [
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 90,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 39,
+      "symbol": "getSelfUserId",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 48,
+      "symbol": "NormalizedSelf",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 150,
+      "symbol": "parseSelf",
+      "type": "function"
+    }
+  ],
+  "expert": [
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 115,
+      "symbol": "RunExpertInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 128,
+      "symbol": "runFreelanceExpert",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 95,
+      "symbol": "buildFreelanceExpertTools",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 16,
+      "symbol": "ExpertDashboard",
+      "type": "function"
+    }
+  ],
+  "dest": [
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 43,
+      "symbol": "safeDest",
+      "type": "function"
+    }
+  ],
+  "cred": [
+    {
+      "file": "src/bun/freelance/expert/tools.ts",
+      "line": 78,
+      "symbol": "credToRemote",
+      "type": "function"
+    }
+  ],
+  "credential": [
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 13,
+      "symbol": "CredentialKind",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 15,
+      "symbol": "StoreCredentialInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 26,
+      "symbol": "ResolvedCredential",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 39,
+      "symbol": "CredentialSummary",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 51,
+      "symbol": "storeCredential",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 84,
+      "symbol": "getCredential",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/vault.ts",
+      "line": 120,
+      "symbol": "listCredentialSummaries",
+      "type": "function"
+    }
+  ],
+  "governor": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 22,
+      "symbol": "GovernorAction",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 24,
+      "symbol": "GovernorSettings",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 65,
+      "symbol": "getGovernorSettings",
+      "type": "function"
+    }
+  ],
+  "num": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 68,
+      "symbol": "num",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 31,
+      "symbol": "num",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 39,
+      "symbol": "fmtNum",
+      "type": "function"
+    }
+  ],
+  "seconds": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 127,
+      "symbol": "secondsSinceLastSend",
+      "type": "function"
+    }
+  ],
+  "sends": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 138,
+      "symbol": "sendsInLastHour",
+      "type": "function"
+    }
+  ],
+  "gate": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 202,
+      "symbol": "gateSend",
+      "type": "function"
+    }
+  ],
+  "jitter": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 216,
+      "symbol": "jitter",
+      "type": "function"
+    }
+  ],
+  "sleep": [
+    {
+      "file": "src/bun/freelance/session/humanize.ts",
+      "line": 9,
+      "symbol": "sleep",
+      "type": "function"
+    }
+  ],
+  "gap": [
+    {
+      "file": "src/bun/freelance/session/humanize.ts",
+      "line": 14,
+      "symbol": "humanGapMs",
+      "type": "function"
+    }
+  ],
+  "pause": [
+    {
+      "file": "src/bun/freelance/session/humanize.ts",
+      "line": 20,
+      "symbol": "humanPause",
+      "type": "function"
+    }
+  ],
+  "captures": [
+    {
+      "file": "src/bun/freelance/session/ingest.ts",
+      "line": 50,
+      "symbol": "ingestCaptures",
+      "type": "function"
+    }
+  ],
+  "normalized": [
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 17,
+      "symbol": "NormalizedThread",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 31,
+      "symbol": "NormalizedMessage",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 39,
+      "symbol": "NormalizedUser",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 48,
+      "symbol": "NormalizedSelf",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 53,
+      "symbol": "NormalizedProject",
+      "type": "interface"
+    }
+  ],
+  "null": [
+    {
+      "file": "src/bun/freelance/session/normalizer.ts",
+      "line": 64,
+      "symbol": "toIntOrNull",
+      "type": "function"
+    }
+  ],
+  "help": [
+    {
+      "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
+      "line": 13,
+      "symbol": "HelpIcon",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/issue-fixer/issue-fixer-settings.tsx",
+      "line": 48,
+      "symbol": "OptionHelp",
+      "type": "function"
+    }
+  ],
+  "metric": [
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 133,
+      "symbol": "Metric",
+      "type": "function"
+    }
+  ],
+  "tag": [
+    {
+      "file": "src/mainview/components/freelance/inbox-tab.tsx",
+      "line": 103,
+      "symbol": "WebviewTagEl",
+      "type": "type"
+    }
+  ],
+  "chips": [
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 183,
+      "symbol": "SkillChips",
+      "type": "function"
+    }
+  ],
+  "detach": [
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 112,
+      "symbol": "detachSessionWebview",
+      "type": "function"
+    }
+  ],
+  "visible": [
+    {
+      "file": "src/mainview/components/freelance/session-webview-host.ts",
+      "line": 126,
+      "symbol": "setSessionWebviewVisible",
+      "type": "function"
+    }
+  ],
+  "combobox": [
+    {
+      "file": "src/mainview/components/freelance/settings-tab.tsx",
+      "line": 108,
+      "symbol": "CurrencyCombobox",
       "type": "function"
     }
   ]

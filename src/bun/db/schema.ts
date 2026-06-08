@@ -708,6 +708,179 @@ export const freelanceChatMessages = sqliteTable("freelance_chat_messages", {
 });
 
 // ---------------------------------------------------------------------------
+// Auto-Earn — connected freelance accounts + intercepted inbox (read-only v1)
+// ---------------------------------------------------------------------------
+// These tables are populated by passively intercepting the platform's OWN
+// authenticated JSON calls inside the embedded session webview (never replayed
+// from Bun). One account row per platform. Sensitive fields (email, device
+// tokens, payment info) are deliberately NOT stored — only what the inbox needs.
+
+export const freelanceAccounts = sqliteTable("freelance_accounts", {
+	id:          text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	platform:    text("platform").notNull().unique(),   // "freelancer"
+	selfUserId:  text("self_user_id"),                  // platform id of the logged-in user
+	displayName: text("display_name"),
+	status:      text("status").notNull().default("connected"), // connected | logged_out | error
+	autonomyMode: text("autonomy_mode").notNull().default("assisted"), // assisted | full_auto
+	lastSyncAt:  text("last_sync_at"),
+	createdAt:   text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt:   text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const freelanceInboxThreads = sqliteTable("freelance_inbox_threads", {
+	id:              text("id").primaryKey(),            // platform thread id (globally unique)
+	platform:        text("platform").notNull(),
+	threadType:      text("thread_type"),
+	ownerId:         text("owner_id"),
+	memberIds:       text("member_ids").notNull().default("[]"),  // JSON array of user ids
+	clientUserId:    text("client_user_id"),             // resolved "other party" (member != self)
+	contextType:     text("context_type"),               // support_session | project | ...
+	contextId:       text("context_id"),                 // project id — correlation key
+	title:           text("title"),                      // resolved project/job title (when known)
+	listingId:       text("listing_id"),                 // resolved internal freelance_listings.id (§4a)
+	listingExternalId: text("listing_external_id"),      // platform project/job id from thread JSON
+	linkConfidence:  text("link_confidence"),            // certain | probable | none
+	lastMessageId:   text("last_message_id"),
+	lastMessageText: text("last_message_text"),
+	lastMessageFrom: text("last_message_from"),
+	lastMessageAt:   integer("last_message_at"),          // unix seconds
+	unread:          integer("unread").notNull().default(0),
+	url:             text("url"),
+	createdAt:       text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt:       text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const freelanceInboxMessages = sqliteTable("freelance_inbox_messages", {
+	id:        text("id").primaryKey(),                  // platform message id
+	threadId:  text("thread_id").notNull(),
+	fromUser:  text("from_user"),
+	body:      text("body").notNull().default(""),
+	sentAt:    integer("sent_at"),                       // unix seconds
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Lightweight identity cache so the inbox can render client names instead of
+// raw user ids. Populated from the platform's /users payloads.
+export const freelanceInboxUsers = sqliteTable("freelance_inbox_users", {
+	id:          text("id").primaryKey(),                // platform user id
+	platform:    text("platform").notNull(),
+	username:    text("username"),
+	displayName: text("display_name"),
+	role:        text("role"),                           // employer | freelancer
+	country:     text("country"),
+	avatar:      text("avatar"),
+	updatedAt:   text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Approval queue: drafted/queued replies & bids. Assisted = user edits + sends;
+// full-auto = governor-paced auto-send. finalBody captures what was actually sent.
+export const freelanceOutbox = sqliteTable("freelance_outbox", {
+	id:           text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	platform:     text("platform").notNull(),
+	kind:         text("kind").notNull(),                // reply | bid
+	threadId:     text("thread_id"),                     // for replies
+	listingId:    text("listing_id"),                    // for bids
+	draftBody:    text("draft_body").notNull().default(""),
+	finalBody:    text("final_body"),                    // what was actually sent (post-edit)
+	status:       text("status").notNull().default("draft"), // draft|approved|sending|sent|failed|rejected
+	autonomyMode: text("autonomy_mode").notNull().default("assisted"),
+	scheduledFor: text("scheduled_for"),                 // governor's earliest-send time (ISO)
+	sentAt:       text("sent_at"),
+	error:        text("error"),
+	createdAt:    text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt:    text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Audit trail powering the Behavior Governor's rate-limit decisions + forensics.
+export const freelanceActionLog = sqliteTable("freelance_action_log", {
+	id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	platform:  text("platform").notNull(),
+	action:    text("action").notNull(),                 // login|inbox_sync|send_reply|submit_bid|blocked
+	outcome:   text("outcome").notNull().default("ok"),  // ok|blocked|error
+	detail:    text("detail"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// Auto-Earn — freelance-expert autonomous job pipeline (Full-auto)
+// ---------------------------------------------------------------------------
+
+// One row per job/opportunity. The state machine drives what the freelance-expert
+// agent does next. Idempotent on (platform, thread_id).
+export const freelanceJobs = sqliteTable("freelance_jobs", {
+	id:           text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	platform:     text("platform").notNull(),
+	threadId:     text("thread_id"),                     // platform thread id (correlation)
+	listingId:    text("listing_id"),                    // internal freelance_listings.id
+	listingExternalId: text("listing_external_id"),      // platform project id
+	projectId:    text("project_id"),                    // AgentDesk project once bootstrapped
+	clientUserId: text("client_user_id"),
+	title:        text("title"),
+	// state: lead | negotiating | awarded | in_progress | delivered | revisions | complete | parked
+	state:        text("state").notNull().default("lead"),
+	bidAmount:    integer("bid_amount"),
+	currency:     text("currency"),
+	earned:       integer("earned").notNull().default(0), // amount actually earned (delivered)
+	awardedAt:    text("awarded_at"),
+	deliveredAt:  text("delivered_at"),
+	lastError:    text("last_error"),
+	createdAt:    text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt:    text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Encrypted vault for client-provided access (FTP/SFTP/git tokens/CMS logins).
+// secretEnc is AES-256-GCM via lib/secret-crypto; never logged or returned raw.
+export const freelanceCredentials = sqliteTable("freelance_credentials", {
+	id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	jobId:     text("job_id").notNull(),
+	kind:      text("kind").notNull(),                   // ftp|sftp|git|cms|other
+	label:     text("label"),
+	host:      text("host"),
+	port:      integer("port"),
+	username:  text("username"),
+	secretEnc: text("secret_enc").notNull().default(""), // encrypted password/token/key
+	meta:      text("meta"),                              // JSON (e.g. repo url, protocol, path)
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Per-job audit timeline: every autonomous action the agent takes.
+export const freelanceJobLog = sqliteTable("freelance_job_log", {
+	id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	jobId:     text("job_id").notNull(),
+	action:    text("action").notNull(),                 // reply|bid|clone|download|create_project|deliver|escalate|state|...
+	detail:    text("detail"),
+	outcome:   text("outcome").notNull().default("ok"),  // ok|error|info
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Important client/project facts the agent learns from the conversation (NOT
+// secrets — those go in freelance_credentials). E.g. communication rules, where
+// to talk, repo/links, preferences, requirements. Injected into the agent's
+// system context so every reply is well-informed.
+export const freelanceJobFacts = sqliteTable("freelance_job_facts", {
+	id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	jobId:     text("job_id").notNull(),
+	category:  text("category").notNull().default("other"), // rule|contact|access|preference|requirement|other
+	detail:    text("detail").notNull(),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Needs-attention queue: things the agent escalated to the human.
+export const freelanceEscalations = sqliteTable("freelance_escalations", {
+	id:         text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	jobId:      text("job_id"),
+	platform:   text("platform"),
+	threadId:   text("thread_id"),
+	reason:     text("reason").notNull(),
+	detail:     text("detail"),
+	severity:   text("severity").notNull().default("info"), // info|warn|blocker
+	status:     text("status").notNull().default("open"),   // open|resolved
+	createdAt:  text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	resolvedAt: text("resolved_at"),
+});
+
+// ---------------------------------------------------------------------------
 // project_activity — per-project "unread agent activity" tracking
 // ---------------------------------------------------------------------------
 // One row per (project, location). `location` is a leaf UI spot where an agent
