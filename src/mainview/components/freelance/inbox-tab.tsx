@@ -139,6 +139,7 @@ function AutoGrowTextarea({
   className?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const lastWidth = useRef(0);
   const resize = useCallback(() => {
     const el = ref.current;
     if (!el) return;
@@ -148,6 +149,23 @@ function AutoGrowTextarea({
   useEffect(() => {
     resize();
   }, [resize, defaultValue]);
+  // The inbox engine is always mounted (often in a hidden container), so this
+  // textarea may first render with 0 width → scrollHeight 0 → collapsed. Recompute
+  // when its width changes (i.e. when it becomes visible / the layout shifts).
+  // Guard on width so our own height changes don't cause a feedback loop.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      const w = el.offsetWidth;
+      if (w !== lastWidth.current) {
+        lastWidth.current = w;
+        resize();
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [resize]);
   return (
     <textarea
       ref={ref}
@@ -310,23 +328,37 @@ export function InboxTab() {
   );
 
   const killSwitch = useCallback(() => {
-    rpc.freelanceOutboxKillSwitch().then(refreshOutbox).catch(() => {});
+    rpc
+      .freelanceOutboxKillSwitch()
+      .then((r) => {
+        setNotice(r.halted > 0 ? `Stopped ${r.halted} in-progress send(s).` : "Nothing in progress to stop (drafts stay as drafts).");
+        refreshOutbox();
+      })
+      .catch(() => {});
   }, [refreshOutbox]);
 
   // Approve & Send: governor-gate (Bun) → run the human-paced write-step in the
   // webview → markResult via the fl-send-result host message.
   const approveSend = useCallback(
-    async (item: FreelanceOutboxItemDto) => {
+    async (item: FreelanceOutboxItemDto, autonomous = false) => {
       setNotice(null);
-      const res = await rpc.freelanceOutboxApproveSend(item.id).catch(() => null);
-      if (!res) return;
+      // A human clicking Approve & Send is user-initiated (skips active-hours);
+      // the full-auto loop passes autonomous=true (active-hours enforced).
+      const res = await rpc.freelanceOutboxApproveSend(item.id, !autonomous).catch(() => null);
+      if (!res) {
+        if (!autonomous) setNotice("Couldn't reach the backend — please try again.");
+        return;
+      }
       if (!res.allowed) {
-        setNotice(`Held by governor: ${res.reason ?? "rate limited"}`);
+        if (!autonomous) setNotice(`Held: ${res.reason ?? "rate limited"}. Your draft is safe — try again shortly.`);
         refreshOutbox();
         return;
       }
       const wv = wvRef.current;
-      if (!wv) return;
+      if (!wv) {
+        if (!autonomous) setNotice("The live session isn't ready yet — open it below (Show live session) and try again.");
+        return;
+      }
       setSendingId(item.id);
       pendingSend.current = { id: item.id };
       if (!sessionOpen) setSessionOpen(true);
@@ -592,7 +624,7 @@ export function InboxTab() {
           // by driving the live session. (Drafting moved to the expert agent.)
           const queued = ob.find((o) => o.status === "draft");
           if (queued) {
-            await approveSendRef.current(queued); // governor-gated inside
+            await approveSendRef.current(queued, true); // autonomous — active-hours enforced
           }
           // Surface a stalled queue (logged out / active hours / paused) to the user.
           rpc.freelanceGovernorCheckStuck().catch(() => {});

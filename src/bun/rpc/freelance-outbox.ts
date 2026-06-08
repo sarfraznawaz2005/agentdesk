@@ -210,7 +210,7 @@ export async function reject(params: { id: string }): Promise<{ success: boolean
 // ─── approveSend ─────────────────────────────────────────────────────────────
 // Governor-gated. On allow: mark 'sending' and return the body for the frontend
 // to type into the real composer. On block: leave as draft, return the reason.
-export async function approveSend(params: { id: string }): Promise<{
+export async function approveSend(params: { id: string; userInitiated?: boolean }): Promise<{
 	allowed: boolean;
 	reason?: string;
 	platform: string;
@@ -292,7 +292,10 @@ export async function approveSend(params: { id: string }): Promise<{
 		};
 	}
 
-	const decision = await gateSend(platform, isBid ? "submit_bid" : "send_reply", { isBid });
+	// A user-initiated (assisted) send is a real human acting now → skip the
+	// active-hours pacing rule (min-gap + hourly cap still apply). Autonomous
+	// (full-auto loop) sends keep the active-hours guard.
+	const decision = await gateSend(platform, isBid ? "submit_bid" : "send_reply", { isBid, skipActiveHours: !!params.userInitiated });
 	if (!decision.allowed) {
 		return { allowed: false, reason: decision.reason, platform, kind, threadId, listingId, listingUrl, body };
 	}

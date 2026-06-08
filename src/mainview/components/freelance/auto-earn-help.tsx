@@ -128,7 +128,7 @@ export function AutoEarnHelp() {
               {[
                 ["Drafting replies", "When you ask", "Automatic, on each new client message"],
                 ["Sending replies", "You click Approve & Send", "Sent automatically (paced)"],
-                ["Doing the work (build/deliver)", "—", "AI agent does it autonomously"],
+                ["Doing the work (clone / build)", "—", "AI agent does it autonomously"],
                 ["Placing a bid", "You click Place Bid", "You click Place Bid (same)"],
                 ["Delivering finished work", "You", "AI prepares + reviews, then you approve"],
                 ["Sensitive messages (money/contracts/off-platform/disputes)", "You handle them", "Escalated to you — never auto-answered"],

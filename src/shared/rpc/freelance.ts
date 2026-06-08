@@ -244,7 +244,7 @@ export type FreelanceRequests = {
     response: { success: boolean };
   };
   "freelance.outbox.approveSend": {
-    params: { id: string };
+    params: { id: string; userInitiated?: boolean };
     response: {
       allowed: boolean;
       reason?: string;

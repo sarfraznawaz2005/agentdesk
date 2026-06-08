@@ -1578,8 +1578,8 @@
 **Interfaces:**
 - `GovernorSettings` (line 24)
 - `SendDecision` (line 198)
-- `GovernorActionState` (line 261)
-- `GovernorState` (line 266)
+- `GovernorActionState` (line 271)
+- `GovernorState` (line 276)
 
 **Types:**
 - `GovernorAction` (line 22)
@@ -1598,10 +1598,10 @@
 - `sendsInLastHour` (line 178)
 - `isWithinActiveHours` (line 189)
 - `evaluateSend` (line 209)
-- `gateSend` (line 247)
-- `getGovernorState` (line 274)
-- `forAction` (line 277)
-- `jitter` (line 293)
+- `gateSend` (line 253)
+- `getGovernorState` (line 284)
+- `forAction` (line 287)
+- `jitter` (line 303)
 
 
 ### `src/bun/freelance/session/humanize.ts`
@@ -3047,16 +3047,16 @@
 - `markBidPrefilled` (line 189)
 - `reject` (line 202)
 - `approveSend` (line 213)
-- `markResult` (line 309)
-- `killSwitch` (line 331)
-- `governorState` (line 343)
-- `pauseAutonomy` (line 348)
-- `resumeAutonomy` (line 355)
-- `checkStuckQueue` (line 368)
-- `checkStuck` (line 408)
+- `markResult` (line 312)
+- `killSwitch` (line 334)
+- `governorState` (line 346)
+- `pauseAutonomy` (line 351)
+- `resumeAutonomy` (line 358)
+- `checkStuckQueue` (line 371)
+- `checkStuck` (line 411)
 
 **Exports:**
-- `getPauseUntilMs` (line 413)
+- `getPauseUntilMs` (line 416)
 
 
 ### `src/bun/rpc/freelance-wizard.ts`

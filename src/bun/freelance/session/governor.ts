@@ -206,7 +206,10 @@ export interface SendDecision {
  * replies (a flurry of proposals is the loudest spam signal): half the hourly
  * cap (min 1) and triple the minimum gap.
  */
-export async function evaluateSend(platform: string, opts: { isBid?: boolean } = {}): Promise<SendDecision> {
+export async function evaluateSend(
+	platform: string,
+	opts: { isBid?: boolean; skipActiveHours?: boolean } = {},
+): Promise<SendDecision> {
 	const g = await getGovernorSettings();
 	const action = opts.isBid ? "submit_bid" : "send_reply";
 	// Bids are cold outreach (loudest spam signal) → strict. Replies are to an
@@ -219,7 +222,10 @@ export async function evaluateSend(platform: string, opts: { isBid?: boolean } =
 		return { allowed: false, reason: "autonomy paused", retryAfterMs: pausedUntil - Date.now() };
 	}
 
-	if (!isWithinActiveHours(g)) {
+	// Active-hours is an ANTI-BOT pacing rule for AUTONOMOUS sends. A human who
+	// deliberately clicks Approve & Send is genuinely human at that hour, so an
+	// assisted (user-initiated) send skips this check (min-gap + hourly cap still apply).
+	if (!opts.skipActiveHours && !isWithinActiveHours(g)) {
 		return { allowed: false, reason: "outside active hours", retryAfterMs: 15 * 60_000 };
 	}
 
@@ -244,7 +250,11 @@ export async function evaluateSend(platform: string, opts: { isBid?: boolean } =
  * Evaluate a send and, if blocked, log it + broadcast governor.blocked.
  * Returns the decision so callers can defer or proceed.
  */
-export async function gateSend(platform: string, detail?: string, opts: { isBid?: boolean } = {}): Promise<SendDecision> {
+export async function gateSend(
+	platform: string,
+	detail?: string,
+	opts: { isBid?: boolean; skipActiveHours?: boolean } = {},
+): Promise<SendDecision> {
 	const decision = await evaluateSend(platform, opts);
 	if (!decision.allowed) {
 		recordAction(platform, "blocked", "blocked", `${detail ?? "send"}: ${decision.reason}`);

@@ -32,7 +32,7 @@ function HelpIcon({ text }: { text: string }) {
 const AUTONOMY_ROWS: Array<{ label: string; assisted: string; fullAuto: string }> = [
   { label: "Drafting replies", assisted: "When you ask", fullAuto: "Automatic, on each new client message" },
   { label: "Sending replies", assisted: "You click Approve & Send", fullAuto: "Sent automatically (governor-paced)" },
-  { label: "Doing the work (clone / build / deliver)", assisted: "—", fullAuto: "AI agent does it autonomously" },
+  { label: "Doing the work (clone / build)", assisted: "—", fullAuto: "AI agent does it autonomously" },
   { label: "Placing a bid", assisted: "You click Place Bid", fullAuto: "You click Place Bid (same)" },
   { label: "Delivering finished work", assisted: "You", fullAuto: "AI prepares + reviews, then you approve" },
   { label: "Sensitive messages (money / contracts / off-platform / disputes)", assisted: "You handle them", fullAuto: "Escalated to you — never auto-answered" },

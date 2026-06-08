@@ -1533,8 +1533,8 @@ export const rpc = {
     electroviewRpc.request["freelance.outbox.draftBid"]({ listingId, platform }),
   freelanceOutboxUpdateDraft: (id: string, body: string) =>
     electroviewRpc.request["freelance.outbox.updateDraft"]({ id, body }),
-  freelanceOutboxApproveSend: (id: string) =>
-    electroviewRpc.request["freelance.outbox.approveSend"]({ id }),
+  freelanceOutboxApproveSend: (id: string, userInitiated?: boolean) =>
+    electroviewRpc.request["freelance.outbox.approveSend"]({ id, userInitiated }),
   freelanceOutboxMarkResult: (id: string, ok: boolean, error?: string) =>
     electroviewRpc.request["freelance.outbox.markResult"]({ id, ok, error }),
   freelanceOutboxRetry: (id: string) =>

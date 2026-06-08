@@ -2390,7 +2390,7 @@
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 274,
+      "line": 284,
       "symbol": "getGovernorState",
       "type": "function"
     },
@@ -2930,7 +2930,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 413,
+      "line": 416,
       "symbol": "getPauseUntilMs",
       "type": "export"
     },
@@ -4124,7 +4124,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 629,
+      "line": 661,
       "symbol": "setAutonomy",
       "type": "function"
     },
@@ -4424,7 +4424,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 505,
+      "line": 537,
       "symbol": "onStatus",
       "type": "function"
     },
@@ -5532,7 +5532,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 198,
+      "line": 216,
       "symbol": "InboxTab",
       "type": "function"
     },
@@ -7090,19 +7090,19 @@
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 261,
+      "line": 271,
       "symbol": "GovernorActionState",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 266,
+      "line": 276,
       "symbol": "GovernorState",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 274,
+      "line": 284,
       "symbol": "getGovernorState",
       "type": "function"
     },
@@ -7156,7 +7156,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 343,
+      "line": 346,
       "symbol": "governorState",
       "type": "function"
     },
@@ -8712,7 +8712,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 164,
+      "line": 182,
       "symbol": "navUrl",
       "type": "function"
     },
@@ -10866,7 +10866,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 633,
+      "line": 665,
       "symbol": "disconnect",
       "type": "function"
     },
@@ -10946,7 +10946,7 @@
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 247,
+      "line": 253,
       "symbol": "gateSend",
       "type": "function"
     },
@@ -11440,7 +11440,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 413,
+      "line": 445,
       "symbol": "onHostMessage",
       "type": "function"
     },
@@ -12886,7 +12886,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 534,
+      "line": 566,
       "symbol": "withinActiveHours",
       "type": "function"
     },
@@ -13150,7 +13150,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 621,
+      "line": 653,
       "symbol": "syncNow",
       "type": "function"
     },
@@ -13240,7 +13240,7 @@
   "time": [
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 189,
+      "line": 207,
       "symbol": "fmtTime",
       "type": "function"
     },
@@ -15748,7 +15748,7 @@
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 277,
+      "line": 287,
       "symbol": "forAction",
       "type": "function"
     },
@@ -24754,7 +24754,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 309,
+      "line": 312,
       "symbol": "markResult",
       "type": "function"
     },
@@ -26514,7 +26514,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 621,
+      "line": 653,
       "symbol": "syncNow",
       "type": "function"
     },
@@ -27462,7 +27462,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 368,
+      "line": 371,
       "symbol": "checkStuckQueue",
       "type": "function"
     },
@@ -28154,7 +28154,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 534,
+      "line": 566,
       "symbol": "withinActiveHours",
       "type": "function"
     },
@@ -30400,13 +30400,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 368,
+      "line": 371,
       "symbol": "checkStuckQueue",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 408,
+      "line": 411,
       "symbol": "checkStuck",
       "type": "function"
     },
@@ -31896,13 +31896,13 @@
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 261,
+      "line": 271,
       "symbol": "GovernorActionState",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 277,
+      "line": 287,
       "symbol": "forAction",
       "type": "function"
     },
@@ -33672,7 +33672,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 394,
+      "line": 426,
       "symbol": "inject",
       "type": "function"
     }
@@ -39726,7 +39726,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 540,
+      "line": 572,
       "symbol": "schedule",
       "type": "function"
     },
@@ -41054,7 +41054,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 583,
+      "line": 615,
       "symbol": "tick",
       "type": "function"
     }
@@ -41442,7 +41442,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 534,
+      "line": 566,
       "symbol": "withinActiveHours",
       "type": "function"
     }
@@ -41482,7 +41482,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 177,
+      "line": 195,
       "symbol": "hourInTz",
       "type": "function"
     }
@@ -41526,7 +41526,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 331,
+      "line": 334,
       "symbol": "killSwitch",
       "type": "function"
     }
@@ -43318,7 +43318,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 198,
+      "line": 216,
       "symbol": "InboxTab",
       "type": "function"
     },
@@ -44968,7 +44968,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 413,
+      "line": 445,
       "symbol": "onHostMessage",
       "type": "function"
     }
@@ -46088,7 +46088,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 309,
+      "line": 312,
       "symbol": "markResult",
       "type": "function"
     },
@@ -46816,13 +46816,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 368,
+      "line": 371,
       "symbol": "checkStuckQueue",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 408,
+      "line": 411,
       "symbol": "checkStuck",
       "type": "function"
     }
@@ -50434,7 +50434,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 189,
+      "line": 207,
       "symbol": "fmtTime",
       "type": "function"
     },
@@ -50950,7 +50950,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 612,
+      "line": 644,
       "symbol": "selectThread",
       "type": "function"
     },
@@ -51396,7 +51396,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 499,
+      "line": 531,
       "symbol": "onUpdated",
       "type": "function"
     },
@@ -51972,7 +51972,7 @@
   "switch": [
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 331,
+      "line": 334,
       "symbol": "killSwitch",
       "type": "function"
     },
@@ -54760,13 +54760,13 @@
   "nav": [
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 164,
+      "line": 182,
       "symbol": "navUrl",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 404,
+      "line": 436,
       "symbol": "onNav",
       "type": "function"
     },
@@ -58716,7 +58716,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 504,
+      "line": 536,
       "symbol": "onOutbox",
       "type": "function"
     },
@@ -58894,13 +58894,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 348,
+      "line": 351,
       "symbol": "pauseAutonomy",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 355,
+      "line": 358,
       "symbol": "resumeAutonomy",
       "type": "function"
     },
@@ -58912,7 +58912,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 629,
+      "line": 661,
       "symbol": "setAutonomy",
       "type": "function"
     }
@@ -59004,7 +59004,7 @@
     },
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
-      "line": 612,
+      "line": 644,
       "symbol": "selectThread",
       "type": "function"
     },
@@ -59302,13 +59302,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 348,
+      "line": 351,
       "symbol": "pauseAutonomy",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 413,
+      "line": 416,
       "symbol": "getPauseUntilMs",
       "type": "export"
     }
@@ -59667,124 +59667,6 @@
       "type": "interface"
     }
   ],
-  "pricing": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 26,
-      "symbol": "BidPricing",
-      "type": "interface"
-    }
-  ],
-  "dismiss": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 103,
-      "symbol": "dismissStaleBids",
-      "type": "function"
-    }
-  ],
-  "stale": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 103,
-      "symbol": "dismissStaleBids",
-      "type": "function"
-    }
-  ],
-  "bids": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 103,
-      "symbol": "dismissStaleBids",
-      "type": "function"
-    }
-  ],
-  "prefilled": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 189,
-      "symbol": "markBidPrefilled",
-      "type": "function"
-    }
-  ],
-  "governor": [
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 22,
-      "symbol": "GovernorAction",
-      "type": "type"
-    },
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 24,
-      "symbol": "GovernorSettings",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 65,
-      "symbol": "getGovernorSettings",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 261,
-      "symbol": "GovernorActionState",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 266,
-      "symbol": "GovernorState",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 274,
-      "symbol": "getGovernorState",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 343,
-      "symbol": "governorState",
-      "type": "function"
-    },
-    {
-      "file": "src/shared/rpc/freelance.ts",
-      "line": 96,
-      "symbol": "FreelanceGovernorActionStateDto",
-      "type": "interface"
-    },
-    {
-      "file": "src/shared/rpc/freelance.ts",
-      "line": 101,
-      "symbol": "FreelanceGovernorStateDto",
-      "type": "interface"
-    }
-  ],
-  "resume": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 355,
-      "symbol": "resumeAutonomy",
-      "type": "function"
-    }
-  ],
-  "until": [
-    {
-      "file": "src/bun/freelance/session/governor.ts",
-      "line": 113,
-      "symbol": "getPauseUntilMs",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 413,
-      "symbol": "getPauseUntilMs",
-      "type": "export"
-    }
-  ],
   "obviously": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -59831,14 +59713,6 @@
       "line": 557,
       "symbol": "normalizeNewlines",
       "type": "function"
-    }
-  ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 328,
-      "symbol": "electroview",
-      "type": "export"
     }
   ],
   "fact": [
@@ -59913,6 +59787,148 @@
       "type": "function"
     }
   ],
+  "metric": [
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 157,
+      "symbol": "Metric",
+      "type": "function"
+    }
+  ],
+  "combobox": [
+    {
+      "file": "src/mainview/components/freelance/settings-tab.tsx",
+      "line": 116,
+      "symbol": "CurrencyCombobox",
+      "type": "function"
+    }
+  ],
+  "pricing": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 26,
+      "symbol": "BidPricing",
+      "type": "interface"
+    }
+  ],
+  "dismiss": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 103,
+      "symbol": "dismissStaleBids",
+      "type": "function"
+    }
+  ],
+  "stale": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 103,
+      "symbol": "dismissStaleBids",
+      "type": "function"
+    }
+  ],
+  "bids": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 103,
+      "symbol": "dismissStaleBids",
+      "type": "function"
+    }
+  ],
+  "prefilled": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 189,
+      "symbol": "markBidPrefilled",
+      "type": "function"
+    }
+  ],
+  "governor": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 22,
+      "symbol": "GovernorAction",
+      "type": "type"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 24,
+      "symbol": "GovernorSettings",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 65,
+      "symbol": "getGovernorSettings",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 271,
+      "symbol": "GovernorActionState",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 276,
+      "symbol": "GovernorState",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 284,
+      "symbol": "getGovernorState",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 346,
+      "symbol": "governorState",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 96,
+      "symbol": "FreelanceGovernorActionStateDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 101,
+      "symbol": "FreelanceGovernorStateDto",
+      "type": "interface"
+    }
+  ],
+  "resume": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 358,
+      "symbol": "resumeAutonomy",
+      "type": "function"
+    }
+  ],
+  "until": [
+    {
+      "file": "src/bun/freelance/session/governor.ts",
+      "line": 113,
+      "symbol": "getPauseUntilMs",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 416,
+      "symbol": "getPauseUntilMs",
+      "type": "export"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 328,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
   "seconds": [
     {
       "file": "src/bun/freelance/session/governor.ts",
@@ -59932,7 +59948,7 @@
   "gate": [
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 247,
+      "line": 253,
       "symbol": "gateSend",
       "type": "function"
     }
@@ -59940,7 +59956,7 @@
   "jitter": [
     {
       "file": "src/bun/freelance/session/governor.ts",
-      "line": 293,
+      "line": 303,
       "symbol": "jitter",
       "type": "function"
     }
@@ -59961,14 +59977,6 @@
       "type": "function"
     }
   ],
-  "metric": [
-    {
-      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 157,
-      "symbol": "Metric",
-      "type": "function"
-    }
-  ],
   "tag": [
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
@@ -59982,14 +59990,6 @@
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
       "line": 132,
       "symbol": "AutoGrowTextarea",
-      "type": "function"
-    }
-  ],
-  "combobox": [
-    {
-      "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 116,
-      "symbol": "CurrencyCombobox",
       "type": "function"
     }
   ]
