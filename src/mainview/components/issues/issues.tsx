@@ -282,7 +282,7 @@ function IssueCard({
       </button>
       {expanded && issue.body && (
         <div className="px-3 pb-3 pl-8">
-          <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words border-t pt-2">{displayBody(issue.body)}</p>
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words border-t pt-2">{displayBody(issue.body)}</p>
         </div>
       )}
       <div className="flex items-center gap-2 px-3 py-1.5 border-t">

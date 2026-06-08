@@ -83,6 +83,7 @@ export interface FreelanceAutoEarnSettingsDto {
   fullautoAck: boolean;
   notifyDesktop: boolean;   // desktop notification on a new client reply
   notifyChannels: boolean;  // forward new client reply to connected channels
+  bidDeliveryDays: number;  // default "delivered in" days prefilled on a bid
 }
 
 export interface FreelanceOutboxItemDto {
@@ -95,6 +96,7 @@ export interface FreelanceOutboxItemDto {
   status: string; // draft|approved|sending|sent|failed|rejected
   autonomyMode: string;
   createdAt: string;
+  error?: string | null; // populated when status === 'failed'
 }
 
 export interface FreelanceInboxMessageDto {
@@ -225,8 +227,20 @@ export type FreelanceRequests = {
       kind: string;
       threadId: string | null;
       listingId: string | null;
+      listingUrl?: string | null; // real platform URL for bids (avoids /projects/<dbId> 404)
       body: string;
+      bidAmount?: number | null;  // avg of budget range / single value / null = user fills
+      bidDays?: number;           // delivery period to prefill
+      autoPlace?: boolean;        // full-auto + known amount → script clicks Place Bid
     };
+  };
+  "freelance.outbox.retry": {
+    params: { id: string };
+    response: { success: boolean };
+  };
+  "freelance.outbox.markBidPrefilled": {
+    params: { id: string; needsAmount?: boolean };
+    response: { success: boolean };
   };
   "freelance.outbox.markResult": {
     params: { id: string; ok: boolean; error?: string };

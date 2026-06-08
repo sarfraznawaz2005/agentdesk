@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
+import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
 import { getPlatform, endpointPaths } from "../../../shared/freelance/platforms";
 import { buildSendReplyScript, buildSubmitBidScript } from "../../../shared/freelance/write-steps";
 import {
@@ -123,6 +124,40 @@ function parseHostMessage(
   }
   if (d && typeof d === "object") return d as { type?: string; url?: string; body?: string; ok?: boolean; error?: string };
   return null;
+}
+
+// A textarea that grows/shrinks to fit its content (no inner scrollbar). Stays
+// uncontrolled (defaultValue + onBlur) so typing never re-renders the list.
+function AutoGrowTextarea({
+  defaultValue,
+  onBlur,
+  className,
+}: {
+  defaultValue: string;
+  onBlur: (value: string) => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const resize = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+  useEffect(() => {
+    resize();
+  }, [resize, defaultValue]);
+  return (
+    <textarea
+      ref={ref}
+      defaultValue={defaultValue}
+      onInput={resize}
+      onBlur={(e) => onBlur(e.target.value)}
+      rows={1}
+      style={{ overflow: "hidden" }}
+      className={className}
+    />
+  );
 }
 
 function navUrl(e: unknown): string | null {
@@ -247,6 +282,14 @@ export function InboxTab() {
     [refreshOutbox],
   );
 
+  // Revert a failed send back to an editable draft so the user can fix + resend.
+  const retryDraft = useCallback(
+    (id: string) => {
+      rpc.freelanceOutboxRetry(id).then(refreshOutbox).catch(() => {});
+    },
+    [refreshOutbox],
+  );
+
   const killSwitch = useCallback(() => {
     rpc.freelanceOutboxKillSwitch().then(refreshOutbox).catch(() => {});
   }, [refreshOutbox]);
@@ -271,13 +314,21 @@ export function InboxTab() {
       // Navigate to the right page (thread for replies, listing for bids) so the
       // composer/bid form is present, then type + submit with human pacing.
       const isBid = res.kind === "bid";
-      if (isBid && res.listingId) {
-        wv.loadURL?.(getPlatform(res.platform).listingUrl(res.listingId));
+      // Prefer the listing's REAL platform URL (from the source feed); only fall
+      // back to reconstructing /projects/<id> if it is somehow missing.
+      const bidUrl = res.listingUrl ?? (res.listingId ? getPlatform(res.platform).listingUrl(res.listingId) : null);
+      if (isBid && bidUrl) {
+        wv.loadURL?.(bidUrl);
       } else if (res.threadId) {
         wv.loadURL?.(getPlatform(res.platform).threadUrl(res.threadId));
       }
       const script = isBid
-        ? buildSubmitBidScript(res.platform, res.body)
+        ? buildSubmitBidScript(res.platform, {
+            proposal: res.body,
+            amount: res.bidAmount ?? null,
+            days: res.bidDays ?? 7,
+            autoPlace: !!res.autoPlace,
+          })
         : buildSendReplyScript(res.platform, res.body);
       setTimeout(() => {
         try {
@@ -286,7 +337,10 @@ export function InboxTab() {
           /* will time out below */
         }
       }, 2800);
-      // Safety timeout: if no result in 30s, mark failed.
+      // Safety timeout: scaled to the body length, because the proposal/reply is
+      // typed character-by-character (a long bid proposal can take 30s+ to type,
+      // plus the SPA bid form can take a few seconds to render before typing).
+      const timeoutMs = 25_000 + res.body.length * 100;
       setTimeout(() => {
         if (pendingSend.current?.id === item.id) {
           pendingSend.current = null;
@@ -294,7 +348,7 @@ export function InboxTab() {
           rpc.freelanceOutboxMarkResult(item.id, false, "send timed out").then(refreshOutbox).catch(() => {});
           setNotice("Send timed out — the composer may not have loaded.");
         }
-      }, 30_000);
+      }, timeoutMs);
     },
     [refreshOutbox, sessionOpen],
   );
@@ -371,6 +425,27 @@ export function InboxTab() {
           setTimeout(() => wvRef.current?.reload?.(), 1500);
         }
       }
+      if (msg.type === "fl-bid-prefilled") {
+        const pending = pendingSend.current;
+        pendingSend.current = null;
+        setSendingId(null);
+        if (!pending) return;
+        if (msg.ok) {
+          // Filled but not submitted — park for review + desktop notification.
+          const needsAmount = msg.error === "amount";
+          rpc.freelanceOutboxMarkBidPrefilled(pending.id, needsAmount).then(() => refreshOutbox()).catch(() => {});
+          setSessionOpen(true); // keep the live session visible so the user can click Place Bid
+          setNotice(
+            needsAmount
+              ? "Bid filled — set your bid amount and click Place Bid in the live session below."
+              : "Bid filled — review it and click Place Bid in the live session below.",
+          );
+        } else {
+          // Couldn't fill the form — mark failed so the user can Retry.
+          rpc.freelanceOutboxMarkResult(pending.id, false, msg.error || "could not fill bid form").then(() => refreshOutbox()).catch(() => {});
+          setNotice(`Bid form not filled: ${msg.error || "unknown"}`);
+        }
+      }
     };
 
     wv.on("dom-ready", inject);
@@ -388,11 +463,14 @@ export function InboxTab() {
     };
   }, [scheduleFlush, refreshAccount, refreshOutbox]);
 
-  // Show/hide (never destroy) the native view when the Live-session panel is
-  // collapsed/expanded.
+  // Show/hide (never destroy) the native view. Visible only when the live-session
+  // panel is open AND we're in the FOREGROUND (the Inbox tab is actually on screen,
+  // i.e. the engine host is parented into the freelance slot). In the background the
+  // webview is fully hidden so it can never flash over another page.
+  const inForeground = useFreelanceEngineStore((s) => s.slot != null);
   useEffect(() => {
-    setSessionWebviewVisible(sessionOpen);
-  }, [sessionOpen]);
+    setSessionWebviewVisible(sessionOpen && inForeground);
+  }, [sessionOpen, inForeground]);
 
   // Initial load + live refresh on ingest broadcasts.
   useEffect(() => {
@@ -743,12 +821,11 @@ export function InboxTab() {
                   {item.autonomyMode === "full_auto" && <span className="text-amber-500">full-auto</span>}
                 </div>
                 {item.status === "draft" ? (
-                  <textarea
+                  <AutoGrowTextarea
                     key={item.id}
                     defaultValue={item.draftBody}
-                    onBlur={(e) => updateDraft(item.id, e.target.value)}
-                    rows={4}
-                    className="w-full rounded-md border border-border bg-background p-2 text-sm"
+                    onBlur={(value) => updateDraft(item.id, value)}
+                    className="w-full min-h-[4rem] rounded-md border border-border bg-background p-2 text-sm"
                   />
                 ) : (
                   <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm">{item.draftBody}</p>
@@ -768,6 +845,49 @@ export function InboxTab() {
                     >
                       Reject
                     </button>
+                  </div>
+                )}
+                {item.status === "failed" && (
+                  <div className="mt-2 space-y-2">
+                    {item.error && (
+                      <p className="text-xs text-red-600 dark:text-red-400">Failed: {item.error}</p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => retryDraft(item.id)}
+                        className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+                      >
+                        Retry
+                      </button>
+                      <button
+                        onClick={() => rejectDraft(item.id)}
+                        className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {item.status === "awaiting_review" && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Filled into the bid form in the live session below — review the amount and click
+                      <span className="font-medium"> Place Bid</span> there. Then mark it placed.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => rpc.freelanceOutboxMarkResult(item.id, true).then(refreshOutbox).catch(() => {})}
+                        className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+                      >
+                        Mark as placed
+                      </button>
+                      <button
+                        onClick={() => rejectDraft(item.id)}
+                        className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
                   </div>
                 )}
               </li>
@@ -801,7 +921,7 @@ export function InboxTab() {
           <div
             ref={holderRef}
             className="w-full overflow-hidden"
-            style={{ height: sessionOpen ? "55vh" : 0 }}
+            style={{ height: sessionOpen ? "90vh" : 0 }}
           />
         ) : (
           <div className="p-4 text-sm text-red-600 dark:text-red-400">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Tabs,
   TabsList,
@@ -8,11 +8,16 @@ import {
 import { rpc } from "@/lib/rpc";
 import { ListingsTab } from "../components/freelance/listings-tab";
 import { SettingsTab } from "../components/freelance/settings-tab";
-import { InboxTab } from "../components/freelance/inbox-tab";
 import { ExpertDashboard } from "../components/freelance/expert-dashboard";
+import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
 
 export function FreelancePage() {
   const [activeTab, setActiveTab] = useState("listings");
+  // The Inbox tab is a *slot*: the always-mounted background engine (<InboxTab/>,
+  // rendered once at the app shell) portals its UI into this node when present.
+  // A stable ref callback so it only fires on mount/unmount, not every render.
+  const setSlot = useFreelanceEngineStore((s) => s.setSlot);
+  const slotRef = useCallback((el: HTMLDivElement | null) => setSlot(el), [setSlot]);
   // Auto-Earn (inbox + reply/bid sending) is gated behind the master switch and
   // OFF by default — existing installs see no change until they opt in via the
   // Settings tab. The Inbox tab only appears once enabled.
@@ -28,7 +33,14 @@ export function FreelancePage() {
     load();
     const onSettings = () => load();
     window.addEventListener("agentdesk:settings-changed", onSettings);
-    return () => window.removeEventListener("agentdesk:settings-changed", onSettings);
+    // A bid drafted from a listing card lands in the Inbox → Drafts queue, so jump
+    // there automatically once it succeeds.
+    const onOpenInbox = () => setActiveTab("inbox");
+    window.addEventListener("agentdesk:freelance-open-inbox", onOpenInbox);
+    return () => {
+      window.removeEventListener("agentdesk:settings-changed", onSettings);
+      window.removeEventListener("agentdesk:freelance-open-inbox", onOpenInbox);
+    };
   }, []);
 
   // If Auto-Earn is turned off while the Inbox tab is active, fall back —
@@ -39,7 +51,9 @@ export function FreelancePage() {
     "rounded-none border-b-2 border-transparent px-4 pb-2 pt-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground";
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    // The Inbox tab embeds the live Freelancer preview, so give it the full width;
+    // the other tabs keep the comfortable reading width.
+    <div className={`p-6 mx-auto ${effectiveTab === "inbox" ? "max-w-none" : "max-w-6xl"}`}>
       <Tabs value={effectiveTab} onValueChange={setActiveTab}>
         <TabsList className="mb-5 h-auto bg-transparent p-0 border-b border-border rounded-none w-full justify-start gap-0">
           <TabsTrigger value="listings" className={triggerCls}>Listings</TabsTrigger>
@@ -58,7 +72,8 @@ export function FreelancePage() {
 
         {autoEarnEnabled && (
           <TabsContent value="inbox">
-            <InboxTab />
+            {/* Portal slot — the background-engine InboxTab renders itself here. */}
+            <div ref={slotRef} />
           </TabsContent>
         )}
 

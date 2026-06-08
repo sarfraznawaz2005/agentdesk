@@ -108,6 +108,8 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.outbox.updateDraft": (params) => freelanceOutboxRpc.updateDraft(params),
 	"freelance.outbox.approveSend": (params) => freelanceOutboxRpc.approveSend(params),
 	"freelance.outbox.markResult": (params) => freelanceOutboxRpc.markResult(params),
+	"freelance.outbox.retry": (params) => freelanceOutboxRpc.retry(params),
+	"freelance.outbox.markBidPrefilled": (params) => freelanceOutboxRpc.markBidPrefilled(params),
 	"freelance.outbox.reject": (params) => freelanceOutboxRpc.reject(params),
 	"freelance.outbox.killSwitch": () => freelanceOutboxRpc.killSwitch(),
 	"freelance.expert.getEscalations": (params) => freelanceExpertRpc.getEscalations(params),

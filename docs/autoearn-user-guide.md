@@ -119,13 +119,26 @@ normal message from you.
 ## 6. Step-by-step: sending a proposal (bid) on a job
 
 1. Go to the **Listings** tab (the jobs the app found for you).
-2. On a job you like, click **"Draft proposal"**.
-3. You'll get a toast saying *"Proposal drafted — review it in Inbox → Drafts."*
-4. Go to **Inbox**. Your proposal is waiting in the **Drafts & queue** box.
-5. **Edit it**, then **Approve & Send** — same as a reply.
+2. On a **shortlisted** job, click **"Create Proposal"**. (The button only shows on
+   shortlisted listings — shortlist a job first if you don't see it.)
+3. You'll get a toast and the app jumps to the **Inbox** tab, where your proposal is
+   waiting in the **Drafts & queue** box.
+4. **Edit** the proposal text if you like, then click **Approve & Send**.
+5. The app opens that job's bid page in the live session and **fills in the bid form
+   for you** — the **bid amount**, **delivery days**, and your **proposal**.
+6. **You place the bid.** The app stops there and shows *"Bid filled — review it and
+   click Place Bid"* (plus a desktop notification). Check the amount, then click
+   **Place Bid** yourself in the live session.
 
-Bids are sent more carefully than replies (the app deliberately spaces them out
-more), because a flood of proposals is the biggest "bot" red flag.
+> **Bids always need your click — in both modes.** Because a bid commits real money
+> and terms, the app **never** presses **Place Bid** for you. Even in Full-auto it
+> fills everything in and waits for you. The amount comes from the job's budget (the
+> middle of the range, or the single amount); if the job lists no budget, the amount
+> is left **blank** for you to type. The default delivery days can be changed in
+> Auto-Earn settings.
+
+Bids are paced more carefully than replies (spaced out more), because a flood of
+proposals is the biggest "bot" red flag.
 
 ---
 
@@ -142,7 +155,10 @@ account from the Inbox tab):
 ### Full-auto (advanced, opt-in) — the AI runs the whole job
 In Full-auto a built-in **Freelance Expert** AI agent takes over the entire
 pipeline, hands-off, paced by the Governor:
-- **Bids** on suitable jobs and **replies** to clients on its own.
+- **Replies** to clients on its own, and (when a job is in play) **fills in bids**
+  for you — but **you still click Place Bid** (it never commits money for you). Note
+  it does **not** go hunting and bidding on brand-new listings by itself today — you
+  start a bid by clicking **Create Proposal** on a shortlisted job.
 - When you **win** a job, it **creates the project**, gathers the requirements,
   and sets up access — if the client shares a **git repo or FTP/SFTP login**, it
   stores those securely (encrypted) and **downloads the files** to work on.
@@ -191,14 +207,17 @@ This is the screen to glance at once a day if you're running Full-auto.
   like *"Held by governor: min gap not elapsed"* or *"hourly cap reached"*, that's
   the safety system doing its job. Wait a bit and try again — the draft is still
   there.
-- **Background syncing is quiet.** When enabled, the inbox refreshes itself every
-  few minutes during your active hours. You don't have to do anything.
+- **Background syncing is quiet — and works on any page.** Once Auto-Earn is on,
+  the inbox refreshes itself, notifications fire, and (in Full-auto) replies are
+  sent **even when you're on a different page** of AgentDesk — just like the
+  auto-shortlist feature. You do **not** have to sit on the Inbox tab. (It starts a
+  few seconds after the app launches so it never slows startup.)
 - **You can stop everything instantly.** The **Kill-switch** button in the Drafts
   box halts anything queued or in progress. To stop the whole thing, untick the
   **Enable Auto-Earn** master switch in Settings and Save.
 - **In Full-auto, the AI works quietly in the background** while the app is open —
-  reading messages, bidding, building, delivering. You don't drive it; you
-  **supervise** it from the **Auto-Earn** tab and clear anything in **Needs
+  on **any page**, reading messages, replying, building, delivering. You don't drive
+  it; you **supervise** it from the **Auto-Earn** tab and clear anything in **Needs
   attention**.
 - **It will stop and ask you** rather than do something risky. Signing anything,
   any money/payment step, phone/video calls, moving off the platform, or unclear
@@ -262,9 +281,12 @@ Used in **Assisted mode** with sensible settings, the risk is very low — you'r
 doing exactly what the site expects (a human clicking Send). **Full-auto** carries
 real risk, which is why it's off by default and behind a warning.
 
-**Do I have to keep the app open?**
-Yes — the inbox sync and sending happen while AgentDesk (and the Inbox tab) are
-open. Closing the app pauses everything.
+**Do I have to keep the app open? Do I have to stay on the Inbox tab?**
+Keep **AgentDesk** open — yes. But you **no longer need to stay on the Inbox tab**:
+once Auto-Earn is on, the inbox sync, notifications, and (in Full-auto) replies keep
+running in the background on **any page**, like the auto-shortlist feature. Closing
+the app pauses everything. (First-time **login** still happens in the Inbox tab's
+Live session.)
 
 **Can I turn it off?**
 Yes. Untick **Enable Auto-Earn** in Freelance → Settings and click **Save**. The

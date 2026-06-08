@@ -2,7 +2,7 @@
 
 **Directory:** `src/shared`
 **Files:** 33
-**Symbols:** 151
+**Symbols:** 152
 
 ## Files
 
@@ -44,10 +44,11 @@
 
 **Interfaces:**
 - `WriteResult` (line 15)
+- `BidFillOptions` (line 70)
 
 **Functions:**
 - `buildSendReplyScript` (line 31)
-- `buildSubmitBidScript` (line 75)
+- `buildSubmitBidScript` (line 95)
 
 
 ### `src/shared/rpc.ts`
@@ -119,15 +120,15 @@
 - `FreelanceAccountDto` (line 49)
 - `FreelanceInboxThreadDto` (line 58)
 - `FreelanceAutoEarnSettingsDto` (line 75)
-- `FreelanceOutboxItemDto` (line 88)
-- `FreelanceInboxMessageDto` (line 100)
-- `FreelanceEscalationDto` (line 112)
-- `FreelanceJobDto` (line 125)
-- `FreelanceEarningsDto` (line 142)
+- `FreelanceOutboxItemDto` (line 89)
+- `FreelanceInboxMessageDto` (line 102)
+- `FreelanceEscalationDto` (line 114)
+- `FreelanceJobDto` (line 127)
+- `FreelanceEarningsDto` (line 144)
 
 **Types:**
 - `FreelanceListingStatus` (line 1)
-- `FreelanceRequests` (line 150)
+- `FreelanceRequests` (line 152)
 
 
 ### `src/shared/rpc/git.ts`

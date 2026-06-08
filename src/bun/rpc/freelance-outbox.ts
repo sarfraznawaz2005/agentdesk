@@ -12,9 +12,20 @@ import { FREELANCE_EVENTS } from "../freelance/events";
 import { gateSend, recordAction } from "../freelance/session/governor";
 import { isConnectedPlatform } from "./freelance-inbox";
 import { draftReplyForThread } from "../freelance/reply-pipeline";
+import { getAutoEarnSettings } from "../freelance/auto-earn-settings";
+import { sendDesktopNotification } from "../notifications/desktop";
 import type { FreelanceOutboxItemDto } from "../../shared/rpc/freelance";
 
 const DEFAULT_PLATFORM = "freelancer";
+const DEFAULT_BID_DAYS = 7;
+
+/** avg(min,max) | single value | null (no budget → user fills the amount). */
+function computeBidAmount(min: number | null, max: number | null): number | null {
+	if (min != null && max != null) return Math.round((min + max) / 2);
+	if (max != null) return max;
+	if (min != null) return min;
+	return null;
+}
 
 function rowToDto(r: Record<string, unknown>): FreelanceOutboxItemDto {
 	return {
@@ -27,12 +38,13 @@ function rowToDto(r: Record<string, unknown>): FreelanceOutboxItemDto {
 		status: String(r.status),
 		autonomyMode: String(r.autonomy_mode),
 		createdAt: String(r.created_at),
+		error: (r.error as string | null) ?? null,
 	};
 }
 
 function notifyUpdated(): void {
 	const c = sqlite
-		.prepare(`SELECT COUNT(*) AS c FROM freelance_outbox WHERE status IN ('draft','approved','sending')`)
+		.prepare(`SELECT COUNT(*) AS c FROM freelance_outbox WHERE status IN ('draft','approved','sending','awaiting_review')`)
 		.get() as { c: number } | undefined;
 	broadcastToWebview(FREELANCE_EVENTS.OUTBOX_UPDATED, { count: c?.c ?? 0 });
 }
@@ -83,6 +95,33 @@ export async function updateDraft(params: { id: string; body: string }): Promise
 	return { success: true };
 }
 
+// ─── retry ────────────────────────────────────────────────────────────────────
+// Revert a failed send back to an editable draft (clearing the error) so the user
+// can tweak it and Approve & Send again. No-op unless the item is currently failed.
+export async function retry(params: { id: string }): Promise<{ success: boolean }> {
+	sqlite
+		.prepare(`UPDATE freelance_outbox SET status = 'draft', error = NULL, updated_at = ? WHERE id = ? AND status = 'failed'`)
+		.run(new Date().toISOString(), params.id);
+	notifyUpdated();
+	return { success: true };
+}
+
+// ─── markBidPrefilled ───────────────────────────────────────────────────────
+// The bid form was filled in the live session but NOT submitted (assisted mode,
+// or full-auto with no known amount). Park the item as 'awaiting_review' and fire
+// a desktop notification so the user knows it's their turn to click Place Bid.
+export async function markBidPrefilled(params: { id: string; needsAmount?: boolean }): Promise<{ success: boolean }> {
+	sqlite
+		.prepare(`UPDATE freelance_outbox SET status = 'awaiting_review', updated_at = ? WHERE id = ?`)
+		.run(new Date().toISOString(), params.id);
+	notifyUpdated();
+	const body = params.needsAmount
+		? "Bid is ready except the amount — set your bid amount and click Place Bid in the live session."
+		: "Your bid is filled in and ready — review it and click Place Bid in the live session.";
+	sendDesktopNotification("Freelance bid ready", body).catch(() => {});
+	return { success: true };
+}
+
 // ─── reject ─────────────────────────────────────────────────────────────────
 export async function reject(params: { id: string }): Promise<{ success: boolean }> {
 	sqlite
@@ -102,7 +141,11 @@ export async function approveSend(params: { id: string }): Promise<{
 	kind: string;
 	threadId: string | null;
 	listingId: string | null;
+	listingUrl?: string | null;
 	body: string;
+	bidAmount?: number | null;
+	bidDays?: number;
+	autoPlace?: boolean;
 }> {
 	const row = sqlite
 		.prepare(`SELECT * FROM freelance_outbox WHERE id = ?`)
@@ -116,10 +159,28 @@ export async function approveSend(params: { id: string }): Promise<{
 	const body = (row.draft_body as string | null) ?? "";
 	const isBid = kind === "bid";
 
+	// Bids must navigate to the listing's REAL platform URL. The outbox stores the
+	// internal DB id in listing_id, so reconstructing /projects/<id> yields a 404
+	// ("This project doesn't exist"). Resolve the canonical url + budget from the row.
+	const listingRow =
+		isBid && listingId
+			? (sqlite
+					.prepare(`SELECT url, budget_min, budget_max FROM freelance_listings WHERE id = ?`)
+					.get(listingId) as { url: string; budget_min: number | null; budget_max: number | null } | undefined)
+			: undefined;
+	const listingUrl = listingRow?.url ?? null;
+	// Bid amount = average of the budget range, or the single value, or null (the
+	// project listed no budget → the user must type the amount before placing).
+	const bidAmount = computeBidAmount(listingRow?.budget_min ?? null, listingRow?.budget_max ?? null);
+	const bidDays = isBid ? (await getAutoEarnSettings()).bidDeliveryDays || DEFAULT_BID_DAYS : DEFAULT_BID_DAYS;
+	// Bids are NEVER auto-submitted: even in full-auto we only PREFILL the form and
+	// notify — the user always clicks "Place Bid" themselves (it moves real money).
+	const autoPlace = false;
+
 	// Re-auth guard: never attempt a send when the session is logged out.
 	if (!isConnectedPlatform(platform)) {
 		recordAction(platform, "blocked", "blocked", "send while logged out");
-		return { allowed: false, reason: "not logged in — re-login in the live session", platform, kind, threadId, listingId, body };
+		return { allowed: false, reason: "not logged in — re-login in the live session", platform, kind, threadId, listingId, listingUrl, body };
 	}
 
 	// Template-variation guard: never send a body byte-identical to a prior send
@@ -136,20 +197,20 @@ export async function approveSend(params: { id: string }): Promise<{
 		return {
 			allowed: false,
 			reason: "identical to a previous send — tweak the wording before sending",
-			platform, kind, threadId, listingId, body,
+			platform, kind, threadId, listingId, listingUrl, body,
 		};
 	}
 
 	const decision = await gateSend(platform, isBid ? "submit_bid" : "send_reply", { isBid });
 	if (!decision.allowed) {
-		return { allowed: false, reason: decision.reason, platform, kind, threadId, listingId, body };
+		return { allowed: false, reason: decision.reason, platform, kind, threadId, listingId, listingUrl, body };
 	}
 
 	sqlite
 		.prepare(`UPDATE freelance_outbox SET status = 'sending', final_body = ?, updated_at = ? WHERE id = ?`)
 		.run(body, new Date().toISOString(), params.id);
 	notifyUpdated();
-	return { allowed: true, platform, kind, threadId, listingId, body };
+	return { allowed: true, platform, kind, threadId, listingId, listingUrl, body, bidAmount, bidDays, autoPlace };
 }
 
 // ─── markResult ──────────────────────────────────────────────────────────────

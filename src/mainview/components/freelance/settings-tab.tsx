@@ -37,6 +37,7 @@ const AUTO_EARN_DEFAULTS: FreelanceAutoEarnSettingsDto = {
   fullautoAck: false,
   notifyDesktop: true,
   notifyChannels: false,
+  bidDeliveryDays: 7,
 };
 import { CURRENCIES } from "../../../shared/freelance-currencies";
 import { cn } from "@/lib/utils";

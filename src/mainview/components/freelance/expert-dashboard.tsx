@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { rpc } from "../../lib/rpc";
+import { getCurrencySymbol } from "../../../shared/freelance-currencies";
 import type {
   FreelanceEarningsDto,
   FreelanceEscalationDto,
@@ -19,11 +20,14 @@ export function ExpertDashboard() {
   const [jobs, setJobs] = useState<FreelanceJobDto[]>([]);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<Array<{ action: string; detail: string | null; outcome: string; createdAt: string }>>([]);
+  // Show earnings in the user's preferred currency (Freelance → Settings).
+  const [currencySym, setCurrencySym] = useState("$");
 
   const refresh = useCallback(() => {
     rpc.freelanceGetEarnings().then(setEarnings).catch(() => {});
     rpc.freelanceGetEscalations("open").then((r) => setEscalations(r.items)).catch(() => {});
     rpc.freelanceGetJobs().then((r) => setJobs(r.jobs)).catch(() => {});
+    rpc.freelanceGetSettings().then((s) => setCurrencySym(getCurrencySymbol(s.preferredCurrency || "USD"))).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -57,7 +61,7 @@ export function ExpertDashboard() {
         <Metric label="Bids sent" value={earnings?.bidsSent ?? 0} />
         <Metric label="Jobs won" value={earnings?.jobsWon ?? 0} />
         <Metric label="Delivered" value={earnings?.delivered ?? 0} />
-        <Metric label="Earned" value={earnings?.earned ?? 0} prefix="$" />
+        <Metric label="Earned" value={earnings?.earned ?? 0} prefix={currencySym} />
         <Metric label="Open alerts" value={earnings?.openEscalations ?? 0} highlight={(earnings?.openEscalations ?? 0) > 0} />
       </div>
 
@@ -103,7 +107,7 @@ export function ExpertDashboard() {
                 <button onClick={() => openTimeline(j.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent">
                   <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.state}</span>
                   <span className="flex-1 truncate">{j.title || `Job ${j.id.slice(0, 8)}`}</span>
-                  {j.earned > 0 && <span className="text-green-500">${j.earned}</span>}
+                  {j.earned > 0 && <span className="text-green-500">{currencySym}{j.earned}</span>}
                 </button>
                 {openJobId === j.id && (
                   <div className="border-t border-border bg-muted/30 px-3 py-2 text-xs">

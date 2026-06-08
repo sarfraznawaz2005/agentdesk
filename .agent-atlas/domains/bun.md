@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 253
-**Symbols:** 1899
+**Symbols:** 1902
 
 ## Files
 
@@ -1342,11 +1342,11 @@
 - `AutoEarnSettings` (line 13)
 
 **Functions:**
-- `getAutoEarnSettings` (line 52)
-- `get` (line 55)
-- `saveAutoEarnSetting` (line 78)
-- `saveAutoEarnSettings` (line 90)
-- `isAutoEarnEnabled` (line 111)
+- `getAutoEarnSettings` (line 55)
+- `get` (line 58)
+- `saveAutoEarnSetting` (line 82)
+- `saveAutoEarnSettings` (line 94)
+- `isAutoEarnEnabled` (line 116)
 
 
 ### `src/bun/freelance/bid-pipeline.ts`
@@ -3000,16 +3000,19 @@
 ### `src/bun/rpc/freelance-outbox.ts`
 
 **Functions:**
-- `rowToDto` (line 19)
-- `notifyUpdated` (line 33)
-- `list` (line 41)
-- `draftReply` (line 56)
-- `draftBid` (line 71)
-- `updateDraft` (line 79)
-- `reject` (line 87)
-- `approveSend` (line 98)
-- `markResult` (line 157)
-- `killSwitch` (line 179)
+- `computeBidAmount` (line 23)
+- `rowToDto` (line 30)
+- `notifyUpdated` (line 45)
+- `list` (line 53)
+- `draftReply` (line 68)
+- `draftBid` (line 83)
+- `updateDraft` (line 91)
+- `retry` (line 101)
+- `markBidPrefilled` (line 113)
+- `reject` (line 126)
+- `approveSend` (line 137)
+- `markResult` (line 218)
+- `killSwitch` (line 240)
 
 
 ### `src/bun/rpc/freelance-wizard.ts`

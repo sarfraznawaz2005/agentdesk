@@ -21,6 +21,7 @@ export interface AutoEarnSettings {
 	fullautoAck: boolean;           // user accepted full-auto risk
 	notifyDesktop: boolean;         // desktop notification on a new client reply
 	notifyChannels: boolean;        // forward new client reply to connected channels
+	bidDeliveryDays: number;        // default "delivered in" days prefilled on a bid
 }
 
 const DEFAULTS: AutoEarnSettings = {
@@ -34,6 +35,7 @@ const DEFAULTS: AutoEarnSettings = {
 	fullautoAck: false,
 	notifyDesktop: true,
 	notifyChannels: false,
+	bidDeliveryDays: 7,
 };
 
 const KEYS: Record<keyof AutoEarnSettings, string> = {
@@ -47,6 +49,7 @@ const KEYS: Record<keyof AutoEarnSettings, string> = {
 	fullautoAck: "freelance_fullauto_ack",
 	notifyDesktop: "freelance_notify_desktop",
 	notifyChannels: "freelance_notify_channels",
+	bidDeliveryDays: "freelance_bid_delivery_days",
 };
 
 export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
@@ -72,6 +75,7 @@ export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
 		fullautoAck: get("fullautoAck"),
 		notifyDesktop: get("notifyDesktop"),
 		notifyChannels: get("notifyChannels"),
+		bidDeliveryDays: get("bidDeliveryDays"),
 	};
 }
 
@@ -104,6 +108,7 @@ export async function saveAutoEarnSettings(input: AutoEarnSettings): Promise<voi
 		saveAutoEarnSetting("fullautoAck", safe.fullautoAck),
 		saveAutoEarnSetting("notifyDesktop", safe.notifyDesktop),
 		saveAutoEarnSetting("notifyChannels", safe.notifyChannels),
+		saveAutoEarnSetting("bidDeliveryDays", safe.bidDeliveryDays),
 	]);
 }
 

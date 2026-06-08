@@ -15,6 +15,7 @@ import { PmChatWidget } from "@/components/dashboard/pm-chat-widget";
 import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-chat-launcher";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
+import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
 // Side-effect import: attaches the Issue Fixer live-run listeners at app startup so runs
 // stream into the store regardless of which tab/page is open (matches the chat store).
 import "@/stores/issue-fixer-store";
@@ -312,6 +313,9 @@ function AppShellContent() {
 
       <StartupHealthDialog />
       <UserQuestionDialog />
+      {/* Auto-Earn background engine — keeps the freelance Inbox sync + full-auto
+          send loop alive on every page (self-gates on the autoearn flag + switch). */}
+      <AlwaysMountedInbox />
       {/* Chat widget bar — buttons wrap into new rows (growing upward) when
           there are too many to fit. maxWidth is capped to the main content
           area width so buttons never slide over the sidebar. */}

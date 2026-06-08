@@ -375,6 +375,7 @@ export function FreelanceListingCard({
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [isShortlisting, setIsShortlisting] = useState(false);
   const [isMarkingDone, setIsMarkingDone] = useState(false);
+  const [isDrafting, setIsDrafting] = useState(false);
   const [localAnalysis, setLocalAnalysis] = useState<{
     verdict: "workable" | "not_workable";
     reason: string;
@@ -645,23 +646,30 @@ export function FreelanceListingCard({
           </Button>
         )}
 
-        {/* Draft Proposal (bid) — Auto-Earn only: queue an AI proposal to review in Inbox → Drafts */}
-        {autoEarnEnabled && (isNew || isShortlisted) && !isClosed && (
+        {/* Create Proposal (bid) — Auto-Earn only, shortlisted listings only: queue an AI proposal */}
+        {autoEarnEnabled && isShortlisted && !isClosed && (
           <Button
             size="sm"
             variant="outline"
+            disabled={isDrafting}
             onClick={async () => {
+              setIsDrafting(true);
               try {
                 await rpc.freelanceOutboxDraftBid(listing.id);
-                toast("success", "Proposal drafted — review it in Inbox → Drafts.");
+                toast("success", "Proposal created — review it in Inbox → Drafts.");
+                // Jump to the Inbox tab where the draft now sits in the queue.
+                window.dispatchEvent(new CustomEvent("agentdesk:freelance-open-inbox"));
               } catch (err) {
-                toast("error", `Draft failed: ${String((err as Error)?.message ?? err)}`);
+                toast("error", `Create failed: ${String((err as Error)?.message ?? err)}`);
+              } finally {
+                setIsDrafting(false);
               }
             }}
             className="gap-1.5"
-            aria-label="Draft Proposal for listing"
+            aria-label="Create Proposal for listing"
           >
-            Draft Proposal
+            {isDrafting ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+            {isDrafting ? "Creating…" : "Create Proposal"}
           </Button>
         )}
 

@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 164
-**Symbols:** 1413
+**Files:** 166
+**Symbols:** 1420
 
 ## Files
 
@@ -486,6 +486,14 @@
 - `formatDate` (line 180)
 
 
+### `src/mainview/components/freelance/always-mounted-inbox.tsx`
+
+**Functions:**
+- `AlwaysMountedInbox` (line 26)
+- `load` (line 35)
+- `onSettings` (line 43)
+
+
 ### `src/mainview/components/freelance/auto-earn-settings.tsx`
 
 **Interfaces:**
@@ -496,17 +504,17 @@
 - `AutoEarnSettings` (line 28)
 - `patch` (line 29)
 - `num` (line 31)
-- `Field` (line 145)
+- `Field` (line 153)
 
 
 ### `src/mainview/components/freelance/expert-dashboard.tsx`
 
 **Functions:**
-- `ExpertDashboard` (line 16)
-- `on` (line 31)
-- `openTimeline` (line 44)
-- `resolve` (line 49)
-- `Metric` (line 133)
+- `ExpertDashboard` (line 17)
+- `on` (line 35)
+- `openTimeline` (line 48)
+- `resolve` (line 53)
+- `Metric` (line 137)
 
 
 ### `src/mainview/components/freelance/find-workable-modal.tsx`
@@ -570,27 +578,28 @@
 ### `src/mainview/components/freelance/inbox-tab.tsx`
 
 **Types:**
-- `WebviewTagEl` (line 103)
+- `WebviewTagEl` (line 104)
 
 **Functions:**
-- `parseHostMessage` (line 112)
-- `navUrl` (line 128)
-- `hourInTz` (line 141)
-- `fmtTime` (line 153)
-- `InboxTab` (line 162)
-- `inject` (line 321)
-- `onNav` (line 331)
-- `onHostMessage` (line 340)
-- `onUpdated` (line 402)
-- `onOutbox` (line 407)
-- `onStatus` (line 408)
-- `withinActiveHours` (line 437)
-- `schedule` (line 443)
-- `tick` (line 486)
-- `selectThread` (line 513)
-- `syncNow` (line 522)
-- `setAutonomy` (line 530)
-- `disconnect` (line 534)
+- `parseHostMessage` (line 113)
+- `AutoGrowTextarea` (line 131)
+- `navUrl` (line 163)
+- `hourInTz` (line 176)
+- `fmtTime` (line 188)
+- `InboxTab` (line 197)
+- `inject` (line 375)
+- `onNav` (line 385)
+- `onHostMessage` (line 394)
+- `onUpdated` (line 480)
+- `onOutbox` (line 485)
+- `onStatus` (line 486)
+- `withinActiveHours` (line 515)
+- `schedule` (line 521)
+- `tick` (line 564)
+- `selectThread` (line 591)
+- `syncNow` (line 600)
+- `setAutonomy` (line 608)
+- `disconnect` (line 612)
 
 
 ### `src/mainview/components/freelance/keyword-input.tsx`
@@ -623,14 +632,14 @@
 - `SkillChips` (line 183)
 - `AnalysisModal` (line 246)
 - `FreelanceListingCard` (line 359)
-- `onActive` (line 394)
-- `onDone` (line 398)
-- `handleApprove` (line 432)
-- `handleShortlist` (line 441)
-- `handleMarkDone` (line 451)
-- `handleAnalyze` (line 461)
-- `handleDelete` (line 468)
-- `handleViewOnPlatform` (line 478)
+- `onActive` (line 395)
+- `onDone` (line 399)
+- `handleApprove` (line 433)
+- `handleShortlist` (line 442)
+- `handleMarkDone` (line 452)
+- `handleAnalyze` (line 462)
+- `handleDelete` (line 469)
+- `handleViewOnPlatform` (line 479)
 
 **Methods:**
 - `code` (line 212)
@@ -674,16 +683,16 @@
 ### `src/mainview/components/freelance/settings-tab.tsx`
 
 **Interfaces:**
-- `RssSource` (line 48)
-- `ProviderItem` (line 54)
-- `SettingsState` (line 60)
+- `RssSource` (line 49)
+- `ProviderItem` (line 55)
+- `SettingsState` (line 61)
 
 **Functions:**
-- `CurrencyCombobox` (line 108)
-- `handle` (line 132)
-- `SettingsTab` (line 214)
-- `load` (line 232)
-- `formatLastRun` (line 348)
+- `CurrencyCombobox` (line 109)
+- `handle` (line 133)
+- `SettingsTab` (line 215)
+- `load` (line 233)
+- `formatLastRun` (line 349)
 
 
 ### `src/mainview/components/git/branch-list.tsx`
@@ -989,14 +998,14 @@
 ### `src/mainview/components/layout/app-shell.tsx`
 
 **Functions:**
-- `AppShell` (line 94)
-- `AppShellContent` (line 102)
-- `onSettingChanged` (line 131)
-- `onFocusEnter` (line 137)
-- `onFocusExit` (line 138)
-- `handler` (line 230)
-- `onFocus` (line 250)
-- `onBlur` (line 251)
+- `AppShell` (line 95)
+- `AppShellContent` (line 103)
+- `onSettingChanged` (line 132)
+- `onFocusEnter` (line 138)
+- `onFocusExit` (line 139)
+- `handler` (line 231)
+- `onFocus` (line 251)
+- `onBlur` (line 252)
 
 
 ### `src/mainview/components/layout/project-branch-badge.tsx`
@@ -1953,8 +1962,9 @@
 
 **Functions:**
 - `FreelancePage` (line 14)
-- `load` (line 24)
-- `onSettings` (line 29)
+- `load` (line 29)
+- `onSettings` (line 34)
+- `onOpenInbox` (line 38)
 
 
 ### `src/mainview/pages/inbox.tsx`
@@ -2545,6 +2555,15 @@
 
 **Exports:**
 - `ActivityEvent` (line 2)
+
+
+### `src/mainview/stores/freelance-engine-store.ts`
+
+**Interfaces:**
+- `FreelanceEngineState` (line 18)
+
+**Exports:**
+- `useFreelanceEngineStore` (line 23)
 
 
 ### `src/mainview/stores/issue-fixer-store.ts`

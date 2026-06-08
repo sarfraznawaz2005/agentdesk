@@ -1537,6 +1537,10 @@ export const rpc = {
     electroviewRpc.request["freelance.outbox.approveSend"]({ id }),
   freelanceOutboxMarkResult: (id: string, ok: boolean, error?: string) =>
     electroviewRpc.request["freelance.outbox.markResult"]({ id, ok, error }),
+  freelanceOutboxRetry: (id: string) =>
+    electroviewRpc.request["freelance.outbox.retry"]({ id }),
+  freelanceOutboxMarkBidPrefilled: (id: string, needsAmount?: boolean) =>
+    electroviewRpc.request["freelance.outbox.markBidPrefilled"]({ id, needsAmount }),
   freelanceOutboxReject: (id: string) =>
     electroviewRpc.request["freelance.outbox.reject"]({ id }),
   freelanceOutboxKillSwitch: () =>

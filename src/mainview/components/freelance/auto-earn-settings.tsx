@@ -99,6 +99,14 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
           </div>
         </Field>
         <Field
+          label="Default delivery days"
+          help="The 'This project will be delivered in … days' value prefilled on every bid. You can still change it per-bid in the live session before placing the bid."
+        >
+          <input type="number" min={1} value={s.bidDeliveryDays}
+            onChange={(e) => patch({ bidDeliveryDays: num(e.target.value, 7) })}
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+        </Field>
+        <Field
           label="Inbox sync min interval (s)"
           help="Floor of the random delay between automatic inbox refreshes. The app re-checks your inbox at a random time between this and the max, so the rhythm doesn't look mechanical."
         >

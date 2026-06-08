@@ -1,5 +1,19 @@
 # Auto-Earn — Autonomous Freelance Engine (Plan)
 
+> **Update (2026-06-08, later session): AUTONOMOUS PHASE + BID AUTOMATION +
+> BACKGROUND ENGINE shipped and runtime-verified on the user's real account.**
+> Built since the status note below: the `freelance-expert` agent + tools (vault,
+> jobs state machine, escalations, job facts); real Freelancer **bid-form
+> automation** (amount/days/proposal fill — bids are NEVER auto-placed, the user
+> always clicks Place Bid); the **always-on background engine** (`AlwaysMountedInbox`
+> + `freelance-engine-store`) so sync / notifications / full-auto sending run on
+> ANY page like auto-shortlist (deferred ~4s after launch); the `autoearn`
+> flag-file gate (preserved across Setup + portable updates + dev rebuilds);
+> per-currency earnings on the dashboard; `awaiting_review` outbox state + failed
+> Retry/Dismiss; configurable default delivery days; `maxSendsPerHour` default
+> lowered 4→1. **See §12–13 for what's implemented beyond this plan and the known
+> limitations / future revisions.**
+
 > **Status (2026-06-08): FULL FEATURE CODE-COMPLETE.** All 18 follow-up tasks
 > (TASK-416…433) done; `bun run typecheck` clean. Built: migrations v35+v36
 > (accounts/threads/messages/users/outbox/action_log + correlation cols); the
@@ -341,10 +355,19 @@ Broadcasts (extend `freelance/events.ts`):
 | `freelance_autoearn_enabled` | `false` | master switch |
 | `freelance_autonomy_mode` | `assisted` | global default (per-account overrides) |
 | `freelance_inbox_poll_min` / `_max` | 180 / 480 (s) | jitter window |
-| `freelance_active_hours` | `{start:9,end:22}` | local-time send window |
-| `freelance_max_sends_per_hour` | 4 | governor cap |
-| `freelance_min_gap_seconds` | 90 | min gap between any two sends |
+| `freelance_active_hours` | `{start:9,end:22}` | active-hours window (uses the **global** timezone from Settings → General) |
+| `freelance_max_sends_per_hour` | **1** | governor cap (bids stricter: half, min 1) |
+| `freelance_min_gap_seconds` | 90 | min gap between any two sends (bids wait 3×) |
 | `freelance_fullauto_ack` | `false` | user accepted full-auto risk |
+| `freelance_notify_desktop` | `true` | desktop notification on a new client reply |
+| `freelance_notify_channels` | `false` | also forward new client reply to connected channels |
+| `freelance_bid_delivery_days` | 7 | default "delivered in" days prefilled on a bid |
+
+> **Feature gate:** the entire Auto-Earn surface (settings card, Inbox/Auto-Earn
+> tabs, background engine) only appears when an `autoearn` flag file (no extension)
+> sits next to the exe — same mechanism as the `freelance` flag, and preserved
+> across Setup-installer updates (`updater.ts`), portable updates
+> (`updater-portable.ts`), and dev rebuilds (`run.ps1`).
 
 ---
 
@@ -390,3 +413,96 @@ Check in at every phase boundary.
   genuine unattended earning once big-platform slice ships.
 - Anti-detect scraping engine (obscura/Camoufox) for anonymous discovery —
   optional enhancement, not needed while RSS covers discovery.
+
+---
+
+## 12. Implemented beyond this plan (2026-06-08)
+
+What actually shipped on top of the original P1–P5 plan, for accuracy:
+
+- **`freelance-expert` autonomous agent** (`src/bun/freelance/expert/`): runs the
+  full-auto worker via `runInlineAgent` with its own tools — credential `vault.ts`,
+  `jobs.ts` state machine, `notify.ts` escalations + desktop/channel alerts, and
+  `tools.ts` (notify_human, mark_state, save/list important client detail, store/
+  list credentials, git_clone, remote list/download/upload, download_attachment,
+  send_reply, submit_bid, self_review, create_project). Hidden agent; runs ONLY in
+  full-auto + risk-ack; triggered on a **new inbound message** (not on new listings).
+- **Real Freelancer bid-form automation** (`shared/freelance/write-steps.ts`
+  `buildSubmitBidScript`): waits for the SPA bid form, fills **Bid Amount**,
+  **delivery days**, and the **proposal textarea** (human-paced), via label-proximity
+  / placeholder heuristics. **Bids are NEVER auto-placed** — even in full-auto it
+  prefills + desktop-notifies and parks the item as `awaiting_review`; the user
+  always clicks **Place Bid**. Bid amount = avg(budget range) / single value / blank
+  (→ user fills). Real URL resolved from `freelance_listings.url` (fixes the old
+  `/projects/<dbId>` 404).
+- **Always-on background engine** — `<InboxTab/>` is mounted once at the app shell
+  via `components/freelance/always-mounted-inbox.tsx`, portaled into a STABLE DOM
+  node and **re-parented** between the freelance Inbox-tab slot and a hidden holder
+  (`stores/freelance-engine-store.ts`). So the webview sync, interceptor, and
+  full-auto send loop run on **any page** (like auto-shortlist); the native webview
+  is only shown while the Inbox tab is on screen. Startup is **deferred ~4s** so it
+  never competes with app launch. **This runs in BOTH modes** (gated on the master
+  switch): assisted gets background sync + notifications everywhere but still
+  requires the user to draft/approve/send; full-auto also auto-drafts + auto-sends
+  replies in the background.
+- **Outbox lifecycle hardening** — `awaiting_review` state for prefilled bids
+  (Mark-as-placed / Dismiss); `failed` items show the error + **Retry**/**Dismiss**;
+  send safety-timeout scaled to body length (long proposals).
+- **UX** — Create Proposal button (renamed from Draft Proposal; shortlisted-only;
+  loading state; auto-switches to Inbox on success); auto-growing draft textarea;
+  full-width + tall (90vh) inbox preview; per-currency earnings on the dashboard.
+- **The autonomy descriptor narrowed** — Freelancer.com only; PeoplePerHour removed
+  (migration v37). Migrations went to **v35–v39** (inbox, outbox/action_log, PPH
+  removal, expert pipeline jobs/credentials/log/escalations, job_facts).
+
+---
+
+## 13. Known limitations & future revisions (2026-06-08)
+
+Captured after the autonomous + bid + background work shipped. None block current
+use — these are the next improvements when we revisit.
+
+### 13.1 The big one — reactive, not proactive (top backlog item)
+
+**Neither mode auto-bids on *new* listings.** Full-auto only handles **existing
+conversations** (inbound messages). To generate leads you must click **Create
+Proposal** on shortlisted listings yourself. There is **no "bid while I sleep"
+trigger wired.** For someone trying to *earn*, this is the most important gap.
+
+> **Future:** wire auto-shortlist → optionally auto-**draft/prefill** proposals for
+> shortlisted listings, governor-capped, **still human-placed** (stays within the
+> "bids are human-placed" rule). The `freelance-expert` already exposes a
+> `bid_request` trigger that nothing calls yet — this is where to hook it.
+
+### 13.2 Known limitations
+
+- **Bid form selectors are heuristic** — validated on a couple of real forms, but
+  Freelancer DOM changes (or unusual project types: hourly, sealed/NDA bids,
+  extra-field forms) could make fills silently fail. Mitigated by
+  assisted-stops-for-review + the failed/retry UI, but not hardened for every variant.
+- **Bid pricing is naive** — avg-of-budget / single / blank. No undercutting, no
+  floor/ceiling, no hourly handling.
+- **Delivery days is a flat default** — not derived from the project's stated timeframe.
+- **Session fragility** — everything depends on the live Freelancer session. If it
+  logs out or hits a CAPTCHA, the engine pauses and waits for you to re-login in the
+  live session (it detects + prompts, but can't auto-solve).
+- **Full-auto worker is genuinely high-risk** — autonomously cloning repos, building,
+  and delivering to real paying clients is the riskiest surface. It has guardrails
+  (self-review before delivery, escalate-on-uncertainty, never sign/pay/go
+  off-platform), but mistakes reach real clients and your reputation.
+
+### 13.3 Future enhancements (backlog)
+
+- **Cold-bid trigger** — see §13.1 (highest leverage).
+- **Message triage before auto-reply** — classify inbound messages; route
+  payment/contract/off-platform/scope-dispute ones to escalation instead of
+  auto-replying (extra safety on top of the agent's guardrails).
+- **Proposal QA pass** — a quick self-check before queueing to catch over-promising
+  or hallucinated claims (reputation protection at scale).
+- **Governor visibility** — surface "next send allowed in X / sends used this hour"
+  so the throttling isn't a black box.
+- **Global quiet/pause** — a "pause all autonomy for X hours" beyond the kill-switch.
+- **Stale-bid expiry** — auto-dismiss or re-alert `awaiting_review` bids older than
+  N hours (the project is probably already awarded).
+- **Bid strategy settings** — undercut-average %, min/max clamps, hourly vs. fixed.
+- **Dashboard analytics** — win-rate, response time, bids→won conversion.
