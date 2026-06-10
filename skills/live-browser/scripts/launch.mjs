@@ -15,7 +15,7 @@
 //
 // Re-running is a no-op if our browser is already up.
 import { spawn, execSync } from 'child_process';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { homedir } from 'os';
 import {
@@ -106,6 +106,40 @@ function findBrowser(name) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Pre-seed the dedicated profile's Preferences so the browser never nags about
+// saving passwords, warns about data breaches, or prompts to sign into Chrome.
+// These are plain (non-protected) profile prefs — the same ones the in-app
+// Settings toggles write — so seeding them is reliable and scoped to THIS
+// profile only (unlike the system-wide BrowserSignin registry policy, which
+// would also affect the user's everyday Chrome). They're also the only reliable
+// way to suppress the "Save password?" bubble (no command-line flag exists).
+// Signing into Gmail and other Google *websites* still works normally; only the
+// browser-level "Sign in to Chrome / Make Chrome your own" prompt is disabled.
+// Must run while the browser is NOT running on this profile (Chrome rewrites
+// Preferences on exit) — we only call it on the launch path. Never blocks launch.
+function seedProfilePrefs(profileDir) {
+  try {
+    const defaultDir = resolve(profileDir, 'Default');
+    mkdirSync(defaultDir, { recursive: true });
+    const prefPath = resolve(defaultDir, 'Preferences');
+    let prefs = {};
+    try { prefs = JSON.parse(readFileSync(prefPath, 'utf8')); } catch { prefs = {}; }
+    prefs.credentials_enable_service = false; // no "Save password?" bubble
+    prefs.profile = prefs.profile || {};
+    prefs.profile.password_manager_enabled = false;
+    prefs.profile.password_manager_leak_detection = false; // no breach/leak warning
+    // Disable browser sign-in → kills the "Sign in to Chrome? / Make Chrome your
+    // own" interception bubble that appears after a Google web login. Both keys:
+    // the toggle writes *_on_next_startup, which Chrome copies to .allowed at boot.
+    prefs.signin = prefs.signin || {};
+    prefs.signin.allowed = false;
+    prefs.signin.allowed_on_next_startup = false;
+    writeFileSync(prefPath, JSON.stringify(prefs));
+  } catch {
+    /* prefs are best-effort — never block launch on them */
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { console.log(HELP); return; }
@@ -152,12 +186,30 @@ async function main() {
   }
 
   // 3) Launch detached with NO automation flags.
+  seedProfilePrefs(profileDir); // safe no-op if already running was handled above
   const chromeArgs = [
     `--remote-debugging-port=${port}`,
     '--remote-allow-origins=*',
     `--user-data-dir=${profileDir}`,
     '--no-first-run',
     '--no-default-browser-check',
+    '--start-maximized', // open maximized (full window), not a small default window
+    // Suppress the "Restore pages? Chrome didn't shut down correctly." bubble that
+    // appears after the browser is killed uncleanly (app close / force-kill). Two
+    // flags for cross-version coverage; Chrome ignores ones it doesn't know.
+    '--hide-crash-restore-bubble',
+    '--disable-session-crashed-bubble',
+    // Suppress password breach/leak warnings and the Google "create a profile for
+    // this account?" (Dice web sign-in interception) popup on Gmail login. The
+    // "Save password?" bubble has no flag — it's handled by seedProfilePrefs above.
+    '--disable-features=PasswordLeakDetection,DiceWebSigninInterception',
+    // Keep background / unfocused / occluded tabs running at full speed. Chrome
+    // normally throttles timers and de-prioritizes backgrounded tabs, which can
+    // make the agent's actions sluggish when it works in a tab that isn't the
+    // focused one. These keep automated tab work reliable regardless of focus.
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows',
   ];
   if (args.url) chromeArgs.push(args.url);
   // cwd MUST be outside the app/build tree: this browser is detached and may

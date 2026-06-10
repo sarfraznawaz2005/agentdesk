@@ -858,7 +858,10 @@ async function main() {
     cdp.close();
     writeFileSync(PAGES_CACHE, JSON.stringify(pages), { mode: 0o600 });
     console.log(`Opened new tab: ${targetId.slice(0, 8)}  ${url}`);
-    console.log('Note: this tab will need "Allow debugging?" approval on first access.');
+    // A direct CDP WebSocket keeps the event loop alive after close(), so force
+    // exit (same as `list`). Without this the process hangs and run_shell kills
+    // it on timeout even though the tab opened successfully.
+    setTimeout(() => process.exit(0), 100);
     return;
   }
 

@@ -47,6 +47,10 @@ the browser is already up. The launcher picks an uncommon free port and
 port). **The first time**, log into the sites you care about in that window —
 the profile is persistent, so you stay signed in across launches.
 
+> **Timeouts:** the first `launch.mjs` can take ~20s (cold browser start). Do
+> NOT pass a short `run_shell` timeout for these commands — rely on the default
+> (300s). All `cdp.mjs` commands return promptly once the browser is up.
+
 ## Commands
 
 All page commands use `node "${AGENTDESK_SKILL_DIR}/scripts/cdp.mjs"`. The
