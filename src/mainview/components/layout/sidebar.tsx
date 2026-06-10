@@ -28,12 +28,17 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
 import { Tip } from "@/components/ui/tooltip";
+import { UnreadDot } from "@/components/ui/unread-dot";
+import { useUnreadStore, hasUnread } from "@/stores/unread-store";
+import { FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION } from "../../../shared/freelance/attention";
 
 interface NavItem {
   label: string;
   icon: LucideIcon;
   href: string;
   badge?: number;
+  /** Red "needs attention" dot, independent of the numeric badge. */
+  attention?: boolean;
 }
 
 interface SidebarProps {
@@ -66,6 +71,7 @@ function NavItemButton({
   const Icon = item.icon;
 
   const hasBadge = item.badge !== undefined && item.badge > 0;
+  const showAttention = !!item.attention;
 
   const link = (
     <Link
@@ -89,8 +95,15 @@ function NavItemButton({
           aria-label={`${item.badge} notifications`}
         />
       )}
+      {/* Collapsed "needs attention" dot (red) — takes precedence in the corner */}
+      {collapsed && showAttention && (
+        <UnreadDot className="absolute -top-0.5 -right-0.5" tooltip="Freelance needs your attention" side="right" />
+      )}
       {!collapsed && (
         <span className="flex-1 truncate">{item.label}</span>
+      )}
+      {!collapsed && showAttention && (
+        <UnreadDot tooltip="Freelance needs your attention" />
       )}
       {!collapsed && hasBadge && (
         <span
@@ -133,6 +146,9 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   // Freelance feature flag + new listings badge
   const [freelanceEnabled, setFreelanceEnabled] = useState(false);
   const [newListingsCount, setNewListingsCount] = useState(0);
+  // Freelance "needs attention" red dot — set when an escalation is raised, cleared
+  // when the user opens the Auto-Earn tab (reuses the per-project unread store).
+  const freelanceAttention = useUnreadStore(hasUnread(FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION));
 
   // ── Icon spin on navigation ──
   const [iconSpinKey, setIconSpinKey] = useState(0);
@@ -323,7 +339,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const NAV_ITEMS: NavItem[] = ALL_NAV_ITEMS
     .map((item) => {
       if (item.href === "/inbox") return { ...item, badge: inboxUnread };
-      if (item.href === "/freelance") return { ...item, badge: newListingsCount };
+      if (item.href === "/freelance") return { ...item, badge: newListingsCount, attention: freelanceAttention };
       return item;
     });
 

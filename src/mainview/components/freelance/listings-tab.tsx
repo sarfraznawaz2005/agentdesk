@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Sparkles, Trash2, Search, X, AlertTriangle, ChevronUp, ChevronDown } from "lucide-react";
+import { Sparkles, Trash2, Search, X, AlertTriangle, ChevronUp, ChevronDown, CheckSquare } from "lucide-react";
 import { rpc } from "../../lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { FreelanceListingCard } from "./listing-card";
@@ -77,8 +77,12 @@ export function ListingsTab() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
   const [openModalForId, setOpenModalForId] = useState<string | null>(null);
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
-  const [deletingAll, setDeletingAll] = useState(false);
+  // Multi-select delete (per sub-tab, current page). selectedIds holds the chosen
+  // listing ids; "Select all" picks every listing on the current page.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
+  const [deletingSelected, setDeletingSelected] = useState(false);
   const [timezone, setTimezone] = useState("UTC");
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -269,23 +273,56 @@ export function ListingsTab() {
     [],
   );
 
-  const handleDeleteAll = async () => {
-    setDeletingAll(true);
+  // ---- Multi-select ---------------------------------------------------------
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // "Select all" = every listing on the current page (selection is page-scoped).
+  const allOnPageSelected = listings.length > 0 && listings.every((l) => selectedIds.has(l.id));
+  const toggleSelectAllOnPage = useCallback(() => {
+    setSelectedIds((prev) => {
+      const everySelected = listings.length > 0 && listings.every((l) => prev.has(l.id));
+      return everySelected ? new Set() : new Set(listings.map((l) => l.id));
+    });
+  }, [listings]);
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    setDeletingSelected(true);
     try {
-      const result = await rpc.freelanceDeleteAllListings();
-      setConfirmDeleteAll(false);
-      toast("success", result.deleted === 0 ? "No listings to delete." : `Deleted ${result.deleted} listing${result.deleted === 1 ? "" : "s"}.`);
+      const ids = [...selectedIds];
+      const result = await rpc.freelanceDeleteListings(ids);
+      setConfirmDeleteSelected(false);
+      setSelectMode(false);
+      setSelectedIds(new Set());
+      toast("success", `Deleted ${result.deleted} listing${result.deleted === 1 ? "" : "s"}.`);
+      await loadListings(page, statusFilter, debouncedSearch);
     } catch (err) {
-      console.error("Failed to delete all listings:", err);
-      toast("error", "Failed to delete all listings.");
+      console.error("Failed to delete selected listings:", err);
+      toast("error", "Failed to delete the selected listings.");
     } finally {
-      setDeletingAll(false);
+      setDeletingSelected(false);
     }
   };
 
   const handleFilterChange = (value: StatusFilter) => {
     setStatusFilter(value);
     setPage(1);
+    clearSelection(); // selection is page-scoped — switching tabs resets it
   };
 
   const handleSearchChange = (value: string) => {
@@ -294,8 +331,14 @@ export function ListingsTab() {
     searchDebounceRef.current = setTimeout(() => {
       setDebouncedSearch(value);
       setPage(1);
+      clearSelection();
     }, 300);
   };
+
+  const goToPage = useCallback((p: number) => {
+    setPage(p);
+    clearSelection(); // selection is current-page only
+  }, [clearSelection]);
 
   // ---- Derived state -------------------------------------------------------
 
@@ -330,18 +373,6 @@ export function ListingsTab() {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Delete All */}
-          {counts.all > 0 && (
-            <button
-              onClick={() => setConfirmDeleteAll(true)}
-              aria-label="Delete all listings"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Trash2 className="size-3.5" />
-              Delete All
-            </button>
-          )}
-
           {/* Find Workable */}
           <button
             onClick={() => setWizardOpen(true)}
@@ -375,6 +406,7 @@ export function ListingsTab() {
       </div>
 
       {/* Toolbar — Row 2: Status filter tabs */}
+      <div className="flex items-center justify-between gap-2">
       <div
         role="tablist"
         aria-label="Filter listings by status"
@@ -402,6 +434,48 @@ export function ListingsTab() {
             </span>
           </button>
         ))}
+      </div>
+
+        {/* Multi-select controls — far right, below the status tabs */}
+        <div className="flex items-center gap-2">
+          {!selectMode ? (
+            counts.all > 0 && (
+              <button
+                onClick={() => setSelectMode(true)}
+                aria-label="Select listings to delete"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <CheckSquare className="size-3.5" />
+                Select
+              </button>
+            )
+          ) : (
+            <>
+              <button
+                onClick={toggleSelectAllOnPage}
+                disabled={listings.length === 0}
+                className="px-3 py-1.5 text-sm rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {allOnPageSelected ? "Deselect all" : "Select all"}
+              </button>
+              <button
+                onClick={() => setConfirmDeleteSelected(true)}
+                disabled={selectedIds.size === 0}
+                aria-label="Delete selected listings"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-destructive/50 text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Trash2 className="size-3.5" />
+                Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+              </button>
+              <button
+                onClick={exitSelectMode}
+                className="px-3 py-1.5 text-sm rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* List area */}
@@ -440,6 +514,9 @@ export function ListingsTab() {
               preferredCurrency={preferredCurrency}
               currencyRates={currencyRates}
               autoEarnEnabled={autoEarnEnabled}
+              selectable={selectMode}
+              selected={selectedIds.has(listing.id)}
+              onToggleSelect={() => toggleSelect(listing.id)}
             />
           ))}
         </div>
@@ -449,7 +526,7 @@ export function ListingsTab() {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
           <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => goToPage(Math.max(1, page - 1))}
             disabled={page === 1}
             aria-label="Previous page"
             className="px-3 py-1 text-sm rounded border border-border disabled:opacity-40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
@@ -460,7 +537,7 @@ export function ListingsTab() {
             {page} / {totalPages}
           </span>
           <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => goToPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
             aria-label="Next page"
             className="px-3 py-1 text-sm rounded border border-border disabled:opacity-40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
@@ -470,45 +547,37 @@ export function ListingsTab() {
         </div>
       )}
 
-      {/* Delete All confirmation dialog */}
-      <Dialog open={confirmDeleteAll} onOpenChange={(open) => { if (!deletingAll) setConfirmDeleteAll(open); }}>
+      {/* Delete Selected confirmation dialog */}
+      <Dialog open={confirmDeleteSelected} onOpenChange={(open) => { if (!deletingSelected) setConfirmDeleteSelected(open); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-5 text-destructive" />
-              Delete All Listings?
+              Delete {selectedIds.size} listing{selectedIds.size === 1 ? "" : "s"}?
             </DialogTitle>
             <DialogDescription className="pt-1 text-foreground">
-              This will permanently delete all <strong>new</strong> listings.
+              This permanently deletes the selected listing{selectedIds.size === 1 ? "" : "s"} from this tab. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-foreground space-y-1">
-            <p className="font-medium">The following will NOT be deleted:</p>
-            <ul className="list-disc list-inside space-y-0.5 mt-1">
-              <li>Approved listings</li>
-              <li>Shortlisted listings</li>
-              <li>Done listings</li>
-            </ul>
-          </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <button
-              onClick={() => setConfirmDeleteAll(false)}
-              disabled={deletingAll}
+              onClick={() => setConfirmDeleteSelected(false)}
+              disabled={deletingSelected}
               className="px-4 py-2 text-sm rounded-md border border-border hover:bg-muted/50 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Cancel
             </button>
             <button
-              onClick={() => void handleDeleteAll()}
-              disabled={deletingAll}
+              onClick={() => void handleDeleteSelected()}
+              disabled={deletingSelected}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {deletingAll ? (
+              {deletingSelected ? (
                 <span className="h-3.5 w-3.5 rounded-full border-2 border-destructive-foreground border-t-transparent animate-spin" />
               ) : (
                 <Trash2 className="size-3.5" />
               )}
-              {deletingAll ? "Deleting…" : "Delete All"}
+              {deletingSelected ? "Deleting…" : `Delete ${selectedIds.size}`}
             </button>
           </DialogFooter>
         </DialogContent>

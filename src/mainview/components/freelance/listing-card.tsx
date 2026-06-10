@@ -352,6 +352,10 @@ export interface FreelanceListingCardProps {
   preferredCurrency?: string;
   currencyRates?: Record<string, number>;
   autoEarnEnabled?: boolean;
+  /** When true, the card shows a selection checkbox (multi-select delete mode). */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 const DESCRIPTION_TRUNCATE_LENGTH = 200;
@@ -370,6 +374,9 @@ export function FreelanceListingCard({
   preferredCurrency = "USD",
   currencyRates = {},
   autoEarnEnabled = false,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: FreelanceListingCardProps) {
   const [isApproving, setIsApproving] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
@@ -500,11 +507,21 @@ export function FreelanceListingCard({
         listing.status === "approved" && "border-green-500/30 bg-green-500/5",
         isShortlisted && "border-indigo-500/30 bg-indigo-500/5",
         isClosed && "opacity-60",
+        selected && "ring-2 ring-primary border-primary",
       )}
     >
       {/* Header row: badges + posted time (left) | chat + analysis (right) */}
       <div className="-mx-4 px-4 pb-3 border-b border-border flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
+          {selectable && (
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={onToggleSelect}
+              aria-label={selected ? "Deselect listing" : "Select listing"}
+              className="size-4 shrink-0 cursor-pointer accent-primary"
+            />
+          )}
           <PlatformBadge platform={listing.platform} />
           {isShortlisted && (
             <span className="inline-flex items-center rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-500">

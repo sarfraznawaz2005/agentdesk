@@ -1201,7 +1201,7 @@ You have access to EVERY tool, ALL skills, and ALL connected MCP servers (includ
 ## ABSOLUTE RULES (never violate)
 - NEVER merge a pull request or branch. Only humans merge. Do not run \`git merge\`, \`gh pr merge\`, rebase onto the base branch, push to the base/working branch, or force-push. (These are blocked anyway.)
 - Do NOT push, do NOT use the \`gh\` CLI, and do NOT open or merge pull requests — the system automatically commits, pushes, and opens the PR for review. You only make and verify code changes on your dedicated branch.
-- You MAY ask the user a focused question with \`request_human_input\` when a decision is genuinely blocking — it pops a modal dialog and a desktop notification. But this run is autonomous and the user may be away: it auto-continues after ~5 minutes with no answer, so never depend on a response. If none comes (or for anything non-blocking), proceed safely or STOP and explain clearly in your summary instead of pushing low-quality changes.
+- Do NOT ask for human input — there is no one to answer mid-run. If you cannot complete the task confidently, STOP and explain clearly in your summary instead of pushing low-quality changes.
 - Keep changes minimal and focused on the issue. Follow the repository's existing conventions and any custom instructions provided.
 
 ## Approach
@@ -1237,7 +1237,7 @@ lead → negotiating → awarded → in_progress → delivered → revisions →
 - NEVER move the conversation off-platform (no WhatsApp/email/phone) unless the Additional Notes explicitly allow it — platforms ban off-platform contact.
 - NEVER attend or schedule calls/meetings yourself — escalate.
 - NEVER deliver/hand over completed work without BOTH (a) a strict, passing freelance_self_review and (b) explicit human approval (notify_human delivery sign-off, then stop). If review fails, fix it or escalate — never ship around it. Delivery is always the user's call, never yours.
-- Two ways to reach the user, pick the right one: for a SMALL blocking clarification you can act on immediately, use \`request_human_input\` — it pops a modal dialog + desktop notification and waits (auto-continues after ~5 min if the user is away) WITHOUT parking the job. For anything you must NOT do autonomously (the guardrails above), payment/contracts, or when you should stop and hand off, call notify_human(reason, detail, severity) instead — it alerts the user (inbox + desktop + channels) and PARKS the job, then stop. When in doubt, prefer notify_human.
+- Do NOT ask for human input mid-run with a blocking prompt (there is none). When you cannot proceed confidently or hit any guardrail above, call notify_human(reason, detail, severity) — this alerts the user (inbox + desktop + channels) and PARKS the job. Then stop.
 - Keep everything truthful: never invent portfolio items, past clients, or capabilities you were not given.
 
 ## Style
@@ -1390,7 +1390,13 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 // the user a question via the modal dialog. Applied here (rather than repeating
 // ...COMMUNICATION on every line above) and picked up for existing installs by
 // seedAgentTools()'s "add missing default tools" pass.
+//
+// EXCEPT the autonomous background agents (playground-agent here; freelance-expert and
+// issue-fixer aren't in this map). They run without a human watching and must never
+// raise a blocking dialog — they escalate via channels/notify instead.
+const NO_HUMAN_INPUT_AGENTS = new Set(["playground-agent", "freelance-expert", "issue-fixer"]);
 for (const key of Object.keys(defaultAgentTools)) {
+	if (NO_HUMAN_INPUT_AGENTS.has(key)) continue;
 	if (!defaultAgentTools[key].includes("request_human_input")) {
 		defaultAgentTools[key] = [...defaultAgentTools[key], ...COMMUNICATION];
 	}

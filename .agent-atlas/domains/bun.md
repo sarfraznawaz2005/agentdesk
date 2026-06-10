@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 259
-**Symbols:** 1958
+**Symbols:** 1960
 
 ## Files
 
@@ -1177,7 +1177,7 @@
 ### `src/bun/db/migrations/v42_request-human-input-backfill.ts`
 
 **Functions:**
-- `run` (line 15)
+- `run` (line 18)
 
 **Exports:**
 - `name` (line 3)
@@ -1302,9 +1302,9 @@
 - `hashAgentDefs` (line 25)
 - `loadBuiltinPromptsHash` (line 31)
 - `saveBuiltinPromptsHash` (line 37)
-- `getDefaultAgentTools` (line 1403)
-- `seedDatabase` (line 1418)
-- `seedAgentTools` (line 1656)
+- `getDefaultAgentTools` (line 1409)
+- `seedDatabase` (line 1424)
+- `seedAgentTools` (line 1662)
 
 
 ### `src/bun/db/summaries.ts`
@@ -1453,30 +1453,31 @@
 
 **Functions:**
 - `escalateToHuman` (line 44)
-- `listEscalations` (line 97)
-- `resolveEscalation` (line 116)
-- `notifyJobEvent` (line 128)
-- `openEscalationCount` (line 158)
+- `listEscalations` (line 107)
+- `resolveEscalation` (line 126)
+- `resolveAllEscalations` (line 134)
+- `notifyJobEvent` (line 152)
+- `openEscalationCount` (line 182)
 
 
 ### `src/bun/freelance/expert/orchestrator.ts`
 
 **Interfaces:**
-- `RunExpertInput` (line 177)
+- `RunExpertInput` (line 178)
 
 **Functions:**
-- `resolveProviderConfig` (line 49)
-- `getPersona` (line 66)
-- `buildThreadTranscript` (line 81)
-- `latestInboundBody` (line 94)
-- `keywordTriage` (line 119)
-- `triageMessage` (line 130)
-- `getSelfUserId` (line 152)
-- `getListingFullDescription` (line 159)
-- `runFreelanceExpert` (line 190)
+- `resolveProviderConfig` (line 50)
+- `getPersona` (line 67)
+- `buildThreadTranscript` (line 82)
+- `latestInboundBody` (line 95)
+- `keywordTriage` (line 120)
+- `triageMessage` (line 131)
+- `getSelfUserId` (line 153)
+- `getListingFullDescription` (line 160)
+- `runFreelanceExpert` (line 191)
 
 **Exports:**
-- `getJobByThread` (line 354)
+- `getJobByThread` (line 355)
 
 
 ### `src/bun/freelance/expert/tools.ts`
@@ -3046,15 +3047,16 @@
 ### `src/bun/rpc/freelance-expert.ts`
 
 **Interfaces:**
-- `EarningsSummary` (line 54)
+- `EarningsSummary` (line 58)
 
 **Functions:**
 - `getEscalations` (line 12)
 - `resolveEscalation` (line 16)
-- `approveDelivery` (line 26)
-- `getJobs` (line 44)
-- `getJobTimeline` (line 48)
-- `getEarningsSummary` (line 64)
+- `resolveAllEscalations` (line 21)
+- `approveDelivery` (line 30)
+- `getJobs` (line 48)
+- `getJobTimeline` (line 52)
+- `getEarningsSummary` (line 68)
 
 
 ### `src/bun/rpc/freelance-inbox.ts`
@@ -3161,9 +3163,9 @@
 - `getListingCounts` (line 144)
 - `markListingDone` (line 168)
 - `deleteListing` (line 196)
-- `deleteAllListings` (line 223)
-- `triggerFetch` (line 247)
-- `approveListing` (line 268)
+- `deleteListings` (line 223)
+- `triggerFetch` (line 245)
+- `approveListing` (line 266)
 
 
 ### `src/bun/rpc/git.ts`

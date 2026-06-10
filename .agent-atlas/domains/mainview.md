@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 167
-**Symbols:** 1430
+**Symbols:** 1431
 
 ## Files
 
@@ -524,9 +524,10 @@
 - `on` (line 35)
 - `openTimeline` (line 48)
 - `resolve` (line 53)
-- `approveDelivery` (line 57)
-- `Metric` (line 157)
-- `formatMinutes` (line 178)
+- `resolveAll` (line 57)
+- `approveDelivery` (line 61)
+- `Metric` (line 171)
+- `formatMinutes` (line 192)
 
 
 ### `src/mainview/components/freelance/find-workable-modal.tsx`
@@ -644,15 +645,15 @@
 - `PlatformBadge` (line 170)
 - `SkillChips` (line 183)
 - `AnalysisModal` (line 246)
-- `FreelanceListingCard` (line 359)
-- `onActive` (line 395)
-- `onDone` (line 399)
-- `handleApprove` (line 433)
-- `handleShortlist` (line 442)
-- `handleMarkDone` (line 452)
-- `handleAnalyze` (line 462)
-- `handleDelete` (line 469)
-- `handleViewOnPlatform` (line 479)
+- `FreelanceListingCard` (line 363)
+- `onActive` (line 402)
+- `onDone` (line 406)
+- `handleApprove` (line 440)
+- `handleShortlist` (line 449)
+- `handleMarkDone` (line 459)
+- `handleAnalyze` (line 469)
+- `handleDelete` (line 476)
+- `handleViewOnPlatform` (line 486)
 
 **Methods:**
 - `code` (line 212)
@@ -666,14 +667,14 @@
 **Functions:**
 - `ListingSkeleton` (line 28)
 - `ListingsTab` (line 64)
-- `loadAutoEarn` (line 96)
-- `onScroll` (line 120)
-- `handler` (line 168)
-- `handler` (line 176)
-- `handleFetchNow` (line 199)
-- `handleDeleteAll` (line 272)
-- `handleFilterChange` (line 286)
-- `handleSearchChange` (line 291)
+- `loadAutoEarn` (line 100)
+- `onScroll` (line 124)
+- `handler` (line 172)
+- `handler` (line 180)
+- `handleFetchNow` (line 203)
+- `handleDeleteSelected` (line 303)
+- `handleFilterChange` (line 322)
+- `handleSearchChange` (line 328)
 
 
 ### `src/mainview/components/freelance/session-webview-host.ts`
@@ -1043,25 +1044,25 @@
 ### `src/mainview/components/layout/sidebar.tsx`
 
 **Interfaces:**
-- `NavItem` (line 32)
-- `SidebarProps` (line 39)
+- `NavItem` (line 35)
+- `SidebarProps` (line 44)
 
 **Types:**
-- `UpdateState` (line 123)
+- `UpdateState` (line 136)
 
 **Functions:**
-- `NavItemButton` (line 57)
-- `resolveIcon` (line 119)
-- `Sidebar` (line 125)
-- `fetchUnread` (line 154)
-- `handler` (line 168)
-- `fetchExtensions` (line 178)
-- `handler` (line 213)
-- `handler` (line 224)
-- `handler` (line 254)
-- `handleVersionClick` (line 263)
-- `handleDownload` (line 293)
-- `handleApply` (line 305)
+- `NavItemButton` (line 62)
+- `resolveIcon` (line 132)
+- `Sidebar` (line 138)
+- `fetchUnread` (line 170)
+- `handler` (line 184)
+- `fetchExtensions` (line 194)
+- `handler` (line 229)
+- `handler` (line 240)
+- `handler` (line 270)
+- `handleVersionClick` (line 279)
+- `handleDownload` (line 309)
+- `handleApply` (line 321)
 
 
 ### `src/mainview/components/layout/topnav.tsx`
@@ -1976,10 +1977,10 @@
 ### `src/mainview/pages/freelance.tsx`
 
 **Functions:**
-- `FreelancePage` (line 15)
-- `load` (line 30)
-- `onSettings` (line 35)
-- `onOpenInbox` (line 39)
+- `FreelancePage` (line 18)
+- `load` (line 33)
+- `onSettings` (line 38)
+- `onOpenInbox` (line 42)
 
 
 ### `src/mainview/pages/inbox.tsx`

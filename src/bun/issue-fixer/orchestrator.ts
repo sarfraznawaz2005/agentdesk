@@ -320,11 +320,11 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 			persistToDb: false,
 			// Auto-approved + guarded shell; deterministic git push/PR handled by the orchestrator.
 			extraTools: { run_shell: createGuardedShellTool(baseBranch) },
-			// request_human_input IS allowed — it can ask the user directly (modal dialog + desktop
-			// notification, auto-continues after ~5 min so this autonomous, repo-triggered run never
-			// hangs when nobody's at the app). push/PR owned by the orchestrator; NO kanban writes;
-			// and NO destructive/branch-switching git tools so the agent can't reset the user's repo.
+			// No human-input (nobody to answer this autonomous, repo-triggered run); push/PR owned by
+			// the orchestrator; NO kanban writes; and NO destructive/branch-switching git tools
+			// (reset/cherry-pick/branch) so the agent stays on its branch and can't reset the repo.
 			excludeTools: [
+				"request_human_input",
 				"git_push",
 				"git_pr",
 				"git_reset",

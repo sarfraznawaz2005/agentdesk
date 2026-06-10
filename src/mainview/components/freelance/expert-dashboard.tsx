@@ -54,6 +54,10 @@ export function ExpertDashboard() {
     rpc.freelanceResolveEscalation(id).then(refresh).catch(() => {});
   };
 
+  const resolveAll = () => {
+    rpc.freelanceResolveAllEscalations().then(refresh).catch(() => {});
+  };
+
   const approveDelivery = (jobId: string) => {
     rpc.freelanceApproveDelivery(jobId).then(refresh).catch(() => {});
   };
@@ -77,7 +81,17 @@ export function ExpertDashboard() {
 
       {/* Escalations / needs-attention */}
       <section>
-        <h3 className="mb-2 text-sm font-semibold">Needs attention</h3>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Needs attention</h3>
+          {escalations.length > 1 && (
+            <button
+              onClick={resolveAll}
+              className="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent"
+            >
+              Resolve all ({escalations.length})
+            </button>
+          )}
+        </div>
         {escalations.length === 0 ? (
           <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
             Nothing needs your attention. The agent will alert you here (and via desktop/channels) if it gets stuck.

@@ -1,8 +1,8 @@
 # Domain: shared
 
 **Directory:** `src/shared`
-**Files:** 33
-**Symbols:** 154
+**Files:** 34
+**Symbols:** 156
 
 ## Files
 
@@ -18,6 +18,13 @@
 **Exports:**
 - `CURRENCIES` (line 149)
 - `CURRENCY_MAP` (line 154)
+
+
+### `src/shared/freelance/attention.ts`
+
+**Exports:**
+- `FREELANCE_ATTENTION_PROJECT` (line 10)
+- `FREELANCE_ATTENTION_LOCATION` (line 11)
 
 
 ### `src/shared/freelance/platforms.ts`

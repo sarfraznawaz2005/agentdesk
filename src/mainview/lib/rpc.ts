@@ -1438,8 +1438,8 @@ export const rpc = {
     electroviewRpc.request["freelance.triggerFetch"]({}),
 
   /** Hard-delete all listings and their chat messages. */
-  freelanceDeleteAllListings: () =>
-    electroviewRpc.request["freelance.deleteAllListings"]({}),
+  freelanceDeleteListings: (ids: string[]) =>
+    electroviewRpc.request["freelance.deleteListings"]({ ids }),
 
   /** Fetch all chat messages for a listing. */
   freelanceChatGetMessages: (listingId: string) =>
@@ -1566,6 +1566,8 @@ export const rpc = {
     electroviewRpc.request["freelance.expert.getEscalations"]({ status }),
   freelanceResolveEscalation: (id: string) =>
     electroviewRpc.request["freelance.expert.resolveEscalation"]({ id }),
+  freelanceResolveAllEscalations: () =>
+    electroviewRpc.request["freelance.expert.resolveAllEscalations"]({}),
   freelanceApproveDelivery: (jobId: string) =>
     electroviewRpc.request["freelance.expert.approveDelivery"]({ jobId }),
   freelanceGetJobs: (state?: string) =>

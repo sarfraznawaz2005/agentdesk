@@ -1,4 +1,4 @@
-import { eq, desc, count, and, or, like, notInArray } from "drizzle-orm";
+import { eq, desc, count, and, or, like, inArray } from "drizzle-orm";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { sqlite } from "../db/connection";
@@ -215,32 +215,30 @@ export async function deleteListing(params: {
   return { success: true };
 }
 
-// ─── deleteAllListings ────────────────────────────────────────────────────────
-// Soft-deletes every non-deleted, non-approved listing.
-// Approved listings are preserved. Soft-delete keeps the (platform, external_id)
-// unique row intact so these listings are never re-imported on the next fetch.
-// Hard purge of old soft-deleted rows happens in purgeOldDeletedListings (30-day TTL).
-export async function deleteAllListings(): Promise<{ success: boolean; deleted: number }> {
-  const deletable = and(
-    eq(freelanceListings.isDeleted, 0),
-    notInArray(freelanceListings.status, ["approved", "shortlisted", "closed"]),
-  );
-
-  const rows = await db
-    .select({ id: freelanceListings.id })
-    .from(freelanceListings)
-    .where(deletable);
-
-  if (rows.length === 0) return { success: true, deleted: 0 };
+// ─── deleteListings (batch) ─────────────────────────────────────────────────
+// Soft-deletes the given listings by id, regardless of status (the multi-select
+// "Delete Selected" action works on any sub-tab, incl. Approved/Done). Soft-delete
+// keeps the (platform, external_id) unique row intact so deleted listings are never
+// re-imported on the next fetch; the 30-day TTL purge hard-deletes them later.
+export async function deleteListings(params: { ids: string[] }): Promise<{ success: boolean; deleted: number }> {
+  const ids = (params.ids ?? []).filter((id) => typeof id === "string" && id.length > 0);
+  if (ids.length === 0) return { success: true, deleted: 0 };
 
   const now = new Date().toISOString();
   await db
     .update(freelanceListings)
     .set({ isDeleted: 1, updatedAt: now })
-    .where(deletable);
+    .where(and(inArray(freelanceListings.id, ids), eq(freelanceListings.isDeleted, 0)));
 
-  broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0, source: "manual" });
-  return { success: true, deleted: rows.length };
+  // Clean up associated chat messages so they don't accumulate for deleted listings.
+  await db.delete(freelanceChatMessages).where(inArray(freelanceChatMessages.listingId, ids));
+
+  const [{ count: newCount }] = await db
+    .select({ count: count() })
+    .from(freelanceListings)
+    .where(and(eq(freelanceListings.status, "new"), eq(freelanceListings.isDeleted, 0)));
+  broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: newCount });
+  return { success: true, deleted: ids.length };
 }
 
 // ─── triggerFetch ─────────────────────────────────────────────────────────────

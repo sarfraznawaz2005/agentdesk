@@ -79,6 +79,16 @@ export async function escalateToHuman(input: EscalateInput): Promise<{ id: strin
 		/* unavailable */
 	}
 
+	// 2b) Unread "needs attention" dot — shows on the sidebar Freelance link + the
+	// Auto-Earn tab until the user opens that tab (reuses the project-activity store).
+	try {
+		const { recordActivity } = await import("../../rpc/activity");
+		const { FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION } = await import("../../../shared/freelance/attention");
+		await recordActivity(FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION);
+	} catch (err) {
+		console.error("[freelance/notify] attention activity failed:", err);
+	}
+
 	// 3) Connected channels (opt-in)
 	try {
 		const settings = await getAutoEarnSettings();
@@ -118,6 +128,20 @@ export function resolveEscalation(id: string): void {
 		.prepare(`UPDATE freelance_escalations SET status = 'resolved', resolved_at = ? WHERE id = ?`)
 		.run(new Date().toISOString(), id);
 	broadcastToWebview(FREELANCE_EVENTS.ESCALATION_RESOLVED, { id });
+}
+
+/** Resolve every open escalation at once. Returns how many were resolved. */
+export function resolveAllEscalations(): number {
+	const open = sqlite.prepare(`SELECT COUNT(*) AS c FROM freelance_escalations WHERE status = 'open'`).get() as
+		| { c: number }
+		| undefined;
+	const n = open?.c ?? 0;
+	if (n === 0) return 0;
+	sqlite
+		.prepare(`UPDATE freelance_escalations SET status = 'resolved', resolved_at = ? WHERE status = 'open'`)
+		.run(new Date().toISOString());
+	broadcastToWebview(FREELANCE_EVENTS.ESCALATION_RESOLVED, { id: "*" });
+	return n;
 }
 
 /**

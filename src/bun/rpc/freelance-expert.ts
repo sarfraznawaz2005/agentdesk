@@ -5,7 +5,7 @@
 import { sqlite } from "../db/connection";
 import { broadcastToWebview } from "../engine-manager";
 import { FREELANCE_EVENTS } from "../freelance/events";
-import { listEscalations, resolveEscalation as resolveEscalationImpl, type EscalationDto } from "../freelance/expert/notify";
+import { listEscalations, resolveEscalation as resolveEscalationImpl, resolveAllEscalations as resolveAllEscalationsImpl, type EscalationDto } from "../freelance/expert/notify";
 import { listJobs, getJobLog, getJobById, setDeliveryApproved, type FreelanceJob } from "../freelance/expert/jobs";
 import { runFreelanceExpert } from "../freelance/expert/orchestrator";
 
@@ -16,6 +16,10 @@ export async function getEscalations(params: { status?: "open" | "resolved" | "a
 export async function resolveEscalation(params: { id: string }): Promise<{ success: boolean }> {
 	resolveEscalationImpl(params.id);
 	return { success: true };
+}
+
+export async function resolveAllEscalations(): Promise<{ resolved: number }> {
+	return { resolved: resolveAllEscalationsImpl() };
 }
 
 /**

@@ -254,13 +254,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1403,
+      "line": 1409,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1656,
+      "line": 1662,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -1097,6 +1097,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 134,
+      "symbol": "resolveAllEscalations",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/fetcher.ts",
       "line": 46,
       "symbol": "fetchAllPlatforms",
@@ -1145,9 +1151,9 @@
       "type": "function"
     },
     {
-      "file": "src/bun/rpc/freelance.ts",
-      "line": 223,
-      "symbol": "deleteAllListings",
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 21,
+      "symbol": "resolveAllEscalations",
       "type": "function"
     },
     {
@@ -1193,9 +1199,9 @@
       "type": "function"
     },
     {
-      "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 272,
-      "symbol": "handleDeleteAll",
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 57,
+      "symbol": "resolveAll",
       "type": "function"
     },
     {
@@ -2214,7 +2220,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1403,
+      "line": 1409,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -2322,25 +2328,25 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 66,
+      "line": 67,
       "symbol": "getPersona",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 152,
+      "line": 153,
       "symbol": "getSelfUserId",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 159,
+      "line": 160,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 354,
+      "line": 355,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -2874,19 +2880,19 @@
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 44,
+      "line": 48,
       "symbol": "getJobs",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 48,
+      "line": 52,
       "symbol": "getJobTimeline",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 64,
+      "line": 68,
       "symbol": "getEarningsSummary",
       "type": "function"
     },
@@ -3760,7 +3766,7 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 158,
+      "line": 182,
       "symbol": "openEscalationCount",
       "type": "function"
     },
@@ -5568,7 +5574,7 @@
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 39,
+      "line": 42,
       "symbol": "onOpenInbox",
       "type": "function"
     },
@@ -5690,13 +5696,19 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 116,
+      "line": 126,
       "symbol": "resolveEscalation",
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 134,
+      "symbol": "resolveAllEscalations",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 49,
+      "line": 50,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -5803,6 +5815,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 21,
+      "symbol": "resolveAllEscalations",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/github-api.ts",
       "line": 94,
       "symbol": "resolveGitHubToken",
@@ -5845,6 +5863,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 57,
+      "symbol": "resolveAll",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/git/conflict-resolver.tsx",
       "line": 63,
       "symbol": "handleResolveWithAI",
@@ -5852,7 +5876,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 119,
+      "line": 132,
       "symbol": "resolveIcon",
       "type": "function"
     },
@@ -6354,13 +6378,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 168,
+      "line": 172,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 176,
+      "line": 180,
       "symbol": "handler",
       "type": "function"
     },
@@ -6372,25 +6396,25 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 168,
+      "line": 184,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 213,
+      "line": 229,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 224,
+      "line": 240,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 254,
+      "line": 270,
       "symbol": "handler",
       "type": "function"
     },
@@ -6494,7 +6518,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 152,
+      "line": 153,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -7238,7 +7262,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 123,
+      "line": 136,
       "symbol": "UpdateState",
       "type": "type"
     },
@@ -8144,7 +8168,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 96,
+      "line": 100,
       "symbol": "loadAutoEarn",
       "type": "function"
     },
@@ -8174,7 +8198,7 @@
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 30,
+      "line": 33,
       "symbol": "load",
       "type": "function"
     },
@@ -8612,7 +8636,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 479,
+      "line": 486,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -8856,7 +8880,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 190,
+      "line": 191,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -8940,13 +8964,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 359,
+      "line": 363,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 15,
+      "line": 18,
       "symbol": "FreelancePage",
       "type": "function"
     },
@@ -8960,6 +8984,18 @@
       "file": "src/mainview/stores/freelance-engine-store.ts",
       "line": 23,
       "symbol": "useFreelanceEngineStore",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/freelance/attention.ts",
+      "line": 10,
+      "symbol": "FREELANCE_ATTENTION_PROJECT",
+      "type": "export"
+    },
+    {
+      "file": "src/shared/freelance/attention.ts",
+      "line": 11,
+      "symbol": "FREELANCE_ATTENTION_LOCATION",
       "type": "export"
     },
     {
@@ -9266,7 +9302,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 119,
+      "line": 132,
       "symbol": "resolveIcon",
       "type": "function"
     },
@@ -9462,13 +9498,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 286,
+      "line": 322,
       "symbol": "handleFilterChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 291,
+      "line": 328,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -10244,13 +10280,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 54,
+      "line": 58,
       "symbol": "EarningsSummary",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 64,
+      "line": 68,
       "symbol": "getEarningsSummary",
       "type": "function"
     },
@@ -11222,7 +11258,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 130,
+      "line": 131,
       "symbol": "triageMessage",
       "type": "function"
     },
@@ -12343,6 +12379,12 @@
       "type": "function"
     },
     {
+      "file": "src/shared/freelance/attention.ts",
+      "line": 10,
+      "symbol": "FREELANCE_ATTENTION_PROJECT",
+      "type": "export"
+    },
+    {
       "file": "src/shared/rpc/projects.ts",
       "line": 1,
       "symbol": "ProjectRow",
@@ -12886,7 +12928,7 @@
   "minutes": [
     {
       "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 178,
+      "line": 192,
       "symbol": "formatMinutes",
       "type": "function"
     },
@@ -13208,7 +13250,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 199,
+      "line": 203,
       "symbol": "handleFetchNow",
       "type": "function"
     },
@@ -13754,7 +13796,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 305,
+      "line": 321,
       "symbol": "handleApply",
       "type": "function"
     },
@@ -14758,13 +14800,13 @@
   "seed": [
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1418,
+      "line": 1424,
       "symbol": "seedDatabase",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1656,
+      "line": 1662,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -15548,7 +15590,7 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 128,
+      "line": 152,
       "symbol": "notifyJobEvent",
       "type": "function"
     },
@@ -16028,7 +16070,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 49,
+      "line": 50,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -16710,13 +16752,13 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 128,
+      "line": 152,
       "symbol": "notifyJobEvent",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 354,
+      "line": 355,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -16770,7 +16812,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 48,
+      "line": 52,
       "symbol": "getJobTimeline",
       "type": "function"
     },
@@ -18078,7 +18120,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 152,
+      "line": 153,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -19488,7 +19530,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 159,
+      "line": 160,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -21346,7 +21388,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 123,
+      "line": 136,
       "symbol": "UpdateState",
       "type": "type"
     },
@@ -21586,7 +21628,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1403,
+      "line": 1409,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -22056,7 +22098,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 81,
+      "line": 82,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
@@ -22346,7 +22388,7 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 97,
+      "line": 107,
       "symbol": "listEscalations",
       "type": "function"
     },
@@ -23170,7 +23212,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 479,
+      "line": 486,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -23954,7 +23996,7 @@
     },
     {
       "file": "src/bun/db/migrations/v42_request-human-input-backfill.ts",
-      "line": 15,
+      "line": 18,
       "symbol": "run",
       "type": "function"
     },
@@ -23990,13 +24032,13 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 177,
+      "line": 178,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 190,
+      "line": 191,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -25456,7 +25498,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 286,
+      "line": 322,
       "symbol": "handleFilterChange",
       "type": "function"
     },
@@ -25674,13 +25716,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1403,
+      "line": 1409,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1656,
+      "line": 1662,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -28320,7 +28362,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 395,
+      "line": 402,
       "symbol": "onActive",
       "type": "function"
     },
@@ -28958,61 +29000,61 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 433,
+      "line": 440,
       "symbol": "handleApprove",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 442,
+      "line": 449,
       "symbol": "handleShortlist",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 452,
+      "line": 459,
       "symbol": "handleMarkDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 462,
+      "line": 469,
       "symbol": "handleAnalyze",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 469,
+      "line": 476,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 479,
+      "line": 486,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 199,
+      "line": 203,
       "symbol": "handleFetchNow",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 272,
-      "symbol": "handleDeleteAll",
+      "line": 303,
+      "symbol": "handleDeleteSelected",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 286,
+      "line": 322,
       "symbol": "handleFilterChange",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 291,
+      "line": 328,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -29216,19 +29258,19 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 263,
+      "line": 279,
       "symbol": "handleVersionClick",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 293,
+      "line": 309,
       "symbol": "handleDownload",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 305,
+      "line": 321,
       "symbol": "handleApply",
       "type": "function"
     },
@@ -30144,7 +30186,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 247,
+      "line": 245,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -30412,7 +30454,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 96,
+      "line": 100,
       "symbol": "loadAutoEarn",
       "type": "function"
     },
@@ -30920,7 +30962,7 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 158,
+      "line": 182,
       "symbol": "openEscalationCount",
       "type": "function"
     },
@@ -31028,7 +31070,7 @@
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 39,
+      "line": 42,
       "symbol": "onOpenInbox",
       "type": "function"
     },
@@ -31222,7 +31264,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 159,
+      "line": 160,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -31276,7 +31318,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 268,
+      "line": 266,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -31294,7 +31336,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 359,
+      "line": 363,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -31464,7 +31506,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 159,
+      "line": 160,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -32006,7 +32048,7 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 128,
+      "line": 152,
       "symbol": "notifyJobEvent",
       "type": "function"
     },
@@ -32380,7 +32422,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 49,
+      "line": 50,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -32938,7 +32980,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 81,
+      "line": 82,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
@@ -34208,7 +34250,7 @@
     },
     {
       "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 178,
+      "line": 192,
       "symbol": "formatMinutes",
       "type": "function"
     },
@@ -34476,7 +34518,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 247,
+      "line": 245,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -34500,19 +34542,19 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 199,
+      "line": 203,
       "symbol": "handleFetchNow",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 154,
+      "line": 170,
       "symbol": "fetchUnread",
       "type": "function"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 178,
+      "line": 194,
       "symbol": "fetchExtensions",
       "type": "function"
     },
@@ -34858,13 +34900,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 399,
+      "line": 406,
       "symbol": "onDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 452,
+      "line": 459,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -35622,7 +35664,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1418,
+      "line": 1424,
       "symbol": "seedDatabase",
       "type": "function"
     },
@@ -36364,7 +36406,7 @@
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 35,
+      "line": 38,
       "symbol": "onSettings",
       "type": "function"
     },
@@ -37062,7 +37104,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 44,
+      "line": 48,
       "symbol": "getJobs",
       "type": "function"
     },
@@ -38873,7 +38915,7 @@
     {
       "file": "src/bun/rpc/freelance.ts",
       "line": 223,
-      "symbol": "deleteAllListings",
+      "symbol": "deleteListings",
       "type": "function"
     },
     {
@@ -39422,7 +39464,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 94,
+      "line": 95,
       "symbol": "latestInboundBody",
       "type": "function"
     }
@@ -39521,7 +39563,7 @@
     {
       "file": "src/bun/rpc/freelance.ts",
       "line": 223,
-      "symbol": "deleteAllListings",
+      "symbol": "deleteListings",
       "type": "function"
     },
     {
@@ -39664,14 +39706,14 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 469,
+      "line": 476,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 272,
-      "symbol": "handleDeleteAll",
+      "line": 303,
+      "symbol": "handleDeleteSelected",
       "type": "function"
     },
     {
@@ -40232,13 +40274,13 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 32,
+      "line": 35,
       "symbol": "NavItem",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 57,
+      "line": 62,
       "symbol": "NavItemButton",
       "type": "function"
     },
@@ -41062,7 +41104,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 177,
+      "line": 178,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
@@ -41386,7 +41428,7 @@
   "keyword": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 119,
+      "line": 120,
       "symbol": "keywordTriage",
       "type": "function"
     },
@@ -42497,6 +42539,12 @@
       "line": 43,
       "symbol": "Location",
       "type": "interface"
+    },
+    {
+      "file": "src/shared/freelance/attention.ts",
+      "line": 11,
+      "symbol": "FREELANCE_ATTENTION_LOCATION",
+      "type": "export"
     }
   ],
   "identifier": [
@@ -43456,13 +43504,13 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 39,
+      "line": 44,
       "symbol": "SidebarProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 125,
+      "line": 138,
       "symbol": "Sidebar",
       "type": "function"
     },
@@ -43878,7 +43926,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 178,
+      "line": 194,
       "symbol": "fetchExtensions",
       "type": "function"
     }
@@ -45300,7 +45348,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 293,
+      "line": 309,
       "symbol": "handleDownload",
       "type": "function"
     },
@@ -46250,7 +46298,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 154,
+      "line": 170,
       "symbol": "fetchUnread",
       "type": "function"
     },
@@ -46366,7 +46414,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 452,
+      "line": 459,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -47188,7 +47236,7 @@
     },
     {
       "file": "src/mainview/pages/freelance.tsx",
-      "line": 15,
+      "line": 18,
       "symbol": "FreelancePage",
       "type": "function"
     },
@@ -47408,7 +47456,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 462,
+      "line": 469,
       "symbol": "handleAnalyze",
       "type": "function"
     }
@@ -47460,7 +47508,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 442,
+      "line": 449,
       "symbol": "handleShortlist",
       "type": "function"
     }
@@ -47506,7 +47554,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 26,
+      "line": 30,
       "symbol": "approveDelivery",
       "type": "function"
     },
@@ -47518,7 +47566,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 268,
+      "line": 266,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -47530,13 +47578,13 @@
     },
     {
       "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 57,
+      "line": 61,
       "symbol": "approveDelivery",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 433,
+      "line": 440,
       "symbol": "handleApprove",
       "type": "function"
     }
@@ -47874,7 +47922,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 291,
+      "line": 328,
       "symbol": "handleSearchChange",
       "type": "function"
     },
@@ -49092,7 +49140,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 39,
+      "line": 44,
       "symbol": "SidebarProps",
       "type": "interface"
     },
@@ -50146,7 +50194,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 359,
+      "line": 363,
       "symbol": "FreelanceListingCard",
       "type": "function"
     },
@@ -51096,7 +51144,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 263,
+      "line": 279,
       "symbol": "handleVersionClick",
       "type": "function"
     },
@@ -53675,6 +53723,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/listings-tab.tsx",
+      "line": 303,
+      "symbol": "handleDeleteSelected",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/remote-sync/remote-tree.tsx",
       "line": 100,
       "symbol": "exactSelected",
@@ -54310,7 +54364,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 120,
+      "line": 124,
       "symbol": "onScroll",
       "type": "function"
     },
@@ -54670,7 +54724,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 57,
+      "line": 62,
       "symbol": "NavItemButton",
       "type": "function"
     },
@@ -54952,13 +55006,13 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 32,
+      "line": 35,
       "symbol": "NavItem",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 57,
+      "line": 62,
       "symbol": "NavItemButton",
       "type": "function"
     },
@@ -57392,7 +57446,7 @@
     },
     {
       "file": "src/mainview/components/layout/sidebar.tsx",
-      "line": 263,
+      "line": 279,
       "symbol": "handleVersionClick",
       "type": "function"
     }
@@ -58766,14 +58820,26 @@
     },
     {
       "file": "src/bun/freelance/expert/notify.ts",
-      "line": 97,
+      "line": 107,
       "symbol": "listEscalations",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 134,
+      "symbol": "resolveAllEscalations",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
       "line": 12,
       "symbol": "getEscalations",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 21,
+      "symbol": "resolveAllEscalations",
       "type": "function"
     }
   ],
@@ -58858,7 +58924,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listings-tab.tsx",
-      "line": 96,
+      "line": 100,
       "symbol": "loadAutoEarn",
       "type": "function"
     },
@@ -58990,13 +59056,13 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 81,
+      "line": 82,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 354,
+      "line": 355,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -59055,38 +59121,6 @@
       "type": "export"
     }
   ],
-  "escalation": [
-    {
-      "file": "src/bun/freelance/expert/notify.ts",
-      "line": 31,
-      "symbol": "EscalationDto",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/freelance/expert/notify.ts",
-      "line": 116,
-      "symbol": "resolveEscalation",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/freelance/expert/notify.ts",
-      "line": 158,
-      "symbol": "openEscalationCount",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 16,
-      "symbol": "resolveEscalation",
-      "type": "function"
-    },
-    {
-      "file": "src/shared/rpc/freelance.ts",
-      "line": 134,
-      "symbol": "FreelanceEscalationDto",
-      "type": "interface"
-    }
-  ],
   "partition": [
     {
       "file": "src/bun/rpc/freelance-inbox.ts",
@@ -59126,7 +59160,7 @@
   "inbound": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 94,
+      "line": 95,
       "symbol": "latestInboundBody",
       "type": "function"
     },
@@ -59175,24 +59209,10 @@
       "type": "function"
     }
   ],
-  "escalate": [
-    {
-      "file": "src/bun/freelance/expert/notify.ts",
-      "line": 20,
-      "symbol": "EscalateInput",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/freelance/expert/notify.ts",
-      "line": 44,
-      "symbol": "escalateToHuman",
-      "type": "function"
-    }
-  ],
   "self": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 152,
+      "line": 153,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -59397,18 +59417,10 @@
       "type": "function"
     }
   ],
-  "chips": [
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 183,
-      "symbol": "SkillChips",
-      "type": "function"
-    }
-  ],
   "body": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 94,
+      "line": 95,
       "symbol": "latestInboundBody",
       "type": "function"
     },
@@ -59486,7 +59498,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 26,
+      "line": 30,
       "symbol": "approveDelivery",
       "type": "function"
     },
@@ -59498,43 +59510,9 @@
     },
     {
       "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 57,
+      "line": 61,
       "symbol": "approveDelivery",
       "type": "function"
-    }
-  ],
-  "timeline": [
-    {
-      "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 48,
-      "symbol": "getJobTimeline",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 48,
-      "symbol": "openTimeline",
-      "type": "function"
-    }
-  ],
-  "earnings": [
-    {
-      "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 54,
-      "symbol": "EarningsSummary",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/rpc/freelance-expert.ts",
-      "line": 64,
-      "symbol": "getEarningsSummary",
-      "type": "function"
-    },
-    {
-      "file": "src/shared/rpc/freelance.ts",
-      "line": 164,
-      "symbol": "FreelanceEarningsDto",
-      "type": "interface"
     }
   ],
   "fact": [
@@ -59554,13 +59532,13 @@
   "expert": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 177,
+      "line": 178,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 190,
+      "line": 191,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -59574,14 +59552,6 @@
       "file": "src/mainview/components/freelance/expert-dashboard.tsx",
       "line": 17,
       "symbol": "ExpertDashboard",
-      "type": "function"
-    }
-  ],
-  "metric": [
-    {
-      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 157,
-      "symbol": "Metric",
       "type": "function"
     }
   ],
@@ -60415,6 +60385,28 @@
       "type": "function"
     }
   ],
+  "defaults": [
+    {
+      "file": "src/bun/rpc/agents.ts",
+      "line": 276,
+      "symbol": "resetAgentToolsToDefaults",
+      "type": "function"
+    }
+  ],
+  "communication": [
+    {
+      "file": "src/bun/agents/tools/communication.ts",
+      "line": 13,
+      "symbol": "createCommunicationTools",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/tools/communication.ts",
+      "line": 60,
+      "symbol": "communicationTools",
+      "type": "export"
+    }
+  ],
   "fnv1a": [
     {
       "file": "src/bun/db/seed.ts",
@@ -60467,12 +60459,70 @@
       "type": "function"
     }
   ],
-  "defaults": [
+  "escalation": [
     {
-      "file": "src/bun/rpc/agents.ts",
-      "line": 276,
-      "symbol": "resetAgentToolsToDefaults",
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 31,
+      "symbol": "EscalationDto",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 126,
+      "symbol": "resolveEscalation",
       "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 182,
+      "symbol": "openEscalationCount",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 16,
+      "symbol": "resolveEscalation",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 134,
+      "symbol": "FreelanceEscalationDto",
+      "type": "interface"
+    }
+  ],
+  "timeline": [
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 52,
+      "symbol": "getJobTimeline",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 48,
+      "symbol": "openTimeline",
+      "type": "function"
+    }
+  ],
+  "earnings": [
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 58,
+      "symbol": "EarningsSummary",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-expert.ts",
+      "line": 68,
+      "symbol": "getEarningsSummary",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 164,
+      "symbol": "FreelanceEarningsDto",
+      "type": "interface"
     }
   ],
   "electroview": [
@@ -60483,24 +60533,38 @@
       "type": "export"
     }
   ],
-  "communication": [
+  "attention": [
     {
-      "file": "src/bun/agents/tools/communication.ts",
-      "line": 13,
-      "symbol": "createCommunicationTools",
-      "type": "function"
+      "file": "src/shared/freelance/attention.ts",
+      "line": 10,
+      "symbol": "FREELANCE_ATTENTION_PROJECT",
+      "type": "export"
     },
     {
-      "file": "src/bun/agents/tools/communication.ts",
-      "line": 60,
-      "symbol": "communicationTools",
+      "file": "src/shared/freelance/attention.ts",
+      "line": 11,
+      "symbol": "FREELANCE_ATTENTION_LOCATION",
       "type": "export"
+    }
+  ],
+  "escalate": [
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 20,
+      "symbol": "EscalateInput",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/freelance/expert/notify.ts",
+      "line": 44,
+      "symbol": "escalateToHuman",
+      "type": "function"
     }
   ],
   "persona": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 66,
+      "line": 67,
       "symbol": "getPersona",
       "type": "function"
     }
@@ -60508,14 +60572,30 @@
   "triage": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 119,
+      "line": 120,
       "symbol": "keywordTriage",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 130,
+      "line": 131,
       "symbol": "triageMessage",
+      "type": "function"
+    }
+  ],
+  "metric": [
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 171,
+      "symbol": "Metric",
+      "type": "function"
+    }
+  ],
+  "chips": [
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 183,
+      "symbol": "SkillChips",
       "type": "function"
     }
   ]

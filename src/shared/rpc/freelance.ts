@@ -180,6 +180,10 @@ export type FreelanceRequests = {
     params: { id: string };
     response: { success: boolean };
   };
+  "freelance.expert.resolveAllEscalations": {
+    params: Record<string, never>;
+    response: { resolved: number };
+  };
   "freelance.expert.approveDelivery": {
     params: { jobId: string };
     response: { success: boolean };
@@ -382,8 +386,8 @@ export type FreelanceRequests = {
     params: Record<string, never>;
     response: { success: boolean; skipped?: boolean; reason?: string };
   };
-  "freelance.deleteAllListings": {
-    params: Record<string, never>;
+  "freelance.deleteListings": {
+    params: { ids: string[] };
     response: { success: boolean; deleted: number };
   };
   "freelance.chat.getMessages": {

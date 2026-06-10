@@ -11,6 +11,9 @@ import { SettingsTab } from "../components/freelance/settings-tab";
 import { ExpertDashboard } from "../components/freelance/expert-dashboard";
 import { AutoEarnHelp } from "../components/freelance/auto-earn-help";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
+import { useUnreadStore, hasUnread } from "@/stores/unread-store";
+import { UnreadDot } from "@/components/ui/unread-dot";
+import { FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION } from "../../shared/freelance/attention";
 
 export function FreelancePage() {
   const [activeTab, setActiveTab] = useState("listings");
@@ -48,6 +51,18 @@ export function FreelancePage() {
   // derived, not stateful, to avoid a setState-in-effect cascade.
   const effectiveTab = !autoEarnEnabled && activeTab === "inbox" ? "listings" : activeTab;
 
+  // "Needs attention" red dot (escalations). Shows on the Auto-Earn tab and the
+  // sidebar Freelance link; opening the Auto-Earn tab marks it seen, clearing both.
+  const attention = useUnreadStore(hasUnread(FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION));
+  const markSeen = useUnreadStore((s) => s.markSeen);
+  const onTabChange = useCallback(
+    (v: string) => {
+      setActiveTab(v);
+      if (v === "auto-earn") markSeen(FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION);
+    },
+    [markSeen],
+  );
+
   const triggerCls =
     "rounded-none border-b-2 border-transparent px-4 pb-2 pt-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground";
 
@@ -55,14 +70,19 @@ export function FreelancePage() {
     // The Inbox tab embeds the live Freelancer preview, so give it the full width;
     // the other tabs keep the comfortable reading width.
     <div className={`p-6 mx-auto ${effectiveTab === "inbox" ? "max-w-none" : "max-w-6xl"}`}>
-      <Tabs value={effectiveTab} onValueChange={setActiveTab}>
+      <Tabs value={effectiveTab} onValueChange={onTabChange}>
         <TabsList className="mb-5 h-auto bg-transparent p-0 border-b border-border rounded-none w-full justify-start gap-0">
           <TabsTrigger value="listings" className={triggerCls}>Listings</TabsTrigger>
           {autoEarnEnabled && (
             <TabsTrigger value="inbox" className={triggerCls}>Inbox</TabsTrigger>
           )}
           {autoEarnEnabled && (
-            <TabsTrigger value="auto-earn" className={triggerCls}>Auto-Earn</TabsTrigger>
+            <TabsTrigger value="auto-earn" className={triggerCls}>
+              <span className="inline-flex items-center gap-1.5">
+                Auto-Earn
+                {attention && effectiveTab !== "auto-earn" && <UnreadDot tooltip="Needs your attention" />}
+              </span>
+            </TabsTrigger>
           )}
           <TabsTrigger value="settings" className={triggerCls}>Settings</TabsTrigger>
         </TabsList>

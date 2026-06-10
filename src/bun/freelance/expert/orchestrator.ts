@@ -31,8 +31,9 @@ import { HUMANIZER_WRITING_RULES } from "../humanizer-prompt";
 
 const DEFAULT_PLATFORM = "freelancer";
 const EXCLUDE_TOOLS = [
-	// request_human_input IS allowed — it asks the user directly (modal dialog + desktop
-	// notification, auto-continues after ~5 min) as a lighter alternative to escalateToHuman.
+	// No direct human-input dialog — this runs autonomously (often when the user is away).
+	// Use escalateToHuman/notify_human instead (inbox + desktop + channels, parks the job).
+	"request_human_input",
 	"request_plan_approval",
 	"create_tasks_from_plan",
 	"verify_implementation",
