@@ -1504,6 +1504,10 @@ export const rpc = {
   freelanceLogInboxSync: (source?: string, platform?: string) =>
     electroviewRpc.request["freelance.inbox.logSync"]({ source, platform }),
 
+  /** Report a platform anomaly (429/403/captcha) seen in the live session — trips the circuit breaker. */
+  freelanceReportAnomaly: (kind: string, detail?: string, platform?: string) =>
+    electroviewRpc.request["freelance.session.anomaly"]({ kind, detail, platform }),
+
   /** Clear the partition session (cookies/storage) for a platform. */
   freelanceAccountDisconnect: (platform?: string) =>
     electroviewRpc.request["freelance.account.disconnect"]({ platform }),

@@ -16,6 +16,7 @@ import { gateSend, recordAction, getGovernorState, setPause, clearPause, getPaus
 import { isConnectedPlatform } from "./freelance-inbox";
 import { draftReplyForThread } from "../freelance/reply-pipeline";
 import { getAutoEarnSettings } from "../freelance/auto-earn-settings";
+import { SEND_SIMILARITY_MAX, maxSimilarityAgainst } from "../freelance/similarity";
 import { escalateToHuman } from "../freelance/expert/notify";
 import { sendDesktopNotification } from "../notifications/desktop";
 import type { FreelanceOutboxItemDto } from "../../shared/rpc/freelance";
@@ -124,9 +125,31 @@ export async function dismissStaleBids(): Promise<number> {
 	return n;
 }
 
+// ─── recoverInterruptedSends ───────────────────────────────────────────────────
+// A row stuck in 'sending' means the app/webview died mid-type (the write-step
+// never reported back). Without recovery it wedges the in-flight governor guard
+// and silently strands the message. Fail it so the user sees it and can Retry.
+// Runs lazily on list() and from the bun-side watchdog.
+export async function recoverInterruptedSends(): Promise<number> {
+	const res = sqlite
+		.prepare(
+			`UPDATE freelance_outbox
+			 SET status = 'failed', error = 'interrupted — the app or page closed mid-send; check the live session before retrying', updated_at = ?
+			 WHERE status = 'sending' AND julianday(updated_at) <= julianday('now','-10 minutes')`,
+		)
+		.run(new Date().toISOString()) as { changes?: number };
+	const n = res.changes ?? 0;
+	if (n > 0) {
+		recordAction(DEFAULT_PLATFORM, "blocked", "error", `recovered ${n} interrupted send(s)`);
+		notifyUpdated();
+	}
+	return n;
+}
+
 // ─── list ─────────────────────────────────────────────────────────────────────
 export async function list(params: { status?: string }): Promise<{ items: FreelanceOutboxItemDto[] }> {
 	await dismissStaleBids(); // lazy sweep — never surface a long-dead bid
+	await recoverInterruptedSends(); // lazy sweep — un-wedge crash-stranded sends
 	let rows: Array<Record<string, unknown>>;
 	if (params.status) {
 		rows = sqlite
@@ -274,22 +297,55 @@ export async function approveSend(params: { id: string; userInitiated?: boolean 
 		return { allowed: false, reason: "not logged in — re-login in the live session", platform, kind, threadId, listingId, listingUrl, body };
 	}
 
-	// Template-variation guard: never send a body byte-identical to a prior send
-	// (identical proposals/replies are a top ban signal). Editing it is required.
-	const dup = sqlite
+	// Template-variation guard: never send a body that is identical OR near-
+	// identical to a recent send. Byte-equality alone never fires against LLM
+	// output — near-identical templates (same skeleton, a few words swapped) are
+	// the actual platform spam signal, so this gate measures trigram similarity.
+	const priorSent = sqlite
 		.prepare(
-			`SELECT 1 FROM freelance_outbox
-			 WHERE platform = ? AND status = 'sent' AND id != ? AND COALESCE(final_body, draft_body) = ?
-			 LIMIT 1`,
+			`SELECT COALESCE(final_body, draft_body) AS b FROM freelance_outbox
+			 WHERE platform = ? AND kind = ? AND status = 'sent' AND id != ?
+			 ORDER BY updated_at DESC LIMIT 30`,
 		)
-		.get(platform, params.id, body) as unknown;
-	if (dup) {
-		recordAction(platform, "blocked", "blocked", "duplicate body");
+		.all(platform, kind, params.id) as Array<{ b: string | null }>;
+	const sim = maxSimilarityAgainst(body, priorSent.map((r) => r.b ?? "").filter(Boolean));
+	if (sim >= SEND_SIMILARITY_MAX) {
+		recordAction(platform, "blocked", "blocked", `near-duplicate body (${Math.round(sim * 100)}% similar)`);
 		return {
 			allowed: false,
-			reason: "identical to a previous send — tweak the wording before sending",
+			reason: `${Math.round(sim * 100)}% similar to a previous send — vary the wording before sending`,
 			platform, kind, threadId, listingId, listingUrl, body,
 		};
+	}
+
+	// Humanized reply latency (autonomous replies only): an instant reply to every
+	// client message, every time, is itself a bot tell — the documented kill signal
+	// is the sub-4s submit, but a uniform 60-second reflex across weeks reads the
+	// same way. Hold autonomous replies until the inbound message has aged past a
+	// per-draft floor (deterministic per outbox id, so retries converge instead of
+	// re-rolling). User-initiated sends skip this — the human is acting now.
+	if (!isBid && !params.userInitiated && threadId) {
+		const lastInbound = sqlite
+			.prepare(
+				`SELECT MAX(m.sent_at) AS t FROM freelance_inbox_messages m
+				 WHERE m.thread_id = ?
+				   AND m.from_user IS NOT NULL
+				   AND m.from_user != COALESCE((SELECT self_user_id FROM freelance_accounts WHERE platform = ?), '')`,
+			)
+			.get(threadId, platform) as { t: number | null } | undefined;
+		if (lastInbound?.t) {
+			let hash = 0;
+			for (const c of params.id) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+			const floorSec = 120 + (hash % 180); // 2–5 minutes, stable per draft
+			const ageSec = Math.floor(Date.now() / 1000) - lastInbound.t;
+			if (ageSec >= 0 && ageSec < floorSec) {
+				return {
+					allowed: false,
+					reason: `humanized reply delay (${floorSec - ageSec}s remaining)`,
+					platform, kind, threadId, listingId, listingUrl, body,
+				};
+			}
+		}
 	}
 
 	// A user-initiated (assisted) send is a real human acting now → skip the
@@ -364,7 +420,7 @@ export async function resumeAutonomy(): Promise<{ success: boolean }> {
 // ─── Stuck-queue detection ──────────────────────────────────────────────────
 // In full-auto, if queued auto-work hasn't gone out in a long time (logged out,
 // active-hours misconfigured, paused-and-forgotten), the user should be told.
-const STUCK_HOURS = 3;
+const STUCK_HOURS = 1;
 const STUCK_COOLDOWN_MS = 6 * 3_600_000;
 const STUCK_KEY = "freelance_stuck_escalated_at";
 
@@ -407,10 +463,84 @@ export async function checkStuckQueue(): Promise<void> {
 	});
 }
 
-/** RPC wrapper for the full-auto loop to ping periodically. */
+// ─── Engine heartbeat ─────────────────────────────────────────────────────────
+// The frontend engine loop pings checkStuck every tick; we stamp it so the bun-
+// side watchdog can tell "engine alive" from "frontend silently died" (the whole
+// full-auto loop lives in a hidden React component — a renderer crash stops it).
+const HEARTBEAT_KEY = "freelance_engine_heartbeat_at";
+
+async function recordEngineHeartbeat(): Promise<void> {
+	const now = new Date().toISOString();
+	await db
+		.insert(settings)
+		.values({ id: crypto.randomUUID(), key: HEARTBEAT_KEY, value: JSON.stringify(now), category: "freelance", updatedAt: now })
+		.onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(now), updatedAt: now } });
+}
+
+/** Epoch-ms of the last frontend engine tick, or 0 if never recorded. */
+export async function getEngineHeartbeatMs(): Promise<number> {
+	try {
+		const row = (await db.select().from(settings).where(eq(settings.key, HEARTBEAT_KEY)).limit(1))[0];
+		if (!row?.value) return 0;
+		const t = Date.parse(JSON.parse(row.value) as string);
+		return Number.isFinite(t) ? t : 0;
+	} catch {
+		return 0;
+	}
+}
+
+/** RPC wrapper for the full-auto loop to ping periodically (doubles as heartbeat). */
 export async function checkStuck(): Promise<{ success: boolean }> {
+	await recordEngineHeartbeat();
 	await checkStuckQueue();
 	return { success: true };
+}
+
+// ─── Anomaly circuit breaker ──────────────────────────────────────────────────
+// The live-session interceptor reports platform anomalies (429 rate-limits, 403s
+// on the messaging API, captcha/challenge pages). A soft flag escalates into a
+// ban precisely when automation keeps sending through it — so the breaker trips:
+// pause ALL autonomy for a kind-scaled window and alert the human. Sync keeps
+// running (it never calls the governor), so the inbox stays current.
+const ANOMALY_PAUSE_HOURS: Record<string, number> = {
+	rate_limit: 2,
+	forbidden: 6,
+	captcha: 12,
+};
+const ANOMALY_ESCALATE_COOLDOWN_MS = 30 * 60_000;
+let lastAnomalyEscalateAt = 0;
+
+export async function reportAnomaly(params: {
+	platform?: string;
+	kind: string;
+	detail?: string;
+}): Promise<{ paused: boolean; pausedUntil: string | null }> {
+	const platform = params.platform ?? DEFAULT_PLATFORM;
+	const kind = Object.prototype.hasOwnProperty.call(ANOMALY_PAUSE_HOURS, params.kind) ? params.kind : "rate_limit";
+	recordAction(platform, "blocked", "error", `anomaly:${kind}${params.detail ? ` ${params.detail.slice(0, 200)}` : ""}`);
+
+	// Already paused (this or an earlier anomaly) — just log, don't re-alert.
+	const existingPause = await getPauseUntilMs();
+	if (existingPause > Date.now()) {
+		return { paused: true, pausedUntil: new Date(existingPause).toISOString() };
+	}
+
+	const hours = ANOMALY_PAUSE_HOURS[kind];
+	const untilMs = await setPause(hours);
+	notifyUpdated(); // nudge the UI to refresh governor/pause state
+	if (Date.now() - lastAnomalyEscalateAt >= ANOMALY_ESCALATE_COOLDOWN_MS) {
+		lastAnomalyEscalateAt = Date.now();
+		await escalateToHuman({
+			platform,
+			reason: `Platform anomaly detected (${kind.replace(/_/g, " ")})`,
+			detail:
+				`${params.detail ? `${params.detail.slice(0, 300)}\n\n` : ""}` +
+				`Auto-Earn autonomy is paused for ${hours}h as a precaution. Check the live session ` +
+				`(log in / complete any verification), then resume from the inbox when things look normal.`,
+			severity: "blocker",
+		});
+	}
+	return { paused: true, pausedUntil: new Date(untilMs).toISOString() };
 }
 
 export { getPauseUntilMs };

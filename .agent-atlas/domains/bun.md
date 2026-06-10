@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 255
-**Symbols:** 1928
+**Files:** 257
+**Symbols:** 1946
 
 ## Files
 
@@ -1351,19 +1351,19 @@
 - `AutoEarnSettings` (line 13)
 
 **Functions:**
-- `getAutoEarnSettings` (line 76)
-- `get` (line 79)
-- `saveAutoEarnSetting` (line 110)
-- `saveAutoEarnSettings` (line 122)
-- `isAutoEarnEnabled` (line 151)
+- `getAutoEarnSettings` (line 79)
+- `get` (line 82)
+- `saveAutoEarnSetting` (line 114)
+- `saveAutoEarnSettings` (line 126)
+- `isAutoEarnEnabled` (line 156)
 
 
 ### `src/bun/freelance/bid-pipeline.ts`
 
 **Functions:**
-- `resolveProviderAndModel` (line 25)
-- `getAccountAutonomy` (line 39)
-- `draftBidForListing` (line 47)
+- `resolveProviderAndModel` (line 26)
+- `getAccountAutonomy` (line 40)
+- `draftBidForListing` (line 48)
 
 
 ### `src/bun/freelance/budget.ts`
@@ -1439,20 +1439,21 @@
 ### `src/bun/freelance/expert/orchestrator.ts`
 
 **Interfaces:**
-- `RunExpertInput` (line 161)
+- `RunExpertInput` (line 176)
 
 **Functions:**
 - `resolveProviderConfig` (line 48)
 - `getPersona` (line 65)
 - `buildThreadTranscript` (line 80)
 - `latestInboundBody` (line 93)
-- `triageMessage` (line 114)
-- `getSelfUserId` (line 136)
-- `getListingFullDescription` (line 143)
-- `runFreelanceExpert` (line 174)
+- `keywordTriage` (line 118)
+- `triageMessage` (line 129)
+- `getSelfUserId` (line 151)
+- `getListingFullDescription` (line 158)
+- `runFreelanceExpert` (line 189)
 
 **Exports:**
-- `getJobByThread` (line 336)
+- `getJobByThread` (line 353)
 
 
 ### `src/bun/freelance/expert/tools.ts`
@@ -1546,16 +1547,16 @@
 ### `src/bun/freelance/reply-pipeline.ts`
 
 **Interfaces:**
-- `ThreadCtx` (line 46)
-- `OutboxItem` (line 98)
+- `ThreadCtx` (line 47)
+- `OutboxItem` (line 99)
 
 **Functions:**
-- `resolveProviderAndModel` (line 25)
-- `loadThreadContext` (line 54)
-- `buildConversationText` (line 70)
-- `listingBrief` (line 89)
-- `getAccountAutonomy` (line 110)
-- `draftReplyForThread` (line 118)
+- `resolveProviderAndModel` (line 26)
+- `loadThreadContext` (line 55)
+- `buildConversationText` (line 71)
+- `listingBrief` (line 90)
+- `getAccountAutonomy` (line 111)
+- `draftReplyForThread` (line 119)
 
 
 ### `src/bun/freelance/rss-fetcher.ts`
@@ -1577,31 +1578,33 @@
 
 **Interfaces:**
 - `GovernorSettings` (line 24)
-- `SendDecision` (line 198)
-- `GovernorActionState` (line 271)
-- `GovernorState` (line 276)
+- `SendDecision` (line 234)
+- `GovernorActionState` (line 315)
+- `GovernorState` (line 320)
 
 **Types:**
 - `GovernorAction` (line 22)
 
 **Functions:**
-- `getGlobalTimezone` (line 51)
-- `getGovernorSettings` (line 65)
-- `num` (line 68)
-- `hourInTimezone` (line 93)
-- `getPauseUntilMs` (line 113)
-- `writePause` (line 125)
-- `setPause` (line 134)
-- `clearPause` (line 141)
-- `recordAction` (line 146)
-- `secondsSinceLastSend` (line 167)
-- `sendsInLastHour` (line 178)
-- `isWithinActiveHours` (line 189)
-- `evaluateSend` (line 209)
-- `gateSend` (line 253)
-- `getGovernorState` (line 284)
-- `forAction` (line 287)
-- `jitter` (line 303)
+- `getGlobalTimezone` (line 58)
+- `getGovernorSettings` (line 72)
+- `num` (line 75)
+- `hourInTimezone` (line 101)
+- `getPauseUntilMs` (line 121)
+- `writePause` (line 133)
+- `setPause` (line 142)
+- `clearPause` (line 149)
+- `recordAction` (line 154)
+- `secondsSinceLastSend` (line 175)
+- `sendsInLastHour` (line 186)
+- `bidsInLastDay` (line 197)
+- `hasInFlightSend` (line 213)
+- `isWithinActiveHours` (line 225)
+- `evaluateSend` (line 245)
+- `gateSend` (line 297)
+- `getGovernorState` (line 328)
+- `forAction` (line 331)
+- `jitter` (line 347)
 
 
 ### `src/bun/freelance/session/humanize.ts`
@@ -1660,6 +1663,29 @@
 - `saveFreelanceSetting` (line 96)
 
 
+### `src/bun/freelance/similarity.ts`
+
+**Functions:**
+- `normalize` (line 14)
+- `trigrams` (line 22)
+- `textSimilarity` (line 30)
+- `maxSimilarityAgainst` (line 43)
+- `recentOutboxBodies` (line 62)
+
+**Exports:**
+- `DRAFT_SIMILARITY_MAX` (line 54)
+- `SEND_SIMILARITY_MAX` (line 55)
+
+
+### `src/bun/freelance/watchdog.ts`
+
+**Functions:**
+- `startAutoEarnWatchdog` (line 29)
+- `stopAutoEarnWatchdog` (line 36)
+- `isFullAutoAccount` (line 43)
+- `tick` (line 52)
+
+
 ### `src/bun/index.ts`
 
 **Interfaces:**
@@ -1671,9 +1697,9 @@
 - `saveWindowState` (line 90)
 - `debounce` (line 106)
 - `getMainViewUrl` (line 115)
-- `attachWindowListeners` (line 315)
-- `setWindowTitlebarIcon` (line 375)
-- `toWide` (line 384)
+- `attachWindowListeners` (line 321)
+- `setWindowTitlebarIcon` (line 381)
+- `toWide` (line 390)
 
 **Exports:**
 - `FREELANCE_ENABLED` (line 147)
@@ -3031,32 +3057,36 @@
 ### `src/bun/rpc/freelance-outbox.ts`
 
 **Interfaces:**
-- `BidPricing` (line 26)
+- `BidPricing` (line 27)
 
 **Functions:**
-- `computeBidAmount` (line 40)
-- `extractDeliveryDays` (line 64)
-- `rowToDto` (line 76)
-- `notifyUpdated` (line 91)
-- `dismissStaleBids` (line 103)
-- `list` (line 128)
-- `draftReply` (line 144)
-- `draftBid` (line 159)
-- `updateDraft` (line 167)
-- `retry` (line 177)
-- `markBidPrefilled` (line 189)
-- `reject` (line 202)
-- `approveSend` (line 213)
-- `markResult` (line 312)
-- `killSwitch` (line 334)
-- `governorState` (line 346)
-- `pauseAutonomy` (line 351)
-- `resumeAutonomy` (line 358)
-- `checkStuckQueue` (line 371)
-- `checkStuck` (line 411)
+- `computeBidAmount` (line 41)
+- `extractDeliveryDays` (line 65)
+- `rowToDto` (line 77)
+- `notifyUpdated` (line 92)
+- `dismissStaleBids` (line 104)
+- `recoverInterruptedSends` (line 133)
+- `list` (line 150)
+- `draftReply` (line 167)
+- `draftBid` (line 182)
+- `updateDraft` (line 190)
+- `retry` (line 200)
+- `markBidPrefilled` (line 212)
+- `reject` (line 225)
+- `approveSend` (line 236)
+- `markResult` (line 368)
+- `killSwitch` (line 390)
+- `governorState` (line 402)
+- `pauseAutonomy` (line 407)
+- `resumeAutonomy` (line 414)
+- `checkStuckQueue` (line 427)
+- `recordEngineHeartbeat` (line 472)
+- `getEngineHeartbeatMs` (line 481)
+- `checkStuck` (line 493)
+- `reportAnomaly` (line 513)
 
 **Exports:**
-- `getPauseUntilMs` (line 416)
+- `getPauseUntilMs` (line 546)
 
 
 ### `src/bun/rpc/freelance-wizard.ts`

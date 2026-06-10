@@ -514,7 +514,7 @@
 - `AutoEarnSettings` (line 105)
 - `patch` (line 106)
 - `num` (line 108)
-- `Field` (line 284)
+- `Field` (line 292)
 
 
 ### `src/mainview/components/freelance/expert-dashboard.tsx`
@@ -590,28 +590,28 @@
 ### `src/mainview/components/freelance/inbox-tab.tsx`
 
 **Types:**
-- `WebviewTagEl` (line 105)
+- `WebviewTagEl` (line 134)
 
 **Functions:**
-- `parseHostMessage` (line 114)
-- `AutoGrowTextarea` (line 132)
-- `navUrl` (line 182)
-- `hourInTz` (line 195)
-- `fmtTime` (line 207)
-- `InboxTab` (line 216)
-- `inject` (line 426)
-- `onNav` (line 436)
-- `onHostMessage` (line 445)
-- `onUpdated` (line 531)
-- `onOutbox` (line 536)
-- `onStatus` (line 537)
-- `withinActiveHours` (line 566)
-- `schedule` (line 572)
-- `tick` (line 615)
-- `selectThread` (line 644)
-- `syncNow` (line 653)
-- `setAutonomy` (line 661)
-- `disconnect` (line 665)
+- `parseHostMessage` (line 143)
+- `AutoGrowTextarea` (line 161)
+- `navUrl` (line 211)
+- `hourInTz` (line 224)
+- `fmtTime` (line 236)
+- `InboxTab` (line 245)
+- `inject` (line 462)
+- `onNav` (line 472)
+- `onHostMessage` (line 481)
+- `onUpdated` (line 585)
+- `onOutbox` (line 590)
+- `onStatus` (line 591)
+- `withinActiveHours` (line 620)
+- `schedule` (line 626)
+- `tick` (line 669)
+- `selectThread` (line 699)
+- `syncNow` (line 708)
+- `setAutonomy` (line 716)
+- `disconnect` (line 720)
 
 
 ### `src/mainview/components/freelance/keyword-input.tsx`
@@ -695,16 +695,16 @@
 ### `src/mainview/components/freelance/settings-tab.tsx`
 
 **Interfaces:**
-- `RssSource` (line 56)
-- `ProviderItem` (line 62)
-- `SettingsState` (line 68)
+- `RssSource` (line 57)
+- `ProviderItem` (line 63)
+- `SettingsState` (line 69)
 
 **Functions:**
-- `CurrencyCombobox` (line 116)
-- `handle` (line 140)
-- `SettingsTab` (line 222)
-- `load` (line 240)
-- `formatLastRun` (line 356)
+- `CurrencyCombobox` (line 117)
+- `handle` (line 141)
+- `SettingsTab` (line 223)
+- `load` (line 241)
+- `formatLastRun` (line 357)
 
 
 ### `src/mainview/components/git/branch-list.tsx`

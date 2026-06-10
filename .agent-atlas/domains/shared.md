@@ -44,11 +44,11 @@
 
 **Interfaces:**
 - `WriteResult` (line 15)
-- `BidFillOptions` (line 70)
+- `BidFillOptions` (line 95)
 
 **Functions:**
-- `buildSendReplyScript` (line 31)
-- `buildSubmitBidScript` (line 95)
+- `buildSendReplyScript` (line 43)
+- `buildSubmitBidScript` (line 120)
 
 
 ### `src/shared/rpc.ts`
@@ -120,17 +120,17 @@
 - `FreelanceAccountDto` (line 49)
 - `FreelanceInboxThreadDto` (line 58)
 - `FreelanceAutoEarnSettingsDto` (line 75)
-- `FreelanceGovernorActionStateDto` (line 96)
-- `FreelanceGovernorStateDto` (line 101)
-- `FreelanceOutboxItemDto` (line 108)
-- `FreelanceInboxMessageDto` (line 121)
-- `FreelanceEscalationDto` (line 133)
-- `FreelanceJobDto` (line 146)
-- `FreelanceEarningsDto` (line 163)
+- `FreelanceGovernorActionStateDto` (line 97)
+- `FreelanceGovernorStateDto` (line 102)
+- `FreelanceOutboxItemDto` (line 109)
+- `FreelanceInboxMessageDto` (line 122)
+- `FreelanceEscalationDto` (line 134)
+- `FreelanceJobDto` (line 147)
+- `FreelanceEarningsDto` (line 164)
 
 **Types:**
 - `FreelanceListingStatus` (line 1)
-- `FreelanceRequests` (line 173)
+- `FreelanceRequests` (line 174)
 
 
 ### `src/shared/rpc/git.ts`

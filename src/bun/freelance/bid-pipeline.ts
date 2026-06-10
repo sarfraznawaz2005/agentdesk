@@ -15,6 +15,7 @@ import { createProviderAdapter } from "../providers";
 import { getFreelanceSettings } from "./settings";
 import { HUMANIZER_WRITING_RULES } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
+import { DRAFT_SIMILARITY_MAX, maxSimilarityAgainst, recentOutboxBodies } from "./similarity";
 import type { OutboxItem } from "./reply-pipeline";
 
 const PROPOSAL_SYSTEM = `You are an experienced freelancer writing a winning proposal (bid) for a job post.
@@ -64,7 +65,27 @@ export async function draftBidForListing(platform: string, listingId: string): P
 		prompt,
 		temperature: 0.75,
 	});
-	const draftBody = await qaRevise(adapter, modelId, "proposal", text.trim());
+	let draftBody = await qaRevise(adapter, modelId, "proposal", text.trim());
+
+	// Template-variation guard (draft time): identical-skeleton proposals across
+	// many projects are THE classic bid-spam signal. Regenerate once if this one
+	// reads like a recent bid; keep whichever is less similar.
+	const priors = recentOutboxBodies(platform, "bid");
+	const sim = maxSimilarityAgainst(draftBody, priors);
+	if (sim > DRAFT_SIMILARITY_MAX) {
+		try {
+			const { text: retry } = await generateText({
+				model: adapter.createModel(modelId),
+				system: PROPOSAL_SYSTEM,
+				prompt: `${prompt}\n\nIMPORTANT: This proposal must clearly differ in structure and wording from your recent proposals — different opening, different ordering, different phrasing. Anchor it in the specifics of THIS job.`,
+				temperature: 0.9,
+			});
+			const retryBody = await qaRevise(adapter, modelId, "proposal", retry.trim());
+			if (maxSimilarityAgainst(retryBody, priors) < sim) draftBody = retryBody;
+		} catch {
+			/* keep the original draft — the send-time gate is the backstop */
+		}
+	}
 
 	const id = crypto.randomUUID();
 	const now = new Date().toISOString();

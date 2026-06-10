@@ -56,10 +56,36 @@ const INTERCEPTOR_SRC = `
       });
     } catch(e){}
   }
+  // Anomaly reporting (circuit breaker feed): 429 anywhere, 403 on the messaging
+  // API, or a captcha/challenge page. Throttled in-page; the host pauses autonomy.
+  var lastAnom = 0;
+  function anomaly(kind, detail){
+    try {
+      var t = Date.now();
+      if (t - lastAnom < 300000) return; // one per 5 min
+      lastAnom = t;
+      if (window.__electrobunSendToHost) window.__electrobunSendToHost({ type:'fl-anomaly', kind:kind, error:String(detail||'').slice(0,300) });
+    } catch(e){}
+  }
+  function checkStatus(url, status){
+    if (status === 429) anomaly('rate_limit', 'HTTP 429 on ' + String(url).slice(0,200));
+    else if (status === 403 && matches(url)) anomaly('forbidden', 'HTTP 403 on ' + String(url).slice(0,200));
+  }
+  function checkCaptcha(){
+    try {
+      if (document.querySelector('iframe[src*="captcha" i], .g-recaptcha, #challenge-form, [class*="cf-challenge"]')
+          || /just a moment|attention required|are you a robot|unusual activity/i.test(document.title||'')) {
+        anomaly('captcha', 'captcha/challenge detected on ' + location.pathname);
+      }
+    } catch(e){}
+  }
+  setTimeout(checkCaptcha, 3000);
+  setInterval(checkCaptcha, 45000);
   var of = window.fetch;
   if (of) window.fetch = function(){
     var a = arguments; var url = (a[0] && a[0].url) ? a[0].url : a[0];
     return of.apply(this, a).then(function(resp){
+      try { checkStatus(url, resp.status); } catch(e){}
       try { if (matches(url)) resp.clone().text().then(function(t){ send(url, t); }).catch(function(){}); } catch(e){}
       return resp;
     });
@@ -68,7 +94,10 @@ const INTERCEPTOR_SRC = `
   XMLHttpRequest.prototype.open = function(m,u){ this.__u=u; return oo.apply(this, arguments); };
   XMLHttpRequest.prototype.send = function(){
     var x=this;
-    this.addEventListener('load', function(){ try { if (matches(x.__u)) send(x.__u, x.responseText); } catch(e){} });
+    this.addEventListener('load', function(){
+      try { checkStatus(x.__u, x.status); } catch(e){}
+      try { if (matches(x.__u)) send(x.__u, x.responseText); } catch(e){}
+    });
     return os.apply(this, arguments);
   };
   // Realtime: tap the platform's own notification socket. When a frame mentions a
@@ -113,7 +142,7 @@ type WebviewTagEl = HTMLElement & {
 
 function parseHostMessage(
   e: unknown,
-): { type?: string; url?: string; body?: string; ok?: boolean; error?: string } | null {
+): { type?: string; url?: string; body?: string; ok?: boolean; error?: string; kind?: string } | null {
   const ev = e as { detail?: unknown };
   let d = ev?.detail;
   if (typeof d === "string") {
@@ -123,7 +152,7 @@ function parseHostMessage(
       return null;
     }
   }
-  if (d && typeof d === "object") return d as { type?: string; url?: string; body?: string; ok?: boolean; error?: string };
+  if (d && typeof d === "object") return d as { type?: string; url?: string; body?: string; ok?: boolean; error?: string; kind?: string };
   return null;
 }
 
@@ -236,6 +265,12 @@ export function InboxTab() {
   const [notice, setNotice] = useState<string | null>(null);
   // The in-flight send awaiting its fl-send-result host-message.
   const pendingSend = useRef<{ id: string } | null>(null);
+  // A send we gave up on (safety timeout) — if its result arrives late we correct
+  // the record, so a slow-but-successful send is never left marked 'failed'
+  // (retrying a send that actually went through double-messages the client).
+  const timedOutSend = useRef<{ id: string; at: number } | null>(null);
+  // Client-side throttle for anomaly reports (the page also throttles).
+  const lastAnomalyAt = useRef(0);
   const sendingIdRef = useRef<string | null>(null);
   useEffect(() => {
     sendingIdRef.current = sendingId;
@@ -395,9 +430,10 @@ export function InboxTab() {
       setTimeout(() => {
         if (pendingSend.current?.id === item.id) {
           pendingSend.current = null;
+          timedOutSend.current = { id: item.id, at: Date.now() };
           setSendingId(null);
           rpc.freelanceOutboxMarkResult(item.id, false, "send timed out").then(refreshOutbox).catch(() => {});
-          setNotice("Send timed out — the composer may not have loaded.");
+          setNotice("Send timed out — check the live session before retrying (it may still have gone through).");
         }
       }, timeoutMs);
     },
@@ -462,6 +498,16 @@ export function InboxTab() {
         }
         return;
       }
+      if (msg.type === "fl-anomaly") {
+        // Platform pushed back (429/403/captcha) — trip the bun-side circuit
+        // breaker, which pauses autonomy and alerts the user.
+        if (Date.now() - lastAnomalyAt.current > 5 * 60_000) {
+          lastAnomalyAt.current = Date.now();
+          rpc.freelanceReportAnomaly(msg.kind || "rate_limit", msg.error || undefined).catch(() => {});
+          setNotice("The platform is pushing back (rate limit / verification) — autonomy paused as a precaution.");
+        }
+        return;
+      }
       if (msg.type === "fl-send-result") {
         const pending = pendingSend.current;
         pendingSend.current = null;
@@ -474,6 +520,14 @@ export function InboxTab() {
           setNotice(msg.ok ? "Reply sent." : `Send failed: ${msg.error || "unknown"}`);
           // Re-sync the thread so the sent message is captured back.
           setTimeout(() => wvRef.current?.reload?.(), 1500);
+        } else if (timedOutSend.current && Date.now() - timedOutSend.current.at < 10 * 60_000) {
+          // The result arrived AFTER our safety timeout already marked it failed —
+          // correct the record so a successful slow send isn't retried (and a
+          // confirmed failure keeps its real error).
+          const lateId = timedOutSend.current.id;
+          timedOutSend.current = null;
+          rpc.freelanceOutboxMarkResult(lateId, !!msg.ok, msg.ok ? undefined : msg.error || undefined).then(() => refreshOutbox()).catch(() => {});
+          if (msg.ok) setNotice("That timed-out send actually completed — the record has been corrected.");
         }
       }
       if (msg.type === "fl-bid-prefilled") {
@@ -618,6 +672,9 @@ export function InboxTab() {
         const s = await rpc.freelanceGetAutoEarnSettings();
         const { outbox: ob, account: acct } = faState.current;
         const fullAuto = s.enabled && s.fullautoAck && acct?.autonomyMode === "full_auto";
+        // Every tick: stuck-queue check + engine heartbeat (the bun-side watchdog
+        // uses the heartbeat to detect a silently-dead engine in full-auto).
+        if (s.enabled) rpc.freelanceGovernorCheckStuck().catch(() => {});
         if (fullAuto && connected && !sendingId) {
           // The freelance-expert agent (backend) decides + drafts replies/bids and
           // queues them in the outbox. Here we only SEND queued items, governor-paced,
@@ -626,8 +683,6 @@ export function InboxTab() {
           if (queued) {
             await approveSendRef.current(queued, true); // autonomous — active-hours enforced
           }
-          // Surface a stalled queue (logged out / active hours / paused) to the user.
-          rpc.freelanceGovernorCheckStuck().catch(() => {});
         }
       } catch {
         /* idle */

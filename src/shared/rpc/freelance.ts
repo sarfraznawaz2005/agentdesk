@@ -79,6 +79,7 @@ export interface FreelanceAutoEarnSettingsDto {
   pollMax: number;
   activeHours: { start: number; end: number };
   maxSendsPerHour: number;
+  bidDailyCap: number;      // hard daily budget for bids (0 = no daily cap)
   minGapSeconds: number;
   fullautoAck: boolean;
   notifyDesktop: boolean;   // desktop notification on a new client reply
@@ -206,6 +207,10 @@ export type FreelanceRequests = {
   "freelance.inbox.logSync": {
     params: { platform?: string; source?: string };
     response: { success: boolean };
+  };
+  "freelance.session.anomaly": {
+    params: { platform?: string; kind: string; detail?: string };
+    response: { paused: boolean; pausedUntil: string | null };
   };
   "freelance.account.disconnect": {
     params: { platform?: string };

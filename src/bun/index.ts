@@ -290,6 +290,12 @@ mainWindow.webview.on("dom-ready", () => {
 					.then(({ startFreelancePoller }: { startFreelancePoller: () => void }) => startFreelancePoller())
 					.catch((err: unknown) => console.error("[startup] Freelance poller unavailable:", err));
 			}
+
+			// Auto-Earn watchdog — bun-side safety net (stuck sends, engine heartbeat).
+			// Self-gates on the autoearn flag file + master switch, so it's inert otherwise.
+			import("./freelance/watchdog")
+				.then(({ startAutoEarnWatchdog }) => startAutoEarnWatchdog())
+				.catch((err: unknown) => console.error("[startup] Auto-Earn watchdog unavailable:", err));
 		})().catch((err) => console.error("[startup] Background services error:", err));
 	}
 });

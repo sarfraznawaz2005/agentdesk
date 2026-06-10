@@ -17,6 +17,7 @@ export interface AutoEarnSettings {
 	pollMax: number;                // inbox auto-sync jitter ceiling (seconds)
 	activeHours: { start: number; end: number };
 	maxSendsPerHour: number;
+	bidDailyCap: number;            // hard daily budget for bids (0 = no daily cap)
 	minGapSeconds: number;
 	fullautoAck: boolean;           // user accepted full-auto risk
 	notifyDesktop: boolean;         // desktop notification on a new client reply
@@ -37,7 +38,8 @@ const DEFAULTS: AutoEarnSettings = {
 	pollMin: 180,
 	pollMax: 480,
 	activeHours: { start: 9, end: 22 },
-	maxSendsPerHour: 1,
+	maxSendsPerHour: 4, // reply cap; bids get half hourly + the daily budget (must match governor DEFAULTS)
+	bidDailyCap: 10,
 	minGapSeconds: 90,
 	fullautoAck: false,
 	notifyDesktop: true,
@@ -59,6 +61,7 @@ const KEYS: Record<keyof AutoEarnSettings, string> = {
 	pollMax: "freelance_inbox_poll_max",
 	activeHours: "freelance_active_hours",
 	maxSendsPerHour: "freelance_max_sends_per_hour",
+	bidDailyCap: "freelance_bid_daily_cap",
 	minGapSeconds: "freelance_min_gap_seconds",
 	fullautoAck: "freelance_fullauto_ack",
 	notifyDesktop: "freelance_notify_desktop",
@@ -92,6 +95,7 @@ export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
 		pollMax: get("pollMax"),
 		activeHours: get("activeHours"),
 		maxSendsPerHour: get("maxSendsPerHour"),
+		bidDailyCap: get("bidDailyCap"),
 		minGapSeconds: get("minGapSeconds"),
 		fullautoAck: get("fullautoAck"),
 		notifyDesktop: get("notifyDesktop"),
@@ -132,6 +136,7 @@ export async function saveAutoEarnSettings(input: AutoEarnSettings): Promise<voi
 		saveAutoEarnSetting("pollMax", safe.pollMax),
 		saveAutoEarnSetting("activeHours", safe.activeHours),
 		saveAutoEarnSetting("maxSendsPerHour", safe.maxSendsPerHour),
+		saveAutoEarnSetting("bidDailyCap", safe.bidDailyCap),
 		saveAutoEarnSetting("minGapSeconds", safe.minGapSeconds),
 		saveAutoEarnSetting("fullautoAck", safe.fullautoAck),
 		saveAutoEarnSetting("notifyDesktop", safe.notifyDesktop),

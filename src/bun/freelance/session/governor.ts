@@ -24,15 +24,21 @@ export type GovernorAction = "login" | "inbox_sync" | "send_reply" | "submit_bid
 export interface GovernorSettings {
 	activeHours: { start: number; end: number };
 	maxSendsPerHour: number;
+	bidDailyCap: number; // hard daily budget for bids (cold outreach), all hours combined
 	minGapSeconds: number;
 	pollMinSeconds: number;
 	pollMaxSeconds: number;
 	timezone: string; // IANA tz from General settings (empty = OS local)
 }
 
+// maxSendsPerHour is the REPLY cap. Replies are responses inside an active
+// conversation — 1/hour reads as an unresponsive freelancer (a reputation
+// signal of its own) without reducing ban risk; cold-bid velocity is the spam
+// signal, and bids get half this cap per hour PLUS the daily budget below.
 const DEFAULTS: GovernorSettings = {
 	activeHours: { start: 9, end: 22 },
-	maxSendsPerHour: 1,
+	maxSendsPerHour: 4,
+	bidDailyCap: 10,
 	minGapSeconds: 90,
 	pollMinSeconds: 180,
 	pollMaxSeconds: 480,
@@ -42,6 +48,7 @@ const DEFAULTS: GovernorSettings = {
 const KEYS = {
 	activeHours: "freelance_active_hours",
 	maxSendsPerHour: "freelance_max_sends_per_hour",
+	bidDailyCap: "freelance_bid_daily_cap",
 	minGapSeconds: "freelance_min_gap_seconds",
 	pollMinSeconds: "freelance_inbox_poll_min",
 	pollMaxSeconds: "freelance_inbox_poll_max",
@@ -82,6 +89,7 @@ export async function getGovernorSettings(): Promise<GovernorSettings> {
 	return {
 		activeHours,
 		maxSendsPerHour: num(KEYS.maxSendsPerHour, DEFAULTS.maxSendsPerHour),
+		bidDailyCap: num(KEYS.bidDailyCap, DEFAULTS.bidDailyCap),
 		minGapSeconds: num(KEYS.minGapSeconds, DEFAULTS.minGapSeconds),
 		pollMinSeconds: num(KEYS.pollMinSeconds, DEFAULTS.pollMinSeconds),
 		pollMaxSeconds: num(KEYS.pollMaxSeconds, DEFAULTS.pollMaxSeconds),
@@ -186,6 +194,34 @@ function sendsInLastHour(platform: string, action: string): number {
 	return row?.c ?? 0;
 }
 
+function bidsInLastDay(platform: string): number {
+	const row = sqlite
+		.prepare(
+			`SELECT COUNT(*) AS c FROM freelance_action_log
+			 WHERE platform = ? AND action = 'submit_bid' AND outcome = 'ok'
+			   AND created_at >= datetime('now','-24 hours')`,
+		)
+		.get(platform) as { c: number } | undefined;
+	return row?.c ?? 0;
+}
+
+// A send currently typing in the webview hasn't reached the action log yet (its
+// 'ok' row is written at markResult, 30s+ later for a long body) — so the gap and
+// cap checks alone would let a second send slip through mid-flight. Treat a fresh
+// 'sending' outbox row of the same kind as occupying the gate. The age bound keeps
+// a zombie row (crash mid-send, before the recovery sweep runs) from wedging it.
+function hasInFlightSend(platform: string, isBid: boolean): boolean {
+	const row = sqlite
+		.prepare(
+			`SELECT 1 FROM freelance_outbox
+			 WHERE platform = ? AND kind = ? AND status = 'sending'
+			   AND julianday(updated_at) > julianday('now','-10 minutes')
+			 LIMIT 1`,
+		)
+		.get(platform, isBid ? "bid" : "reply") as unknown;
+	return !!row;
+}
+
 export function isWithinActiveHours(g: GovernorSettings, date = new Date()): boolean {
 	const h = hourInTimezone(g.timezone, date);
 	const { start, end } = g.activeHours;
@@ -229,6 +265,10 @@ export async function evaluateSend(
 		return { allowed: false, reason: "outside active hours", retryAfterMs: 15 * 60_000 };
 	}
 
+	if (hasInFlightSend(platform, !!opts.isBid)) {
+		return { allowed: false, reason: "another send is in progress", retryAfterMs: 30_000 };
+	}
+
 	const since = secondsSinceLastSend(platform, action);
 	if (since !== null && since < minGap) {
 		return {
@@ -241,6 +281,10 @@ export async function evaluateSend(
 	const recent = sendsInLastHour(platform, action);
 	if (recent >= hourlyCap) {
 		return { allowed: false, reason: `hourly cap ${hourlyCap} reached`, retryAfterMs: 10 * 60_000 };
+	}
+
+	if (opts.isBid && g.bidDailyCap > 0 && bidsInLastDay(platform) >= g.bidDailyCap) {
+		return { allowed: false, reason: `daily bid budget ${g.bidDailyCap} reached`, retryAfterMs: 60 * 60_000 };
 	}
 
 	return { allowed: true };
@@ -299,10 +343,10 @@ export async function getGovernorState(platform: string): Promise<GovernorState>
 	};
 }
 
-/** Uniform jitter in [minMs, maxMs]. Index varies the seed so callers differ. */
-export function jitter(minMs: number, maxMs: number, seed = 0): number {
+/** Uniform jitter in [minMs, maxMs]. The seed param is kept for API compatibility. */
+export function jitter(minMs: number, maxMs: number, _seed = 0): number {
+	// Genuinely random: a Date.now()-derived value is a deterministic recurrence
+	// across scheduled calls, which is exactly the kind of pattern pacing exists to avoid.
 	const span = Math.max(0, maxMs - minMs);
-	// Deterministic-ish spread without Math.random (kept side-effect free):
-	const frac = ((Date.now() + seed * 9973) % 1000) / 1000;
-	return Math.round(minMs + frac * span);
+	return Math.round(minMs + Math.random() * span);
 }

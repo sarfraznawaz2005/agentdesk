@@ -105,11 +105,26 @@ function latestInboundBody(threadId: string, selfUserId: string | null): string 
 
 const SENSITIVE_CATEGORIES = ["payment", "contract", "off_platform", "scope_dispute"];
 
+// Keyword fallback for when the LLM classifier is unavailable: money, legal, and
+// off-platform topics must fail CLOSED (escalate), not open — an outage must never
+// let the agent auto-discuss payments. Crude on purpose; the classifier is primary.
+const KEYWORD_TRIAGE: Array<{ cat: string; re: RegExp }> = [
+	{ cat: "payment", re: /\b(pay(?:ment|out|pal)?|invoice|deposit|escrow|milestone|refund|chargeback|wire|bank|money|funds?)\b/i },
+	{ cat: "off_platform", re: /\b(whats\s?app|telegram|skype|zoom|gmail|email me|phone|call me|text me)\b|contact (?:me|you) (?:at|on)/i },
+	{ cat: "contract", re: /\b(contract|agreement|nda|legal|sign(?:ing|ed)? (?:this|the|an?))\b/i },
+	{ cat: "scope_dispute", re: /\b(dispute|complaint|unhappy|disappointed|not (?:happy|satisfied)|scam|report you)\b/i },
+];
+
+function keywordTriage(body: string): string | null {
+	for (const { cat, re } of KEYWORD_TRIAGE) if (re.test(body)) return cat;
+	return null;
+}
+
 /**
  * Triage an inbound client message. Sensitive types (money, contracts, off-platform
  * requests, scope disputes) must NOT be auto-replied — they go to the human. Returns
- * the category, or "normal". Fails open (returns null) so a classifier outage never
- * blocks normal replies (the agent's own guardrails remain the backstop).
+ * the category, or "normal". Returns null on classifier outage — the caller then
+ * falls back to keywordTriage so sensitive topics still fail closed.
  */
 async function triageMessage(config: ProviderConfig, modelId: string, body: string): Promise<string | null> {
 	try {
@@ -213,7 +228,9 @@ export async function runFreelanceExpert(input: RunExpertInput): Promise<{ jobId
 		if (input.trigger === "new_message" && threadId) {
 			const body = latestInboundBody(threadId, selfUserId);
 			if (body) {
-				const cat = await triageMessage(providerConfig, modelId, body);
+				// Classifier first; on outage (null) fall back to keywords so money/
+				// legal/off-platform topics fail closed instead of slipping through.
+				const cat = (await triageMessage(providerConfig, modelId, body)) ?? keywordTriage(body);
 				if (cat && SENSITIVE_CATEGORIES.includes(cat)) {
 					await escalateToHuman({
 						jobId: job.id,

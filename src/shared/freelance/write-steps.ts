@@ -19,14 +19,26 @@ export interface WriteResult {
 }
 
 // Per-character + pause timing — the human-pacing model. Tunable in one place.
+// Inter-key delays use Math.random (a Date.now()-derived sequence is deterministic
+// — successive delays form a recurrence that keystroke-dynamics detection can spot)
+// and the longer "thinking" pause lands at a RANDOM char interval, never a fixed one.
 const PER_CHAR_MIN_MS = 25;
 const PER_CHAR_SPAN_MS = 60;
-const LONG_PAUSE_EVERY = 23; // chars
-const LONG_PAUSE_MS = 300;
+const LONG_PAUSE_MIN_CHARS = 14;
+const LONG_PAUSE_SPAN_CHARS = 18;
+const LONG_PAUSE_MIN_MS = 200;
+const LONG_PAUSE_SPAN_MS = 500;
+// How long to wait, after clicking Send, for evidence the platform accepted it.
+const VERIFY_TIMEOUT_MS = 8000;
 
 /**
  * Build the script that types `body` into the platform's reply composer with
  * human pacing and clicks Send. Reports back via __electrobunSendToHost.
+ *
+ * The result is VERIFIED, not assumed: a successful send clears the composer, so
+ * after clicking we poll until the composer no longer holds our text (or it was
+ * re-rendered away by the SPA). Only then is ok=true reported — a click that the
+ * platform silently rejected reports ok=false instead of being recorded as sent.
  */
 export function buildSendReplyScript(platformId: string, body: string): string {
 	const desc = getPlatform(platformId);
@@ -35,23 +47,26 @@ export function buildSendReplyScript(platformId: string, body: string): string {
 	const BODY = JSON.stringify(body);
 	return `(function(){
   var INPUTS = ${INPUTS}, SENDS = ${SENDS}, BODY = ${BODY};
-  var PER_MIN = ${PER_CHAR_MIN_MS}, PER_SPAN = ${PER_CHAR_SPAN_MS}, LONG_EVERY = ${LONG_PAUSE_EVERY}, LONG_MS = ${LONG_PAUSE_MS};
+  var PER_MIN = ${PER_CHAR_MIN_MS}, PER_SPAN = ${PER_CHAR_SPAN_MS};
+  var P_MIN_CH = ${LONG_PAUSE_MIN_CHARS}, P_SPAN_CH = ${LONG_PAUSE_SPAN_CHARS}, P_MIN_MS = ${LONG_PAUSE_MIN_MS}, P_SPAN_MS = ${LONG_PAUSE_SPAN_MS};
+  var VERIFY_MS = ${VERIFY_TIMEOUT_MS};
   function report(ok, err){ try { if (window.__electrobunSendToHost) window.__electrobunSendToHost({type:'fl-send-result', ok:!!ok, error: err||''}); } catch(e){} }
   function find(sels){ for (var i=0;i<sels.length;i++){ try { var el=document.querySelector(sels[i]); if (el) return el; } catch(e){} } return null; }
-  function jit(base, span){ return base + Math.floor((Date.now() % (span+1))); }
+  function rnd(base, span){ return Math.round(base + Math.random() * span); }
   var input = find(INPUTS);
   if (!input){ report(false,'composer not found'); return; }
   try { input.focus(); } catch(e){}
   var isCE = input.getAttribute && input.getAttribute('contenteditable') === 'true';
   if (isCE) { input.textContent=''; } else { input.value=''; }
   var i = 0;
+  var nextPause = rnd(P_MIN_CH, P_SPAN_CH);
   function tick(){
     if (i < BODY.length){
       var ch = BODY[i++];
       if (isCE) { input.textContent += ch; } else { input.value += ch; }
       try { input.dispatchEvent(new Event('input', {bubbles:true})); } catch(e){}
-      var delay = jit(PER_MIN, PER_SPAN);
-      if (i % LONG_EVERY === 0) delay += LONG_MS;
+      var delay = rnd(PER_MIN, PER_SPAN);
+      if (i >= nextPause){ delay += rnd(P_MIN_MS, P_SPAN_MS); nextPause = i + rnd(P_MIN_CH, P_SPAN_CH); }
       setTimeout(tick, delay);
     } else {
       try { input.dispatchEvent(new Event('change', {bubbles:true})); } catch(e){}
@@ -59,11 +74,21 @@ export function buildSendReplyScript(platformId: string, body: string): string {
         var btn = find(SENDS);
         if (!btn){ report(false,'send button not found'); return; }
         try { btn.click(); } catch(e){ report(false,'click failed: '+e); return; }
-        report(true,'');
-      }, jit(400, 500));
+        verify(0);
+      }, rnd(400, 500));
     }
   }
-  setTimeout(tick, jit(800, 1200)); // reading pause before typing
+  // Send confirmation: re-find the composer each poll (the SPA may re-render it).
+  // Cleared or gone => the platform took the message; still holding our text after
+  // the window => the send did NOT go through.
+  function verify(waited){
+    var cur = find(INPUTS);
+    var text = cur ? ((cur.getAttribute && cur.getAttribute('contenteditable') === 'true' ? cur.textContent : cur.value) || '') : '';
+    if (!cur || text.replace(/\\s+/g,'') === ''){ report(true,''); return; }
+    if (waited >= VERIFY_MS){ report(false,'send not confirmed — the message is still in the composer'); return; }
+    setTimeout(function(){ verify(waited + 400); }, 400);
+  }
+  setTimeout(tick, rnd(800, 1200)); // reading pause before typing
 })();`;
 }
 
@@ -163,12 +188,14 @@ export function buildSubmitBidScript(_platformId: string, opts: BidFillOptions):
     for (var i=0;i<btns.length;i++){ if(/place\\s*bid|submit\\s*bid|bid\\s*now/i.test(btns[i].textContent||'')) return btns[i]; }
     return null;
   }
+  function rnd(base, span){ return Math.round(base + Math.random() * span); }
   function typeHuman(el, text, done){
-    var i=0;
+    var i=0, nextPause = rnd(14, 18);
     (function tick(){
       if (i<text.length){
         setNative(el, el.value + text[i++]);
-        var d = 25 + (Date.now()%60); if (i%23===0) d+=300;
+        var d = rnd(25, 60);
+        if (i >= nextPause){ d += rnd(200, 500); nextPause = i + rnd(14, 18); }
         setTimeout(tick, d);
       } else { el.dispatchEvent(new Event('change',{bubbles:true})); done(); }
     })();
@@ -191,9 +218,16 @@ export function buildSubmitBidScript(_platformId: string, opts: BidFillOptions):
             setTimeout(function(){
               var btn = findPlaceBidBtn();
               if (!btn){ host('fl-send-result', false, 'Place Bid button not found'); return; }
-              try { btn.click(); host('fl-send-result', true, ''); }
-              catch(e){ host('fl-send-result', false, 'click failed: '+e); }
-            }, 700);
+              try { btn.click(); } catch(e){ host('fl-send-result', false, 'click failed: '+e); return; }
+              // Verify: on success the bid form is replaced (textarea gone). If the
+              // form is still showing our proposal after the window, it didn't go.
+              (function verify(waited){
+                var ta = findProposal();
+                if (!ta){ host('fl-send-result', true, ''); return; }
+                if (waited >= 8000){ host('fl-send-result', false, 'bid not confirmed — the form is still open'); return; }
+                setTimeout(function(){ verify(waited + 400); }, 400);
+              })(0);
+            }, rnd(600, 400));
           } else {
             host('fl-bid-prefilled', true, amountMissing ? 'amount' : '');
           }

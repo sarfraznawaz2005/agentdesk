@@ -257,12 +257,19 @@ src/
 > READ = a fetch/XHR/WebSocket interceptor (injected via `executeJavascript`) tees the
 > platform's OWN messaging JSON → `__electrobunSendToHost` → `freelance.inbox.ingest` →
 > normalize/correlate → DB. WRITE = human-paced typing into the real composer (never a
-> direct API call). Every send passes the **Behavior Governor** (`freelance/session/governor.ts`):
-> min-gap, hourly caps (stricter for bids), active-hours, audit in `freelance_action_log`.
-> Autonomy is per-account: **Assisted** (AI drafts → user edits → user clicks Send) or
-> **Full-auto** (opt-in behind a risk ack). Platform specifics live in one descriptor
-> (`src/shared/freelance/platforms.ts`); Freelancer.com only (PeoplePerHour was removed — may return later).
-> Key files: `src/bun/freelance/{session/{governor,humanize,ingest,normalizer},reply-pipeline,bid-pipeline,auto-earn-settings}.ts`,
+> direct API call), with post-click verification (composer-clear / form-gone) before a
+> send is recorded as sent. Every send passes the **Behavior Governor** (`freelance/session/governor.ts`):
+> min-gap, hourly caps (stricter for bids) + daily bid budget, active-hours, in-flight-send
+> guard, near-duplicate (trigram similarity) guard (`freelance/similarity.ts`, also applied at
+> draft time in the pipelines), humanized reply-latency floor for autonomous replies, audit in
+> `freelance_action_log`. An **anomaly circuit breaker** (interceptor spots 429/403/captcha →
+> `freelance.session.anomaly` → auto-pause + escalate) and a bun-side **watchdog**
+> (`freelance/watchdog.ts`: recovers stuck `sending` rows, checks the frontend engine
+> heartbeat) backstop full-auto. Autonomy is per-account: **Assisted** (AI drafts → user
+> edits → user clicks Send) or **Full-auto** (opt-in behind a risk ack). Platform specifics
+> live in one descriptor (`src/shared/freelance/platforms.ts`); Freelancer.com only
+> (PeoplePerHour was removed — may return later).
+> Key files: `src/bun/freelance/{session/{governor,humanize,ingest,normalizer},reply-pipeline,bid-pipeline,similarity,watchdog,auto-earn-settings}.ts`,
 > `src/bun/rpc/{freelance-inbox,freelance-outbox}.ts`, `src/mainview/components/freelance/{inbox-tab,auto-earn-settings}.tsx`.
 > Plan: `auto-earn-plan.md`.
 

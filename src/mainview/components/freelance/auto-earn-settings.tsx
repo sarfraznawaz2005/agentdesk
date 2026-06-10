@@ -156,10 +156,18 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
         </div>
         <Field
           label="Max sends / hour"
-          help="The most messages or bids the app will send in any rolling 60-minute window — a hard cap so the account never looks like a spam bot. Bids use a stricter limit (half this, minimum 1)."
+          help="The most replies the app will send in any rolling 60-minute window — a hard cap so the account never looks like a spam bot. Bids use a stricter limit (half this, minimum 1) plus the daily bid budget below."
         >
           <input type="number" min={1} value={s.maxSendsPerHour}
-            onChange={(e) => patch({ maxSendsPerHour: num(e.target.value, 1) })}
+            onChange={(e) => patch({ maxSendsPerHour: num(e.target.value, 4) })}
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+        </Field>
+        <Field
+          label="Max bids / day"
+          help="Hard daily budget for proposals across all projects (rolling 24h). Freelancer memberships include a monthly bid quota — this keeps automated bidding well inside it and far below spam velocity. Set to 0 to disable the daily cap (hourly limits still apply)."
+        >
+          <input type="number" min={0} value={s.bidDailyCap}
+            onChange={(e) => patch({ bidDailyCap: num(e.target.value, 10) })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
         </Field>
         <Field

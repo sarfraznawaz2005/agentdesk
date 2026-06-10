@@ -97,6 +97,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.inbox.getThreads": (params) => freelanceInboxRpc.getThreads(params),
 	"freelance.inbox.getMessages": (params) => freelanceInboxRpc.getMessages(params),
 	"freelance.inbox.logSync": (params) => freelanceInboxRpc.logSync(params),
+	"freelance.session.anomaly": (params) => freelanceOutboxRpc.reportAnomaly(params),
 	"freelance.account.disconnect": (params) => freelanceInboxRpc.disconnect(params),
 	"freelance.account.setAutonomy": (params) => freelanceInboxRpc.setAutonomy(params),
 	"freelance.autoearn.isAvailable": () => freelanceInboxRpc.getAutoEarnAvailable(),
