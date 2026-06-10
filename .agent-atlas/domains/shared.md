@@ -44,11 +44,11 @@
 
 **Interfaces:**
 - `WriteResult` (line 15)
-- `BidFillOptions` (line 95)
+- `BidFillOptions` (line 100)
 
 **Functions:**
-- `buildSendReplyScript` (line 43)
-- `buildSubmitBidScript` (line 120)
+- `buildSendReplyScript` (line 48)
+- `buildSubmitBidScript` (line 125)
 
 
 ### `src/shared/rpc.ts`

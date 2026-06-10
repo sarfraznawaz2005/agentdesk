@@ -131,6 +131,25 @@ const INTERCEPTOR_SRC = `
 })();
 `;
 
+// Active profile-skills capture. Asks the platform for our OWN profile including
+// skills ("jobs"). The interceptor above (installed immediately before this runs)
+// patches window.fetch, so this request is tee'd through the normal
+// /users/0.1/self ingest path — which extracts + caches the skill names. The
+// shortlist engine then uses them to pre-filter projects we cannot bid on
+// (Freelancer blocks bidding unless the profile shares a skill with the project).
+// Best-effort: a logged-out 401 simply yields no skills (fail-open downstream).
+const PROFILE_SKILLS_SRC = `
+(function(){
+  try {
+    fetch('https://www.freelancer.com/api/users/0.1/self?jobs=true&webapp=1&compact=true&new_errors=true&new_pools=true', { credentials: 'include' }).catch(function(){});
+  } catch(e){}
+})();
+`;
+
+// Profile skills change rarely — refresh at most once every few hours per app run.
+const PROFILE_SKILLS_REFRESH_MS = 6 * 60 * 60 * 1000;
+let lastProfileSkillsFetch = 0;
+
 type WebviewTagEl = HTMLElement & {
   loadURL?: (url: string) => void;
   reload?: () => void;
@@ -423,10 +442,13 @@ export function InboxTab() {
           /* will time out below */
         }
       }, 2800);
-      // Safety timeout: scaled to the body length, because the proposal/reply is
-      // typed character-by-character (a long bid proposal can take 30s+ to type,
-      // plus the SPA bid form can take a few seconds to render before typing).
-      const timeoutMs = 25_000 + res.body.length * 100;
+      // Safety backstop: must always outlast the in-page script's own waits so its
+      // precise result (e.g. "bid form did not appear within 30s") wins the race and
+      // we don't mask it with a generic "send timed out". Worst in-page case ≈
+      // inject delay (2.8s) + bid-form wait (30s) + post-click verify (8s) + the
+      // per-character typing of the body (~scaled below). 45s base covers the fixed
+      // waits with headroom; body.length*100 covers the human-paced typing.
+      const timeoutMs = 45_000 + res.body.length * 100;
       setTimeout(() => {
         if (pendingSend.current?.id === item.id) {
           pendingSend.current = null;
@@ -459,12 +481,27 @@ export function InboxTab() {
     wvRef.current = wv;
     if (!wv?.on) return;
 
+    // Fire the active profile-skills fetch after the interceptor is installed,
+    // debounced. `url` is passed from navigation events so we can skip login/
+    // challenge pages (where the call would 401 and waste the refresh window).
+    const maybeFetchProfileSkills = (url?: string | null) => {
+      if (url && /\/login|\/signup|captcha|challenge|verify|recaptcha/i.test(url)) return;
+      const now = Date.now();
+      if (now - lastProfileSkillsFetch < PROFILE_SKILLS_REFRESH_MS) return;
+      lastProfileSkillsFetch = now;
+      try {
+        wv.executeJavascript?.(PROFILE_SKILLS_SRC);
+      } catch {
+        /* mid-navigation */
+      }
+    };
     const inject = () => {
       try {
         wv.executeJavascript?.(INTERCEPTOR_SRC);
       } catch {
         /* mid-navigation */
       }
+      maybeFetchProfileSkills();
     };
     // Re-auth / CAPTCHA detection: landing on a login/challenge page while we
     // thought we were connected means the session needs attention. We pause
@@ -473,6 +510,9 @@ export function InboxTab() {
       inject();
       const u = navUrl(e);
       if (u && /\/login|\/signup|captcha|challenge|verify|recaptcha/i.test(u)) {
+        // We're logged out — any profile-skills fetch just 401s. Reset the debounce
+        // so the next logged-in navigation re-fetches the skills promptly.
+        lastProfileSkillsFetch = 0;
         setNotice("Freelancer needs you to log in or complete a verification — please do it in the live session below.");
         setSessionOpen(true);
         refreshAccount();

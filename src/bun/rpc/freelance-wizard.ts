@@ -91,6 +91,76 @@ function isObviouslyNonSoftware(listing: typeof freelanceListings.$inferSelect):
 }
 
 // ---------------------------------------------------------------------------
+// Skill-gate pre-filter
+// Freelancer.com only lets you bid when your PROFILE shares at least one skill
+// with the project; otherwise it blocks the bid behind a "complete your profile —
+// add one of these skills" step. We mirror that rule deterministically: if we know
+// the user's profile skills and none overlap the project's, the project is not
+// workable — and we skip the (costly) AI analysis entirely.
+//
+// Fail-open by design: when the profile skills are unknown (no logged-in session
+// has been captured yet) or the listing has no skills, we return null and behave
+// exactly as before — never blocking a project on missing data.
+// ---------------------------------------------------------------------------
+
+function getProfileSkills(platform = "freelancer"): string[] {
+  try {
+    const row = sqlite
+      .prepare("SELECT profile_skills FROM freelance_accounts WHERE platform = ?")
+      .get(platform) as { profile_skills: string | null } | undefined;
+    if (!row?.profile_skills) return [];
+    const arr = JSON.parse(row.profile_skills) as unknown;
+    return Array.isArray(arr) ? arr.filter((s): s is string => typeof s === "string" && s.trim().length > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+const SKILL_GATE_REASON = "Bidding blocked — your Freelancer profile has none of this project's required skills.";
+
+// A cached not_workable verdict produced by the skill gate must never be trusted by
+// the 24h cache path: the gate is recomputed live every run, so the live check
+// already re-applies it when still gated. Skipping it here means that the moment a
+// user adds a missing skill (gate no longer blocks), the project is re-analysed
+// instead of staying stale until the TTL expires.
+function isStaleGateVerdict(listing: typeof freelanceListings.$inferSelect): boolean {
+  return listing.wizardVerdict === "not_workable" && (listing.wizardReason ?? "") === SKILL_GATE_REASON;
+}
+
+interface SkillGateResult {
+  reason: string;
+  blockers: string[];
+  analysisText: string;
+}
+
+function skillGateBlocks(
+  listing: typeof freelanceListings.$inferSelect,
+  profileSkills: string[],
+): SkillGateResult | null {
+  if (profileSkills.length === 0) return null; // profile unknown → fail open
+
+  let skills: string[] = [];
+  try { skills = JSON.parse(listing.skills) as string[]; } catch { /* ignore */ }
+  skills = skills.filter((s) => typeof s === "string" && s.trim().length > 0);
+  if (skills.length === 0) return null; // no listed skills → cannot determine → fail open
+
+  const norm = (s: string) => s.toLowerCase().trim();
+  const have = new Set(profileSkills.map(norm));
+  if (skills.some((s) => have.has(norm(s)))) return null; // at least one overlap → biddable
+
+  const skillList = skills.join(", ");
+  return {
+    reason: SKILL_GATE_REASON,
+    blockers: [`Add one of these skills to your Freelancer profile to bid: ${skillList}`],
+    analysisText:
+      `Freelancer.com only allows bidding when your profile shares at least one skill with the project. ` +
+      `This project requires: ${skillList}. Your profile currently lists none of them, so the platform would ` +
+      `block the bid at the "complete your profile / add skills" step. Add one of the required skills to your ` +
+      `Freelancer profile to make this project biddable.`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Tool subset (same as freelance chat)
 // ---------------------------------------------------------------------------
 
@@ -599,6 +669,7 @@ async function runWizard(count: number): Promise<void> {
     }
 
     const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");
+    const profileSkills = getProfileSkills();
 
     // Always take the N most-recent listings regardless of prior analysis.
     // Cached entries get an instant verdict read; new entries get AI analysis.
@@ -679,8 +750,21 @@ async function runWizard(count: number): Promise<void> {
         continue;
       }
 
-      // Use cached verdict if still fresh
-      if (isCacheValid(listing)) {
+      // Skill-gate pre-filter: if the user's profile shares no skill with the project,
+      // Freelancer would block the bid — mark not workable without spending AI analysis.
+      const gate = skillGateBlocks(listing, profileSkills);
+      if (gate) {
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText });
+        failedListings.push({ id: listing.id, title: listing.title, reason: gate.reason, blockers: gate.blockers });
+        broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
+          current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
+        });
+        continue;
+      }
+
+      // Use cached verdict if still fresh (but never a stale skill-gate block — the
+      // live gate above already handles the still-gated case).
+      if (isCacheValid(listing) && !isStaleGateVerdict(listing)) {
         const workable = listing.wizardVerdict === "workable";
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable,
@@ -830,6 +914,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
     }
 
     const additionalNotes = s.additionalNotes ?? "";
+    const profileSkills = getProfileSkills();
     const count = Math.max(1, Math.min(25, s.autoShortlistCount));
 
     const baseWhere = and(
@@ -854,7 +939,14 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         continue;
       }
 
-      if (isCacheValid(listing)) {
+      // Skill-gate pre-filter (see skillGateBlocks): no profile-skill overlap ⇒ bid blocked.
+      const gate = skillGateBlocks(listing, profileSkills);
+      if (gate) {
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText });
+        continue;
+      }
+
+      if (isCacheValid(listing) && !isStaleGateVerdict(listing)) {
         if (listing.wizardVerdict === "workable") {
           workableListings.push({
             id: listing.id,
@@ -1000,6 +1092,17 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   const rows = await db.select().from(freelanceListings).where(eq(freelanceListings.id, params.listingId)).limit(1);
   const listing = rows[0];
   if (!listing) throw new Error(`Listing ${params.listingId} not found`);
+
+  // Skill-gate pre-filter — deterministic, runs before any AI/model resolution.
+  const gate = skillGateBlocks(listing, getProfileSkills());
+  if (gate) {
+    const nowTs = new Date().toISOString();
+    sqlite.prepare(
+      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
+    ).run("not_workable", nowTs, gate.reason, JSON.stringify(gate.blockers), gate.analysisText, listing.id);
+    broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+    return { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText };
+  }
 
   let adapter: ReturnType<typeof createProviderAdapter>;
   let modelId: string;

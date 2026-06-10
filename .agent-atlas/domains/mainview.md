@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 167
-**Symbols:** 1427
+**Symbols:** 1428
 
 ## Files
 
@@ -590,28 +590,29 @@
 ### `src/mainview/components/freelance/inbox-tab.tsx`
 
 **Types:**
-- `WebviewTagEl` (line 134)
+- `WebviewTagEl` (line 153)
 
 **Functions:**
-- `parseHostMessage` (line 143)
-- `AutoGrowTextarea` (line 161)
-- `navUrl` (line 211)
-- `hourInTz` (line 224)
-- `fmtTime` (line 236)
-- `InboxTab` (line 245)
-- `inject` (line 462)
-- `onNav` (line 472)
-- `onHostMessage` (line 481)
-- `onUpdated` (line 585)
-- `onOutbox` (line 590)
-- `onStatus` (line 591)
-- `withinActiveHours` (line 620)
-- `schedule` (line 626)
-- `tick` (line 669)
-- `selectThread` (line 699)
-- `syncNow` (line 708)
-- `setAutonomy` (line 716)
-- `disconnect` (line 720)
+- `parseHostMessage` (line 162)
+- `AutoGrowTextarea` (line 180)
+- `navUrl` (line 230)
+- `hourInTz` (line 243)
+- `fmtTime` (line 255)
+- `InboxTab` (line 264)
+- `maybeFetchProfileSkills` (line 487)
+- `inject` (line 498)
+- `onNav` (line 509)
+- `onHostMessage` (line 521)
+- `onUpdated` (line 625)
+- `onOutbox` (line 630)
+- `onStatus` (line 631)
+- `withinActiveHours` (line 660)
+- `schedule` (line 666)
+- `tick` (line 709)
+- `selectThread` (line 739)
+- `syncNow` (line 748)
+- `setAutonomy` (line 756)
+- `disconnect` (line 760)
 
 
 ### `src/mainview/components/freelance/keyword-input.tsx`

@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 257
-**Symbols:** 1948
+**Files:** 258
+**Symbols:** 1955
 
 ## Files
 
@@ -846,11 +846,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 60)
+- `Migration` (line 61)
 
 **Functions:**
-- `runMigrations` (line 111)
-- `ensureRuntimeSchema` (line 173)
+- `runMigrations` (line 113)
+- `ensureRuntimeSchema` (line 175)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1162,6 +1162,15 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v41_freelance-profile-skills.ts`
+
+**Functions:**
+- `run` (line 9)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v4_inline-agents.ts`
 
 **Functions:**
@@ -1257,21 +1266,21 @@
 - `freelanceListings` (line 675)
 - `freelanceChatMessages` (line 702)
 - `freelanceAccounts` (line 718)
-- `freelanceInboxThreads` (line 730)
-- `freelanceInboxMessages` (line 753)
-- `freelanceInboxUsers` (line 764)
-- `freelanceOutbox` (line 777)
-- `freelanceActionLog` (line 795)
-- `freelanceJobs` (line 810)
-- `freelanceCredentials` (line 833)
-- `freelanceJobLog` (line 848)
-- `freelanceJobFacts` (line 861)
-- `freelanceEscalations` (line 870)
-- `projectActivity` (line 892)
-- `remoteSyncConfig` (line 906)
-- `remoteSyncItems` (line 944)
-- `customEnvVars` (line 962)
-- `remoteSyncRuns` (line 972)
+- `freelanceInboxThreads` (line 732)
+- `freelanceInboxMessages` (line 755)
+- `freelanceInboxUsers` (line 766)
+- `freelanceOutbox` (line 779)
+- `freelanceActionLog` (line 797)
+- `freelanceJobs` (line 812)
+- `freelanceCredentials` (line 835)
+- `freelanceJobLog` (line 850)
+- `freelanceJobFacts` (line 863)
+- `freelanceEscalations` (line 872)
+- `projectActivity` (line 894)
+- `remoteSyncConfig` (line 908)
+- `remoteSyncItems` (line 946)
+- `customEnvVars` (line 964)
+- `remoteSyncRuns` (line 974)
 
 
 ### `src/bun/db/seed.ts`
@@ -1461,17 +1470,16 @@
 ### `src/bun/freelance/expert/tools.ts`
 
 **Interfaces:**
-- `FxToolContext` (line 31)
+- `FxToolContext` (line 30)
 
 **Functions:**
-- `ok` (line 39)
-- `err` (line 42)
-- `safeDest` (line 46)
-- `authUrl` (line 53)
-- `runGit` (line 74)
-- `credToRemote` (line 81)
-- `buildFreelanceExpertTools` (line 98)
-- `log` (line 99)
+- `ok` (line 38)
+- `err` (line 41)
+- `safeDest` (line 45)
+- `authUrl` (line 52)
+- `runGit` (line 73)
+- `buildFreelanceExpertTools` (line 80)
+- `log` (line 81)
 
 
 ### `src/bun/freelance/expert/vault.ts`
@@ -1637,17 +1645,18 @@
 - `NormalizedMessage` (line 31)
 - `NormalizedUser` (line 39)
 - `NormalizedSelf` (line 48)
-- `NormalizedProject` (line 53)
+- `NormalizedProject` (line 55)
 
 **Functions:**
-- `asString` (line 59)
-- `toIntOrNull` (line 64)
-- `getResult` (line 69)
-- `parseThreads` (line 78)
-- `parseMessages` (line 108)
-- `parseUsers` (line 128)
-- `parseSelf` (line 150)
-- `parseProjects` (line 158)
+- `asString` (line 61)
+- `toIntOrNull` (line 66)
+- `getResult` (line 71)
+- `parseThreads` (line 80)
+- `parseMessages` (line 110)
+- `parseUsers` (line 130)
+- `parseSelf` (line 152)
+- `parseJobNames` (line 166)
+- `parseProjects` (line 176)
 
 **Exports:**
 - `CaptureEndpoint` (line 10)
@@ -3093,33 +3102,40 @@
 
 ### `src/bun/rpc/freelance-wizard.ts`
 
+**Interfaces:**
+- `SkillGateResult` (line 130)
+
 **Types:**
-- `Verdict` (line 349)
+- `Verdict` (line 419)
 
 **Functions:**
 - `getAnalysisProviderAndModel` (line 29)
 - `isObviouslyNonSoftware` (line 86)
-- `buildWizardTools` (line 106)
-- `isAbortError` (line 123)
-- `fetchPageText` (line 131)
-- `extractDescription` (line 152)
-- `buildAnalysisSystemPrompt` (line 181)
-- `buildUserMessage` (line 248)
-- `buildAnalysisWritePrompt` (line 301)
-- `coerceVerdict` (line 351)
-- `extractJsonFromText` (line 392)
-- `formatToolOutput` (line 411)
-- `clean` (line 415)
-- `analyzeListingWorkability` (line 427)
-- `collectToolResults` (line 452)
-- `normalizeNewlines` (line 557)
-- `isCacheValid` (line 571)
-- `runWizard` (line 581)
-- `startWizard` (line 784)
-- `stopWizard` (line 790)
-- `runAutoShortlist` (line 804)
-- `analyzeListing` (line 994)
-- `shortlistListings` (line 1058)
+- `getProfileSkills` (line 106)
+- `isStaleGateVerdict` (line 126)
+- `skillGateBlocks` (line 136)
+- `norm` (line 147)
+- `buildWizardTools` (line 176)
+- `isAbortError` (line 193)
+- `fetchPageText` (line 201)
+- `extractDescription` (line 222)
+- `buildAnalysisSystemPrompt` (line 251)
+- `buildUserMessage` (line 318)
+- `buildAnalysisWritePrompt` (line 371)
+- `coerceVerdict` (line 421)
+- `extractJsonFromText` (line 462)
+- `formatToolOutput` (line 481)
+- `clean` (line 485)
+- `analyzeListingWorkability` (line 497)
+- `collectToolResults` (line 522)
+- `normalizeNewlines` (line 627)
+- `isCacheValid` (line 641)
+- `runWizard` (line 651)
+- `startWizard` (line 868)
+- `stopWizard` (line 874)
+- `runAutoShortlist` (line 888)
+- `analyzeListing` (line 1086)
+- `shortlistListings` (line 1161)
 
 
 ### `src/bun/rpc/freelance.ts`

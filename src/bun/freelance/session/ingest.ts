@@ -126,6 +126,16 @@ export function ingestCaptures(platform: string, records: CaptureRecord[]): Inge
 						`UPDATE freelance_accounts SET self_user_id = ?, display_name = COALESCE(?, display_name), updated_at = ? WHERE platform = ?`,
 					)
 					.run(self.id, self.displayName, now, platform);
+				// Profile skills only arrive on a jobs=true self call. Persist them when
+				// present; never overwrite a known set with an empty one (a skill-less
+				// self response must not wipe the cache the shortlist pre-filter relies on).
+				if (self.skills.length > 0) {
+					sqlite
+						.prepare(
+							`UPDATE freelance_accounts SET profile_skills = ?, profile_skills_updated_at = ? WHERE platform = ?`,
+						)
+						.run(JSON.stringify(self.skills), now, platform);
+				}
 			}
 		}
 

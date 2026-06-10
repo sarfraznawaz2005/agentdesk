@@ -40,6 +40,7 @@ import * as v37 from "./migrations/v37_freelance-remove-peopleperhour";
 import * as v38 from "./migrations/v38_freelance-expert-pipeline";
 import * as v39 from "./migrations/v39_freelance-job-facts";
 import * as v40 from "./migrations/v40_freelance-delivery-approval";
+import * as v41 from "./migrations/v41_freelance-profile-skills";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -104,6 +105,7 @@ const migrations: Migration[] = [
 	{ version: 38, name: v38.name, run: v38.run },
 	{ version: 39, name: v39.name, run: v39.run },
 	{ version: 40, name: v40.name, run: v40.run },
+	{ version: 41, name: v41.name, run: v41.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -251,6 +253,13 @@ function ensureRuntimeSchema(): void {
 		v40.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: freelance delivery-approval column failed:", err);
+	}
+
+	// Defensive: ensure freelance_accounts.profile_skills columns exist (v41 guards with PRAGMA).
+	try {
+		v41.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance profile-skills columns failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

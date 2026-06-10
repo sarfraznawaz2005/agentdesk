@@ -19,7 +19,6 @@ import { join, isAbsolute, basename } from "node:path";
 import { Session } from "electrobun/bun";
 import { sqlite } from "../../db/connection";
 import { getPlatform } from "../../../shared/freelance/platforms";
-import { createRemoteClient, type RemoteCredentials, type RemoteProtocol } from "../../remote-sync/client";
 import { createProjectFromListing } from "../project-bootstrap";
 import { storeCredential, getCredential, listCredentialSummaries } from "./vault";
 import { escalateToHuman, notifyJobEvent, type Severity } from "./notify";
@@ -76,23 +75,6 @@ async function runGit(args: string[], cwd: string): Promise<{ code: number; out:
 	const [out, errOut] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
 	const code = await proc.exited;
 	return { code, out: (out + errOut).trim().slice(0, 4000) };
-}
-
-function credToRemote(credId: string): RemoteCredentials {
-	const c = getCredential(credId);
-	if (!c) throw new Error("credential not found");
-	const meta = (c.meta ?? {}) as { protocol?: string; authType?: string };
-	const protocol = (meta.protocol as RemoteProtocol) ?? (c.kind === "ftp" ? "ftp" : "sftp");
-	const useKey = meta.authType === "key";
-	return {
-		protocol,
-		host: c.host ?? "",
-		port: c.port ?? (protocol === "ftp" || protocol === "ftps" ? 21 : 22),
-		username: c.username ?? "",
-		password: useKey ? undefined : c.secret,
-		privateKey: useKey ? c.secret : undefined,
-		rejectUnauthorized: false,
-	};
 }
 
 export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, Tool> {
@@ -199,8 +181,10 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 		freelance_store_credential: tool({
 			description:
 				"Securely store client-provided access (FTP/SFTP/git token/CMS login) in the encrypted vault. " +
-				"The secret is encrypted at rest and never echoed back. Returns a credentialId to use with " +
-				"git_clone / remote_* tools. Extract host/user/secret from the client's message and store them here.",
+				"The secret is encrypted at rest and never echoed back. Returns a credentialId to use with git_clone. " +
+				"Extract host/user/secret from the client's message and store them here. NOTE: you cannot transfer " +
+				"files over FTP/SFTP yourself — when a job needs files pulled from or pushed to a client's SFTP/FTP " +
+				"server, store the access here and escalate with notify_human so the user performs the transfer.",
 			inputSchema: z.object({
 				kind: z.enum(["ftp", "sftp", "git", "cms", "other"]),
 				secret: z.string().describe("Password, token, or private key — encrypted before storage"),
@@ -261,76 +245,6 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 					return ok({ path: dest, message: res.out.slice(0, 500) });
 				} catch (e) {
 					return err(e instanceof Error ? e.message : String(e));
-				}
-			},
-		}),
-
-		remote_list: tool({
-			description: "List a directory on a client SFTP/FTP server using a stored credential.",
-			inputSchema: z.object({ credentialId: z.string(), remoteDir: z.string().default("/") }),
-			execute: async ({ credentialId, remoteDir }): Promise<string> => {
-				const rc = createRemoteClient(credToRemote(credentialId));
-				try {
-					await rc.connect();
-					const entries = await rc.list(remoteDir);
-					log("remote_list", remoteDir);
-					return ok({ entries });
-				} catch (e) {
-					return err(e instanceof Error ? e.message : String(e));
-				} finally {
-					try {
-						await rc.disconnect();
-					} catch {
-						/* ignore */
-					}
-				}
-			},
-		}),
-
-		remote_download: tool({
-			description: "Download a file from a client SFTP/FTP server into the workspace.",
-			inputSchema: z.object({ credentialId: z.string(), remotePath: z.string(), localPath: z.string() }),
-			execute: async ({ credentialId, remotePath, localPath }): Promise<string> => {
-				const rc = createRemoteClient(credToRemote(credentialId));
-				try {
-					const dest = safeDest(ctx.workspacePath, localPath);
-					await rc.connect();
-					await rc.downloadFile(remotePath, dest);
-					log("remote_download", `${remotePath} -> ${localPath}`);
-					return ok({ path: dest });
-				} catch (e) {
-					return err(e instanceof Error ? e.message : String(e));
-				} finally {
-					try {
-						await rc.disconnect();
-					} catch {
-						/* ignore */
-					}
-				}
-			},
-		}),
-
-		remote_upload: tool({
-			description: "Upload a deliverable from the workspace to a client SFTP/FTP server. (Requires delivery approval.)",
-			inputSchema: z.object({ credentialId: z.string(), localPath: z.string(), remotePath: z.string() }),
-			execute: async ({ credentialId, localPath, remotePath }): Promise<string> => {
-				if (!isDeliveryApproved(ctx.jobId)) return err(DELIVERY_GATE_MSG);
-				const rc = createRemoteClient(credToRemote(credentialId));
-				try {
-					const src = safeDest(ctx.workspacePath, localPath);
-					await rc.connect();
-					await rc.ensureRemoteDir(remotePath.replace(/\/[^/]*$/, "") || "/");
-					await rc.uploadFile(src, remotePath);
-					log("remote_upload", `${localPath} -> ${remotePath}`);
-					return ok({ remotePath });
-				} catch (e) {
-					return err(e instanceof Error ? e.message : String(e));
-				} finally {
-					try {
-						await rc.disconnect();
-					} catch {
-						/* ignore */
-					}
 				}
 			},
 		}),

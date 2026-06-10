@@ -30,6 +30,11 @@ const LONG_PAUSE_MIN_MS = 200;
 const LONG_PAUSE_SPAN_MS = 500;
 // How long to wait, after clicking Send, for evidence the platform accepted it.
 const VERIFY_TIMEOUT_MS = 8000;
+// How long to wait for the (Angular SPA) bid form to render after navigation
+// before giving up. The form frequently appears a little after the page itself,
+// so we poll rather than assume it is present on first injection.
+const BID_FORM_WAIT_MS = 30000;
+const BID_FORM_POLL_MS = 400;
 
 /**
  * Build the script that types `body` into the platform's reply composer with
@@ -108,7 +113,7 @@ export interface BidFillOptions {
  * Build the script that fills Freelancer's "Place a bid on this project" form —
  * Bid Amount, delivery Days, and the proposal textarea — with human-paced typing
  * for the proposal. The bid form is an Angular SPA that renders after navigation,
- * so the script polls for the form (up to ~15s) before filling. Fields are located
+ * so the script polls for the form (up to 30s) before filling. Fields are located
  * by label proximity + placeholder (resilient to class/id churn), and values are
  * set through the native value setter so Angular's ngModel registers the change.
  *
@@ -200,12 +205,13 @@ export function buildSubmitBidScript(_platformId: string, opts: BidFillOptions):
       } else { el.dispatchEvent(new Event('change',{bubbles:true})); done(); }
     })();
   }
+  var FORM_WAIT_MS = ${BID_FORM_WAIT_MS}, FORM_POLL_MS = ${BID_FORM_POLL_MS};
   var waited = 0;
   (function waitForm(){
     var proposal = findProposal();
     if (!proposal){
-      if (waited >= 15000){ host('fl-bid-prefilled', false, 'bid form not found'); return; }
-      waited += 400; setTimeout(waitForm, 400); return;
+      if (waited >= FORM_WAIT_MS){ host('fl-bid-prefilled', false, 'bid form did not appear within ${Math.round(BID_FORM_WAIT_MS / 1000)}s'); return; }
+      waited += FORM_POLL_MS; setTimeout(waitForm, FORM_POLL_MS); return;
     }
     try {
       if (AMOUNT !== null){ var amt = findAmount(); if (amt) setNative(amt, AMOUNT); }

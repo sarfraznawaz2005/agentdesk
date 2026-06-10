@@ -720,6 +720,8 @@ export const freelanceAccounts = sqliteTable("freelance_accounts", {
 	platform:    text("platform").notNull().unique(),   // "freelancer"
 	selfUserId:  text("self_user_id"),                  // platform id of the logged-in user
 	displayName: text("display_name"),
+	profileSkills: text("profile_skills"),              // JSON array of the user's profile skills ("jobs"); used to pre-filter unbiddable projects
+	profileSkillsUpdatedAt: text("profile_skills_updated_at"),
 	status:      text("status").notNull().default("connected"), // connected | logged_out | error
 	autonomyMode: text("autonomy_mode").notNull().default("assisted"), // assisted | full_auto
 	lastSyncAt:  text("last_sync_at"),

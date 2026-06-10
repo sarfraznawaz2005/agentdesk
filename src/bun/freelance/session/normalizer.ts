@@ -48,6 +48,8 @@ export interface NormalizedUser {
 export interface NormalizedSelf {
 	id: string;
 	displayName: string | null;
+	/** Profile skills ("jobs"); only populated when the self call included jobs=true. */
+	skills: string[];
 }
 
 export interface NormalizedProject {
@@ -152,7 +154,23 @@ export function parseSelf(body: string): NormalizedSelf | null {
 	if (!result) return null;
 	const id = asString(result.id);
 	if (!id) return null;
-	return { id, displayName: asString(result.display_name ?? result.username) };
+	return {
+		id,
+		displayName: asString(result.display_name ?? result.username),
+		skills: parseJobNames(result.jobs),
+	};
+}
+
+// Freelancer represents profile skills as "jobs": result.jobs[] = { id, name, ... }.
+// Only present when the self/user call requested jobs=true. Whitelist the name only.
+function parseJobNames(jobs: unknown): string[] {
+	if (!Array.isArray(jobs)) return [];
+	const names = new Set<string>();
+	for (const j of jobs) {
+		const name = asString((j as Record<string, unknown>)?.name);
+		if (name && name.trim()) names.add(name.trim());
+	}
+	return [...names];
 }
 
 export function parseProjects(body: string): NormalizedProject[] {
