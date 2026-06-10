@@ -24,7 +24,7 @@
   "conventions": ".agent-atlas/conventions.json",
   "constraints": ".agent-atlas/constraints.md",
   "architecture_pattern": "Flat / Unstructured",
-  "last_generated": "2026-06-10T17:30:09.437Z",
+  "last_generated": "2026-06-10T17:30:42.641Z",
   "usage_hints": {
     "concepts_index": "Do NOT read concepts.json in full. Use grep/search to look up specific keywords from your task (e.g. grep \"login\" .agent-atlas/concepts.json). Each keyword maps to exact file:line locations.",
     "workflow": [
