@@ -397,9 +397,21 @@ export function resolveUserQuestion(
 	return true;
 }
 
+/** Default wait before a user-question auto-resolves with a timeout message. */
+const DEFAULT_USER_QUESTION_TIMEOUT_MS = 5 * 60 * 1000;
+
 /**
- * Ask the user a question via a modal dialog and wait for the response.
- * Returns the user's answer string, or a timeout message after 5 minutes.
+ * Ask the user a question via a modal dialog and wait for the response. Raises an
+ * OS-level desktop notification (so the user is alerted even when the dialog is
+ * triggered by a background agent and the app isn't focused), then blocks until
+ * the user answers or the timeout elapses.
+ *
+ * `timeoutMs` lets callers tune the wait — autonomous background agents
+ * (freelance-expert, issue-fixer) pass a short window so an absent user never
+ * stalls the run; interactive agents use the longer default. On timeout we also
+ * broadcast `userQuestionCancel` so the now-stale dialog closes itself.
+ *
+ * Returns the user's answer string, or a timeout/cancel message.
  */
 export function askUserQuestion(payload: {
 	question: string;
@@ -408,23 +420,37 @@ export function askUserQuestion(payload: {
 	placeholder?: string;
 	defaultValue?: string;
 	context?: string;
-	projectId: string;
+	projectId?: string;
 	agentId: string;
 	agentName: string;
+	timeoutMs?: number;
 }): Promise<string> {
 	const requestId = crypto.randomUUID();
+	const timeoutMs = payload.timeoutMs ?? DEFAULT_USER_QUESTION_TIMEOUT_MS;
 
 	broadcastToWebview("userQuestionRequest", {
 		requestId,
 		...payload,
+		projectId: payload.projectId ?? activeProjectId ?? "",
 		timestamp: new Date().toISOString(),
 	});
+
+	// OS-level toast so a human away from the app still learns an agent needs them.
+	const snippet = payload.question.length > 140 ? `${payload.question.slice(0, 140)}…` : payload.question;
+	sendDesktopNotification(`${payload.agentName} needs your input`, snippet).catch(() => {});
 
 	return new Promise<string>((resolve) => {
 		const timer = setTimeout(() => {
 			pendingUserQuestions.delete(requestId);
-			resolve("[No response — timed out after 5 minutes]");
-		}, 5 * 60 * 1000);
+			// Tell the frontend to close the stale dialog — the agent has moved on.
+			broadcastToWebview("userQuestionCancel", { requestId });
+			const mins = Math.round(timeoutMs / 60000);
+			resolve(
+				timeoutMs < 60000
+					? `[No response — timed out after ${Math.round(timeoutMs / 1000)} seconds; continuing without an answer]`
+					: `[No response — timed out after ${mins} minute${mins === 1 ? "" : "s"}; continuing without an answer]`,
+			);
+		}, timeoutMs);
 
 		pendingUserQuestions.set(requestId, { resolve, timer });
 	});

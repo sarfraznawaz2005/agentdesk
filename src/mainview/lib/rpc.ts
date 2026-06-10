@@ -120,6 +120,9 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       userQuestionRequest: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:user-question-request", { detail: payload }));
       },
+      userQuestionCancel: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:user-question-cancel", { detail: payload }));
+      },
       whatsappQR: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:whatsapp-qr", { detail: payload }));
       },

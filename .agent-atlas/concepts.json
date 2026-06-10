@@ -254,13 +254,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1393,
+      "line": 1403,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1646,
+      "line": 1656,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -308,7 +308,7 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 585,
+      "line": 611,
       "symbol": "onAgentActivity",
       "type": "method"
     },
@@ -332,31 +332,31 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 140,
+      "line": 142,
       "symbol": "createAgent",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 207,
+      "line": 209,
       "symbol": "deleteAgent",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 225,
+      "line": 227,
       "symbol": "getAgentToolsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 237,
+      "line": 239,
       "symbol": "setAgentToolsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 274,
+      "line": 276,
       "symbol": "resetAgentToolsToDefaults",
       "type": "function"
     },
@@ -664,26 +664,6 @@
       "file": "tests/rpc/agents.test.ts",
       "line": 55,
       "symbol": "seedCustomAgent",
-      "type": "function"
-    }
-  ],
-  "controller": [
-    {
-      "file": "src/bun/engine-manager.ts",
-      "line": 26,
-      "symbol": "AgentControllerEntry",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/engine-manager.ts",
-      "line": 32,
-      "symbol": "registerAgentController",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/engine-manager.ts",
-      "line": 38,
-      "symbol": "unregisterAgentController",
       "type": "function"
     }
   ],
@@ -1094,7 +1074,7 @@
     },
     {
       "file": "src/bun/agents/tools/index.ts",
-      "line": 158,
+      "line": 177,
       "symbol": "getAllTools",
       "type": "function"
     },
@@ -1160,7 +1140,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 267,
+      "line": 269,
       "symbol": "getAllToolDefinitions",
       "type": "function"
     },
@@ -1548,6 +1528,12 @@
     },
     {
       "file": "src/bun/db/migrations/v41_freelance-profile-skills.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v42_request-human-input-backfill.ts",
       "line": 3,
       "symbol": "name",
       "type": "export"
@@ -2060,13 +2046,13 @@
     },
     {
       "file": "src/bun/agents/tools/index.ts",
-      "line": 158,
+      "line": 177,
       "symbol": "getAllTools",
       "type": "function"
     },
     {
       "file": "src/bun/agents/tools/index.ts",
-      "line": 169,
+      "line": 188,
       "symbol": "getToolDefinitions",
       "type": "function"
     },
@@ -2228,7 +2214,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1393,
+      "line": 1403,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -2288,7 +2274,7 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 433,
+      "line": 459,
       "symbol": "getOrCreateEngine",
       "type": "function"
     },
@@ -2336,25 +2322,25 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 65,
+      "line": 66,
       "symbol": "getPersona",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 151,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 158,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 353,
+      "line": 354,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -2696,13 +2682,13 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 225,
+      "line": 227,
       "symbol": "getAgentToolsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 267,
+      "line": 269,
       "symbol": "getAllToolDefinitions",
       "type": "function"
     },
@@ -3894,7 +3880,7 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 585,
+      "line": 611,
       "symbol": "onAgentActivity",
       "type": "method"
     },
@@ -4094,7 +4080,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 237,
+      "line": 239,
       "symbol": "setAgentToolsList",
       "type": "function"
     },
@@ -4266,14 +4252,6 @@
       "file": "src/mainview/pages/settings/whatsapp-settings.tsx",
       "line": 188,
       "symbol": "WhatsAppSettings",
-      "type": "function"
-    }
-  ],
-  "focused": [
-    {
-      "file": "src/bun/engine-manager.ts",
-      "line": 119,
-      "symbol": "setAppFocused",
       "type": "function"
     }
   ],
@@ -4946,7 +4924,7 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 433,
+      "line": 459,
       "symbol": "getOrCreateEngine",
       "type": "function"
     },
@@ -5034,14 +5012,6 @@
       "file": "src/bun/remote-sync/engine.ts",
       "line": 208,
       "symbol": "scheduleBrowseEvict",
-      "type": "function"
-    }
-  ],
-  "oldest": [
-    {
-      "file": "src/bun/engine-manager.ts",
-      "line": 215,
-      "symbol": "evictOldestIdleEngine",
       "type": "function"
     }
   ],
@@ -5726,7 +5696,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 48,
+      "line": 49,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -6431,6 +6401,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 42,
+      "symbol": "cancelHandler",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/lib/global-error-handler.ts",
       "line": 10,
       "symbol": "initClientErrorHandler",
@@ -6512,13 +6488,13 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 404,
+      "line": 416,
       "symbol": "askUserQuestion",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 151,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -6568,7 +6544,7 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 404,
+      "line": 416,
       "symbol": "askUserQuestion",
       "type": "function"
     },
@@ -6591,17 +6567,15 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 86,
+      "symbol": "QuestionForm",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/pages/council.tsx",
       "line": 187,
       "symbol": "QuestionCard",
-      "type": "function"
-    }
-  ],
-  "ask": [
-    {
-      "file": "src/bun/engine-manager.ts",
-      "line": 404,
-      "symbol": "askUserQuestion",
       "type": "function"
     }
   ],
@@ -6640,6 +6614,12 @@
       "file": "src/bun/agents/safety.ts",
       "line": 118,
       "symbol": "createActionTimeout",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/tools/communication.ts",
+      "line": 13,
+      "symbol": "createCommunicationTools",
       "type": "function"
     },
     {
@@ -6722,7 +6702,7 @@
     },
     {
       "file": "src/bun/engine-manager.ts",
-      "line": 433,
+      "line": 459,
       "symbol": "getOrCreateEngine",
       "type": "function"
     },
@@ -6890,7 +6870,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 140,
+      "line": 142,
       "symbol": "createAgent",
       "type": "function"
     },
@@ -8876,7 +8856,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 189,
+      "line": 190,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -9940,7 +9920,7 @@
     },
     {
       "file": "src/mainview/lib/rpc.ts",
-      "line": 337,
+      "line": 340,
       "symbol": "rpc",
       "type": "export"
     },
@@ -11242,7 +11222,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 129,
+      "line": 130,
       "symbol": "triageMessage",
       "type": "function"
     },
@@ -13878,7 +13858,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 175,
+      "line": 177,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -14778,13 +14758,13 @@
   "seed": [
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1408,
+      "line": 1418,
       "symbol": "seedDatabase",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1646,
+      "line": 1656,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -16048,7 +16028,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 48,
+      "line": 49,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -16736,7 +16716,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 353,
+      "line": 354,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -17146,7 +17126,7 @@
     },
     {
       "file": "src/bun/agents/tools/index.ts",
-      "line": 169,
+      "line": 188,
       "symbol": "getToolDefinitions",
       "type": "function"
     },
@@ -17194,7 +17174,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 267,
+      "line": 269,
       "symbol": "getAllToolDefinitions",
       "type": "function"
     },
@@ -18098,7 +18078,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 151,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -18966,7 +18946,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 175,
+      "line": 177,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -19508,7 +19488,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 158,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -19999,6 +19979,12 @@
       "line": 25,
       "symbol": "FormState",
       "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 86,
+      "symbol": "QuestionForm",
+      "type": "function"
     },
     {
       "file": "src/mainview/components/project-settings/project-settings-tab.tsx",
@@ -21600,7 +21586,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1393,
+      "line": 1403,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
@@ -22070,7 +22056,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 80,
+      "line": 81,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
@@ -22504,13 +22490,13 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 225,
+      "line": 227,
       "symbol": "getAgentToolsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 237,
+      "line": 239,
       "symbol": "setAgentToolsList",
       "type": "function"
     },
@@ -23746,7 +23732,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 113,
+      "line": 115,
       "symbol": "runMigrations",
       "type": "function"
     },
@@ -23967,6 +23953,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/db/migrations/v42_request-human-input-backfill.ts",
+      "line": 15,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
       "file": "src/bun/db/migrations/v5_message-parts-agent-name.ts",
       "line": 5,
       "symbol": "run",
@@ -23998,13 +23990,13 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 176,
+      "line": 177,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 189,
+      "line": 190,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -25532,7 +25524,13 @@
     },
     {
       "file": "src/bun/agents/tools/communication.ts",
-      "line": 5,
+      "line": 13,
+      "symbol": "createCommunicationTools",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/tools/communication.ts",
+      "line": 60,
       "symbol": "communicationTools",
       "type": "export"
     },
@@ -25568,7 +25566,7 @@
     },
     {
       "file": "src/bun/agents/tools/index.ts",
-      "line": 158,
+      "line": 177,
       "symbol": "getAllTools",
       "type": "function"
     },
@@ -25676,13 +25674,13 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1393,
+      "line": 1403,
       "symbol": "getDefaultAgentTools",
       "type": "function"
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1646,
+      "line": 1656,
       "symbol": "seedAgentTools",
       "type": "function"
     },
@@ -25700,19 +25698,19 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 225,
+      "line": 227,
       "symbol": "getAgentToolsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 237,
+      "line": 239,
       "symbol": "setAgentToolsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 274,
+      "line": 276,
       "symbol": "resetAgentToolsToDefaults",
       "type": "function"
     },
@@ -28156,7 +28154,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 274,
+      "line": 276,
       "symbol": "resetAgentToolsToDefaults",
       "type": "function"
     },
@@ -31224,7 +31222,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 158,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -31466,7 +31464,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 158,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -32382,7 +32380,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 48,
+      "line": 49,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -32940,7 +32938,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 80,
+      "line": 81,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
@@ -35624,7 +35622,7 @@
     },
     {
       "file": "src/bun/db/seed.ts",
-      "line": 1408,
+      "line": 1418,
       "symbol": "seedDatabase",
       "type": "function"
     },
@@ -39424,7 +39422,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 93,
+      "line": 94,
       "symbol": "latestInboundBody",
       "type": "function"
     }
@@ -39444,7 +39442,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 207,
+      "line": 209,
       "symbol": "deleteAgent",
       "type": "function"
     },
@@ -41064,7 +41062,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 176,
+      "line": 177,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
@@ -41237,20 +41235,6 @@
       "type": "interface"
     }
   ],
-  "serialize": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 105,
-      "symbol": "serializePart",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/playground/orchestrator.ts",
-      "line": 150,
-      "symbol": "serializePart",
-      "type": "function"
-    }
-  ],
   "checkout": [
     {
       "file": "src/bun/issue-fixer/orchestrator.ts",
@@ -41402,7 +41386,7 @@
   "keyword": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 118,
+      "line": 119,
       "symbol": "keywordTriage",
       "type": "function"
     },
@@ -45535,6 +45519,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 42,
+      "symbol": "cancelHandler",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/notes/notes-tab.tsx",
       "line": 263,
       "symbol": "cancelEdit",
@@ -46416,7 +46406,7 @@
   "definitions": [
     {
       "file": "src/bun/agents/tools/index.ts",
-      "line": 169,
+      "line": 188,
       "symbol": "getToolDefinitions",
       "type": "function"
     },
@@ -46440,7 +46430,7 @@
     },
     {
       "file": "src/bun/rpc/agents.ts",
-      "line": 267,
+      "line": 269,
       "symbol": "getAllToolDefinitions",
       "type": "function"
     }
@@ -52771,14 +52761,6 @@
       "type": "function"
     }
   ],
-  "communication": [
-    {
-      "file": "src/bun/agents/tools/communication.ts",
-      "line": 5,
-      "symbol": "communicationTools",
-      "type": "export"
-    }
-  ],
   "suffix": [
     {
       "file": "src/bun/agents/tools/file-ops.ts",
@@ -57371,36 +57353,6 @@
       "type": "function"
     }
   ],
-  "live": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 52,
-      "symbol": "LiveRunSnapshot",
-      "type": "interface"
-    },
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 67,
-      "symbol": "getLiveRun",
-      "type": "function"
-    }
-  ],
-  "enqueue": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 71,
-      "symbol": "enqueueIssueFix",
-      "type": "function"
-    }
-  ],
-  "slugify": [
-    {
-      "file": "src/bun/issue-fixer/orchestrator.ts",
-      "line": 78,
-      "symbol": "slugify",
-      "type": "function"
-    }
-  ],
   "existing": [
     {
       "file": "src/bun/issue-fixer/orchestrator.ts",
@@ -58728,7 +58680,7 @@
   "runtime": [
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 175,
+      "line": 177,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -59038,13 +58990,13 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 80,
+      "line": 81,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 353,
+      "line": 354,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -59101,14 +59053,6 @@
       "line": 77,
       "symbol": "FreelanceInboxThreadDto",
       "type": "export"
-    }
-  ],
-  "defaults": [
-    {
-      "file": "src/bun/rpc/agents.ts",
-      "line": 274,
-      "symbol": "resetAgentToolsToDefaults",
-      "type": "function"
     }
   ],
   "escalation": [
@@ -59182,7 +59126,7 @@
   "inbound": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 93,
+      "line": 94,
       "symbol": "latestInboundBody",
       "type": "function"
     },
@@ -59248,7 +59192,7 @@
   "self": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 151,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -59464,7 +59408,7 @@
   "body": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 93,
+      "line": 94,
       "symbol": "latestInboundBody",
       "type": "function"
     },
@@ -59610,13 +59554,13 @@
   "expert": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 176,
+      "line": 177,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 189,
+      "line": 190,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -59985,28 +59929,6 @@
       "type": "export"
     }
   ],
-  "persona": [
-    {
-      "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 65,
-      "symbol": "getPersona",
-      "type": "function"
-    }
-  ],
-  "triage": [
-    {
-      "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 118,
-      "symbol": "keywordTriage",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 129,
-      "symbol": "triageMessage",
-      "type": "function"
-    }
-  ],
   "seconds": [
     {
       "file": "src/bun/freelance/session/governor.ts",
@@ -60219,14 +60141,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 328,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "mandatory": [
     {
       "file": "src/bun/agents/tools/skills.ts",
@@ -60240,22 +60154,6 @@
       "file": "src/mainview/pages/settings/health.tsx",
       "line": 110,
       "symbol": "formatUptime",
-      "type": "function"
-    }
-  ],
-  "migration": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 61,
-      "symbol": "Migration",
-      "type": "interface"
-    }
-  ],
-  "migrations": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 113,
-      "symbol": "runMigrations",
       "type": "function"
     }
   ],
@@ -60318,14 +60216,6 @@
       "file": "src/bun/freelance/session/normalizer.ts",
       "line": 130,
       "symbol": "parseUsers",
-      "type": "function"
-    }
-  ],
-  "fnv1a": [
-    {
-      "file": "src/bun/db/seed.ts",
-      "line": 16,
-      "symbol": "fnv1a",
       "type": "function"
     }
   ],
@@ -60462,6 +60352,170 @@
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
       "line": 180,
       "symbol": "AutoGrowTextarea",
+      "type": "function"
+    }
+  ],
+  "controller": [
+    {
+      "file": "src/bun/engine-manager.ts",
+      "line": 26,
+      "symbol": "AgentControllerEntry",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/engine-manager.ts",
+      "line": 32,
+      "symbol": "registerAgentController",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/engine-manager.ts",
+      "line": 38,
+      "symbol": "unregisterAgentController",
+      "type": "function"
+    }
+  ],
+  "focused": [
+    {
+      "file": "src/bun/engine-manager.ts",
+      "line": 119,
+      "symbol": "setAppFocused",
+      "type": "function"
+    }
+  ],
+  "oldest": [
+    {
+      "file": "src/bun/engine-manager.ts",
+      "line": 215,
+      "symbol": "evictOldestIdleEngine",
+      "type": "function"
+    }
+  ],
+  "ask": [
+    {
+      "file": "src/bun/engine-manager.ts",
+      "line": 416,
+      "symbol": "askUserQuestion",
+      "type": "function"
+    }
+  ],
+  "migration": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 62,
+      "symbol": "Migration",
+      "type": "interface"
+    }
+  ],
+  "migrations": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 115,
+      "symbol": "runMigrations",
+      "type": "function"
+    }
+  ],
+  "fnv1a": [
+    {
+      "file": "src/bun/db/seed.ts",
+      "line": 16,
+      "symbol": "fnv1a",
+      "type": "function"
+    }
+  ],
+  "live": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 52,
+      "symbol": "LiveRunSnapshot",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 67,
+      "symbol": "getLiveRun",
+      "type": "function"
+    }
+  ],
+  "enqueue": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 71,
+      "symbol": "enqueueIssueFix",
+      "type": "function"
+    }
+  ],
+  "slugify": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 78,
+      "symbol": "slugify",
+      "type": "function"
+    }
+  ],
+  "serialize": [
+    {
+      "file": "src/bun/issue-fixer/orchestrator.ts",
+      "line": 105,
+      "symbol": "serializePart",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/playground/orchestrator.ts",
+      "line": 150,
+      "symbol": "serializePart",
+      "type": "function"
+    }
+  ],
+  "defaults": [
+    {
+      "file": "src/bun/rpc/agents.ts",
+      "line": 276,
+      "symbol": "resetAgentToolsToDefaults",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 331,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "communication": [
+    {
+      "file": "src/bun/agents/tools/communication.ts",
+      "line": 13,
+      "symbol": "createCommunicationTools",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/tools/communication.ts",
+      "line": 60,
+      "symbol": "communicationTools",
+      "type": "export"
+    }
+  ],
+  "persona": [
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 66,
+      "symbol": "getPersona",
+      "type": "function"
+    }
+  ],
+  "triage": [
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 119,
+      "symbol": "keywordTriage",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/expert/orchestrator.ts",
+      "line": 130,
+      "symbol": "triageMessage",
       "type": "function"
     }
   ]

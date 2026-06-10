@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 167
-**Symbols:** 1428
+**Symbols:** 1430
 
 ## Files
 
@@ -1114,6 +1114,8 @@
 **Functions:**
 - `UserQuestionDialog` (line 27)
 - `handler` (line 35)
+- `cancelHandler` (line 42)
+- `QuestionForm` (line 86)
 
 
 ### `src/mainview/components/notes/note-editor.tsx`
@@ -1805,8 +1807,8 @@
 ### `src/mainview/lib/rpc.ts`
 
 **Exports:**
-- `electroview` (line 328)
-- `rpc` (line 337)
+- `electroview` (line 331)
+- `rpc` (line 340)
 
 
 ### `src/mainview/lib/theme.ts`

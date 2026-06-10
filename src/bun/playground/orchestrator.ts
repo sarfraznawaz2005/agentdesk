@@ -316,10 +316,10 @@ export async function runPlayground(userMessage: string, consoleErrors?: string[
 			persistToDb: false,
 			priorMessages,
 			extraTools,
-			// request_human_input would block forever (no UI to answer it). chrome-devtools_* MCP
-			// tools attach to a separate external browser and can't see the in-app preview, so the
-			// General Agent must never use them — remove them from its toolset entirely.
-			excludeTools: ["request_human_input", "chrome-devtools_*", "verify_implementation"],
+			// request_human_input IS allowed now — it pops the in-app dialog + desktop notification
+			// (5-min wait). chrome-devtools_* MCP tools attach to a separate external browser and
+			// can't see the in-app preview, so the Playground agent must never use them.
+			excludeTools: ["chrome-devtools_*", "verify_implementation"],
 			abortSignal: abortController.signal,
 		});
 

@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { agents, agentTools } from "../../db/schema";
 import { fileOpsTools } from "./file-ops";
 import { shellTools } from "./shell";
-import { communicationTools } from "./communication";
+import { communicationTools, createCommunicationTools } from "./communication";
 import { notesTools } from "./notes";
 import { kanbanTools, createKanbanTools } from "./kanban";
 import { gitTools } from "./git";
@@ -110,16 +110,34 @@ export async function getToolsForAgent(agentName: string): Promise<Record<string
 		agentKanbanTools[name] = entry.tool;
 	}
 
-	// Try to load per-agent tool configuration from the DB
+	// Look up the agent's display name once — used to label the request_human_input
+	// dialog with WHO is asking. Falls back to the internal name if not found.
+	let displayName = agentName;
+	let agentId: string | null = null;
 	try {
 		const agentRows = await db
-			.select({ id: agents.id })
+			.select({ id: agents.id, displayName: agents.displayName })
 			.from(agents)
 			.where(eq(agents.name, agentName))
 			.limit(1);
-
 		if (agentRows.length > 0) {
-			const agentId = agentRows[0].id;
+			agentId = agentRows[0].id;
+			if (agentRows[0].displayName) displayName = agentRows[0].displayName;
+		}
+	} catch {
+		/* fall through — displayName stays as agentName */
+	}
+
+	// Agent-bound communication tools (request_human_input) carry the display name
+	// and per-agent timeout, overlaid the same way as the kanban tools.
+	const agentCommunicationTools: Record<string, Tool> = {};
+	for (const [name, entry] of Object.entries(createCommunicationTools(agentName, displayName))) {
+		agentCommunicationTools[name] = entry.tool;
+	}
+
+	// Try to load per-agent tool configuration from the DB
+	try {
+		if (agentId !== null) {
 			const toolRows = await db
 				.select({ toolName: agentTools.toolName, isEnabled: agentTools.isEnabled })
 				.from(agentTools)
@@ -134,8 +152,9 @@ export async function getToolsForAgent(agentName: string): Promise<Record<string
 				const result: Record<string, Tool> = {};
 				for (const [name, entry] of Object.entries(toolRegistry)) {
 					if (enabledTools.has(name)) {
-						// Use agent-specific kanban tool if available (has actorId baked in)
-						result[name] = agentKanbanTools[name] ?? entry.tool;
+						// Use the agent-bound kanban/communication tools when available
+						// (they carry actorId / display name + per-agent timeout).
+						result[name] = agentKanbanTools[name] ?? agentCommunicationTools[name] ?? entry.tool;
 					}
 				}
 				toolConfigCache.set(agentName, result);
@@ -146,8 +165,8 @@ export async function getToolsForAgent(agentName: string): Promise<Record<string
 		// Fall through to returning all tools if DB query fails
 	}
 
-	// Default: return all tools with agent-specific kanban tools overlaid
-	const allTools = { ...getAllTools(), ...agentKanbanTools };
+	// Default: return all tools with the agent-bound kanban + communication tools overlaid
+	const allTools = { ...getAllTools(), ...agentKanbanTools, ...agentCommunicationTools };
 	toolConfigCache.set(agentName, allTools);
 	return allTools;
 }

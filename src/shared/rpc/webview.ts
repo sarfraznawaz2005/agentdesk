@@ -108,6 +108,11 @@ export type WebviewSchema = RPCSchema<{
       timestamp: string;
     };
 
+    // Auto-close a stale question dialog (the agent timed out waiting and moved on)
+    userQuestionCancel: {
+      requestId: string;
+    };
+
     // Inline agent execution — message parts streaming
     partCreated: {
       conversationId: string;

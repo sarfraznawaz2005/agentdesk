@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 258
-**Symbols:** 1955
+**Files:** 259
+**Symbols:** 1958
 
 ## Files
 
@@ -261,8 +261,11 @@
 
 ### `src/bun/agents/tools/communication.ts`
 
+**Functions:**
+- `createCommunicationTools` (line 13)
+
 **Exports:**
-- `communicationTools` (line 5)
+- `communicationTools` (line 60)
 
 
 ### `src/bun/agents/tools/file-ops.ts`
@@ -355,8 +358,8 @@
 - `registerTools` (line 58)
 - `clearToolCache` (line 79)
 - `getToolsForAgent` (line 100)
-- `getAllTools` (line 158)
-- `getToolDefinitions` (line 169)
+- `getAllTools` (line 177)
+- `getToolDefinitions` (line 188)
 
 
 ### `src/bun/agents/tools/kanban.ts`
@@ -846,11 +849,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 61)
+- `Migration` (line 62)
 
 **Functions:**
-- `runMigrations` (line 113)
-- `ensureRuntimeSchema` (line 175)
+- `runMigrations` (line 115)
+- `ensureRuntimeSchema` (line 177)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1171,6 +1174,15 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v42_request-human-input-backfill.ts`
+
+**Functions:**
+- `run` (line 15)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v4_inline-agents.ts`
 
 **Functions:**
@@ -1290,9 +1302,9 @@
 - `hashAgentDefs` (line 25)
 - `loadBuiltinPromptsHash` (line 31)
 - `saveBuiltinPromptsHash` (line 37)
-- `getDefaultAgentTools` (line 1393)
-- `seedDatabase` (line 1408)
-- `seedAgentTools` (line 1646)
+- `getDefaultAgentTools` (line 1403)
+- `seedDatabase` (line 1418)
+- `seedAgentTools` (line 1656)
 
 
 ### `src/bun/db/summaries.ts`
@@ -1346,11 +1358,11 @@
 - `getShellApprovalMode` (line 315)
 - `installShellApprovalHandler` (line 333)
 - `resolveUserQuestion` (line 388)
-- `askUserQuestion` (line 404)
-- `getOrCreateEngine` (line 433)
+- `askUserQuestion` (line 416)
+- `getOrCreateEngine` (line 459)
 
 **Methods:**
-- `onAgentActivity` (line 585)
+- `onAgentActivity` (line 611)
 
 **Exports:**
 - `engines` (line 19)
@@ -1450,21 +1462,21 @@
 ### `src/bun/freelance/expert/orchestrator.ts`
 
 **Interfaces:**
-- `RunExpertInput` (line 176)
+- `RunExpertInput` (line 177)
 
 **Functions:**
-- `resolveProviderConfig` (line 48)
-- `getPersona` (line 65)
-- `buildThreadTranscript` (line 80)
-- `latestInboundBody` (line 93)
-- `keywordTriage` (line 118)
-- `triageMessage` (line 129)
-- `getSelfUserId` (line 151)
-- `getListingFullDescription` (line 158)
-- `runFreelanceExpert` (line 189)
+- `resolveProviderConfig` (line 49)
+- `getPersona` (line 66)
+- `buildThreadTranscript` (line 81)
+- `latestInboundBody` (line 94)
+- `keywordTriage` (line 119)
+- `triageMessage` (line 130)
+- `getSelfUserId` (line 152)
+- `getListingFullDescription` (line 159)
+- `runFreelanceExpert` (line 190)
 
 **Exports:**
-- `getJobByThread` (line 353)
+- `getJobByThread` (line 354)
 
 
 ### `src/bun/freelance/expert/tools.ts`
@@ -2805,12 +2817,12 @@
 - `getAgentsList` (line 29)
 - `updateAgent` (line 57)
 - `resetAgent` (line 102)
-- `createAgent` (line 140)
-- `deleteAgent` (line 207)
-- `getAgentToolsList` (line 225)
-- `setAgentToolsList` (line 237)
-- `getAllToolDefinitions` (line 267)
-- `resetAgentToolsToDefaults` (line 274)
+- `createAgent` (line 142)
+- `deleteAgent` (line 209)
+- `getAgentToolsList` (line 227)
+- `setAgentToolsList` (line 239)
+- `getAllToolDefinitions` (line 269)
+- `resetAgentToolsToDefaults` (line 276)
 
 
 ### `src/bun/rpc/analytics.ts`
