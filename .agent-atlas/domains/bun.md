@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 257
-**Symbols:** 1946
+**Symbols:** 1948
 
 ## Files
 
@@ -200,11 +200,13 @@
 - `buildDirectToolsSection` (line 610)
 - `buildSkillsDescriptionSection` (line 640)
 - `buildPMMcpSection` (line 688)
-- `buildAgentMcpSection` (line 714)
-- `isFeatureBranchWorkflowEnabled` (line 733)
-- `getPMSystemPrompt` (line 781)
-- `loadPluginPrompts` (line 992)
-- `getAgentSystemPrompt` (line 1017)
+- `buildAgentMcpSection` (line 726)
+- `mcpHasChromeDevtools` (line 750)
+- `buildBrowserToolingSection` (line 809)
+- `isFeatureBranchWorkflowEnabled` (line 815)
+- `getPMSystemPrompt` (line 863)
+- `loadPluginPrompts` (line 1074)
+- `getAgentSystemPrompt` (line 1099)
 
 
 ### `src/bun/agents/review-cycle.ts`

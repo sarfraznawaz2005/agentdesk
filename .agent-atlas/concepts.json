@@ -146,13 +146,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 714,
+      "line": 726,
       "symbol": "buildAgentMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1017,
+      "line": 1099,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -1994,13 +1994,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 781,
+      "line": 863,
       "symbol": "getPMSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1017,
+      "line": 1099,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -3784,13 +3784,13 @@
   "system": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 781,
+      "line": 863,
       "symbol": "getPMSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1017,
+      "line": 1099,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -8020,7 +8020,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 992,
+      "line": 1074,
       "symbol": "loadPluginPrompts",
       "type": "function"
     },
@@ -9112,7 +9112,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 733,
+      "line": 815,
       "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     },
@@ -10286,6 +10286,12 @@
       "file": "skills/xlsx/scripts/recalc.py",
       "line": 32,
       "symbol": "has_gtimeout",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 750,
+      "symbol": "mcpHasChromeDevtools",
       "type": "function"
     },
     {
@@ -21956,8 +21962,14 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 714,
+      "line": 726,
       "symbol": "buildAgentMcpSection",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 809,
+      "symbol": "buildBrowserToolingSection",
       "type": "function"
     },
     {
@@ -27110,7 +27122,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 992,
+      "line": 1074,
       "symbol": "loadPluginPrompts",
       "type": "function"
     },
@@ -27766,13 +27778,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 781,
+      "line": 863,
       "symbol": "getPMSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1017,
+      "line": 1099,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -31078,8 +31090,14 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 714,
+      "line": 726,
       "symbol": "buildAgentMcpSection",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 809,
+      "symbol": "buildBrowserToolingSection",
       "type": "function"
     },
     {
@@ -31444,8 +31462,14 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 714,
+      "line": 726,
       "symbol": "buildAgentMcpSection",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 750,
+      "symbol": "mcpHasChromeDevtools",
       "type": "function"
     },
     {
@@ -31572,7 +31596,7 @@
   "feature": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 733,
+      "line": 815,
       "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     },
@@ -31604,7 +31628,7 @@
   "branch": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 733,
+      "line": 815,
       "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     },
@@ -31738,7 +31762,7 @@
   "prompts": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 992,
+      "line": 1074,
       "symbol": "loadPluginPrompts",
       "type": "function"
     },
@@ -47663,62 +47687,6 @@
       "type": "function"
     }
   ],
-  "subsystem": [
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 109,
-      "symbol": "checkDatabaseSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 164,
-      "symbol": "checkAiProviderSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 205,
-      "symbol": "checkWorkspaceSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 238,
-      "symbol": "checkSchedulerSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 256,
-      "symbol": "checkIntegrationsSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 291,
-      "symbol": "checkEnginesSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 320,
-      "symbol": "checkBackendSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/pages/settings/health.tsx",
-      "line": 131,
-      "symbol": "SubsystemCardProps",
-      "type": "interface"
-    },
-    {
-      "file": "src/mainview/pages/settings/health.tsx",
-      "line": 139,
-      "symbol": "SubsystemCard",
-      "type": "function"
-    }
-  ],
   "integrations": [
     {
       "file": "src/bun/rpc/health.ts",
@@ -47743,20 +47711,6 @@
       "line": 11,
       "symbol": "IntegrationsRequests",
       "type": "type"
-    }
-  ],
-  "backend": [
-    {
-      "file": "src/bun/rpc/health.ts",
-      "line": 320,
-      "symbol": "checkBackendSubsystem",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/pages/settings/health.tsx",
-      "line": 413,
-      "symbol": "BackendCard",
-      "type": "function"
     }
   ],
   "search": [
@@ -53413,6 +53367,12 @@
   ],
   "chrome": [
     {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 750,
+      "symbol": "mcpHasChromeDevtools",
+      "type": "function"
+    },
+    {
       "file": "src/bun/agents/tools/screenshot.ts",
       "line": 32,
       "symbol": "findChrome",
@@ -53482,14 +53442,6 @@
       "file": "src/bun/freelance/expert/jobs.ts",
       "line": 169,
       "symbol": "setDeliveryApproved",
-      "type": "function"
-    }
-  ],
-  "mandatory": [
-    {
-      "file": "src/bun/agents/tools/skills.ts",
-      "line": 14,
-      "symbol": "extractMandatoryFiles",
       "type": "function"
     }
   ],
@@ -55659,14 +55611,6 @@
       "line": 73,
       "symbol": "ParsedEmailConfig",
       "type": "interface"
-    }
-  ],
-  "uptime": [
-    {
-      "file": "src/mainview/pages/settings/health.tsx",
-      "line": 110,
-      "symbol": "formatUptime",
-      "type": "function"
     }
   ],
   "prettify": [
@@ -58691,66 +58635,6 @@
       "type": "function"
     }
   ],
-  "city": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 46,
-      "symbol": "cityFromTimezone",
-      "type": "function"
-    }
-  ],
-  "knowledge": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 100,
-      "symbol": "loadAgentKnowledgeListing",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 132,
-      "symbol": "isAgentKnowledgeUpdateEnabled",
-      "type": "function"
-    }
-  ],
-  "sentence": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 217,
-      "symbol": "extractFirstSentence",
-      "type": "function"
-    }
-  ],
-  "instructions": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 448,
-      "symbol": "clearWorkspaceInstructionsCache",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 456,
-      "symbol": "loadWorkspaceInstructions",
-      "type": "function"
-    }
-  ],
-  "direct": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 610,
-      "symbol": "buildDirectToolsSection",
-      "type": "function"
-    }
-  ],
-  "workflow": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 733,
-      "symbol": "isFeatureBranchWorkflowEnabled",
-      "type": "function"
-    }
-  ],
   "runtime": [
     {
       "file": "src/bun/db/migrate.ts",
@@ -60203,14 +60087,6 @@
       "type": "export"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 328,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "persona": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
@@ -60286,6 +60162,184 @@
       "file": "src/mainview/components/freelance/settings-tab.tsx",
       "line": 117,
       "symbol": "CurrencyCombobox",
+      "type": "function"
+    }
+  ],
+  "city": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 46,
+      "symbol": "cityFromTimezone",
+      "type": "function"
+    }
+  ],
+  "knowledge": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 100,
+      "symbol": "loadAgentKnowledgeListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 132,
+      "symbol": "isAgentKnowledgeUpdateEnabled",
+      "type": "function"
+    }
+  ],
+  "sentence": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 217,
+      "symbol": "extractFirstSentence",
+      "type": "function"
+    }
+  ],
+  "instructions": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 448,
+      "symbol": "clearWorkspaceInstructionsCache",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 456,
+      "symbol": "loadWorkspaceInstructions",
+      "type": "function"
+    }
+  ],
+  "direct": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 610,
+      "symbol": "buildDirectToolsSection",
+      "type": "function"
+    }
+  ],
+  "devtools": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 750,
+      "symbol": "mcpHasChromeDevtools",
+      "type": "function"
+    }
+  ],
+  "browser": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 809,
+      "symbol": "buildBrowserToolingSection",
+      "type": "function"
+    }
+  ],
+  "tooling": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 809,
+      "symbol": "buildBrowserToolingSection",
+      "type": "function"
+    }
+  ],
+  "workflow": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 815,
+      "symbol": "isFeatureBranchWorkflowEnabled",
+      "type": "function"
+    }
+  ],
+  "subsystem": [
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 109,
+      "symbol": "checkDatabaseSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 164,
+      "symbol": "checkAiProviderSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 205,
+      "symbol": "checkWorkspaceSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 238,
+      "symbol": "checkSchedulerSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 256,
+      "symbol": "checkIntegrationsSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 291,
+      "symbol": "checkEnginesSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 320,
+      "symbol": "checkBackendSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/health.tsx",
+      "line": 131,
+      "symbol": "SubsystemCardProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/pages/settings/health.tsx",
+      "line": 139,
+      "symbol": "SubsystemCard",
+      "type": "function"
+    }
+  ],
+  "backend": [
+    {
+      "file": "src/bun/rpc/health.ts",
+      "line": 320,
+      "symbol": "checkBackendSubsystem",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/settings/health.tsx",
+      "line": 413,
+      "symbol": "BackendCard",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 328,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "mandatory": [
+    {
+      "file": "src/bun/agents/tools/skills.ts",
+      "line": 14,
+      "symbol": "extractMandatoryFiles",
+      "type": "function"
+    }
+  ],
+  "uptime": [
+    {
+      "file": "src/mainview/pages/settings/health.tsx",
+      "line": 110,
+      "symbol": "formatUptime",
       "type": "function"
     }
   ]

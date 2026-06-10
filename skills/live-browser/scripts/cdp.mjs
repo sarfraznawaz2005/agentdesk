@@ -1,17 +1,22 @@
 #!/usr/bin/env node
-// cdp - lightweight Chrome DevTools Protocol CLI
+// cdp - lightweight Chrome DevTools Protocol CLI (drives Chrome/Edge/Brave)
 // Uses raw CDP over WebSocket, no Puppeteer dependency.
-// Requires Node 22+ (built-in WebSocket).
+// Requires Node 21+ (built-in WebSocket + fetch).
+//
+// Connects to a browser started by the live-browser launcher (launch.mjs) via
+// the port it persisted (live-browser.port), discovered over HTTP
+// /json/version. Falls back to DevToolsActivePort discovery for an
+// externally-launched debug browser.
 //
 // Per-tab persistent daemon: page commands go through a daemon that holds
-// the CDP session open. Chrome's "Allow debugging" modal fires once per
-// daemon (= once per tab). Daemons auto-exit after 20min idle.
+// the CDP session open. Daemons auto-exit after 20min idle.
 
 import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { homedir } from 'os';
 import { resolve } from 'path';
 import { spawn } from 'child_process';
 import net from 'net';
+import { readPort, wsUrlFromPort } from './lib.mjs';
 
 const TIMEOUT = 15000;
 const NAVIGATION_TIMEOUT = 30000;
@@ -35,7 +40,10 @@ function sockPath(targetId) {
     : resolve(RUNTIME_DIR, `cdp-${targetId}.sock`);
 }
 
-function getWsUrl() {
+// Legacy fallback: read a DevToolsActivePort file from a known browser profile
+// location and build the browser ws URL directly. Kept for users who already run
+// a debug-enabled browser outside the launcher. Returns null if none found.
+function wsUrlFromActivePortFile(host) {
   const home = homedir();
   // macOS: ~/Library/Application Support/<name>/DevToolsActivePort
   const macBrowsers = [
@@ -80,11 +88,45 @@ function getWsUrl() {
     }) : []),
   ].filter(Boolean);
   const portFile = candidates.find(p => existsSync(p));
-  if (!portFile) throw new Error('No DevToolsActivePort found. Enable remote debugging at chrome://inspect/#remote-debugging');
+  if (!portFile) return null;
   const lines = readFileSync(portFile, 'utf8').trim().split('\n');
   if (lines.length < 2 || !lines[0] || !lines[1]) throw new Error(`Invalid DevToolsActivePort file: ${portFile}`);
-  const host = process.env.CDP_HOST || '127.0.0.1';
   return `ws://${host}:${lines[0]}${lines[1]}`;
+}
+
+// Resolve the browser-level CDP WebSocket URL. Resolution order:
+//   1. CDP_URL env  — explicit ws:// URL
+//   2. CDP_PORT env — HTTP /json/version on that port
+//   3. persisted launcher port (live-browser.port) — HTTP /json/version
+//   4. DevToolsActivePort file discovery (legacy, externally-launched browser)
+// Note: we deliberately do NOT probe the conventional 9222, so we never hijack a
+// foreign debug browser (chrome-devtools-mcp etc.). The launcher persists its
+// port; that is the source of truth.
+async function getWsUrl() {
+  const host = process.env.CDP_HOST || '127.0.0.1';
+
+  if (process.env.CDP_URL) return process.env.CDP_URL;
+
+  const ports = [];
+  if (process.env.CDP_PORT) {
+    const p = parseInt(process.env.CDP_PORT, 10);
+    if (Number.isInteger(p)) ports.push(p);
+  } else {
+    const persisted = readPort();
+    if (persisted) ports.push(persisted);
+  }
+  for (const p of ports) {
+    try { return await wsUrlFromPort(p, host); } catch {}
+  }
+
+  const fromFile = wsUrlFromActivePortFile(host);
+  if (fromFile) return fromFile;
+
+  throw new Error(
+    `No live browser found${ports.length ? ` on port ${ports.join('/')}` : ''}. ` +
+    `Start one first:  node "<skill>/scripts/launch.mjs"  ` +
+    `(pass --browser edge or --port N to choose a browser/port).`
+  );
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -488,9 +530,9 @@ async function runDaemon(targetId) {
 
   const cdp = new CDP();
   try {
-    await cdp.connect(getWsUrl());
+    await cdp.connect(await getWsUrl());
   } catch (e) {
-    process.stderr.write(`Daemon: cannot connect to Chrome: ${e.message}\n`);
+    process.stderr.write(`Daemon: cannot connect to browser: ${e.message}\n`);
     process.exit(1);
   }
 
@@ -627,19 +669,21 @@ async function getOrStartTabDaemon(targetId) {
   // Clean stale socket
   if (!IS_WINDOWS) try { unlinkSync(sp); } catch {}
 
-  // Spawn daemon
+  // Spawn daemon. cwd = RUNTIME_DIR (not the caller's dir): the daemon is
+  // detached and long-lived, and a running process locks its cwd on Windows.
   const child = spawn(process.execPath, [process.argv[1], '_daemon', targetId], {
     detached: true,
     stdio: 'ignore',
+    cwd: RUNTIME_DIR,
   });
   child.unref();
 
-  // Wait for socket (includes time for user to click Allow)
+  // Wait for the daemon's IPC socket to come up
   for (let i = 0; i < DAEMON_CONNECT_RETRIES; i++) {
     await sleep(DAEMON_CONNECT_DELAY);
     try { return await connectToSocket(sp); } catch {}
   }
-  throw new Error('Daemon failed to start — did you click Allow in Chrome?');
+  throw new Error('Daemon failed to start — is the live browser still running? Re-run the launcher: node scripts/launch.mjs');
 }
 
 function sendCommand(conn, req) {
@@ -791,7 +835,7 @@ async function main() {
 
   if (cmd === 'list' || cmd === 'ls') {
     const cdp = new CDP();
-    await cdp.connect(getWsUrl());
+    await cdp.connect(await getWsUrl());
     const pages = await getPages(cdp);
     cdp.close();
     writeFileSync(PAGES_CACHE, JSON.stringify(pages), { mode: 0o600 });
@@ -804,7 +848,7 @@ async function main() {
   if (cmd === 'open') {
     const url = args[0] || 'about:blank';
     const cdp = new CDP();
-    await cdp.connect(getWsUrl());
+    await cdp.connect(await getWsUrl());
     const { targetId } = await cdp.send('Target.createTarget', { url });
     // Refresh cache; new tab may not appear in getTargets immediately, so add it manually
     const pages = await getPages(cdp);

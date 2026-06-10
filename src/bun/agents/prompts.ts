@@ -695,6 +695,17 @@ async function buildPMMcpSection(): Promise<string> {
 			.filter(([name, cfg]) => !cfg.disabled && status[name] === "connected")
 			.map(([name]) => `- **${name}**`);
 		if (active.length === 0) return "";
+
+		// When chrome-devtools MCP is connected and the live-browser skill exists,
+		// remind the PM to route browser tasks to the right tool when delegating.
+		const browserChoiceNote =
+			(await mcpHasChromeDevtools()) && skillRegistry.getByName("live-browser")
+				? [
+						"",
+						"**Browser tasks — choose the right tool when delegating.** chrome-devtools MCP is an *automation* browser: sites can detect it as a bot and it carries no saved logins. The `live-browser` skill drives the user's REAL, logged-in browser (no automation flags, sessions persist). If a browser task needs the user's login or an existing session, or targets a site that blocks bots (e.g. Gmail/Google, banking, social), instruct the sub-agent to use the `live-browser` skill. For throwaway inspection, scraping public pages, performance/network debugging, or automation-friendly sites, chrome-devtools MCP is fine.",
+					]
+				: [];
+
 		return [
 			"\n## MCP Tools (Sub-Agent Only)",
 			"",
@@ -702,6 +713,7 @@ async function buildPMMcpSection(): Promise<string> {
 			...active,
 			"",
 			"When the user asks you to use an MCP tool (e.g. chrome-devtools, browser automation), dispatch the appropriate sub-agent (e.g. `debugging-specialist` or `frontend_engineer`) and describe the task. The sub-agent has direct access to those tools.",
+			...browserChoiceNote,
 		].join("\n");
 	} catch {
 		return "";
@@ -728,6 +740,76 @@ export async function buildAgentMcpSection(excludePrefixes: string[] = []): Prom
 	} catch {
 		return "";
 	}
+}
+
+/**
+ * True if chrome-devtools MCP tools are connected AND available to this agent
+ * (i.e. not removed by excludePrefixes). Tolerant of server-name variants like
+ * "chrome-devtools", "chrome_devtools", "chromeDevtools".
+ */
+async function mcpHasChromeDevtools(excludePrefixes: string[] = []): Promise<boolean> {
+	try {
+		const { getMcpTools } = await import("../mcp/client");
+		const tools = getMcpTools();
+		return Object.keys(tools).some(
+			(n) => !excludePrefixes.some((p) => n.startsWith(p)) && /chrome.?devtools/i.test(n),
+		);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Decision guidance shown to an agent that has BOTH the live-browser skill and
+ * chrome-devtools MCP, so it can choose the right browser tool when the user
+ * didn't say which. The whole point: chrome-devtools is an automation browser
+ * (bot-detectable, no saved logins); live-browser drives the user's real,
+ * logged-in session and looks human.
+ */
+const BROWSER_TOOLING_GUIDANCE = [
+	"## Browser tooling — `live-browser` skill vs chrome-devtools MCP",
+	"",
+	"You can drive a web browser TWO ways. They are not interchangeable — pick",
+	"deliberately. If the user did not specify, decide using the rules below.",
+	"",
+	"**`live-browser` skill** — load with `read_skill(\"live-browser\")`.",
+	"- Drives a REAL Chrome/Edge/Brave with a persistent, logged-in profile and NO",
+	"  automation flags: `navigator.webdriver` is false and there is no \"controlled",
+	"  by automated test software\" banner, so sites treat it as an ordinary human.",
+	"- Strengths: works on sites that block bots; keeps the user logged in across",
+	"  runs (cookies/sessions persist); ideal for anything behind a sign-in.",
+	"- Costs: a separate dedicated browser window; driven via shell/CLI (read the",
+	"  skill for commands), so a little more setup than direct tool calls.",
+	"",
+	"**chrome-devtools MCP** — the `chrome-devtools_*` tools.",
+	"- Direct tool calls (screenshot, click, navigate, evaluate, performance traces,",
+	"  network/console inspection) against a Chromium instance it controls.",
+	"- Strengths: fast structured tool calls; best for performance profiling,",
+	"  network/console debugging, and automating sites that don't fight automation.",
+	"- Costs: it IS an automation browser — `navigator.webdriver` is true and it",
+	"  shows the automation banner, so bot-detecting sites (Gmail/Google, banking,",
+	"  social networks) often block or challenge it. It does NOT carry the user's",
+	"  existing login session.",
+	"",
+	"**How to choose:**",
+	"- Needs the user's existing login or an authenticated session — e.g. \"log into",
+	"  my Gmail and …\", \"check my dashboard\", anything behind a sign-in → **live-browser**.",
+	"- Target site is known to block bots or shows CAPTCHAs / \"unusual traffic\" → **live-browser**.",
+	"- Throwaway inspection, scraping a public page, a performance trace, network/",
+	"  console debugging, or automating a dev/test site → **chrome-devtools MCP**.",
+	"- Unsure and the task touches a real user account or a major consumer site →",
+	"  prefer **live-browser** (being blocked mid-task is worse than a little setup).",
+].join("\n");
+
+/**
+ * Browser-tooling decision section — only emitted when the agent actually has
+ * BOTH the live-browser skill and chrome-devtools MCP available (otherwise the
+ * comparison would be noise).
+ */
+async function buildBrowserToolingSection(excludePrefixes: string[] = []): Promise<string> {
+	if (!skillRegistry.getByName("live-browser")) return "";
+	if (!(await mcpHasChromeDevtools(excludePrefixes))) return "";
+	return BROWSER_TOOLING_GUIDANCE;
 }
 
 async function isFeatureBranchWorkflowEnabled(projectId?: string): Promise<boolean> {
@@ -1039,13 +1121,14 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	if (agentName === "playground-agent" || agentName === "issue-fixer") {
 		// Playground hides chrome-devtools_* from its toolset; Issue Fixer keeps them.
 		const excludeMcpPrefixes = agentName === "playground-agent" ? ["chrome-devtools_"] : [];
-		const [userProfile, mcpSection] = await Promise.all([
+		const [userProfile, mcpSection, browserGuidance] = await Promise.all([
 			loadUserProfile(),
 			buildAgentMcpSection(excludeMcpPrefixes),
+			buildBrowserToolingSection(excludeMcpPrefixes),
 		]);
 		const userSection = buildUserSection(userProfile);
 		const skillsSection = buildSkillsDescriptionSection(false); // no agent-routing/delegation rules
-		return [basePrompt, userSection, skillsSection, mcpSection]
+		return [basePrompt, userSection, skillsSection, mcpSection, browserGuidance]
 			.filter(Boolean)
 			.map((s) => s.trim())
 			.filter(Boolean)
@@ -1116,6 +1199,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	const skillsSection = buildSkillsDescriptionSection();
 
 	const mcpSection = await buildAgentMcpSection();
+	const browserGuidance = await buildBrowserToolingSection();
 
 	const featureBranchInstruction = featureBranchEnabled && !isReadOnly
 		? `\n## Feature Branch Workflow\n\nThis project uses a feature branch workflow. Auto-commit will handle switching to the correct feature branch when your task is complete. Your only responsibility: **never commit directly to main or master**. Use \`git_status\` to check the current branch before committing if you commit manually.`
@@ -1131,6 +1215,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		protocol,
 		skillsSection,
 		mcpSection,
+		browserGuidance,
 		featureBranchInstruction,
 		workspaceInstructions ? `## Project-Specific Context\n\nThe following instructions were loaded from the project workspace and MUST be followed:\n\n${workspaceInstructions}` : "",
 		decisionsContent ? `## Architectural Decisions\n\nThe following decisions were logged by previous agents in DECISIONS.md. **Read before making any design choice.**\n\n${decisionsContent}` : "",
