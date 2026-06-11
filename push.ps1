@@ -14,10 +14,10 @@ $MAX_DIFF_CHARS = 8000              # truncate large diffs to stay within token 
 $COMMIT_PATTERN = '^(feat|fix|docs|chore|refactor|test|perf|ci|build|style|revert)(\(.+\))?: .{3,97}$'
 
 # ─── Output helpers ───────────────────────────────────────────────────────────
-function Write-Section { param([string]$m); Write-Host; Write-Host " $m " -ForegroundColor Black -BackgroundColor Cyan;   Write-Host }
-function Write-Ok      { param([string]$m); Write-Host; Write-Host " $m " -ForegroundColor Black -BackgroundColor Green;  Write-Host }
-function Write-Warn    { param([string]$m); Write-Host; Write-Host " $m " -ForegroundColor Black -BackgroundColor Yellow; Write-Host }
-function Write-Fail    { param([string]$m); Write-Host; Write-Host " $m " -ForegroundColor White -BackgroundColor Red;    Write-Host }
+function Write-Section { param([string]$m); Write-Host; Write-Host "`e[30;46m $m `e[0m"; Write-Host }
+function Write-Ok      { param([string]$m); Write-Host; Write-Host "`e[30;42m $m `e[0m"; Write-Host }
+function Write-Warn    { param([string]$m); Write-Host; Write-Host "`e[30;43m $m `e[0m"; Write-Host }
+function Write-Fail    { param([string]$m); Write-Host; Write-Host "`e[37;41m $m `e[0m"; Write-Host }
 
 # ─── Repository sanity checks ─────────────────────────────────────────────────
 Write-Section "Checking Repository..."

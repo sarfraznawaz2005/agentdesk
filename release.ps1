@@ -1,6 +1,10 @@
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
+# ─── Configuration ─────────────────────────────────────────────────────────────
+$MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
+$AI_MODEL   = "gpt-4o-mini"
+
 Write-Host ""
 Write-Host "=== AgentDesk Release ===" -ForegroundColor Cyan
 Write-Host ""
@@ -62,10 +66,170 @@ if ($gitStatus) {
     }
 }
 
+# ── Generate release notes via GitHub Models API ─────────────────────────────
+Write-Host ""
+Write-Host "Generating release notes..." -ForegroundColor Cyan
+
+$notesPath  = Join-Path $ScriptDir "release-notes.json"
+$skipNotes  = $false
+$aiEntry    = $null
+
+# Collect commits since the last tag (or all commits if no tag exists)
+$lastTag = git describe --tags --abbrev=0 2>$null
+$commitRange = if ($lastTag) { "$lastTag..HEAD" } else { "HEAD" }
+$commits = @(git log $commitRange --pretty=format:"%s" 2>$null | Where-Object { $_ -ne "" })
+
+if ($commits.Count -eq 0) {
+    Write-Host "  No commits found since last tag — skipping AI notes." -ForegroundColor Yellow
+    $skipNotes = $true
+}
+
+if (-not $skipNotes) {
+    # Load GITHUB_TOKEN
+    $token = $env:GITHUB_TOKEN
+    if (-not $token) { $token = [Environment]::GetEnvironmentVariable("GITHUB_TOKEN", "User") }
+
+    if (-not $token) {
+        Write-Host "  GITHUB_TOKEN not set — skipping AI notes. Edit release-notes.json manually." -ForegroundColor Yellow
+        $skipNotes = $true
+    }
+}
+
+if (-not $skipNotes) {
+    $rangeLabel = if ($lastTag) { "since $lastTag" } else { "all commits" }
+    Write-Host "  $($commits.Count) commit(s) $rangeLabel → asking AI..." -ForegroundColor DarkGray
+
+    $commitList = $commits -join "`n"
+
+    $systemPrompt = @"
+You are writing release notes for AgentDesk, an AI-powered desktop development platform used by software developers.
+
+Given a list of git commit messages, produce a concise release notes entry for end users.
+
+INCLUDE (user-facing):
+- feat: / feature: — new features or capabilities
+- fix: / bugfix: — bug fixes that affect users
+- perf: — performance improvements users notice
+- ui: / ux: — interface and experience improvements
+
+DISCARD (dev-internal, never mention to users):
+- chore:, ci:, build:, test:, refactor:, style:, revert: commits
+- Dependency/package version bumps
+- Dev scripts, tooling, CI configuration
+- Release commits ("chore: release vX.Y.Z")
+- Internal refactors with no user-visible effect
+
+RULES:
+1. Group related commits into a single bullet — do not repeat nearly-identical items
+2. Write from the USER's perspective: what they can DO or what WORKS BETTER now
+3. Use plain English. No commit hashes, PR numbers, file names, or technical jargon
+4. Maximum 8 bullet points
+5. Write a short title (3–7 words) capturing the overall theme of the release
+6. If there are NO user-facing changes at all, return {"title":null,"changes":[]}
+
+Return ONLY valid JSON — no markdown, no explanation:
+{"title":"...","changes":["...","..."]}
+"@
+
+    $body = @{
+        model           = $AI_MODEL
+        messages        = @(
+            @{ role = "system"; content = $systemPrompt }
+            @{ role = "user";   content = "Commits:`n$commitList" }
+        )
+        response_format = @{ type = "json_object" }
+        temperature     = 0.3
+        max_tokens      = 700
+    } | ConvertTo-Json -Depth 5 -Compress
+
+    $headers = @{
+        Authorization  = "Bearer $token"
+        "Content-Type" = "application/json"
+    }
+
+    $attempt  = 0
+    $backoff  = @(5, 15, 30)
+    $maxTries = 3
+
+    while ($attempt -lt $maxTries) {
+        try {
+            $resp    = Invoke-RestMethod -Uri $MODELS_URL -Method POST -Headers $headers -Body $body -TimeoutSec 30
+            $content = $resp.choices[0].message.content.Trim()
+            $parsed  = $content | ConvertFrom-Json
+
+            if ($null -eq $parsed.title -or $parsed.changes.Count -eq 0) {
+                Write-Host "  AI found no user-facing changes in these commits." -ForegroundColor Yellow
+                $skipNotes = $true
+            } else {
+                $aiEntry = $parsed
+            }
+            break
+        } catch {
+            $attempt++
+            $status = $_.Exception.Response.StatusCode.value__
+            if ($status -eq 401 -or $status -eq 403) {
+                Write-Host "  API auth error ($status) — check GITHUB_TOKEN. Skipping AI notes." -ForegroundColor Red
+                $skipNotes = $true
+                break
+            }
+            if ($attempt -lt $maxTries) {
+                $wait = $backoff[$attempt - 1]
+                if ($status -eq 429) { $wait *= 2 }
+                Write-Host "  API error (attempt $attempt) — retrying in ${wait}s..." -ForegroundColor Yellow
+                Start-Sleep -Seconds $wait
+            } else {
+                Write-Host "  AI notes failed after $maxTries attempts. Skipping. Edit release-notes.json manually." -ForegroundColor Yellow
+                $skipNotes = $true
+            }
+        }
+    }
+}
+
+if ($aiEntry) {
+    # Show the draft
+    Write-Host ""
+    Write-Host "  Draft release notes for v$newVersion" -ForegroundColor Green
+    Write-Host "  Title  : $($aiEntry.title)" -ForegroundColor White
+    foreach ($c in $aiEntry.changes) {
+        Write-Host "    • $c" -ForegroundColor DarkGray
+    }
+    Write-Host ""
+
+    # Offer inline edit or accept
+    $editChoice = Read-Host "  Open release-notes.json to review/edit before committing? (y/N)"
+
+    # Build the new entry
+    $newEntry = [PSCustomObject]@{
+        version = $newVersion
+        title   = $aiEntry.title
+        changes = $aiEntry.changes
+    }
+
+    # Load existing notes, remove any stale entry for this version, prepend new one
+    $existing = if (Test-Path $notesPath) {
+        @(Get-Content $notesPath -Raw | ConvertFrom-Json | Where-Object { $_.version -ne $newVersion })
+    } else { @() }
+
+    $updated = @($newEntry) + $existing
+    # ConvertTo-Json -Depth 5 produces pretty JSON; ensure UTF-8 without BOM
+    $json = $updated | ConvertTo-Json -Depth 5
+    [System.IO.File]::WriteAllText($notesPath, $json, [System.Text.UTF8Encoding]::new($false))
+
+    if ($editChoice -match '^[Yy]$') {
+        $editor = if (Get-Command code -ErrorAction SilentlyContinue) { "code" }
+                  elseif (Get-Command notepad++ -ErrorAction SilentlyContinue) { "notepad++" }
+                  else { "notepad" }
+        & $editor $notesPath
+        Write-Host "  Edit and save, then press Enter to continue..." -ForegroundColor Yellow
+        $null = Read-Host
+    }
+
+    Write-Host "  release-notes.json updated." -ForegroundColor Green
+}
+
+Write-Host ""
+
 # ── Update version in package.json ──────────────────────────────────────────
-# Match the existing version by semver pattern (not $currentVersion) so the
-# replace works even if the file had drifted out of sync, and fail loudly if
-# nothing matched instead of silently leaving a stale version behind.
 Write-Host "Updating package.json..." -ForegroundColor Cyan
 $pkgRaw = Get-Content "package.json" -Raw
 $pkgNew = $pkgRaw -replace '("version":\s*")\d+\.\d+\.\d+', ('${1}' + $newVersion)
@@ -90,7 +254,7 @@ Write-Host "  electrobun.config.ts updated to v$newVersion" -ForegroundColor Gre
 # ── Git commit ───────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "Committing..." -ForegroundColor Cyan
-git add package.json electrobun.config.ts
+git add package.json electrobun.config.ts release-notes.json
 if ($gitStatus) {
     git add -A
 }
