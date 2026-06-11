@@ -1,5 +1,20 @@
 [
   {
+    "version": "2.0.0",
+    "title": "Auto-Earn — AI handles your Freelancer.com inbox",
+    "changes": [
+      "Auto-Earn: AI can now automatically reply to client messages and submit bids on Freelancer.com",
+      "Assisted mode — AI drafts every reply and bid, you review and click Send",
+      "Full-auto mode — AI sends autonomously within your configured limits (opt-in, requires explicit confirmation)",
+      "Smart triage — payments, contracts, off-platform requests, and scope disputes are always routed to you, never auto-replied",
+      "Governor limits — hourly message caps, daily bid budgets, and active-hours windows keep behaviour within safe bounds",
+      "Humanizer built in — all AI-written messages are stripped of AI patterns and special characters so they read like you wrote them",
+      "Anomaly protection — Auto-Earn pauses automatically if the platform returns rate limits or suspicious responses",
+      "Escalation inbox — important situations surface as notifications via desktop and your connected channels (Discord, WhatsApp, Email)",
+      "Earnings dashboard — track bids sent, replies made, and jobs in progress from the Freelance tab"
+    ]
+  },
+  {
     "version": "1.4.4",
     "title": "Freelance improvements, Humanizer skill & more",
     "changes": [
