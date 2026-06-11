@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.0.2",
+        "title":  "Enhanced Freelance Features",
+        "changes":  [
+                        "Improved chat and proposal features with new quick starts and caching enhancements for a smoother experience."
+                    ]
+    },
+    {
         "version":  "2.0.1",
         "title":  "Enhanced Client Filtering Options",
         "changes":  [
