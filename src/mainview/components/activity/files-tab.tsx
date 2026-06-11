@@ -541,7 +541,7 @@ export const FilesTab = forwardRef<FilesTabHandle, FilesTabProps>(function Files
               {selectedFile?.node.name ?? (isLoadingFile ? "Loading..." : "Error")}
             </DialogTitle>
             {selectedFile && (
-              <p className="text-[10px] text-muted-foreground/60 font-mono mt-0.5">
+              <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                 {selectedFile.node.path}
               </p>
             )}

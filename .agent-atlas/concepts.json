@@ -24320,7 +24320,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1011,
+      "line": 1012,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -28284,7 +28284,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 997,
+      "line": 998,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -30574,7 +30574,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1011,
+      "line": 1012,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -31438,7 +31438,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1230,
+      "line": 1231,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -33320,7 +33320,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 991,
+      "line": 992,
       "symbol": "startWizard",
       "type": "function"
     },
@@ -39130,7 +39130,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1317,
+      "line": 1318,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -47710,13 +47710,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 991,
+      "line": 992,
       "symbol": "startWizard",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 997,
+      "line": 998,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -47754,7 +47754,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1230,
+      "line": 1231,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -47800,13 +47800,13 @@
   "shortlist": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1011,
+      "line": 1012,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1317,
+      "line": 1318,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -60829,70 +60829,6 @@
       "type": "function"
     }
   ],
-  "obviously": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 86,
-      "symbol": "isObviouslyNonSoftware",
-      "type": "function"
-    }
-  ],
-  "non": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 86,
-      "symbol": "isObviouslyNonSoftware",
-      "type": "function"
-    }
-  ],
-  "software": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 86,
-      "symbol": "isObviouslyNonSoftware",
-      "type": "function"
-    }
-  ],
-  "blocks": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 140,
-      "symbol": "skillGateBlocks",
-      "type": "function"
-    }
-  ],
-  "norm": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 151,
-      "symbol": "norm",
-      "type": "function"
-    }
-  ],
-  "coerce": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 521,
-      "symbol": "coerceVerdict",
-      "type": "function"
-    }
-  ],
-  "workability": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 597,
-      "symbol": "analyzeListingWorkability",
-      "type": "function"
-    }
-  ],
-  "newlines": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 727,
-      "symbol": "normalizeNewlines",
-      "type": "function"
-    }
-  ],
   "channels": [
     {
       "file": "src/bun/db/schema.ts",
@@ -60992,6 +60928,70 @@
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
       "line": 394,
       "symbol": "onFetching",
+      "type": "function"
+    }
+  ],
+  "obviously": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 86,
+      "symbol": "isObviouslyNonSoftware",
+      "type": "function"
+    }
+  ],
+  "non": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 86,
+      "symbol": "isObviouslyNonSoftware",
+      "type": "function"
+    }
+  ],
+  "software": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 86,
+      "symbol": "isObviouslyNonSoftware",
+      "type": "function"
+    }
+  ],
+  "blocks": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 140,
+      "symbol": "skillGateBlocks",
+      "type": "function"
+    }
+  ],
+  "norm": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 151,
+      "symbol": "norm",
+      "type": "function"
+    }
+  ],
+  "coerce": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 521,
+      "symbol": "coerceVerdict",
+      "type": "function"
+    }
+  ],
+  "workability": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 597,
+      "symbol": "analyzeListingWorkability",
+      "type": "function"
+    }
+  ],
+  "newlines": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 727,
+      "symbol": "normalizeNewlines",
       "type": "function"
     }
   ]

@@ -3168,11 +3168,11 @@
 - `normalizeNewlines` (line 727)
 - `isCacheValid` (line 741)
 - `runWizard` (line 751)
-- `startWizard` (line 991)
-- `stopWizard` (line 997)
-- `runAutoShortlist` (line 1011)
-- `analyzeListing` (line 1230)
-- `shortlistListings` (line 1317)
+- `startWizard` (line 992)
+- `stopWizard` (line 998)
+- `runAutoShortlist` (line 1012)
+- `analyzeListing` (line 1231)
+- `shortlistListings` (line 1318)
 
 
 ### `src/bun/rpc/freelance.ts`

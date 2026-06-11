@@ -955,10 +955,8 @@ async function runWizard(count: number): Promise<void> {
     if (signal.aborted) {
       broadcastToWebview(FREELANCE_EVENTS.WIZARD_STOPPED, { workableListings, failedListings });
     } else {
-      broadcastToWebview(FREELANCE_EVENTS.WIZARD_COMPLETE, { workableListings, failedListings });
-      // Persist verdicts only after a successful complete run (stopped runs stay
-      // unanalyzed and will be re-examined fresh on the next wizard run).
-      // All writes are done in a single transaction for atomicity.
+      // Persist BEFORE broadcasting complete so the listing cards see the
+      // verdicts in the DB when they reload in response to LISTINGS_UPDATED.
       if (verdictMap.size > 0) {
         const now = new Date().toISOString();
         const stmt = sqlite.prepare(
@@ -970,6 +968,9 @@ async function runWizard(count: number): Promise<void> {
           }
         })();
       }
+      broadcastToWebview(FREELANCE_EVENTS.WIZARD_COMPLETE, { workableListings, failedListings });
+      // Trigger a listings reload so cards immediately show the Analysis badges.
+      broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
     }
   } catch (err) {
     if (isAbortError(err)) {
