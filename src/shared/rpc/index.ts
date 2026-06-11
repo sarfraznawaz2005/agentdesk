@@ -34,6 +34,7 @@ import type { ActivityRequests, UnreadActivityEntry } from "./activity";
 import type { EnvVarsRequests, CustomEnvVar } from "./env-vars";
 import type { RecommendationsRequests, DependencyId, DependencyStatus } from "./recommendations";
 import type { IssuesRequests, IssueSource, ExternalIssue, IssueSourceStatus } from "./issues";
+import type { WhatsNewRequests, ReleaseEntry } from "./whats-new";
 import type { WebviewSchema } from "./webview";
 
 type BunRequests =
@@ -63,7 +64,8 @@ type BunRequests =
   & ActivityRequests
   & EnvVarsRequests
   & RecommendationsRequests
-  & IssuesRequests;
+  & IssuesRequests
+  & WhatsNewRequests;
 
 export type AgentDeskRPC = {
   bun: RPCSchema<{
@@ -123,5 +125,7 @@ export type {
   IssueSource,
   ExternalIssue,
   IssueSourceStatus,
+  WhatsNewRequests,
+  ReleaseEntry,
   WebviewSchema,
 };

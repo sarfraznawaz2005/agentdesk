@@ -11,6 +11,8 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ConnectionStatus } from "@/components/ui/connection-status";
 import { StartupHealthDialog } from "../modals/startup-health-dialog";
 import { UserQuestionDialog } from "../modals/user-question-dialog";
+import { WhatsNewDialog } from "../modals/whats-new-dialog";
+import type { ReleaseEntry } from "../../../shared/rpc/whats-new";
 import { PmChatWidget } from "@/components/dashboard/pm-chat-widget";
 import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-chat-launcher";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
@@ -101,6 +103,7 @@ export function AppShell() {
 }
 
 function AppShellContent() {
+  const [whatsNewEntries, setWhatsNewEntries] = useState<ReleaseEntry[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Tracks the user's saved preference independently of transient focus-mode overrides
   const sidebarDefaultRef = useRef<"collapsed" | "expanded">("expanded");
@@ -236,6 +239,24 @@ function AppShellContent() {
     return () => window.removeEventListener("agentdesk:show-toast", handler);
   }, []);
 
+  // Check for unseen release notes once per session (after a short delay so startup
+  // rendering settles first). Seeds lastSeenVersion silently for existing users.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      rpc.getWhatsNewStatus().then((result) => {
+        // Show "Updated to vX.Y.Z" toast for any upgrade, even with no release notes
+        if (result.didUpdate && result.currentVersion) {
+          toast("success", `AgentDesk updated to v${result.currentVersion} successfully!`);
+        }
+        // Show What's New dialog slightly after the toast so they don't both pop at once
+        if (result.shouldShow && result.entries.length > 0) {
+          setTimeout(() => setWhatsNewEntries(result.entries), result.didUpdate ? 800 : 0);
+        }
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Check for updates silently after the app has fully loaded.
   // Delayed 5 s so it never competes with startup work.
   // Only fires once per session (empty dep array).
@@ -313,6 +334,15 @@ function AppShellContent() {
 
       <StartupHealthDialog />
       <UserQuestionDialog />
+      {whatsNewEntries.length > 0 && (
+        <WhatsNewDialog
+          entries={whatsNewEntries}
+          onClose={() => {
+            setWhatsNewEntries([]);
+            rpc.markWhatsNewSeen().catch(() => {});
+          }}
+        />
+      )}
       {/* Auto-Earn background engine — keeps the freelance Inbox sync + full-auto
           send loop alive on every page (self-gates on the autoearn flag + switch). */}
       <AlwaysMountedInbox />

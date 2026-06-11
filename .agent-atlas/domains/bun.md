@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 259
-**Symbols:** 1964
+**Files:** 260
+**Symbols:** 1969
 
 ## Files
 
@@ -2750,7 +2750,7 @@
 ### `src/bun/rpc-groups/features.ts`
 
 **Exports:**
-- `handlers` (line 13)
+- `handlers` (line 14)
 
 
 ### `src/bun/rpc-groups/git-analytics.ts`
@@ -3622,6 +3622,16 @@
 - `windowsApplySetup` (line 163)
 - `esc` (line 175)
 - `psLog` (line 232)
+
+
+### `src/bun/rpc/whats-new.ts`
+
+**Functions:**
+- `isNewerVersion` (line 8)
+- `getLastSeen` (line 16)
+- `setLastSeen` (line 23)
+- `getWhatsNewStatus` (line 33)
+- `markWhatsNewSeen` (line 71)
 
 
 ### `src/bun/rpc/whatsapp.ts`

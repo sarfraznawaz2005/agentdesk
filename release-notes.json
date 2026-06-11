@@ -1,0 +1,15 @@
+[
+  {
+    "version": "1.4.4",
+    "title": "Freelance improvements, Humanizer skill & more",
+    "changes": [
+      "Sent bids no longer reappear in Drafts & queue after marking as placed",
+      "Listings tab now shows a Bid Placed badge once a proposal has been sent",
+      "New built-in Humanizer skill — instruct any agent to write like a real person, not an AI",
+      "Freelance agents now use humanizer rules automatically so bids avoid AI patterns and special characters",
+      "Agent input dialogs now show the agent name and its color instead of a generic title",
+      "What's New popup — you'll now see a summary of changes after each update"
+    ]
+  }
+]
+

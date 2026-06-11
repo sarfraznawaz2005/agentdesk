@@ -1,4 +1,5 @@
 import * as playgroundRpc from "../rpc/playground";
+import * as whatsNewRpc from "../rpc/whats-new";
 import * as issueFixerRpc from "../rpc/issue-fixer";
 import * as remoteSyncRpc from "../rpc/remote-sync";
 import * as activityRpc from "../rpc/activity";
@@ -124,4 +125,8 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.expert.getJobs": (params) => freelanceExpertRpc.getJobs(params),
 	"freelance.expert.getJobTimeline": (params) => freelanceExpertRpc.getJobTimeline(params),
 	"freelance.expert.getEarnings": () => freelanceExpertRpc.getEarningsSummary(),
+
+	// What's New
+	getWhatsNewStatus: () => whatsNewRpc.getWhatsNewStatus(),
+	markWhatsNewSeen: () => whatsNewRpc.markWhatsNewSeen(),
 };

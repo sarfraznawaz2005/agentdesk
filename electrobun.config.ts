@@ -17,6 +17,7 @@ export default {
 			"assets/icon.ico": "app.ico",
 			"plugins": "plugins",
 			"skills": "skills",
+			"release-notes.json": "release-notes.json",
 			"assets/uninstall.ps1": "uninstall.ps1",
 		},
 		// Ignore Vite output and the React source tree in `electrobun dev --watch`.

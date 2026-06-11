@@ -1,8 +1,8 @@
 # Domain: mainview
 
 **Directory:** `src/mainview`
-**Files:** 167
-**Symbols:** 1432
+**Files:** 168
+**Symbols:** 1434
 
 ## Files
 
@@ -1012,14 +1012,14 @@
 ### `src/mainview/components/layout/app-shell.tsx`
 
 **Functions:**
-- `AppShell` (line 95)
-- `AppShellContent` (line 103)
-- `onSettingChanged` (line 132)
-- `onFocusEnter` (line 138)
-- `onFocusExit` (line 139)
-- `handler` (line 231)
-- `onFocus` (line 251)
-- `onBlur` (line 252)
+- `AppShell` (line 97)
+- `AppShellContent` (line 105)
+- `onSettingChanged` (line 135)
+- `onFocusEnter` (line 141)
+- `onFocusExit` (line 142)
+- `handler` (line 234)
+- `onFocus` (line 272)
+- `onBlur` (line 273)
 
 
 ### `src/mainview/components/layout/project-branch-badge.tsx`
@@ -1118,6 +1118,15 @@
 - `handler` (line 47)
 - `cancelHandler` (line 54)
 - `QuestionForm` (line 98)
+
+
+### `src/mainview/components/modals/whats-new-dialog.tsx`
+
+**Interfaces:**
+- `WhatsNewDialogProps` (line 7)
+
+**Functions:**
+- `WhatsNewDialog` (line 12)
 
 
 ### `src/mainview/components/notes/note-editor.tsx`

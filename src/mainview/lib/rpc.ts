@@ -1231,6 +1231,12 @@ export const rpc = {
   /** Apply the downloaded update and restart the app. */
   applyUpdate: () => electroviewRpc.request.applyUpdate({}),
 
+  /** Check if there are unseen release notes since the last seen version. */
+  getWhatsNewStatus: () => electroviewRpc.request.getWhatsNewStatus({}),
+
+  /** Mark the current version's release notes as seen. */
+  markWhatsNewSeen: () => electroviewRpc.request.markWhatsNewSeen({}),
+
   // ---- Council -------------------------------------------------------------
 
   /** Start a council session with a user query. Returns the session ID immediately. */

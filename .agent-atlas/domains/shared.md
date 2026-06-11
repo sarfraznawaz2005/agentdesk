@@ -1,8 +1,8 @@
 # Domain: shared
 
 **Directory:** `src/shared`
-**Files:** 34
-**Symbols:** 156
+**Files:** 35
+**Symbols:** 160
 
 ## Files
 
@@ -155,59 +155,61 @@
 ### `src/shared/rpc/index.ts`
 
 **Types:**
-- `BunRequests` (line 39)
-- `AgentDeskRPC` (line 68)
+- `BunRequests` (line 40)
+- `AgentDeskRPC` (line 70)
 
 **Exports:**
-- `SettingsRequests` (line 77)
-- `ProvidersRequests` (line 77)
-- `ProjectsRequests` (line 77)
-- `ConversationsRequests` (line 77)
-- `AgentsRequests` (line 77)
-- `KanbanRequests` (line 77)
-- `NotesRequests` (line 77)
-- `DeployRequests` (line 77)
-- `GitRequests` (line 77)
-- `IntegrationsRequests` (line 77)
-- `InboxRequests` (line 77)
-- `AnalyticsRequests` (line 77)
-- `SystemRequests` (line 77)
-- `BunMessages` (line 77)
-- `PluginsRequests` (line 77)
-- `LspRequests` (line 77)
-- `DashboardRequests` (line 77)
-- `SkillsRequests` (line 77)
-- `CouncilRequests` (line 77)
-- `UpdaterRequests` (line 77)
-- `FreelanceRequests` (line 77)
-- `FreelanceListingDto` (line 77)
-- `FreelanceChatMessageDto` (line 77)
-- `FreelanceAccountDto` (line 77)
-- `FreelanceInboxThreadDto` (line 77)
-- `FreelanceInboxMessageDto` (line 77)
-- `PlaygroundRequests` (line 77)
-- `PlaygroundPreviewDto` (line 77)
-- `IssueFixerRequests` (line 77)
-- `IssueFixerConfigDto` (line 77)
-- `IssueFixRunDto` (line 77)
-- `RemoteSyncRequests` (line 77)
-- `RemoteSyncConfigDto` (line 77)
-- `RemoteSyncConfigInput` (line 77)
-- `RemoteSyncRunDto` (line 77)
-- `RemoteEntryDto` (line 77)
-- `PushDiffEntry` (line 77)
-- `ActivityRequests` (line 77)
-- `UnreadActivityEntry` (line 77)
-- `EnvVarsRequests` (line 77)
-- `CustomEnvVar` (line 77)
-- `RecommendationsRequests` (line 77)
-- `DependencyId` (line 77)
-- `DependencyStatus` (line 77)
-- `IssuesRequests` (line 77)
-- `IssueSource` (line 77)
-- `ExternalIssue` (line 77)
-- `IssueSourceStatus` (line 77)
-- `WebviewSchema` (line 77)
+- `SettingsRequests` (line 79)
+- `ProvidersRequests` (line 79)
+- `ProjectsRequests` (line 79)
+- `ConversationsRequests` (line 79)
+- `AgentsRequests` (line 79)
+- `KanbanRequests` (line 79)
+- `NotesRequests` (line 79)
+- `DeployRequests` (line 79)
+- `GitRequests` (line 79)
+- `IntegrationsRequests` (line 79)
+- `InboxRequests` (line 79)
+- `AnalyticsRequests` (line 79)
+- `SystemRequests` (line 79)
+- `BunMessages` (line 79)
+- `PluginsRequests` (line 79)
+- `LspRequests` (line 79)
+- `DashboardRequests` (line 79)
+- `SkillsRequests` (line 79)
+- `CouncilRequests` (line 79)
+- `UpdaterRequests` (line 79)
+- `FreelanceRequests` (line 79)
+- `FreelanceListingDto` (line 79)
+- `FreelanceChatMessageDto` (line 79)
+- `FreelanceAccountDto` (line 79)
+- `FreelanceInboxThreadDto` (line 79)
+- `FreelanceInboxMessageDto` (line 79)
+- `PlaygroundRequests` (line 79)
+- `PlaygroundPreviewDto` (line 79)
+- `IssueFixerRequests` (line 79)
+- `IssueFixerConfigDto` (line 79)
+- `IssueFixRunDto` (line 79)
+- `RemoteSyncRequests` (line 79)
+- `RemoteSyncConfigDto` (line 79)
+- `RemoteSyncConfigInput` (line 79)
+- `RemoteSyncRunDto` (line 79)
+- `RemoteEntryDto` (line 79)
+- `PushDiffEntry` (line 79)
+- `ActivityRequests` (line 79)
+- `UnreadActivityEntry` (line 79)
+- `EnvVarsRequests` (line 79)
+- `CustomEnvVar` (line 79)
+- `RecommendationsRequests` (line 79)
+- `DependencyId` (line 79)
+- `DependencyStatus` (line 79)
+- `IssuesRequests` (line 79)
+- `IssueSource` (line 79)
+- `ExternalIssue` (line 79)
+- `IssueSourceStatus` (line 79)
+- `WhatsNewRequests` (line 79)
+- `ReleaseEntry` (line 79)
+- `WebviewSchema` (line 79)
 
 
 ### `src/shared/rpc/integrations.ts`
@@ -362,6 +364,15 @@
 
 **Types:**
 - `WebviewSchema` (line 3)
+
+
+### `src/shared/rpc/whats-new.ts`
+
+**Interfaces:**
+- `ReleaseEntry` (line 1)
+
+**Types:**
+- `WhatsNewRequests` (line 7)
 
 
 ## Change Recipe
