@@ -46,6 +46,9 @@ const AUTO_EARN_DEFAULTS: FreelanceAutoEarnSettingsDto = {
   bidMinClamp: 0,
   bidMaxClamp: 0,
   bidHourlyRate: 0,
+  clientFilterEnabled: false,
+  clientMinReviews: 1,
+  clientBlockNewDays: 30,
 };
 import { CURRENCIES } from "../../../shared/freelance-currencies";
 import { cn } from "@/lib/utils";

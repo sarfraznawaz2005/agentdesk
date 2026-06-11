@@ -697,16 +697,16 @@
 ### `src/mainview/components/freelance/settings-tab.tsx`
 
 **Interfaces:**
-- `RssSource` (line 57)
-- `ProviderItem` (line 63)
-- `SettingsState` (line 69)
+- `RssSource` (line 60)
+- `ProviderItem` (line 66)
+- `SettingsState` (line 72)
 
 **Functions:**
-- `CurrencyCombobox` (line 117)
-- `handle` (line 141)
-- `SettingsTab` (line 223)
-- `load` (line 241)
-- `formatLastRun` (line 357)
+- `CurrencyCombobox` (line 120)
+- `handle` (line 144)
+- `SettingsTab` (line 226)
+- `load` (line 244)
+- `formatLastRun` (line 360)
 
 
 ### `src/mainview/components/git/branch-list.tsx`

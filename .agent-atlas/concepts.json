@@ -7298,7 +7298,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 69,
+      "line": 72,
       "symbol": "SettingsState",
       "type": "interface"
     },
@@ -8240,7 +8240,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 241,
+      "line": 244,
       "symbol": "load",
       "type": "function"
     },
@@ -16340,7 +16340,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 63,
+      "line": 66,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -20982,7 +20982,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 57,
+      "line": 60,
       "symbol": "RssSource",
       "type": "interface"
     },
@@ -24356,7 +24356,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 357,
+      "line": 360,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -29192,7 +29192,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 141,
+      "line": 144,
       "symbol": "handle",
       "type": "function"
     },
@@ -34400,7 +34400,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 357,
+      "line": 360,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -36374,7 +36374,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 357,
+      "line": 360,
       "symbol": "formatLastRun",
       "type": "function"
     },
@@ -36556,13 +36556,13 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 69,
+      "line": 72,
       "symbol": "SettingsState",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 223,
+      "line": 226,
       "symbol": "SettingsTab",
       "type": "function"
     },
@@ -40344,7 +40344,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 57,
+      "line": 60,
       "symbol": "RssSource",
       "type": "interface"
     }
@@ -40490,7 +40490,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 63,
+      "line": 66,
       "symbol": "ProviderItem",
       "type": "interface"
     },
@@ -43884,7 +43884,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 223,
+      "line": 226,
       "symbol": "SettingsTab",
       "type": "function"
     },
@@ -58038,7 +58038,7 @@
     },
     {
       "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 117,
+      "line": 120,
       "symbol": "CurrencyCombobox",
       "type": "function"
     },
@@ -60143,14 +60143,6 @@
       "type": "function"
     }
   ],
-  "combobox": [
-    {
-      "file": "src/mainview/components/freelance/settings-tab.tsx",
-      "line": 117,
-      "symbol": "CurrencyCombobox",
-      "type": "function"
-    }
-  ],
   "subsystem": [
     {
       "file": "src/bun/rpc/health.ts",
@@ -60865,54 +60857,6 @@
       "type": "function"
     }
   ],
-  "channels": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 274,
-      "symbol": "channels",
-      "type": "export"
-    }
-  ],
-  "whatsapp": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "sessions": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "strategies": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 603,
-      "symbol": "branchStrategies",
-      "type": "export"
-    }
-  ],
-  "budgets": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 624,
-      "symbol": "costBudgets",
-      "type": "export"
-    }
-  ],
-  "accounts": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 722,
-      "symbol": "freelanceAccounts",
-      "type": "export"
-    }
-  ],
   "obviously": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -60974,6 +60918,62 @@
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 727,
       "symbol": "normalizeNewlines",
+      "type": "function"
+    }
+  ],
+  "channels": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 274,
+      "symbol": "channels",
+      "type": "export"
+    }
+  ],
+  "whatsapp": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "sessions": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "strategies": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 603,
+      "symbol": "branchStrategies",
+      "type": "export"
+    }
+  ],
+  "budgets": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 624,
+      "symbol": "costBudgets",
+      "type": "export"
+    }
+  ],
+  "accounts": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 722,
+      "symbol": "freelanceAccounts",
+      "type": "export"
+    }
+  ],
+  "combobox": [
+    {
+      "file": "src/mainview/components/freelance/settings-tab.tsx",
+      "line": 120,
+      "symbol": "CurrencyCombobox",
       "type": "function"
     }
   ]
