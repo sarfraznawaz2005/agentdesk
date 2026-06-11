@@ -5,6 +5,7 @@ import { spawnSync } from "child_process";
 import { db } from "../db";
 import { settings, agents, notes, plugins } from "../db/schema";
 import { skillRegistry } from "../skills/registry";
+import { isFreelanceEnabled } from "../freelance/feature-flag";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -637,8 +638,15 @@ function buildDirectToolsSection(tools: Array<{ name: string; description: strin
  * Lists ALL skill names and one-line descriptions so agents know what's available.
  * Agents load full content on demand via `read_skill`.
  */
+/** Resolve whether a feature gate name maps to an enabled feature. */
+function isFeatureEnabled(feature: string): boolean {
+	if (feature === "freelance") return isFreelanceEnabled();
+	return false;
+}
+
 export function buildSkillsDescriptionSection(includeAgentRules = true): string {
-	const skills = skillRegistry.getAll();
+	// Exclude skills whose feature gate is not currently active.
+	const skills = skillRegistry.getAll().filter((s) => !s.feature || isFeatureEnabled(s.feature));
 	if (skills.length === 0) return "";
 
 	const lines = skills.map((s) => {

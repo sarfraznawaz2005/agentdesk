@@ -134,25 +134,25 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 100,
+      "line": 101,
       "symbol": "loadAgentKnowledgeListing",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 132,
+      "line": 133,
       "symbol": "isAgentKnowledgeUpdateEnabled",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 726,
+      "line": 734,
       "symbol": "buildAgentMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1099,
+      "line": 1107,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -460,6 +460,12 @@
       "file": "src/mainview/components/dashboard/custom-agent-chat-widget.tsx",
       "line": 144,
       "symbol": "CustomAgentChatWidget",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 35,
+      "symbol": "buildAgentLabel",
       "type": "function"
     },
     {
@@ -1170,7 +1176,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 243,
+      "line": 250,
       "symbol": "loadAllSkills",
       "type": "function"
     },
@@ -1268,7 +1274,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 223,
+      "line": 224,
       "symbol": "buildAgentsSection",
       "type": "function"
     },
@@ -1600,7 +1606,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 180,
+      "line": 187,
       "symbol": "resolveSkillName",
       "type": "function"
     },
@@ -1992,13 +1998,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 863,
+      "line": 871,
       "symbol": "getPMSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1099,
+      "line": 1107,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -2298,7 +2304,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 40,
+      "line": 42,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -2328,25 +2334,25 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 67,
+      "line": 66,
       "symbol": "getPersona",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 153,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 160,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 355,
+      "line": 354,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -2363,8 +2369,14 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/humanizer-prompt.ts",
+      "line": 23,
+      "symbol": "getHumanizerRules",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 111,
+      "line": 113,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -2976,7 +2988,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 144,
+      "line": 155,
       "symbol": "getListingCounts",
       "type": "function"
     },
@@ -3402,25 +3414,25 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 7,
+      "line": 14,
       "symbol": "getSkills",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 20,
+      "line": 27,
       "symbol": "getSkill",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 41,
+      "line": 48,
       "symbol": "getSkillsDirectory",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 88,
+      "line": 95,
       "symbol": "getAvailableTools",
       "type": "function"
     },
@@ -3794,13 +3806,13 @@
   "system": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 863,
+      "line": 871,
       "symbol": "getPMSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1099,
+      "line": 1107,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -3814,6 +3826,18 @@
       "file": "src/bun/engine-manager.ts",
       "line": 97,
       "symbol": "getSystemActivity",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 21,
+      "symbol": "buildProposalSystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 21,
+      "symbol": "buildStrategistSystem",
       "type": "function"
     },
     {
@@ -5592,13 +5616,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 58,
+      "line": 60,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 122,
+      "line": 124,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
@@ -5690,7 +5714,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -5708,13 +5732,13 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 50,
+      "line": 49,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -5840,13 +5864,13 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 180,
+      "line": 187,
       "symbol": "resolveSkillName",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 336,
+      "line": 343,
       "symbol": "resolveSkillContent",
       "type": "function"
     },
@@ -6420,13 +6444,13 @@
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 35,
+      "line": 47,
       "symbol": "handler",
       "type": "function"
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 42,
+      "line": 54,
       "symbol": "cancelHandler",
       "type": "function"
     },
@@ -6482,25 +6506,25 @@
   "user": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 29,
+      "line": 30,
       "symbol": "loadUserTimezone",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "loadUserProfile",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 77,
+      "line": 78,
       "symbol": "buildUserSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 90,
+      "line": 91,
       "symbol": "buildUserProfileSection",
       "type": "function"
     },
@@ -6518,7 +6542,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 153,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -6548,7 +6572,7 @@
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 27,
+      "line": 39,
       "symbol": "UserQuestionDialog",
       "type": "function"
     },
@@ -6586,13 +6610,13 @@
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 27,
+      "line": 39,
       "symbol": "UserQuestionDialog",
       "type": "function"
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 86,
+      "line": 98,
       "symbol": "QuestionForm",
       "type": "function"
     },
@@ -7394,13 +7418,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 97,
+      "line": 99,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     }
@@ -7480,7 +7504,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 491,
+      "line": 492,
       "symbol": "loadDecisionsFile",
       "type": "function"
     },
@@ -7726,7 +7750,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 77,
+      "line": 83,
       "symbol": "parseSkillFile",
       "type": "function"
     },
@@ -8006,43 +8030,43 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 13,
+      "line": 14,
       "symbol": "loadConstitution",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 29,
+      "line": 30,
       "symbol": "loadUserTimezone",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "loadUserProfile",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 100,
+      "line": 101,
       "symbol": "loadAgentKnowledgeListing",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 456,
+      "line": 457,
       "symbol": "loadWorkspaceInstructions",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 491,
+      "line": 492,
       "symbol": "loadDecisionsFile",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1074,
+      "line": 1082,
       "symbol": "loadPluginPrompts",
       "type": "function"
     },
@@ -8084,7 +8108,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 55,
+      "line": 57,
       "symbol": "loadThreadContext",
       "type": "function"
     },
@@ -8120,13 +8144,13 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 217,
+      "line": 224,
       "symbol": "loadSupportingFiles",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 243,
+      "line": 250,
       "symbol": "loadAllSkills",
       "type": "function"
     },
@@ -8880,7 +8904,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 191,
+      "line": 190,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -9018,67 +9042,67 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "FreelanceAccountDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 58,
+      "line": 60,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 97,
+      "line": 99,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 109,
+      "line": 111,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 122,
+      "line": 124,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 134,
+      "line": 136,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 147,
+      "line": 149,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 164,
+      "line": 166,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 174,
+      "line": 176,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -9140,13 +9164,19 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 132,
+      "line": 133,
       "symbol": "isAgentKnowledgeUpdateEnabled",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 815,
+      "line": 642,
+      "symbol": "isFeatureEnabled",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 823,
       "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     },
@@ -10324,7 +10354,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 750,
+      "line": 758,
       "symbol": "mcpHasChromeDevtools",
       "type": "function"
     },
@@ -11258,7 +11288,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 131,
+      "line": 130,
       "symbol": "triageMessage",
       "type": "function"
     },
@@ -11642,7 +11672,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 122,
+      "line": 124,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
@@ -11900,13 +11930,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 546,
+      "line": 547,
       "symbol": "buildProjectContextSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 579,
+      "line": 580,
       "symbol": "buildProjectContext",
       "type": "function"
     },
@@ -13074,7 +13104,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 46,
+      "line": 47,
       "symbol": "cityFromTimezone",
       "type": "function"
     },
@@ -14096,7 +14126,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 509,
+      "line": 510,
       "symbol": "buildGitContext",
       "type": "function"
     },
@@ -14592,13 +14622,13 @@
   "workspace": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 448,
+      "line": 449,
       "symbol": "clearWorkspaceInstructionsCache",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 456,
+      "line": 457,
       "symbol": "loadWorkspaceInstructions",
       "type": "function"
     },
@@ -15102,7 +15132,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "buildConversationText",
       "type": "function"
     },
@@ -15332,7 +15362,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 448,
+      "line": 449,
       "symbol": "clearWorkspaceInstructionsCache",
       "type": "function"
     },
@@ -15824,7 +15854,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 48,
+      "line": 50,
       "symbol": "draftBidForListing",
       "type": "function"
     },
@@ -15842,7 +15872,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 119,
+      "line": 121,
       "symbol": "draftReplyForThread",
       "type": "function"
     },
@@ -16064,13 +16094,13 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 50,
+      "line": 49,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -16082,7 +16112,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -16758,7 +16788,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 355,
+      "line": 354,
       "symbol": "getJobByThread",
       "type": "export"
     },
@@ -16932,7 +16962,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 147,
+      "line": 149,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
@@ -17340,13 +17370,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 55,
+      "line": 56,
       "symbol": "loadUserProfile",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 90,
+      "line": 91,
       "symbol": "buildUserProfileSection",
       "type": "function"
     },
@@ -17954,7 +17984,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 119,
+      "line": 121,
       "symbol": "draftReplyForThread",
       "type": "function"
     },
@@ -18120,7 +18150,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 153,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -18720,7 +18750,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 336,
+      "line": 343,
       "symbol": "resolveSkillContent",
       "type": "function"
     },
@@ -19072,13 +19102,13 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -19530,7 +19560,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 160,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -19902,7 +19932,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 217,
+      "line": 218,
       "symbol": "extractFirstSentence",
       "type": "function"
     },
@@ -19944,7 +19974,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 193,
+      "line": 200,
       "symbol": "extractFirstParagraph",
       "type": "function"
     },
@@ -20024,7 +20054,7 @@
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 86,
+      "line": 98,
       "symbol": "QuestionForm",
       "type": "function"
     },
@@ -20722,7 +20752,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 77,
+      "line": 83,
       "symbol": "parseSkillFile",
       "type": "function"
     },
@@ -21064,13 +21094,13 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 41,
+      "line": 48,
       "symbol": "getSkillsDirectory",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 49,
+      "line": 55,
       "symbol": "scanSkillsDirectory",
       "type": "function"
     }
@@ -21182,13 +21212,13 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 217,
+      "line": 224,
       "symbol": "loadSupportingFiles",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 227,
+      "line": 234,
       "symbol": "collectFiles",
       "type": "function"
     },
@@ -21244,7 +21274,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 132,
+      "line": 133,
       "symbol": "isAgentKnowledgeUpdateEnabled",
       "type": "function"
     },
@@ -21879,6 +21909,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 35,
+      "symbol": "buildAgentLabel",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/ui/dropdown-menu.tsx",
       "line": 182,
       "symbol": "DropdownMenuLabel",
@@ -21984,67 +22020,67 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 77,
+      "line": 78,
       "symbol": "buildUserSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 90,
+      "line": 91,
       "symbol": "buildUserProfileSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 223,
+      "line": 224,
       "symbol": "buildAgentsSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 509,
+      "line": 510,
       "symbol": "buildGitContext",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 546,
+      "line": 547,
       "symbol": "buildProjectContextSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 579,
+      "line": 580,
       "symbol": "buildProjectContext",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 610,
+      "line": 611,
       "symbol": "buildDirectToolsSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 640,
+      "line": 647,
       "symbol": "buildSkillsDescriptionSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 688,
+      "line": 696,
       "symbol": "buildPMMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 726,
+      "line": 734,
       "symbol": "buildAgentMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 809,
+      "line": 817,
       "symbol": "buildBrowserToolingSection",
       "type": "function"
     },
@@ -22097,8 +22133,14 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 21,
+      "symbol": "buildProposalSystem",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 82,
+      "line": 81,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
@@ -22110,7 +22152,13 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 71,
+      "line": 21,
+      "symbol": "buildStrategistSystem",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 73,
       "symbol": "buildConversationText",
       "type": "function"
     },
@@ -22244,6 +22292,12 @@
       "file": "src/mainview/components/freelance/listing-card.tsx",
       "line": 84,
       "symbol": "buildBudgetDisplay",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/modals/user-question-dialog.tsx",
+      "line": 35,
+      "symbol": "buildAgentLabel",
       "type": "function"
     },
     {
@@ -24032,13 +24086,13 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 178,
+      "line": 177,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 191,
+      "line": 190,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -25468,7 +25522,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 156,
+      "line": 157,
       "symbol": "filterConstitution",
       "type": "function"
     },
@@ -25560,7 +25614,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 610,
+      "line": 611,
       "symbol": "buildDirectToolsSection",
       "type": "function"
     },
@@ -25776,7 +25830,7 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 88,
+      "line": 95,
       "symbol": "getAvailableTools",
       "type": "function"
     },
@@ -26148,7 +26202,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 71,
+      "line": 73,
       "symbol": "buildConversationText",
       "type": "function"
     },
@@ -26868,19 +26922,19 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 509,
+      "line": 510,
       "symbol": "buildGitContext",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 546,
+      "line": 547,
       "symbol": "buildProjectContextSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 579,
+      "line": 580,
       "symbol": "buildProjectContext",
       "type": "function"
     },
@@ -26898,7 +26952,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 55,
+      "line": 57,
       "symbol": "loadThreadContext",
       "type": "function"
     },
@@ -27222,7 +27276,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1074,
+      "line": 1082,
       "symbol": "loadPluginPrompts",
       "type": "function"
     },
@@ -27878,13 +27932,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 863,
+      "line": 871,
       "symbol": "getPMSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1099,
+      "line": 1107,
       "symbol": "getAgentSystemPrompt",
       "type": "function"
     },
@@ -30186,7 +30240,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 245,
+      "line": 256,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -30466,7 +30520,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     }
@@ -30744,7 +30798,7 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 448,
+      "line": 449,
       "symbol": "clearWorkspaceInstructionsCache",
       "type": "function"
     },
@@ -30806,7 +30860,7 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 36,
+      "line": 43,
       "symbol": "refreshSkills",
       "type": "function"
     },
@@ -31016,13 +31070,13 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 45,
+      "line": 52,
       "symbol": "openSkillsFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 64,
+      "line": 71,
       "symbol": "openSkillInEditor",
       "type": "function"
     },
@@ -31090,13 +31144,13 @@
   "constitution": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 13,
+      "line": 14,
       "symbol": "loadConstitution",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 156,
+      "line": 157,
       "symbol": "filterConstitution",
       "type": "function"
     },
@@ -31116,13 +31170,13 @@
   "timezone": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 29,
+      "line": 30,
       "symbol": "loadUserTimezone",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 46,
+      "line": 47,
       "symbol": "cityFromTimezone",
       "type": "function"
     },
@@ -31148,55 +31202,55 @@
   "section": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 77,
+      "line": 78,
       "symbol": "buildUserSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 90,
+      "line": 91,
       "symbol": "buildUserProfileSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 223,
+      "line": 224,
       "symbol": "buildAgentsSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 546,
+      "line": 547,
       "symbol": "buildProjectContextSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 610,
+      "line": 611,
       "symbol": "buildDirectToolsSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 640,
+      "line": 647,
       "symbol": "buildSkillsDescriptionSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 688,
+      "line": 696,
       "symbol": "buildPMMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 726,
+      "line": 734,
       "symbol": "buildAgentMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 809,
+      "line": 817,
       "symbol": "buildBrowserToolingSection",
       "type": "function"
     },
@@ -31252,19 +31306,19 @@
   "listing": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 100,
+      "line": 101,
       "symbol": "loadAgentKnowledgeListing",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 48,
+      "line": 50,
       "symbol": "draftBidForListing",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 160,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -31282,7 +31336,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 90,
+      "line": 92,
       "symbol": "listingBrief",
       "type": "function"
     },
@@ -31300,25 +31354,25 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 144,
+      "line": 155,
       "symbol": "getListingCounts",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 168,
+      "line": 179,
       "symbol": "markListingDone",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 196,
+      "line": 207,
       "symbol": "deleteListing",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 266,
+      "line": 277,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -31360,13 +31414,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 31,
+      "line": 33,
       "symbol": "WizardWorkableListing",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 40,
+      "line": 42,
       "symbol": "WizardFailedListing",
       "type": "interface"
     },
@@ -31398,13 +31452,13 @@
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 217,
+      "line": 218,
       "symbol": "extractFirstSentence",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 193,
+      "line": 200,
       "symbol": "extractFirstParagraph",
       "type": "function"
     }
@@ -31412,7 +31466,7 @@
   "decisions": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 491,
+      "line": 492,
       "symbol": "loadDecisionsFile",
       "type": "function"
     },
@@ -31426,7 +31480,7 @@
   "skills": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 640,
+      "line": 647,
       "symbol": "buildSkillsDescriptionSection",
       "type": "function"
     },
@@ -31438,37 +31492,37 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 7,
+      "line": 14,
       "symbol": "getSkills",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 36,
+      "line": 43,
       "symbol": "refreshSkills",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 41,
+      "line": 48,
       "symbol": "getSkillsDirectory",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 45,
+      "line": 52,
       "symbol": "openSkillsFolder",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 49,
+      "line": 55,
       "symbol": "scanSkillsDirectory",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 243,
+      "line": 250,
       "symbol": "loadAllSkills",
       "type": "function"
     },
@@ -31500,13 +31554,13 @@
   "description": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 640,
+      "line": 647,
       "symbol": "buildSkillsDescriptionSection",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 160,
+      "line": 159,
       "symbol": "getListingFullDescription",
       "type": "function"
     },
@@ -31568,19 +31622,19 @@
   "mcp": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 688,
+      "line": 696,
       "symbol": "buildPMMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 726,
+      "line": 734,
       "symbol": "buildAgentMcpSection",
       "type": "function"
     },
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 750,
+      "line": 758,
       "symbol": "mcpHasChromeDevtools",
       "type": "function"
     },
@@ -31708,7 +31762,13 @@
   "feature": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 815,
+      "line": 642,
+      "symbol": "isFeatureEnabled",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 823,
       "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     },
@@ -31740,7 +31800,7 @@
   "branch": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 815,
+      "line": 823,
       "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     },
@@ -31874,7 +31934,7 @@
   "prompts": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 1074,
+      "line": 1082,
       "symbol": "loadPluginPrompts",
       "type": "function"
     },
@@ -32272,7 +32332,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 97,
+      "line": 99,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     }
@@ -32422,7 +32482,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 50,
+      "line": 49,
       "symbol": "resolveProviderConfig",
       "type": "function"
     },
@@ -32980,7 +33040,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 82,
+      "line": 81,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
@@ -34518,7 +34578,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 245,
+      "line": 256,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -34882,7 +34942,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 168,
+      "line": 179,
       "symbol": "markListingDone",
       "type": "function"
     },
@@ -36568,7 +36628,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     },
@@ -36836,9 +36896,9 @@
     },
     {
       "file": "src/bun/freelance/humanizer-prompt.ts",
-      "line": 10,
-      "symbol": "HUMANIZER_WRITING_RULES",
-      "type": "export"
+      "line": 23,
+      "symbol": "getHumanizerRules",
+      "type": "function"
     },
     {
       "file": "src/bun/rpc/automation.ts",
@@ -37458,7 +37518,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 174,
+      "line": 176,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -38914,7 +38974,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 223,
+      "line": 234,
       "symbol": "deleteListings",
       "type": "function"
     },
@@ -39464,7 +39524,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 95,
+      "line": 94,
       "symbol": "latestInboundBody",
       "type": "function"
     }
@@ -39556,13 +39616,13 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 196,
+      "line": 207,
       "symbol": "deleteListing",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 223,
+      "line": 234,
       "symbol": "deleteListings",
       "type": "function"
     },
@@ -39658,7 +39718,7 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 84,
+      "line": 91,
       "symbol": "deleteSkill",
       "type": "function"
     },
@@ -40136,7 +40196,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 99,
+      "line": 101,
       "symbol": "OutboxItem",
       "type": "interface"
     },
@@ -40346,7 +40406,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 109,
+      "line": 111,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     }
@@ -40566,61 +40626,61 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "FreelanceAccountDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 58,
+      "line": 60,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 97,
+      "line": 99,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 109,
+      "line": 111,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 122,
+      "line": 124,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 134,
+      "line": 136,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 147,
+      "line": 149,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 164,
+      "line": 166,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     },
@@ -41104,7 +41164,7 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 178,
+      "line": 177,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
@@ -41342,7 +41402,7 @@
   "ctx": [
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 47,
+      "line": 49,
       "symbol": "ThreadCtx",
       "type": "interface"
     },
@@ -41428,7 +41488,7 @@
   "keyword": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 120,
+      "line": 119,
       "symbol": "keywordTriage",
       "type": "function"
     },
@@ -42724,7 +42784,7 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 45,
+      "line": 52,
       "symbol": "openSkillsFolder",
       "type": "function"
     }
@@ -44048,7 +44108,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 49,
+      "line": 55,
       "symbol": "scanSkillsDirectory",
       "type": "function"
     }
@@ -44476,7 +44536,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 134,
+      "line": 141,
       "symbol": "validateSkill",
       "type": "function"
     },
@@ -44538,13 +44598,13 @@
   "model": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 26,
+      "line": 28,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -45404,7 +45464,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 40,
+      "line": 42,
       "symbol": "WizardFailedListing",
       "type": "interface"
     }
@@ -45568,7 +45628,7 @@
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 42,
+      "line": 54,
       "symbol": "cancelHandler",
       "type": "function"
     },
@@ -46216,7 +46276,7 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 267,
+      "line": 274,
       "symbol": "executeBashInjections",
       "type": "function"
     },
@@ -46384,7 +46444,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 168,
+      "line": 179,
       "symbol": "markListingDone",
       "type": "function"
     },
@@ -47430,13 +47490,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 31,
+      "line": 33,
       "symbol": "WizardWorkableListing",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 40,
+      "line": 42,
       "symbol": "WizardFailedListing",
       "type": "interface"
     }
@@ -47534,7 +47594,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 144,
+      "line": 155,
       "symbol": "getListingCounts",
       "type": "function"
     },
@@ -47566,7 +47626,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 266,
+      "line": 277,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -48476,19 +48536,25 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 20,
+      "line": 8,
+      "symbol": "isSkillVisible",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/skills.ts",
+      "line": 27,
       "symbol": "getSkill",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 64,
+      "line": 71,
       "symbol": "openSkillInEditor",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 84,
+      "line": 91,
       "symbol": "deleteSkill",
       "type": "function"
     },
@@ -48506,31 +48572,31 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 32,
+      "line": 37,
       "symbol": "SkillFrontmatter",
       "type": "interface"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 77,
+      "line": 83,
       "symbol": "parseSkillFile",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 134,
+      "line": 141,
       "symbol": "validateSkill",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 180,
+      "line": 187,
       "symbol": "resolveSkillName",
       "type": "function"
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 336,
+      "line": 343,
       "symbol": "resolveSkillContent",
       "type": "function"
     },
@@ -48610,7 +48676,7 @@
   "editor": [
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 64,
+      "line": 71,
       "symbol": "openSkillInEditor",
       "type": "function"
     },
@@ -48684,7 +48750,7 @@
     },
     {
       "file": "src/bun/rpc/skills.ts",
-      "line": 88,
+      "line": 95,
       "symbol": "getAvailableTools",
       "type": "function"
     },
@@ -48693,14 +48759,6 @@
       "line": 35,
       "symbol": "runtimeAvailable",
       "type": "function"
-    }
-  ],
-  "frontmatter": [
-    {
-      "file": "src/bun/skills/loader.ts",
-      "line": 32,
-      "symbol": "SkillFrontmatter",
-      "type": "interface"
     }
   ],
   "paragraph": [
@@ -48724,16 +48782,8 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 193,
+      "line": 200,
       "symbol": "extractFirstParagraph",
-      "type": "function"
-    }
-  ],
-  "supporting": [
-    {
-      "file": "src/bun/skills/loader.ts",
-      "line": 217,
-      "symbol": "loadSupportingFiles",
       "type": "function"
     }
   ],
@@ -48746,40 +48796,8 @@
     },
     {
       "file": "src/bun/skills/loader.ts",
-      "line": 227,
+      "line": 234,
       "symbol": "collectFiles",
-      "type": "function"
-    }
-  ],
-  "bash": [
-    {
-      "file": "src/bun/skills/loader.ts",
-      "line": 267,
-      "symbol": "executeBashInjections",
-      "type": "function"
-    }
-  ],
-  "injections": [
-    {
-      "file": "src/bun/skills/loader.ts",
-      "line": 267,
-      "symbol": "executeBashInjections",
-      "type": "function"
-    }
-  ],
-  "substitute": [
-    {
-      "file": "src/bun/skills/loader.ts",
-      "line": 294,
-      "symbol": "substituteArguments",
-      "type": "function"
-    }
-  ],
-  "arguments": [
-    {
-      "file": "src/bun/skills/loader.ts",
-      "line": 294,
-      "symbol": "substituteArguments",
       "type": "function"
     }
   ],
@@ -49850,7 +49868,7 @@
     },
     {
       "file": "src/mainview/components/modals/user-question-dialog.tsx",
-      "line": 27,
+      "line": 39,
       "symbol": "UserQuestionDialog",
       "type": "function"
     },
@@ -53488,7 +53506,7 @@
   "chrome": [
     {
       "file": "src/bun/agents/prompts.ts",
-      "line": 750,
+      "line": 758,
       "symbol": "mcpHasChromeDevtools",
       "type": "function"
     },
@@ -57926,7 +57944,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 31,
+      "line": 33,
       "symbol": "WizardWorkableListing",
       "type": "interface"
     }
@@ -58774,7 +58792,7 @@
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 99,
+      "line": 101,
       "symbol": "OutboxItem",
       "type": "interface"
     },
@@ -58792,7 +58810,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 109,
+      "line": 111,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     }
@@ -58930,7 +58948,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 75,
+      "line": 77,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     }
@@ -58938,13 +58956,13 @@
   "account": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 40,
+      "line": 42,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 111,
+      "line": 113,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -58962,7 +58980,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 49,
+      "line": 51,
       "symbol": "FreelanceAccountDto",
       "type": "interface"
     },
@@ -58976,13 +58994,13 @@
   "autonomy": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 40,
+      "line": 42,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 111,
+      "line": 113,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -59017,22 +59035,6 @@
       "type": "function"
     }
   ],
-  "humanizer": [
-    {
-      "file": "src/bun/freelance/humanizer-prompt.ts",
-      "line": 10,
-      "symbol": "HUMANIZER_WRITING_RULES",
-      "type": "export"
-    }
-  ],
-  "writing": [
-    {
-      "file": "src/bun/freelance/humanizer-prompt.ts",
-      "line": 10,
-      "symbol": "HUMANIZER_WRITING_RULES",
-      "type": "export"
-    }
-  ],
   "bootstrap": [
     {
       "file": "src/bun/freelance/project-bootstrap.ts",
@@ -59056,31 +59058,31 @@
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 82,
+      "line": 81,
       "symbol": "buildThreadTranscript",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 355,
+      "line": 354,
       "symbol": "getJobByThread",
       "type": "export"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 47,
+      "line": 49,
       "symbol": "ThreadCtx",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 55,
+      "line": 57,
       "symbol": "loadThreadContext",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 119,
+      "line": 121,
       "symbol": "draftReplyForThread",
       "type": "function"
     },
@@ -59110,7 +59112,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 58,
+      "line": 60,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
@@ -59160,7 +59162,7 @@
   "inbound": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 95,
+      "line": 94,
       "symbol": "latestInboundBody",
       "type": "function"
     },
@@ -59212,7 +59214,7 @@
   "self": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 153,
+      "line": 152,
       "symbol": "getSelfUserId",
       "type": "function"
     },
@@ -59395,6 +59397,12 @@
   ],
   "visible": [
     {
+      "file": "src/bun/rpc/skills.ts",
+      "line": 8,
+      "symbol": "isSkillVisible",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/freelance/session-webview-host.ts",
       "line": 126,
       "symbol": "setSessionWebviewVisible",
@@ -59420,7 +59428,7 @@
   "body": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 95,
+      "line": 94,
       "symbol": "latestInboundBody",
       "type": "function"
     },
@@ -59532,13 +59540,13 @@
   "expert": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 178,
+      "line": 177,
       "symbol": "RunExpertInput",
       "type": "interface"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 191,
+      "line": 190,
       "symbol": "runFreelanceExpert",
       "type": "function"
     },
@@ -59590,13 +59598,13 @@
   "draft": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 48,
+      "line": 50,
       "symbol": "draftBidForListing",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 119,
+      "line": 121,
       "symbol": "draftReplyForThread",
       "type": "function"
     },
@@ -59628,7 +59636,7 @@
   "bid": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 48,
+      "line": 50,
       "symbol": "draftBidForListing",
       "type": "function"
     },
@@ -59666,14 +59674,6 @@
       "file": "src/shared/freelance/write-steps.ts",
       "line": 125,
       "symbol": "buildSubmitBidScript",
-      "type": "function"
-    }
-  ],
-  "brief": [
-    {
-      "file": "src/bun/freelance/reply-pipeline.ts",
-      "line": 90,
-      "symbol": "listingBrief",
       "type": "function"
     }
   ],
@@ -59733,22 +59733,6 @@
       "type": "function"
     }
   ],
-  "pricing": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 27,
-      "symbol": "BidPricing",
-      "type": "interface"
-    }
-  ],
-  "dismiss": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 104,
-      "symbol": "dismissStaleBids",
-      "type": "function"
-    }
-  ],
   "stale": [
     {
       "file": "src/bun/rpc/freelance-outbox.ts",
@@ -59788,14 +59772,6 @@
       "file": "src/bun/rpc/freelance-outbox.ts",
       "line": 133,
       "symbol": "recoverInterruptedSends",
-      "type": "function"
-    }
-  ],
-  "prefilled": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 212,
-      "symbol": "markBidPrefilled",
       "type": "function"
     }
   ],
@@ -59844,45 +59820,15 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 97,
+      "line": 99,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
-    }
-  ],
-  "resume": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 414,
-      "symbol": "resumeAutonomy",
-      "type": "function"
-    }
-  ],
-  "heartbeat": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 472,
-      "symbol": "recordEngineHeartbeat",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 481,
-      "symbol": "getEngineHeartbeatMs",
-      "type": "function"
-    }
-  ],
-  "anomaly": [
-    {
-      "file": "src/bun/rpc/freelance-outbox.ts",
-      "line": 513,
-      "symbol": "reportAnomaly",
-      "type": "function"
     }
   ],
   "until": [
@@ -59954,90 +59900,6 @@
       "file": "src/mainview/components/freelance/settings-tab.tsx",
       "line": 117,
       "symbol": "CurrencyCombobox",
-      "type": "function"
-    }
-  ],
-  "city": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 46,
-      "symbol": "cityFromTimezone",
-      "type": "function"
-    }
-  ],
-  "knowledge": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 100,
-      "symbol": "loadAgentKnowledgeListing",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 132,
-      "symbol": "isAgentKnowledgeUpdateEnabled",
-      "type": "function"
-    }
-  ],
-  "sentence": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 217,
-      "symbol": "extractFirstSentence",
-      "type": "function"
-    }
-  ],
-  "instructions": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 448,
-      "symbol": "clearWorkspaceInstructionsCache",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 456,
-      "symbol": "loadWorkspaceInstructions",
-      "type": "function"
-    }
-  ],
-  "direct": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 610,
-      "symbol": "buildDirectToolsSection",
-      "type": "function"
-    }
-  ],
-  "devtools": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 750,
-      "symbol": "mcpHasChromeDevtools",
-      "type": "function"
-    }
-  ],
-  "browser": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 809,
-      "symbol": "buildBrowserToolingSection",
-      "type": "function"
-    }
-  ],
-  "tooling": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 809,
-      "symbol": "buildBrowserToolingSection",
-      "type": "function"
-    }
-  ],
-  "workflow": [
-    {
-      "file": "src/bun/agents/prompts.ts",
-      "line": 815,
-      "symbol": "isFeatureBranchWorkflowEnabled",
       "type": "function"
     }
   ],
@@ -60486,7 +60348,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 134,
+      "line": 136,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     }
@@ -60520,7 +60382,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 164,
+      "line": 166,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     }
@@ -60561,10 +60423,236 @@
       "type": "function"
     }
   ],
+  "metric": [
+    {
+      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
+      "line": 171,
+      "symbol": "Metric",
+      "type": "function"
+    }
+  ],
+  "city": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 47,
+      "symbol": "cityFromTimezone",
+      "type": "function"
+    }
+  ],
+  "knowledge": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 101,
+      "symbol": "loadAgentKnowledgeListing",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 133,
+      "symbol": "isAgentKnowledgeUpdateEnabled",
+      "type": "function"
+    }
+  ],
+  "sentence": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 218,
+      "symbol": "extractFirstSentence",
+      "type": "function"
+    }
+  ],
+  "instructions": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 449,
+      "symbol": "clearWorkspaceInstructionsCache",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 457,
+      "symbol": "loadWorkspaceInstructions",
+      "type": "function"
+    }
+  ],
+  "direct": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 611,
+      "symbol": "buildDirectToolsSection",
+      "type": "function"
+    }
+  ],
+  "devtools": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 758,
+      "symbol": "mcpHasChromeDevtools",
+      "type": "function"
+    }
+  ],
+  "browser": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 817,
+      "symbol": "buildBrowserToolingSection",
+      "type": "function"
+    }
+  ],
+  "tooling": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 817,
+      "symbol": "buildBrowserToolingSection",
+      "type": "function"
+    }
+  ],
+  "workflow": [
+    {
+      "file": "src/bun/agents/prompts.ts",
+      "line": 823,
+      "symbol": "isFeatureBranchWorkflowEnabled",
+      "type": "function"
+    }
+  ],
+  "proposal": [
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 21,
+      "symbol": "buildProposalSystem",
+      "type": "function"
+    }
+  ],
+  "humanizer": [
+    {
+      "file": "src/bun/freelance/humanizer-prompt.ts",
+      "line": 23,
+      "symbol": "getHumanizerRules",
+      "type": "function"
+    }
+  ],
+  "strategist": [
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 21,
+      "symbol": "buildStrategistSystem",
+      "type": "function"
+    }
+  ],
+  "brief": [
+    {
+      "file": "src/bun/freelance/reply-pipeline.ts",
+      "line": 92,
+      "symbol": "listingBrief",
+      "type": "function"
+    }
+  ],
+  "pricing": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 27,
+      "symbol": "BidPricing",
+      "type": "interface"
+    }
+  ],
+  "dismiss": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 104,
+      "symbol": "dismissStaleBids",
+      "type": "function"
+    }
+  ],
+  "prefilled": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 212,
+      "symbol": "markBidPrefilled",
+      "type": "function"
+    }
+  ],
+  "resume": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 414,
+      "symbol": "resumeAutonomy",
+      "type": "function"
+    }
+  ],
+  "heartbeat": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 472,
+      "symbol": "recordEngineHeartbeat",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 481,
+      "symbol": "getEngineHeartbeatMs",
+      "type": "function"
+    }
+  ],
+  "anomaly": [
+    {
+      "file": "src/bun/rpc/freelance-outbox.ts",
+      "line": 513,
+      "symbol": "reportAnomaly",
+      "type": "function"
+    }
+  ],
+  "frontmatter": [
+    {
+      "file": "src/bun/skills/loader.ts",
+      "line": 37,
+      "symbol": "SkillFrontmatter",
+      "type": "interface"
+    }
+  ],
+  "supporting": [
+    {
+      "file": "src/bun/skills/loader.ts",
+      "line": 224,
+      "symbol": "loadSupportingFiles",
+      "type": "function"
+    }
+  ],
+  "bash": [
+    {
+      "file": "src/bun/skills/loader.ts",
+      "line": 274,
+      "symbol": "executeBashInjections",
+      "type": "function"
+    }
+  ],
+  "injections": [
+    {
+      "file": "src/bun/skills/loader.ts",
+      "line": 274,
+      "symbol": "executeBashInjections",
+      "type": "function"
+    }
+  ],
+  "substitute": [
+    {
+      "file": "src/bun/skills/loader.ts",
+      "line": 301,
+      "symbol": "substituteArguments",
+      "type": "function"
+    }
+  ],
+  "arguments": [
+    {
+      "file": "src/bun/skills/loader.ts",
+      "line": 301,
+      "symbol": "substituteArguments",
+      "type": "function"
+    }
+  ],
   "persona": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 67,
+      "line": 66,
       "symbol": "getPersona",
       "type": "function"
     }
@@ -60572,22 +60660,14 @@
   "triage": [
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 120,
+      "line": 119,
       "symbol": "keywordTriage",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/expert/orchestrator.ts",
-      "line": 131,
+      "line": 130,
       "symbol": "triageMessage",
-      "type": "function"
-    }
-  ],
-  "metric": [
-    {
-      "file": "src/mainview/components/freelance/expert-dashboard.tsx",
-      "line": 171,
-      "symbol": "Metric",
       "type": "function"
     }
   ],

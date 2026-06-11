@@ -26,6 +26,8 @@ export interface FreelanceListingDto {
   wizardReason: string | null;
   wizardBlockers: string[] | null;
   wizardAnalysisText: string | null;
+  /** True when a bid for this listing has already been sent (outbox status = 'sent'). */
+  hasBid: boolean;
 }
 
 export interface WizardWorkableListing {

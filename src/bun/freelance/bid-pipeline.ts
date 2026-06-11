@@ -13,15 +13,17 @@ import { sqlite } from "../db/connection";
 import { aiProviders, freelanceListings } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getFreelanceSettings } from "./settings";
-import { HUMANIZER_WRITING_RULES } from "./humanizer-prompt";
+import { getHumanizerRules } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
 import { DRAFT_SIMILARITY_MAX, maxSimilarityAgainst, recentOutboxBodies } from "./similarity";
 import type { OutboxItem } from "./reply-pipeline";
 
-const PROPOSAL_SYSTEM = `You are an experienced freelancer writing a winning proposal (bid) for a job post.
+function buildProposalSystem(): string {
+	return `You are an experienced freelancer writing a winning proposal (bid) for a job post.
 Open by showing you understood the specific job — reference a concrete detail. State briefly how you would approach it and why you are a fit, specifically. Keep it tight: 4 to 8 sentences. End with one clarifying question or a clear next step. Output ONLY the proposal text.
 
-${HUMANIZER_WRITING_RULES}`;
+${getHumanizerRules()}`;
+}
 
 async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string }> {
 	const fl = await getFreelanceSettings();
@@ -61,7 +63,7 @@ export async function draftBidForListing(platform: string, listingId: string): P
 	const { adapter, modelId } = await resolveProviderAndModel();
 	const { text } = await generateText({
 		model: adapter.createModel(modelId),
-		system: PROPOSAL_SYSTEM,
+		system: buildProposalSystem(),
 		prompt,
 		temperature: 0.75,
 	});
@@ -76,7 +78,7 @@ export async function draftBidForListing(platform: string, listingId: string): P
 		try {
 			const { text: retry } = await generateText({
 				model: adapter.createModel(modelId),
-				system: PROPOSAL_SYSTEM,
+				system: buildProposalSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: This proposal must clearly differ in structure and wording from your recent proposals — different opening, different ordering, different phrasing. Anchor it in the specifics of THIS job.`,
 				temperature: 0.9,
 			});

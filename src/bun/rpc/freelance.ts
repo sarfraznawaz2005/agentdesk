@@ -100,6 +100,16 @@ export async function getListings(params: {
 
   const total = totalRows[0]?.count ?? 0;
 
+  // Determine which listings already have a sent bid in the outbox.
+  const sentBidIds = new Set<string>();
+  if (rows.length > 0) {
+    const placeholders = rows.map(() => "?").join(",");
+    const sentBids = sqlite
+      .prepare(`SELECT DISTINCT listing_id FROM freelance_outbox WHERE kind = 'bid' AND status = 'sent' AND listing_id IN (${placeholders})`)
+      .all(...rows.map((r) => r.id)) as { listing_id: string }[];
+    for (const r of sentBids) sentBidIds.add(r.listing_id);
+  }
+
   const listings: FreelanceListingDto[] = rows.map((row) => ({
     id: row.id,
     platform: row.platform,
@@ -135,6 +145,7 @@ export async function getListings(params: {
       try { return row.wizardBlockers ? (JSON.parse(row.wizardBlockers) as string[]) : null; } catch { return null; }
     })(),
     wizardAnalysisText: row.wizardAnalysisText ?? null,
+    hasBid: sentBidIds.has(row.id),
   }));
 
   return { listings, total, page };

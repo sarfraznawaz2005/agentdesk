@@ -3,9 +3,16 @@ import { join } from "path";
 import { existsSync, mkdirSync } from "fs";
 import { skillRegistry } from "../skills/registry";
 import { getToolDefinitions } from "../agents/tools/index";
+import { isFreelanceEnabled } from "../freelance/feature-flag";
+
+function isSkillVisible(s: { hidden: boolean; feature?: string }): boolean {
+	if (s.hidden) return false;
+	if (s.feature === "freelance" && !isFreelanceEnabled()) return false;
+	return true;
+}
 
 export function getSkills() {
-	return skillRegistry.getAll().filter((s) => !s.hidden).map((s) => ({
+	return skillRegistry.getAll().filter(isSkillVisible).map((s) => ({
 		name: s.name,
 		description: s.description,
 		preferredAgent: s.preferredAgent ?? null,

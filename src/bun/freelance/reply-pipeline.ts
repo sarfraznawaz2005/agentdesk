@@ -14,14 +14,16 @@ import { sqlite } from "../db/connection";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getFreelanceSettings } from "./settings";
-import { HUMANIZER_WRITING_RULES } from "./humanizer-prompt";
+import { getHumanizerRules } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
 import { DRAFT_SIMILARITY_MAX, maxSimilarityAgainst, recentOutboxBodies } from "./similarity";
 
-const STRATEGIST_SYSTEM = `You are an experienced freelancer replying to a client on a freelancing platform.
+function buildStrategistSystem(): string {
+	return `You are an experienced freelancer replying to a client on a freelancing platform.
 Write a concise, professional reply to the client's latest message — usually 2 to 6 sentences. Address the client's actual question; if a key detail is missing, ask one specific clarifying question. Do not over-promise on timeline or price unless the context provides them. Output ONLY the reply text — no preamble, no quotes, no signature block.
 
-${HUMANIZER_WRITING_RULES}`;
+${getHumanizerRules()}`;
+}
 
 async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string }> {
 	// Prefer the freelance analysis provider if set, else the default provider.
@@ -126,7 +128,7 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 	const { adapter, modelId } = await resolveProviderAndModel();
 	const { text } = await generateText({
 		model: adapter.createModel(modelId),
-		system: STRATEGIST_SYSTEM,
+		system: buildStrategistSystem(),
 		prompt,
 		temperature: 0.7,
 	});
@@ -141,7 +143,7 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 		try {
 			const { text: retry } = await generateText({
 				model: adapter.createModel(modelId),
-				system: STRATEGIST_SYSTEM,
+				system: buildStrategistSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: Your reply must clearly differ in structure and wording from your recent messages — vary the opening, sentence order, and phrasing.`,
 				temperature: 0.9,
 			});

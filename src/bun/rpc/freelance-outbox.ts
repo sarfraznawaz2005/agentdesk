@@ -157,7 +157,7 @@ export async function list(params: { status?: string }): Promise<{ items: Freela
 			.all(params.status) as Array<Record<string, unknown>>;
 	} else {
 		rows = sqlite
-			.prepare(`SELECT * FROM freelance_outbox WHERE status != 'rejected' ORDER BY created_at DESC LIMIT 200`)
+			.prepare(`SELECT * FROM freelance_outbox WHERE status NOT IN ('rejected','sent') ORDER BY created_at DESC LIMIT 200`)
 			.all() as Array<Record<string, unknown>>;
 	}
 	return { items: rows.map(rowToDto) };

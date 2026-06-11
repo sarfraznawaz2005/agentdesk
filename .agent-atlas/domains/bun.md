@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 259
-**Symbols:** 1960
+**Symbols:** 1964
 
 ## Files
 
@@ -180,33 +180,34 @@
 ### `src/bun/agents/prompts.ts`
 
 **Functions:**
-- `loadConstitution` (line 13)
-- `loadUserTimezone` (line 29)
-- `cityFromTimezone` (line 46)
-- `loadUserProfile` (line 55)
-- `buildUserSection` (line 77)
-- `buildUserProfileSection` (line 90)
-- `loadAgentKnowledgeListing` (line 100)
-- `isAgentKnowledgeUpdateEnabled` (line 132)
-- `filterConstitution` (line 156)
-- `extractFirstSentence` (line 217)
-- `buildAgentsSection` (line 223)
-- `clearWorkspaceInstructionsCache` (line 448)
-- `loadWorkspaceInstructions` (line 456)
-- `loadDecisionsFile` (line 491)
-- `buildGitContext` (line 509)
-- `buildProjectContextSection` (line 546)
-- `buildProjectContext` (line 579)
-- `buildDirectToolsSection` (line 610)
-- `buildSkillsDescriptionSection` (line 640)
-- `buildPMMcpSection` (line 688)
-- `buildAgentMcpSection` (line 726)
-- `mcpHasChromeDevtools` (line 750)
-- `buildBrowserToolingSection` (line 809)
-- `isFeatureBranchWorkflowEnabled` (line 815)
-- `getPMSystemPrompt` (line 863)
-- `loadPluginPrompts` (line 1074)
-- `getAgentSystemPrompt` (line 1099)
+- `loadConstitution` (line 14)
+- `loadUserTimezone` (line 30)
+- `cityFromTimezone` (line 47)
+- `loadUserProfile` (line 56)
+- `buildUserSection` (line 78)
+- `buildUserProfileSection` (line 91)
+- `loadAgentKnowledgeListing` (line 101)
+- `isAgentKnowledgeUpdateEnabled` (line 133)
+- `filterConstitution` (line 157)
+- `extractFirstSentence` (line 218)
+- `buildAgentsSection` (line 224)
+- `clearWorkspaceInstructionsCache` (line 449)
+- `loadWorkspaceInstructions` (line 457)
+- `loadDecisionsFile` (line 492)
+- `buildGitContext` (line 510)
+- `buildProjectContextSection` (line 547)
+- `buildProjectContext` (line 580)
+- `buildDirectToolsSection` (line 611)
+- `isFeatureEnabled` (line 642)
+- `buildSkillsDescriptionSection` (line 647)
+- `buildPMMcpSection` (line 696)
+- `buildAgentMcpSection` (line 734)
+- `mcpHasChromeDevtools` (line 758)
+- `buildBrowserToolingSection` (line 817)
+- `isFeatureBranchWorkflowEnabled` (line 823)
+- `getPMSystemPrompt` (line 871)
+- `loadPluginPrompts` (line 1082)
+- `getAgentSystemPrompt` (line 1107)
 
 
 ### `src/bun/agents/review-cycle.ts`
@@ -1384,9 +1385,10 @@
 ### `src/bun/freelance/bid-pipeline.ts`
 
 **Functions:**
-- `resolveProviderAndModel` (line 26)
-- `getAccountAutonomy` (line 40)
-- `draftBidForListing` (line 48)
+- `buildProposalSystem` (line 21)
+- `resolveProviderAndModel` (line 28)
+- `getAccountAutonomy` (line 42)
+- `draftBidForListing` (line 50)
 
 
 ### `src/bun/freelance/budget.ts`
@@ -1463,21 +1465,21 @@
 ### `src/bun/freelance/expert/orchestrator.ts`
 
 **Interfaces:**
-- `RunExpertInput` (line 178)
+- `RunExpertInput` (line 177)
 
 **Functions:**
-- `resolveProviderConfig` (line 50)
-- `getPersona` (line 67)
-- `buildThreadTranscript` (line 82)
-- `latestInboundBody` (line 95)
-- `keywordTriage` (line 120)
-- `triageMessage` (line 131)
-- `getSelfUserId` (line 153)
-- `getListingFullDescription` (line 160)
-- `runFreelanceExpert` (line 191)
+- `resolveProviderConfig` (line 49)
+- `getPersona` (line 66)
+- `buildThreadTranscript` (line 81)
+- `latestInboundBody` (line 94)
+- `keywordTriage` (line 119)
+- `triageMessage` (line 130)
+- `getSelfUserId` (line 152)
+- `getListingFullDescription` (line 159)
+- `runFreelanceExpert` (line 190)
 
 **Exports:**
-- `getJobByThread` (line 355)
+- `getJobByThread` (line 354)
 
 
 ### `src/bun/freelance/expert/tools.ts`
@@ -1533,8 +1535,8 @@
 
 ### `src/bun/freelance/humanizer-prompt.ts`
 
-**Exports:**
-- `HUMANIZER_WRITING_RULES` (line 10)
+**Functions:**
+- `getHumanizerRules` (line 23)
 
 
 ### `src/bun/freelance/normalizer.ts`
@@ -1570,16 +1572,17 @@
 ### `src/bun/freelance/reply-pipeline.ts`
 
 **Interfaces:**
-- `ThreadCtx` (line 47)
-- `OutboxItem` (line 99)
+- `ThreadCtx` (line 49)
+- `OutboxItem` (line 101)
 
 **Functions:**
-- `resolveProviderAndModel` (line 26)
-- `loadThreadContext` (line 55)
-- `buildConversationText` (line 71)
-- `listingBrief` (line 90)
-- `getAccountAutonomy` (line 111)
-- `draftReplyForThread` (line 119)
+- `buildStrategistSystem` (line 21)
+- `resolveProviderAndModel` (line 28)
+- `loadThreadContext` (line 57)
+- `buildConversationText` (line 73)
+- `listingBrief` (line 92)
+- `getAccountAutonomy` (line 113)
+- `draftReplyForThread` (line 121)
 
 
 ### `src/bun/freelance/rss-fetcher.ts`
@@ -3160,12 +3163,12 @@
 - `saveSettings` (line 29)
 - `getCurrencyRatesHandler` (line 58)
 - `getListings` (line 66)
-- `getListingCounts` (line 144)
-- `markListingDone` (line 168)
-- `deleteListing` (line 196)
-- `deleteListings` (line 223)
-- `triggerFetch` (line 245)
-- `approveListing` (line 266)
+- `getListingCounts` (line 155)
+- `markListingDone` (line 179)
+- `deleteListing` (line 207)
+- `deleteListings` (line 234)
+- `triggerFetch` (line 256)
+- `approveListing` (line 277)
 
 
 ### `src/bun/rpc/git.ts`
@@ -3585,14 +3588,15 @@
 ### `src/bun/rpc/skills.ts`
 
 **Functions:**
-- `getSkills` (line 7)
-- `getSkill` (line 20)
-- `refreshSkills` (line 36)
-- `getSkillsDirectory` (line 41)
-- `openSkillsFolder` (line 45)
-- `openSkillInEditor` (line 64)
-- `deleteSkill` (line 84)
-- `getAvailableTools` (line 88)
+- `isSkillVisible` (line 8)
+- `getSkills` (line 14)
+- `getSkill` (line 27)
+- `refreshSkills` (line 43)
+- `getSkillsDirectory` (line 48)
+- `openSkillsFolder` (line 52)
+- `openSkillInEditor` (line 71)
+- `deleteSkill` (line 91)
+- `getAvailableTools` (line 95)
 
 
 ### `src/bun/rpc/updater-portable.ts`
@@ -3718,20 +3722,20 @@
 **Interfaces:**
 - `SkillValidationError` (line 10)
 - `Skill` (line 15)
-- `SkillFrontmatter` (line 32)
+- `SkillFrontmatter` (line 37)
 
 **Functions:**
-- `scanSkillsDirectory` (line 49)
-- `parseSkillFile` (line 77)
-- `validateSkill` (line 134)
-- `resolveSkillName` (line 180)
-- `extractFirstParagraph` (line 193)
-- `loadSupportingFiles` (line 217)
-- `collectFiles` (line 227)
-- `loadAllSkills` (line 243)
-- `executeBashInjections` (line 267)
-- `substituteArguments` (line 294)
-- `resolveSkillContent` (line 336)
+- `scanSkillsDirectory` (line 55)
+- `parseSkillFile` (line 83)
+- `validateSkill` (line 141)
+- `resolveSkillName` (line 187)
+- `extractFirstParagraph` (line 200)
+- `loadSupportingFiles` (line 224)
+- `collectFiles` (line 234)
+- `loadAllSkills` (line 250)
+- `executeBashInjections` (line 274)
+- `substituteArguments` (line 301)
+- `resolveSkillContent` (line 343)
 
 
 ### `src/bun/skills/registry.ts`

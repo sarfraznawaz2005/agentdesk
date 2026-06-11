@@ -665,29 +665,41 @@ export function FreelanceListingCard({
 
         {/* Create Proposal (bid) — Auto-Earn only, shortlisted listings only: queue an AI proposal */}
         {autoEarnEnabled && isShortlisted && !isClosed && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isDrafting}
-            onClick={async () => {
-              setIsDrafting(true);
-              try {
-                await rpc.freelanceOutboxDraftBid(listing.id);
-                toast("success", "Proposal created — review it in Inbox → Drafts.");
-                // Jump to the Inbox tab where the draft now sits in the queue.
-                window.dispatchEvent(new CustomEvent("agentdesk:freelance-open-inbox"));
-              } catch (err) {
-                toast("error", `Create failed: ${String((err as Error)?.message ?? err)}`);
-              } finally {
-                setIsDrafting(false);
-              }
-            }}
-            className="gap-1.5"
-            aria-label="Create Proposal for listing"
-          >
-            {isDrafting ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-            {isDrafting ? "Creating…" : "Create Proposal"}
-          </Button>
+          listing.hasBid ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled
+              className="gap-1.5 text-green-600 dark:text-green-400 border-green-500/40"
+              aria-label="Bid already placed"
+            >
+              <CheckCircle2 className="size-3.5" />
+              Bid Placed
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isDrafting}
+              onClick={async () => {
+                setIsDrafting(true);
+                try {
+                  await rpc.freelanceOutboxDraftBid(listing.id);
+                  toast("success", "Proposal created — review it in Inbox → Drafts.");
+                  window.dispatchEvent(new CustomEvent("agentdesk:freelance-open-inbox"));
+                } catch (err) {
+                  toast("error", `Create failed: ${String((err as Error)?.message ?? err)}`);
+                } finally {
+                  setIsDrafting(false);
+                }
+              }}
+              className="gap-1.5"
+              aria-label="Create Proposal for listing"
+            >
+              {isDrafting ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+              {isDrafting ? "Creating…" : "Create Proposal"}
+            </Button>
+          )
         )}
 
         {/* Mark Done — visible for all non-closed listings */}

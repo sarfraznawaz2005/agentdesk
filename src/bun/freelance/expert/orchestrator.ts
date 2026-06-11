@@ -27,7 +27,6 @@ import { upsertJobForThread, getJobByThread, logJobAction, listJobFacts, type Fr
 import { listCredentialSummaries } from "./vault";
 import { buildFreelanceExpertTools } from "./tools";
 import { escalateToHuman } from "./notify";
-import { HUMANIZER_WRITING_RULES } from "../humanizer-prompt";
 
 const DEFAULT_PLATFORM = "freelancer";
 const EXCLUDE_TOOLS = [
@@ -287,7 +286,7 @@ export async function runFreelanceExpert(input: RunExpertInput): Promise<{ jobId
 			creds.length ? JSON.stringify(creds) : "(none)",
 			``,
 			`## How to write to clients`,
-			HUMANIZER_WRITING_RULES,
+			`Before writing any message to a client (reply, bid, or proposal): (1) call read_skill('humanizer') and apply all rules, then (2) call read_skill('freelance-writing') and apply the additional freelance-specific rules. No exceptions — the client reads your output directly and it must sound like a real person wrote it.`,
 		]
 			.filter((s) => s !== "")
 			.join("\n");

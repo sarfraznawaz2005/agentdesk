@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 167
-**Symbols:** 1431
+**Symbols:** 1432
 
 ## Files
 
@@ -1113,10 +1113,11 @@
 - `UserQuestionPayload` (line 16)
 
 **Functions:**
-- `UserQuestionDialog` (line 27)
-- `handler` (line 35)
-- `cancelHandler` (line 42)
-- `QuestionForm` (line 86)
+- `buildAgentLabel` (line 35)
+- `UserQuestionDialog` (line 39)
+- `handler` (line 47)
+- `cancelHandler` (line 54)
+- `QuestionForm` (line 98)
 
 
 ### `src/mainview/components/notes/note-editor.tsx`

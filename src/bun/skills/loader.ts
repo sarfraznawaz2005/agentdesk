@@ -25,8 +25,13 @@ export interface Skill {
 	errors: SkillValidationError[];
 	/** Whether this skill ships with the app (true) or is user-installed (false). */
 	isBundled: boolean;
-	/** Hidden skills are available to agents but not shown in the Skills UI. */
+	/** Hidden skills are not shown in the Skills UI but are available to agents. */
 	hidden: boolean;
+	/**
+	 * Optional feature gate. When set, the skill is only included in agent
+	 * system prompts when the named feature is enabled (e.g. "freelance").
+	 */
+	feature?: string;
 }
 
 interface SkillFrontmatter {
@@ -36,6 +41,7 @@ interface SkillFrontmatter {
 	"argument-hint"?: string;
 	agent?: string;
 	hidden?: boolean;
+	feature?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +118,7 @@ export function parseSkillFile(skillDir: string): Skill | null {
 			errors,
 			isBundled: false,
 			hidden: fm.hidden === true,
+			feature: fm.feature ?? undefined,
 		};
 	} catch (err) {
 		console.warn(`[skills] Failed to parse ${filePath}:`, err instanceof Error ? err.message : err);

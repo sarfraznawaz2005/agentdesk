@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -12,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Check, CheckSquare, Square } from "lucide-react";
+import { useAgentColorMap } from "@/lib/use-agent-colors";
 
 interface UserQuestionPayload {
   requestId: string;
@@ -21,7 +21,19 @@ interface UserQuestionPayload {
   placeholder?: string;
   defaultValue?: string;
   context?: string;
+  /** Display name of the asking agent (e.g. "Backend Engineer"). */
   agentName: string;
+  /** Internal agent id used for color lookup (e.g. "backend-engineer"). */
+  agentId?: string;
+}
+
+/**
+ * Build the title label: if the display name already contains "agent" (case-
+ * insensitive), use it as-is; otherwise append " Agent".
+ * e.g. "General" → "General Agent", "Playground Agent" → "Playground Agent"
+ */
+function buildAgentLabel(displayName: string): string {
+  return /agent/i.test(displayName) ? displayName : `${displayName} Agent`;
 }
 
 export function UserQuestionDialog() {
@@ -94,6 +106,9 @@ function QuestionForm({
   const [selectedOption, setSelectedOption] = useState<string | null>(payload.options?.[0] ?? null);
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const agentColorMap = useAgentColorMap();
+  const agentColor = payload.agentId ? (agentColorMap.get(payload.agentId) ?? null) : null;
+  const agentLabel = buildAgentLabel(payload.agentName);
 
   const submit = useCallback(
     (answer: string) => {
@@ -128,12 +143,15 @@ function QuestionForm({
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-primary" />
-          Agent Question
+          <MessageSquare className="w-4 h-4 text-primary shrink-0" />
+          <span
+            className="font-semibold"
+            style={agentColor ? { color: agentColor } : undefined}
+          >
+            {agentLabel}
+          </span>
+          <span className="font-normal text-foreground">Needs Your Input</span>
         </DialogTitle>
-        <DialogDescription>
-          <span className="font-medium text-foreground">{payload.agentName}</span> needs your input
-        </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-2">
