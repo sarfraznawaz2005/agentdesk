@@ -30,6 +30,9 @@ export interface AutoEarnSettings {
 	bidMinClamp: number;            // absolute floor for the bid amount (0 = none)
 	bidMaxClamp: number;            // absolute ceiling for the bid amount (0 = none)
 	bidHourlyRate: number;          // rate to bid on hourly projects (0 = use the budget)
+	clientFilterEnabled: boolean;   // filter out low-quality clients before AI analysis
+	clientMinReviews: number;       // block clients with fewer than this many reviews (0 = off)
+	clientBlockNewDays: number;     // block clients who joined within N days (0 = off)
 }
 
 const DEFAULTS: AutoEarnSettings = {
@@ -52,6 +55,9 @@ const DEFAULTS: AutoEarnSettings = {
 	bidMinClamp: 0,
 	bidMaxClamp: 0,
 	bidHourlyRate: 0,
+	clientFilterEnabled: false,
+	clientMinReviews: 1,
+	clientBlockNewDays: 30,
 };
 
 const KEYS: Record<keyof AutoEarnSettings, string> = {
@@ -74,6 +80,9 @@ const KEYS: Record<keyof AutoEarnSettings, string> = {
 	bidMinClamp: "freelance_bid_min_clamp",
 	bidMaxClamp: "freelance_bid_max_clamp",
 	bidHourlyRate: "freelance_bid_hourly_rate",
+	clientFilterEnabled: "freelance_client_filter_enabled",
+	clientMinReviews: "freelance_client_min_reviews",
+	clientBlockNewDays: "freelance_client_block_new_days",
 };
 
 export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
@@ -108,6 +117,9 @@ export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
 		bidMinClamp: get("bidMinClamp"),
 		bidMaxClamp: get("bidMaxClamp"),
 		bidHourlyRate: get("bidHourlyRate"),
+		clientFilterEnabled: get("clientFilterEnabled"),
+		clientMinReviews: get("clientMinReviews"),
+		clientBlockNewDays: get("clientBlockNewDays"),
 	};
 }
 
@@ -149,6 +161,9 @@ export async function saveAutoEarnSettings(input: AutoEarnSettings): Promise<voi
 		saveAutoEarnSetting("bidMinClamp", safe.bidMinClamp),
 		saveAutoEarnSetting("bidMaxClamp", safe.bidMaxClamp),
 		saveAutoEarnSetting("bidHourlyRate", safe.bidHourlyRate),
+		saveAutoEarnSetting("clientFilterEnabled", safe.clientFilterEnabled),
+		saveAutoEarnSetting("clientMinReviews", safe.clientMinReviews),
+		saveAutoEarnSetting("clientBlockNewDays", safe.clientBlockNewDays),
 	]);
 }
 

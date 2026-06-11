@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 260
-**Symbols:** 1969
+**Files:** 261
+**Symbols:** 1976
 
 ## Files
 
@@ -850,11 +850,11 @@
 ### `src/bun/db/migrate.ts`
 
 **Interfaces:**
-- `Migration` (line 62)
+- `Migration` (line 63)
 
 **Functions:**
-- `runMigrations` (line 115)
-- `ensureRuntimeSchema` (line 177)
+- `runMigrations` (line 117)
+- `ensureRuntimeSchema` (line 179)
 
 
 ### `src/bun/db/migrations/v10_disable-db-viewer-plugin.ts`
@@ -1184,6 +1184,15 @@
 - `name` (line 3)
 
 
+### `src/bun/db/migrations/v43_freelance-client-quality.ts`
+
+**Functions:**
+- `run` (line 8)
+
+**Exports:**
+- `name` (line 3)
+
+
 ### `src/bun/db/migrations/v4_inline-agents.ts`
 
 **Functions:**
@@ -1277,23 +1286,23 @@
 - `auditLog` (line 639)
 - `messageParts` (line 653)
 - `freelanceListings` (line 675)
-- `freelanceChatMessages` (line 702)
-- `freelanceAccounts` (line 718)
-- `freelanceInboxThreads` (line 732)
-- `freelanceInboxMessages` (line 755)
-- `freelanceInboxUsers` (line 766)
-- `freelanceOutbox` (line 779)
-- `freelanceActionLog` (line 797)
-- `freelanceJobs` (line 812)
-- `freelanceCredentials` (line 835)
-- `freelanceJobLog` (line 850)
-- `freelanceJobFacts` (line 863)
-- `freelanceEscalations` (line 872)
-- `projectActivity` (line 894)
-- `remoteSyncConfig` (line 908)
-- `remoteSyncItems` (line 946)
-- `customEnvVars` (line 964)
-- `remoteSyncRuns` (line 974)
+- `freelanceChatMessages` (line 706)
+- `freelanceAccounts` (line 722)
+- `freelanceInboxThreads` (line 736)
+- `freelanceInboxMessages` (line 759)
+- `freelanceInboxUsers` (line 770)
+- `freelanceOutbox` (line 783)
+- `freelanceActionLog` (line 801)
+- `freelanceJobs` (line 816)
+- `freelanceCredentials` (line 839)
+- `freelanceJobLog` (line 854)
+- `freelanceJobFacts` (line 867)
+- `freelanceEscalations` (line 876)
+- `projectActivity` (line 898)
+- `remoteSyncConfig` (line 912)
+- `remoteSyncItems` (line 950)
+- `customEnvVars` (line 968)
+- `remoteSyncRuns` (line 978)
 
 
 ### `src/bun/db/seed.ts`
@@ -1375,11 +1384,11 @@
 - `AutoEarnSettings` (line 13)
 
 **Functions:**
-- `getAutoEarnSettings` (line 79)
-- `get` (line 82)
-- `saveAutoEarnSetting` (line 114)
-- `saveAutoEarnSettings` (line 126)
-- `isAutoEarnEnabled` (line 156)
+- `getAutoEarnSettings` (line 88)
+- `get` (line 91)
+- `saveAutoEarnSetting` (line 126)
+- `saveAutoEarnSettings` (line 138)
+- `isAutoEarnEnabled` (line 171)
 
 
 ### `src/bun/freelance/bid-pipeline.ts`
@@ -3120,39 +3129,44 @@
 ### `src/bun/rpc/freelance-wizard.ts`
 
 **Interfaces:**
-- `SkillGateResult` (line 130)
+- `SkillGateResult` (line 134)
+- `ClientData` (line 212)
+- `GateResult` (line 253)
 
 **Types:**
-- `Verdict` (line 419)
+- `Verdict` (line 519)
 
 **Functions:**
 - `getAnalysisProviderAndModel` (line 29)
 - `isObviouslyNonSoftware` (line 86)
 - `getProfileSkills` (line 106)
 - `isStaleGateVerdict` (line 126)
-- `skillGateBlocks` (line 136)
-- `norm` (line 147)
-- `buildWizardTools` (line 176)
-- `isAbortError` (line 193)
-- `fetchPageText` (line 201)
-- `extractDescription` (line 222)
-- `buildAnalysisSystemPrompt` (line 251)
-- `buildUserMessage` (line 318)
-- `buildAnalysisWritePrompt` (line 371)
-- `coerceVerdict` (line 421)
-- `extractJsonFromText` (line 462)
-- `formatToolOutput` (line 481)
-- `clean` (line 485)
-- `analyzeListingWorkability` (line 497)
-- `collectToolResults` (line 522)
-- `normalizeNewlines` (line 627)
-- `isCacheValid` (line 641)
-- `runWizard` (line 651)
-- `startWizard` (line 868)
-- `stopWizard` (line 874)
-- `runAutoShortlist` (line 888)
-- `analyzeListing` (line 1086)
-- `shortlistListings` (line 1161)
+- `skillGateBlocks` (line 140)
+- `norm` (line 151)
+- `buildWizardTools` (line 180)
+- `isAbortError` (line 197)
+- `extractClientDataFromHtml` (line 219)
+- `daysSince` (line 241)
+- `clientQualityGate` (line 259)
+- `fetchPageText` (line 300)
+- `extractDescription` (line 322)
+- `buildAnalysisSystemPrompt` (line 351)
+- `buildUserMessage` (line 418)
+- `buildAnalysisWritePrompt` (line 471)
+- `coerceVerdict` (line 521)
+- `extractJsonFromText` (line 562)
+- `formatToolOutput` (line 581)
+- `clean` (line 585)
+- `analyzeListingWorkability` (line 597)
+- `collectToolResults` (line 622)
+- `normalizeNewlines` (line 727)
+- `isCacheValid` (line 741)
+- `runWizard` (line 751)
+- `startWizard` (line 991)
+- `stopWizard` (line 997)
+- `runAutoShortlist` (line 1011)
+- `analyzeListing` (line 1230)
+- `shortlistListings` (line 1317)
 
 
 ### `src/bun/rpc/freelance.ts`

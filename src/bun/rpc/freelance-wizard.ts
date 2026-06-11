@@ -124,7 +124,11 @@ const SKILL_GATE_REASON = "Bidding blocked — your Freelancer profile has none 
 // user adds a missing skill (gate no longer blocks), the project is re-analysed
 // instead of staying stale until the TTL expires.
 function isStaleGateVerdict(listing: typeof freelanceListings.$inferSelect): boolean {
-  return listing.wizardVerdict === "not_workable" && (listing.wizardReason ?? "") === SKILL_GATE_REASON;
+  if (listing.wizardVerdict !== "not_workable") return false;
+  const reason = listing.wizardReason ?? "";
+  // Both skill-gate and client-quality-gate verdicts are recomputed live on every run,
+  // so cached copies must be treated as stale so threshold changes take effect immediately.
+  return reason === SKILL_GATE_REASON || reason.startsWith(CLIENT_QUALITY_GATE_REASON_PREFIX);
 }
 
 interface SkillGateResult {
@@ -198,7 +202,102 @@ function isAbortError(err: unknown): boolean {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<string> {
+// ---------------------------------------------------------------------------
+// Client quality gate — deterministic pre-filter (runs before AI analysis)
+// Extracts "About the Client" signals from the already-fetched page text and
+// blocks listings where the client is too new or has too few reviews.
+// Fail-open: if data can't be extracted, the gate never blocks.
+// ---------------------------------------------------------------------------
+
+interface ClientData {
+  rating: number | null;
+  reviewCount: number | null;
+  memberSince: string | null;
+  paymentVerified: boolean;
+}
+
+function extractClientDataFromHtml(html: string): ClientData {
+  // Freelancer.com embeds a "client" JSON object in the page's Angular state (~1MB in).
+  // We extract it from the raw HTML before stripping/truncating, so the 12k text limit
+  // doesn't cut it off. The regex matches the known field ordering in the JSON blob.
+  const m = html.match(
+    /"client":\{"registrationTime":(\d+),"address":\{[^}]*\},"rating":\{"average":([0-9.]+),"reviewCount":(\d+)\},"verification":\{"paymentVerified":(true|false)/,
+  );
+  if (!m) return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false };
+
+  const regDate = new Date(parseInt(m[1], 10));
+  const memberSince = isNaN(regDate.getTime())
+    ? null
+    : regDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+
+  return {
+    rating: parseFloat(m[2]),
+    reviewCount: parseInt(m[3], 10),
+    memberSince,
+    paymentVerified: m[4] === "true",
+  };
+}
+
+function daysSince(memberSinceStr: string): number | null {
+  try {
+    const d = new Date(memberSinceStr);
+    if (isNaN(d.getTime())) return null;
+    return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+  } catch {
+    return null;
+  }
+}
+
+const CLIENT_QUALITY_GATE_REASON_PREFIX = "Client quality:";
+
+interface GateResult {
+  reason: string;
+  blockers: string[];
+  analysisText: string;
+}
+
+function clientQualityGate(
+  listing: typeof freelanceListings.$inferSelect,
+  settings: { clientFilterEnabled: boolean; clientMinReviews: number; clientBlockNewDays: number },
+): GateResult | null {
+  if (!settings.clientFilterEnabled) return null;
+
+  const blockers: string[] = [];
+
+  // Review count check — fail-open when data is null
+  if (
+    settings.clientMinReviews > 0 &&
+    listing.clientReviewCount !== null &&
+    listing.clientReviewCount < settings.clientMinReviews
+  ) {
+    blockers.push(
+      `Client has ${listing.clientReviewCount} review(s) on Freelancer.com — your minimum is ${settings.clientMinReviews}.`,
+    );
+  }
+
+  // Account age check — fail-open when data is null
+  if (settings.clientBlockNewDays > 0 && listing.clientMemberSince) {
+    const age = daysSince(listing.clientMemberSince);
+    if (age !== null && age < settings.clientBlockNewDays) {
+      blockers.push(
+        `Client joined ${age} day(s) ago — accounts newer than ${settings.clientBlockNewDays} days are filtered out.`,
+      );
+    }
+  }
+
+  if (blockers.length === 0) return null;
+
+  const reason = `${CLIENT_QUALITY_GATE_REASON_PREFIX} ${blockers[0]}`;
+  return {
+    reason,
+    blockers,
+    analysisText:
+      `This client was filtered out by your Client Quality settings. ${blockers.join(" ")} ` +
+      `You can adjust or disable these thresholds in Freelance → Settings → Client Quality Filters.`,
+  };
+}
+
+async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ text: string; clientData: ClientData }> {
   const signal = abortSignal
     ? AbortSignal.any([abortSignal, AbortSignal.timeout(20_000)])
     : AbortSignal.timeout(20_000);
@@ -211,12 +310,13 @@ async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<st
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const html = await response.text();
+  // Extract client data from raw HTML BEFORE stripping/truncating — the Angular-rendered
+  // client JSON sits ~1MB into the page, well past the 12k plain-text limit.
+  const clientData = extractClientDataFromHtml(html);
   const root = parseHtml(html);
   root.querySelectorAll("script, style, nav, header, footer, aside, noscript").forEach((el) => el.remove());
-  // he.decode ensures HTML entities (&amp;, &nbsp;, etc.) are fully resolved
-  // after node-html-parser's textContent extraction.
   const text = he.decode(root.textContent.replace(/\s+/g, " ").trim());
-  return text.length > 12_000 ? text.slice(0, 12_000) + "…" : text;
+  return { text: text.length > 12_000 ? text.slice(0, 12_000) + "…" : text, clientData };
 }
 
 async function extractDescription(
@@ -670,6 +770,7 @@ async function runWizard(count: number): Promise<void> {
 
     const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");
     const profileSkills = getProfileSkills();
+    const aeSettings = await getAutoEarnSettings();
 
     // Always take the N most-recent listings regardless of prior analysis.
     // Cached entries get an instant verdict read; new entries get AI analysis.
@@ -716,8 +817,13 @@ async function runWizard(count: number): Promise<void> {
           current: idx + 1, total, listingId: listing.id, title: listing.title, phase: "fetching",
         });
         try {
-          const pageText = await fetchPageText(listing.url, signal);
+          const { text: pageText, clientData } = await fetchPageText(listing.url, signal);
           if (signal.aborted) return;
+          // Client data extracted from raw HTML (before 12k truncation) — always persist, null = fail-open
+          listing.clientRating = clientData.rating;
+          listing.clientReviewCount = clientData.reviewCount;
+          listing.clientMemberSince = clientData.memberSince;
+          listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
           listing.fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
         } catch (err) {
           if (!isAbortError(err)) console.error(`[wizard] Failed to fetch description for ${listing.id}:`, err);
@@ -725,7 +831,13 @@ async function runWizard(count: number): Promise<void> {
         }
         if (!signal.aborted && listing.fullDescription !== null) {
           await db.update(freelanceListings)
-            .set({ fullDescription: listing.fullDescription })
+            .set({
+              fullDescription: listing.fullDescription,
+              clientRating: listing.clientRating,
+              clientReviewCount: listing.clientReviewCount,
+              clientMemberSince: listing.clientMemberSince,
+              clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+            })
             .where(eq(freelanceListings.id, listing.id));
         }
       }));
@@ -756,6 +868,17 @@ async function runWizard(count: number): Promise<void> {
       if (gate) {
         verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText });
         failedListings.push({ id: listing.id, title: listing.title, reason: gate.reason, blockers: gate.blockers });
+        broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
+          current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
+        });
+        continue;
+      }
+
+      // Client quality gate: filter out low-review / brand-new clients before AI analysis.
+      const cGate = clientQualityGate(listing, aeSettings);
+      if (cGate) {
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText });
+        failedListings.push({ id: listing.id, title: listing.title, reason: cGate.reason, blockers: cGate.blockers });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -915,6 +1038,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
 
     const additionalNotes = s.additionalNotes ?? "";
     const profileSkills = getProfileSkills();
+    const aeSettings = await getAutoEarnSettings();
     const count = Math.max(1, Math.min(25, s.autoShortlistCount));
 
     const baseWhere = and(
@@ -946,6 +1070,13 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         continue;
       }
 
+      // Client quality gate (see clientQualityGate): low-review / brand-new client ⇒ blocked.
+      const cGate = clientQualityGate(listing, aeSettings);
+      if (cGate) {
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText });
+        continue;
+      }
+
       if (isCacheValid(listing) && !isStaleGateVerdict(listing)) {
         if (listing.wizardVerdict === "workable") {
           workableListings.push({
@@ -963,15 +1094,28 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       let fullDescription = listing.fullDescription;
       if (fullDescription === null) {
         try {
-          const pageText = await fetchPageText(listing.url, signal);
+          const { text: pageText, clientData } = await fetchPageText(listing.url, signal);
           if (signal.aborted) break;
+          // Client data from raw HTML — always persist, null = fail-open in clientQualityGate
+          listing.clientRating = clientData.rating;
+          listing.clientReviewCount = clientData.reviewCount;
+          listing.clientMemberSince = clientData.memberSince;
+          listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
           fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
         } catch (err) {
           if (isAbortError(err)) break;
           fullDescription = "";
         }
         if (signal.aborted) break;
-        await db.update(freelanceListings).set({ fullDescription }).where(eq(freelanceListings.id, listing.id));
+        await db.update(freelanceListings)
+          .set({
+            fullDescription,
+            clientRating: listing.clientRating,
+            clientReviewCount: listing.clientReviewCount,
+            clientMemberSince: listing.clientMemberSince,
+            clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+          })
+          .where(eq(freelanceListings.id, listing.id));
       }
 
       if (signal.aborted) break;
@@ -1115,12 +1259,24 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   let fullDescription = listing.fullDescription;
   if (fullDescription === null) {
     try {
-      const pageText = await fetchPageText(listing.url);
+      const { text: pageText, clientData } = await fetchPageText(listing.url);
+      listing.clientRating = clientData.rating;
+      listing.clientReviewCount = clientData.reviewCount;
+      listing.clientMemberSince = clientData.memberSince;
+      listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
       fullDescription = await extractDescription(pageText, listing, adapter, modelId);
     } catch {
       fullDescription = "";
     }
-    await db.update(freelanceListings).set({ fullDescription }).where(eq(freelanceListings.id, listing.id));
+    await db.update(freelanceListings)
+      .set({
+        fullDescription,
+        clientRating: listing.clientRating,
+        clientReviewCount: listing.clientReviewCount,
+        clientMemberSince: listing.clientMemberSince,
+        clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+      })
+      .where(eq(freelanceListings.id, listing.id));
   }
 
   const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");

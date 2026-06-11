@@ -1042,7 +1042,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 193,
+      "line": 197,
       "symbol": "isAbortError",
       "type": "function"
     },
@@ -1558,6 +1558,12 @@
     },
     {
       "file": "src/bun/db/migrations/v42_request-human-input-backfill.ts",
+      "line": 3,
+      "symbol": "name",
+      "type": "export"
+    },
+    {
+      "file": "src/bun/db/migrations/v43_freelance-client-quality.ts",
       "line": 3,
       "symbol": "name",
       "type": "export"
@@ -2304,13 +2310,13 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 79,
+      "line": 88,
       "symbol": "getAutoEarnSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 82,
+      "line": 91,
       "symbol": "get",
       "type": "function"
     },
@@ -3878,7 +3884,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 251,
+      "line": 351,
       "symbol": "buildAnalysisSystemPrompt",
       "type": "function"
     },
@@ -3922,7 +3928,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 894,
+      "line": 898,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -5484,19 +5490,19 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 732,
+      "line": 736,
       "symbol": "freelanceInboxThreads",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 755,
+      "line": 759,
       "symbol": "freelanceInboxMessages",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 766,
+      "line": 770,
       "symbol": "freelanceInboxUsers",
       "type": "export"
     },
@@ -5658,7 +5664,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 124,
+      "line": 127,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
@@ -6596,7 +6602,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 318,
+      "line": 418,
       "symbol": "buildUserMessage",
       "type": "function"
     },
@@ -7454,13 +7460,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 99,
+      "line": 102,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 104,
+      "line": 107,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     }
@@ -8338,13 +8344,13 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 114,
+      "line": 126,
       "symbol": "saveAutoEarnSetting",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 126,
+      "line": 138,
       "symbol": "saveAutoEarnSettings",
       "type": "function"
     },
@@ -8856,73 +8862,73 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 702,
+      "line": 706,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 718,
+      "line": 722,
       "symbol": "freelanceAccounts",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 732,
+      "line": 736,
       "symbol": "freelanceInboxThreads",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 755,
+      "line": 759,
       "symbol": "freelanceInboxMessages",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 766,
+      "line": 770,
       "symbol": "freelanceInboxUsers",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 779,
+      "line": 783,
       "symbol": "freelanceOutbox",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 797,
+      "line": 801,
       "symbol": "freelanceActionLog",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 812,
+      "line": 816,
       "symbol": "freelanceJobs",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 835,
+      "line": 839,
       "symbol": "freelanceCredentials",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 850,
+      "line": 854,
       "symbol": "freelanceJobLog",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 863,
+      "line": 867,
       "symbol": "freelanceJobFacts",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 872,
+      "line": 876,
       "symbol": "freelanceEscalations",
       "type": "export"
     },
@@ -9096,49 +9102,49 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 99,
+      "line": 102,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 104,
+      "line": 107,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 111,
+      "line": 114,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 124,
+      "line": 127,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 136,
+      "line": 139,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 149,
+      "line": 152,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 166,
+      "line": 169,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 176,
+      "line": 179,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -9224,7 +9230,7 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 156,
+      "line": 171,
       "symbol": "isAutoEarnEnabled",
       "type": "function"
     },
@@ -9394,7 +9400,7 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 114,
+      "line": 126,
       "symbol": "saveAutoEarnSetting",
       "type": "function"
     },
@@ -9784,7 +9790,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 193,
+      "line": 197,
       "symbol": "isAbortError",
       "type": "function"
     },
@@ -10600,13 +10606,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 419,
+      "line": 519,
       "symbol": "Verdict",
       "type": "type"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 421,
+      "line": 521,
       "symbol": "coerceVerdict",
       "type": "function"
     },
@@ -11426,7 +11432,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 318,
+      "line": 418,
       "symbol": "buildUserMessage",
       "type": "function"
     },
@@ -11708,7 +11714,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 124,
+      "line": 127,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
@@ -11996,7 +12002,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 894,
+      "line": 898,
       "symbol": "projectActivity",
       "type": "export"
     },
@@ -13077,6 +13083,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 241,
+      "symbol": "daysSince",
+      "type": "function"
+    },
+    {
       "file": "tests/frontend/date-utils.test.ts",
       "line": 36,
       "symbol": "isoDaysAgo",
@@ -13200,7 +13212,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 462,
+      "line": 219,
+      "symbol": "extractClientDataFromHtml",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 562,
       "symbol": "extractJsonFromText",
       "type": "function"
     },
@@ -13966,7 +13984,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 177,
+      "line": 179,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -14822,7 +14840,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 371,
+      "line": 471,
       "symbol": "buildAnalysisWritePrompt",
       "type": "function"
     },
@@ -14930,7 +14948,7 @@
   "custom": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 964,
+      "line": 968,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -15234,13 +15252,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 201,
+      "line": 300,
       "symbol": "fetchPageText",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 462,
+      "line": 562,
       "symbol": "extractJsonFromText",
       "type": "function"
     },
@@ -16740,13 +16758,13 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 850,
+      "line": 854,
       "symbol": "freelanceJobLog",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 863,
+      "line": 867,
       "symbol": "freelanceJobFacts",
       "type": "export"
     },
@@ -16998,7 +17016,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 149,
+      "line": 152,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
@@ -17288,13 +17306,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 481,
+      "line": 581,
       "symbol": "formatToolOutput",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 522,
+      "line": 622,
       "symbol": "collectToolResults",
       "type": "function"
     },
@@ -19054,7 +19072,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 177,
+      "line": 179,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -19212,7 +19230,7 @@
     },
     {
       "file": "src/mainview/components/freelance/auto-earn-settings.tsx",
-      "line": 292,
+      "line": 339,
       "symbol": "Field",
       "type": "function"
     },
@@ -19314,13 +19332,13 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 702,
+      "line": 706,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 755,
+      "line": 759,
       "symbol": "freelanceInboxMessages",
       "type": "export"
     },
@@ -19998,13 +20016,19 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 222,
+      "line": 219,
+      "symbol": "extractClientDataFromHtml",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 322,
       "symbol": "extractDescription",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 462,
+      "line": 562,
       "symbol": "extractJsonFromText",
       "type": "function"
     },
@@ -21528,7 +21552,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 485,
+      "line": 585,
       "symbol": "clean",
       "type": "function"
     }
@@ -21773,6 +21797,12 @@
       "line": 33,
       "symbol": "JPEG_QUALITY",
       "type": "variable"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 259,
+      "symbol": "clientQualityGate",
+      "type": "function"
     }
   ],
   "grid": [
@@ -22260,25 +22290,25 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 176,
+      "line": 180,
       "symbol": "buildWizardTools",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 251,
+      "line": 351,
       "symbol": "buildAnalysisSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 318,
+      "line": 418,
       "symbol": "buildUserMessage",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 371,
+      "line": 471,
       "symbol": "buildAnalysisWritePrompt",
       "type": "function"
     },
@@ -23156,7 +23186,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 964,
+      "line": 968,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -23418,7 +23448,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 627,
+      "line": 727,
       "symbol": "normalizeNewlines",
       "type": "function"
     },
@@ -23648,7 +23678,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 481,
+      "line": 581,
       "symbol": "formatToolOutput",
       "type": "function"
     },
@@ -23864,7 +23894,7 @@
     },
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 115,
+      "line": 117,
       "symbol": "runMigrations",
       "type": "function"
     },
@@ -24091,6 +24121,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/db/migrations/v43_freelance-client-quality.ts",
+      "line": 8,
+      "symbol": "run",
+      "type": "function"
+    },
+    {
       "file": "src/bun/db/migrations/v5_message-parts-agent-name.ts",
       "line": 5,
       "symbol": "run",
@@ -24266,13 +24302,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 651,
+      "line": 751,
       "symbol": "runWizard",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 888,
+      "line": 1011,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -24480,7 +24516,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 462,
+      "line": 562,
       "symbol": "extractJsonFromText",
       "type": "function"
     },
@@ -24780,13 +24816,13 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 797,
+      "line": 801,
       "symbol": "freelanceActionLog",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 850,
+      "line": 854,
       "symbol": "freelanceJobLog",
       "type": "export"
     },
@@ -25034,8 +25070,14 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 130,
+      "line": 134,
       "symbol": "SkillGateResult",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 253,
+      "symbol": "GateResult",
       "type": "interface"
     },
     {
@@ -25860,7 +25902,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 176,
+      "line": 180,
       "symbol": "buildWizardTools",
       "type": "function"
     },
@@ -25948,7 +25990,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 522,
+      "line": 622,
       "symbol": "collectToolResults",
       "type": "function"
     },
@@ -26704,19 +26746,19 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 908,
+      "line": 912,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 946,
+      "line": 950,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 974,
+      "line": 978,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -27998,13 +28040,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 251,
+      "line": 351,
       "symbol": "buildAnalysisSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 371,
+      "line": 471,
       "symbol": "buildAnalysisWritePrompt",
       "type": "function"
     },
@@ -28230,7 +28272,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 874,
+      "line": 997,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -30454,25 +30496,25 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 79,
+      "line": 88,
       "symbol": "getAutoEarnSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 114,
+      "line": 126,
       "symbol": "saveAutoEarnSetting",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 126,
+      "line": 138,
       "symbol": "saveAutoEarnSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 156,
+      "line": 171,
       "symbol": "isAutoEarnEnabled",
       "type": "function"
     },
@@ -30520,7 +30562,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 888,
+      "line": 1011,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -30870,7 +30912,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 641,
+      "line": 741,
       "symbol": "isCacheValid",
       "type": "function"
     },
@@ -31378,13 +31420,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 497,
+      "line": 597,
       "symbol": "analyzeListingWorkability",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1086,
+      "line": 1230,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -31614,7 +31656,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 222,
+      "line": 322,
       "symbol": "extractDescription",
       "type": "function"
     },
@@ -32212,7 +32254,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 797,
+      "line": 801,
       "symbol": "freelanceActionLog",
       "type": "export"
     },
@@ -32368,7 +32410,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 99,
+      "line": 102,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     }
@@ -32512,7 +32554,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 908,
+      "line": 912,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
@@ -33260,7 +33302,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 868,
+      "line": 991,
       "symbol": "startWizard",
       "type": "function"
     },
@@ -34280,7 +34322,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 481,
+      "line": 581,
       "symbol": "formatToolOutput",
       "type": "function"
     },
@@ -34608,7 +34650,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 201,
+      "line": 300,
       "symbol": "fetchPageText",
       "type": "function"
     },
@@ -36161,6 +36203,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 212,
+      "symbol": "ClientData",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 219,
+      "symbol": "extractClientDataFromHtml",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/projects.ts",
       "line": 605,
       "symbol": "resetProjectData",
@@ -36346,13 +36400,13 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 79,
+      "line": 88,
       "symbol": "getAutoEarnSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 126,
+      "line": 138,
       "symbol": "saveAutoEarnSettings",
       "type": "function"
     },
@@ -37230,7 +37284,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 812,
+      "line": 816,
       "symbol": "freelanceJobs",
       "type": "export"
     },
@@ -37602,7 +37656,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 176,
+      "line": 179,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -38920,7 +38974,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 974,
+      "line": 978,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -39058,7 +39112,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1161,
+      "line": 1317,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -39084,7 +39138,7 @@
   "chat": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 702,
+      "line": 706,
       "symbol": "freelanceChatMessages",
       "type": "export"
     },
@@ -39242,19 +39296,19 @@
   "remote": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 908,
+      "line": 912,
       "symbol": "remoteSyncConfig",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 946,
+      "line": 950,
       "symbol": "remoteSyncItems",
       "type": "export"
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 974,
+      "line": 978,
       "symbol": "remoteSyncRuns",
       "type": "export"
     },
@@ -39586,7 +39640,7 @@
     },
     {
       "file": "src/bun/db/schema.ts",
-      "line": 946,
+      "line": 950,
       "symbol": "remoteSyncItems",
       "type": "export"
     }
@@ -40111,6 +40165,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 212,
+      "symbol": "ClientData",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 219,
+      "symbol": "extractClientDataFromHtml",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 259,
+      "symbol": "clientQualityGate",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/lib/global-error-handler.ts",
       "line": 10,
       "symbol": "initClientErrorHandler",
@@ -40502,7 +40574,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 111,
+      "line": 114,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     }
@@ -40740,43 +40812,43 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 99,
+      "line": 102,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 104,
+      "line": 107,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 111,
+      "line": 114,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 124,
+      "line": 127,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 136,
+      "line": 139,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 149,
+      "line": 152,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 166,
+      "line": 169,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     },
@@ -41160,6 +41232,12 @@
       "file": "src/bun/issue-fixer/github.ts",
       "line": 104,
       "symbol": "listIssueCommentsSince",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 241,
+      "symbol": "daysSince",
       "type": "function"
     }
   ],
@@ -45358,7 +45436,7 @@
   "credentials": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 835,
+      "line": 839,
       "symbol": "freelanceCredentials",
       "type": "export"
     },
@@ -47422,7 +47500,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 201,
+      "line": 300,
       "symbol": "fetchPageText",
       "type": "function"
     },
@@ -47590,13 +47668,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 251,
+      "line": 351,
       "symbol": "buildAnalysisSystemPrompt",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 371,
+      "line": 471,
       "symbol": "buildAnalysisWritePrompt",
       "type": "function"
     },
@@ -47610,25 +47688,25 @@
   "wizard": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 176,
+      "line": 180,
       "symbol": "buildWizardTools",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 651,
+      "line": 751,
       "symbol": "runWizard",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 868,
+      "line": 991,
       "symbol": "startWizard",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 874,
+      "line": 997,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -47660,13 +47738,13 @@
   "analyze": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 497,
+      "line": 597,
       "symbol": "analyzeListingWorkability",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1086,
+      "line": 1230,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -47680,7 +47758,7 @@
   "valid": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 641,
+      "line": 741,
       "symbol": "isCacheValid",
       "type": "function"
     },
@@ -47712,13 +47790,13 @@
   "shortlist": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 888,
+      "line": 1011,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1161,
+      "line": 1317,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -48680,13 +48758,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 130,
+      "line": 134,
       "symbol": "SkillGateResult",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 136,
+      "line": 140,
       "symbol": "skillGateBlocks",
       "type": "function"
     },
@@ -48946,7 +49024,7 @@
   "collect": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 522,
+      "line": 622,
       "symbol": "collectToolResults",
       "type": "function"
     },
@@ -53785,6 +53863,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 219,
+      "symbol": "extractClientDataFromHtml",
+      "type": "function"
+    },
+    {
       "file": "src/mainview/components/chat/tool-call-card.tsx",
       "line": 530,
       "symbol": "ansiToHtml",
@@ -57818,7 +57902,7 @@
   "vars": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 964,
+      "line": 968,
       "symbol": "customEnvVars",
       "type": "export"
     },
@@ -58932,7 +59016,7 @@
   "runtime": [
     {
       "file": "src/bun/db/migrate.ts",
-      "line": 177,
+      "line": 179,
       "symbol": "ensureRuntimeSchema",
       "type": "function"
     },
@@ -58946,7 +59030,7 @@
   "threads": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 732,
+      "line": 736,
       "symbol": "freelanceInboxThreads",
       "type": "export"
     },
@@ -58966,7 +59050,7 @@
   "outbox": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 779,
+      "line": 783,
       "symbol": "freelanceOutbox",
       "type": "export"
     },
@@ -58990,7 +59074,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 111,
+      "line": 114,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     }
@@ -58998,7 +59082,7 @@
   "facts": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 863,
+      "line": 867,
       "symbol": "freelanceJobFacts",
       "type": "export"
     },
@@ -59012,7 +59096,7 @@
   "escalations": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 872,
+      "line": 876,
       "symbol": "freelanceEscalations",
       "type": "export"
     },
@@ -59050,25 +59134,25 @@
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 79,
+      "line": 88,
       "symbol": "getAutoEarnSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 114,
+      "line": 126,
       "symbol": "saveAutoEarnSetting",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 126,
+      "line": 138,
       "symbol": "saveAutoEarnSettings",
       "type": "function"
     },
     {
       "file": "src/bun/freelance/auto-earn-settings.ts",
-      "line": 156,
+      "line": 171,
       "symbol": "isAutoEarnEnabled",
       "type": "function"
     },
@@ -59972,13 +60056,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 99,
+      "line": 102,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 104,
+      "line": 107,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     }
@@ -60028,14 +60112,26 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 130,
+      "line": 134,
       "symbol": "SkillGateResult",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 136,
+      "line": 140,
       "symbol": "skillGateBlocks",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 253,
+      "symbol": "GateResult",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 259,
+      "symbol": "clientQualityGate",
       "type": "function"
     }
   ],
@@ -60141,58 +60237,10 @@
       "type": "function"
     }
   ],
-  "channels": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 274,
-      "symbol": "channels",
-      "type": "export"
-    }
-  ],
-  "whatsapp": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "sessions": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 347,
-      "symbol": "whatsappSessions",
-      "type": "export"
-    }
-  ],
-  "strategies": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 603,
-      "symbol": "branchStrategies",
-      "type": "export"
-    }
-  ],
-  "budgets": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 624,
-      "symbol": "costBudgets",
-      "type": "export"
-    }
-  ],
-  "accounts": [
-    {
-      "file": "src/bun/db/schema.ts",
-      "line": 718,
-      "symbol": "freelanceAccounts",
-      "type": "export"
-    }
-  ],
   "users": [
     {
       "file": "src/bun/db/schema.ts",
-      "line": 766,
+      "line": 770,
       "symbol": "freelanceInboxUsers",
       "type": "export"
     },
@@ -60200,70 +60248,6 @@
       "file": "src/bun/freelance/session/normalizer.ts",
       "line": 130,
       "symbol": "parseUsers",
-      "type": "function"
-    }
-  ],
-  "obviously": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 86,
-      "symbol": "isObviouslyNonSoftware",
-      "type": "function"
-    }
-  ],
-  "non": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 86,
-      "symbol": "isObviouslyNonSoftware",
-      "type": "function"
-    }
-  ],
-  "software": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 86,
-      "symbol": "isObviouslyNonSoftware",
-      "type": "function"
-    }
-  ],
-  "blocks": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 136,
-      "symbol": "skillGateBlocks",
-      "type": "function"
-    }
-  ],
-  "norm": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 147,
-      "symbol": "norm",
-      "type": "function"
-    }
-  ],
-  "coerce": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 421,
-      "symbol": "coerceVerdict",
-      "type": "function"
-    }
-  ],
-  "workability": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 497,
-      "symbol": "analyzeListingWorkability",
-      "type": "function"
-    }
-  ],
-  "newlines": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 627,
-      "symbol": "normalizeNewlines",
       "type": "function"
     }
   ],
@@ -60383,22 +60367,6 @@
       "type": "function"
     }
   ],
-  "migration": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 62,
-      "symbol": "Migration",
-      "type": "interface"
-    }
-  ],
-  "migrations": [
-    {
-      "file": "src/bun/db/migrate.ts",
-      "line": 115,
-      "symbol": "runMigrations",
-      "type": "function"
-    }
-  ],
   "defaults": [
     {
       "file": "src/bun/rpc/agents.ts",
@@ -60500,7 +60468,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 136,
+      "line": 139,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     }
@@ -60534,7 +60502,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 166,
+      "line": 169,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     }
@@ -60878,6 +60846,134 @@
       "file": "src/mainview/components/layout/app-shell.tsx",
       "line": 141,
       "symbol": "onFocusEnter",
+      "type": "function"
+    }
+  ],
+  "migration": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 63,
+      "symbol": "Migration",
+      "type": "interface"
+    }
+  ],
+  "migrations": [
+    {
+      "file": "src/bun/db/migrate.ts",
+      "line": 117,
+      "symbol": "runMigrations",
+      "type": "function"
+    }
+  ],
+  "channels": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 274,
+      "symbol": "channels",
+      "type": "export"
+    }
+  ],
+  "whatsapp": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "sessions": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 347,
+      "symbol": "whatsappSessions",
+      "type": "export"
+    }
+  ],
+  "strategies": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 603,
+      "symbol": "branchStrategies",
+      "type": "export"
+    }
+  ],
+  "budgets": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 624,
+      "symbol": "costBudgets",
+      "type": "export"
+    }
+  ],
+  "accounts": [
+    {
+      "file": "src/bun/db/schema.ts",
+      "line": 722,
+      "symbol": "freelanceAccounts",
+      "type": "export"
+    }
+  ],
+  "obviously": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 86,
+      "symbol": "isObviouslyNonSoftware",
+      "type": "function"
+    }
+  ],
+  "non": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 86,
+      "symbol": "isObviouslyNonSoftware",
+      "type": "function"
+    }
+  ],
+  "software": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 86,
+      "symbol": "isObviouslyNonSoftware",
+      "type": "function"
+    }
+  ],
+  "blocks": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 140,
+      "symbol": "skillGateBlocks",
+      "type": "function"
+    }
+  ],
+  "norm": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 151,
+      "symbol": "norm",
+      "type": "function"
+    }
+  ],
+  "coerce": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 521,
+      "symbol": "coerceVerdict",
+      "type": "function"
+    }
+  ],
+  "workability": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 597,
+      "symbol": "analyzeListingWorkability",
+      "type": "function"
+    }
+  ],
+  "newlines": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 727,
+      "symbol": "normalizeNewlines",
       "type": "function"
     }
   ]

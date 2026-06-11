@@ -277,6 +277,53 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
         </label>
       </div>
 
+      <div className="flex flex-col gap-3">
+        <div>
+          <span className="text-sm font-medium">Client Quality Filters</span>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Skip listings from low-quality clients before spending AI analysis on them. Data is extracted
+            from the listing page automatically. Fail-open: if data can't be found, the project is not blocked.
+          </p>
+        </div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={s.clientFilterEnabled}
+            onChange={(e) => patch({ clientFilterEnabled: e.target.checked })}
+          />
+          <span className="text-sm">Enable client quality filtering</span>
+          <HelpIcon text="When on, listings from clients who don't meet your thresholds are marked non-workable without running AI analysis. Off by default." />
+        </label>
+        {s.clientFilterEnabled && (
+          <div className="grid grid-cols-2 gap-4 pl-5">
+            <Field
+              label="Min client reviews"
+              help="Block clients with fewer reviews than this. Set to 0 to disable this check. Default: 1 (blocks brand-new clients with zero reviews)."
+            >
+              <input
+                type="number"
+                min={0}
+                value={s.clientMinReviews}
+                onChange={(e) => patch({ clientMinReviews: num(e.target.value, 1) })}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field
+              label="Block accounts newer than (days)"
+              help="Block clients whose Freelancer account is younger than this many days. Set to 0 to disable. Default: 30 (one month)."
+            >
+              <input
+                type="number"
+                min={0}
+                value={s.clientBlockNewDays}
+                onChange={(e) => patch({ clientBlockNewDays: num(e.target.value, 30) })}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              />
+            </Field>
+          </div>
+        )}
+      </div>
+
       <label className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
         <input type="checkbox" checked={s.fullautoAck} onChange={(e) => patch({ fullautoAck: e.target.checked })} className="mt-0.5" />
         <span className="text-sm text-muted-foreground">

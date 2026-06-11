@@ -514,7 +514,7 @@
 - `AutoEarnSettings` (line 105)
 - `patch` (line 106)
 - `num` (line 108)
-- `Field` (line 292)
+- `Field` (line 339)
 
 
 ### `src/mainview/components/freelance/expert-dashboard.tsx`

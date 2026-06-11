@@ -690,6 +690,10 @@ export const freelanceListings = sqliteTable("freelance_listings", {
 	wizardReason:      text("wizard_reason"),      // one-sentence AI verdict reason
 	wizardBlockers:    text("wizard_blockers"),    // JSON array of blocker strings
 	wizardAnalysisText: text("wizard_analysis_text"), // full AI analysis text from Phase 1
+	clientRating:          real("client_rating"),          // extracted from listing page (0.0–5.0)
+	clientReviewCount:     integer("client_review_count"), // number of reviews the client has
+	clientMemberSince:     text("client_member_since"),    // e.g. "Jun 11, 2026"
+	clientPaymentVerified: integer("client_payment_verified").notNull().default(0),
 	postedAt:          text("posted_at"),
 	status:      text("status").notNull().default("new"),
 	isDeleted:   integer("is_deleted").notNull().default(0),

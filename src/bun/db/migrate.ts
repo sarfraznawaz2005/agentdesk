@@ -42,6 +42,7 @@ import * as v39 from "./migrations/v39_freelance-job-facts";
 import * as v40 from "./migrations/v40_freelance-delivery-approval";
 import * as v41 from "./migrations/v41_freelance-profile-skills";
 import * as v42 from "./migrations/v42_request-human-input-backfill";
+import * as v43 from "./migrations/v43_freelance-client-quality";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -108,6 +109,7 @@ const migrations: Migration[] = [
 	{ version: 40, name: v40.name, run: v40.run },
 	{ version: 41, name: v41.name, run: v41.run },
 	{ version: 42, name: v42.name, run: v42.run },
+	{ version: 43, name: v43.name, run: v43.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -269,6 +271,13 @@ function ensureRuntimeSchema(): void {
 		v42.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: request_human_input backfill failed:", err);
+	}
+
+	// Defensive: ensure freelance_listings client quality columns exist (v43 guards with PRAGMA).
+	try {
+		v43.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance client-quality columns failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

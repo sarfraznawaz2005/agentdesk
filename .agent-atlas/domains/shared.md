@@ -127,17 +127,17 @@
 - `FreelanceAccountDto` (line 51)
 - `FreelanceInboxThreadDto` (line 60)
 - `FreelanceAutoEarnSettingsDto` (line 77)
-- `FreelanceGovernorActionStateDto` (line 99)
-- `FreelanceGovernorStateDto` (line 104)
-- `FreelanceOutboxItemDto` (line 111)
-- `FreelanceInboxMessageDto` (line 124)
-- `FreelanceEscalationDto` (line 136)
-- `FreelanceJobDto` (line 149)
-- `FreelanceEarningsDto` (line 166)
+- `FreelanceGovernorActionStateDto` (line 102)
+- `FreelanceGovernorStateDto` (line 107)
+- `FreelanceOutboxItemDto` (line 114)
+- `FreelanceInboxMessageDto` (line 127)
+- `FreelanceEscalationDto` (line 139)
+- `FreelanceJobDto` (line 152)
+- `FreelanceEarningsDto` (line 169)
 
 **Types:**
 - `FreelanceListingStatus` (line 1)
-- `FreelanceRequests` (line 176)
+- `FreelanceRequests` (line 179)
 
 
 ### `src/shared/rpc/git.ts`

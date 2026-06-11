@@ -94,6 +94,9 @@ export interface FreelanceAutoEarnSettingsDto {
   bidMinClamp: number;      // absolute floor for the bid amount (0 = none)
   bidMaxClamp: number;      // absolute ceiling for the bid amount (0 = none)
   bidHourlyRate: number;    // rate to bid on hourly projects (0 = use the budget)
+  clientFilterEnabled: boolean; // filter out low-quality clients before AI analysis
+  clientMinReviews: number;     // block clients with fewer than this many reviews (0 = disabled)
+  clientBlockNewDays: number;   // block clients who joined within this many days (0 = disabled)
 }
 
 export interface FreelanceGovernorActionStateDto {
