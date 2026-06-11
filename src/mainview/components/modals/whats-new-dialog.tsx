@@ -33,7 +33,7 @@ export function WhatsNewDialog({ entries, onClose }: WhatsNewDialogProps) {
               </div>
               <ul className="space-y-1.5 pl-1">
                 {entry.changes.map((change, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                     <span className="text-primary shrink-0 mt-px">•</span>
                     <span className="break-words min-w-0">{change}</span>
                   </li>
