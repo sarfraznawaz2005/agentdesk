@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.0.1",
+        "title":  "Enhanced Client Filtering Options",
+        "changes":  [
+                        "New client filter options added to the freelance settings tab",
+                        "Client quality filtering now available in freelance listings and settings"
+                    ]
+    },
+    {
         "version":  "2.0.0",
         "title":  "New AI-Generated Release Notes",
         "changes":  [
