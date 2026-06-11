@@ -1,30 +1,37 @@
 [
-  {
-    "version": "2.0.0",
-    "title": "Auto-Earn — AI handles your Freelancer.com inbox",
-    "changes": [
-      "Auto-Earn: AI can now automatically reply to client messages and submit bids on Freelancer.com",
-      "Assisted mode — AI drafts every reply and bid, you review and click Send",
-      "Full-auto mode — AI sends autonomously within your configured limits (opt-in, requires explicit confirmation)",
-      "Smart triage — payments, contracts, off-platform requests, and scope disputes are always routed to you, never auto-replied",
-      "Governor limits — hourly message caps, daily bid budgets, and active-hours windows keep behaviour within safe bounds",
-      "Humanizer built in — all AI-written messages are stripped of AI patterns and special characters so they read like you wrote them",
-      "Anomaly protection — Auto-Earn pauses automatically if the platform returns rate limits or suspicious responses",
-      "Escalation inbox — important situations surface as notifications via desktop and your connected channels (Discord, WhatsApp, Email)",
-      "Earnings dashboard — track bids sent, replies made, and jobs in progress from the Freelance tab"
-    ]
-  },
-  {
-    "version": "1.4.4",
-    "title": "Freelance improvements, Humanizer skill & more",
-    "changes": [
-      "Sent bids no longer reappear in Drafts & queue after marking as placed",
-      "Listings tab now shows a Bid Placed badge once a proposal has been sent",
-      "New built-in Humanizer skill — instruct any agent to write like a real person, not an AI",
-      "Freelance agents now use humanizer rules automatically so bids avoid AI patterns and special characters",
-      "Agent input dialogs now show the agent name and its color instead of a generic title",
-      "What's New popup — you'll now see a summary of changes after each update"
-    ]
-  }
+    {
+        "version":  "2.0.0",
+        "title":  "New AI-Generated Release Notes",
+        "changes":  [
+                        "Introducing AI-generated release notes functionality for easier tracking of updates.",
+                        "Enhanced output formatting for improved readability of release notes."
+                    ]
+    },
+    {
+        "version":  "2.0.0",
+        "title":  "Auto-Earn — AI handles your Freelancer.com inbox",
+        "changes":  [
+                        "Auto-Earn: AI can now automatically reply to client messages and submit bids on Freelancer.com",
+                        "Assisted mode — AI drafts every reply and bid, you review and click Send",
+                        "Full-auto mode — AI sends autonomously within your configured limits (opt-in, requires explicit confirmation)",
+                        "Smart triage — payments, contracts, off-platform requests, and scope disputes are always routed to you, never auto-replied",
+                        "Governor limits — hourly message caps, daily bid budgets, and active-hours windows keep behaviour within safe bounds",
+                        "Humanizer built in — all AI-written messages are stripped of AI patterns and special characters so they read like you wrote them",
+                        "Anomaly protection — Auto-Earn pauses automatically if the platform returns rate limits or suspicious responses",
+                        "Escalation inbox — important situations surface as notifications via desktop and your connected channels (Discord, WhatsApp, Email)",
+                        "Earnings dashboard — track bids sent, replies made, and jobs in progress from the Freelance tab"
+                    ]
+    },
+    {
+        "version":  "1.4.4",
+        "title":  "Freelance improvements, Humanizer skill \u0026 more",
+        "changes":  [
+                        "Sent bids no longer reappear in Drafts \u0026 queue after marking as placed",
+                        "Listings tab now shows a Bid Placed badge once a proposal has been sent",
+                        "New built-in Humanizer skill — instruct any agent to write like a real person, not an AI",
+                        "Freelance agents now use humanizer rules automatically so bids avoid AI patterns and special characters",
+                        "Agent input dialogs now show the agent name and its color instead of a generic title",
+                        "What\u0027s New popup — you\u0027ll now see a summary of changes after each update"
+                    ]
+    }
 ]
-
