@@ -163,6 +163,14 @@ export function AutoEarnHelp() {
       </Section>
 
       <Section title="6. Sending a proposal (bid)">
+        <p>
+          Not sure about a job yet? Click <strong>Chat</strong> on its listing card first. You can ask anything, or use
+          the quick starts: <strong>What's this project</strong> (a plain-language explanation),{" "}
+          <strong>Should we bid?</strong> (a clear BID/SKIP verdict based only on whether the AI agents can build
+          everything the client asked for — things you'll handle anyway, like communication, credentials, and
+          deployment, never count against a job), <strong>Create Project Timelines</strong>, and{" "}
+          <strong>How would we build it?</strong> (tech stack and task plan).
+        </p>
         <ol className="ml-5 list-decimal space-y-1">
           <li>Go to the <strong>Listings</strong> tab and shortlist a job you like.</li>
           <li>On a <strong>shortlisted</strong> job, click <strong>Create Proposal</strong>. The app jumps to your Inbox Drafts.</li>
@@ -176,6 +184,11 @@ export function AutoEarnHelp() {
           <strong>Auto-draft proposals for shortlisted listings</strong> to have proposals written for you automatically
           (you still place the bid).
         </Callout>
+        <p>
+          Proposals (and the Chat) are written from the job's <strong>full description</strong>, not the short preview on
+          the card. The first time you use either on a job, the app fetches the job page itself — that can add a few
+          seconds — then remembers it, so it's instant afterwards.
+        </p>
       </Section>
 
       <Section title="7. The Auto-Earn dashboard & alerts">
@@ -199,12 +212,15 @@ export function AutoEarnHelp() {
         <ul className="ml-5 list-disc space-y-1">
           <li><strong>Default autonomy</strong> — Assisted or Full-auto (see section 4).</li>
           <li><strong>Max sends / hour</strong> &amp; <strong>Min gap between sends</strong> — the safety throttle. Lower = safer/slower. Bids are throttled harder.</li>
+          <li><strong>Max bids / day</strong> — a hard daily budget for proposals, separate from the hourly limits. Keeps automated bidding well inside your Freelancer membership's bid quota. 0 = no daily cap.</li>
           <li><strong>Active hours</strong> — the part of the day it's allowed to work (uses your timezone).</li>
+          <li><strong>Inbox sync min / max interval</strong> — how often the inbox refreshes itself. The app picks a random time between the two, so the rhythm looks human instead of clockwork.</li>
           <li><strong>Notifications</strong> — desktop popup and/or your connected channels when a client messages.</li>
           <li><strong>Bid pricing / floor / ceiling / hourly rate</strong> — how the bid amount is chosen.</li>
           <li><strong>Default delivery days</strong> — the timeframe prefilled on bids (auto-detected from the job text when it states one).</li>
           <li><strong>Auto-dismiss stale bids</strong> — drops a filled-but-unplaced bid after N hours (the job's usually taken by then).</li>
           <li><strong>Auto-draft proposals for shortlisted listings</strong> — write proposals for promising jobs automatically.</li>
+          <li><strong>Client quality filters</strong> — skip jobs from risky clients before any AI analysis runs: block clients with fewer than N reviews, or accounts younger than N days. If the client's info can't be read from the page, the job is <em>not</em> blocked (fail-open).</li>
         </ul>
         <p>
           In the Inbox you'll also see a <strong>Pause…</strong> control (1/3/8/24h) — it stops all sending and the AI

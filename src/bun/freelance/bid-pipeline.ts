@@ -12,6 +12,7 @@ import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { aiProviders, freelanceListings } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { ensureFullDescription } from "./description";
 import { getFreelanceSettings } from "./settings";
 import { getHumanizerRules } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
@@ -58,9 +59,14 @@ export async function draftBidForListing(platform: string, listingId: string): P
 			return "";
 		}
 	})();
-	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${String(listing.fullDescription || listing.description || "").slice(0, 2000)}\n\nWrite my proposal for this job.`;
 
 	const { adapter, modelId } = await resolveProviderAndModel();
+
+	// Make sure the proposal is written from the full listing page description,
+	// not the truncated RSS snippet — fetch + cache it if the chat hasn't already.
+	const fullDescription = await ensureFullDescription(listing, adapter, modelId);
+	const description = String(fullDescription || listing.description || "").slice(0, 8000);
+	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${description}\n\nWrite my proposal for this job.`;
 	const { text } = await generateText({
 		model: adapter.createModel(modelId),
 		system: buildProposalSystem(),

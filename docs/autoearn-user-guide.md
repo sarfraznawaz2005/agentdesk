@@ -118,6 +118,14 @@ normal message from you.
 
 ## 6. Step-by-step: sending a proposal (bid) on a job
 
+Not sure about a job yet? Click **Chat** on its listing card first. You can ask
+anything, or use the quick starts: **What's this project** (a plain-language
+explanation), **Should we bid?** (a clear BID/SKIP verdict based only on whether the
+AI agents can build everything the client asked for — things you'll handle anyway,
+like communication, credentials, and deployment, never count against a job),
+**Create Project Timelines**, and **How would we build it?** (tech stack and task
+plan).
+
 1. Go to the **Listings** tab (the jobs the app found for you).
 2. On a **shortlisted** job, click **"Create Proposal"**. (The button only shows on
    shortlisted listings — shortlist a job first if you don't see it.)
@@ -145,6 +153,11 @@ automatically so it's ready in your Drafts — you still place the bid.
 
 Bids are paced more carefully than replies (spaced out more), because a flood of
 proposals is the biggest "bot" red flag.
+
+Proposals (and the Chat) are written from the job's **full description**, not the
+short preview on the card. The first time you use either on a job, the app fetches
+the job page itself — that can add a few seconds — then remembers it, so it's
+instant afterwards.
 
 ---
 

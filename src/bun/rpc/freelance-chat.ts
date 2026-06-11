@@ -1,8 +1,6 @@
-import he from "he";
-import { streamText, generateText, stepCountIs } from "ai";
+import { streamText, stepCountIs } from "ai";
 import type { Tool } from "ai";
 import { eq, asc } from "drizzle-orm";
-import { parse as parseHtml } from "node-html-parser";
 import { db } from "../db";
 import { freelanceChatMessages, freelanceListings, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
@@ -11,6 +9,7 @@ import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
 import { buildSkillsDescriptionSection } from "../agents/prompts";
 import { getFreelanceSettings } from "../freelance/settings";
+import { ensureFullDescription } from "../freelance/description";
 import { FREELANCE_EVENTS } from "../freelance/events";
 import { formatBudget } from "../freelance/budget";
 import type { FreelanceChatMessageDto } from "../../shared/rpc/freelance";
@@ -49,47 +48,6 @@ async function buildFreelanceTools(): Promise<Record<string, Tool>> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function fetchPageText(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    },
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const html = await response.text();
-  const root = parseHtml(html);
-  root.querySelectorAll("script, style, nav, header, footer, aside, noscript").forEach((el) => el.remove());
-  // he.decode ensures HTML entities (&amp;, &nbsp;, etc.) are fully resolved.
-  const text = he.decode(root.textContent.replace(/\s+/g, " ").trim());
-  // Truncate before sending to extraction AI — keeps token cost low
-  return text.length > 12_000 ? text.slice(0, 12_000) + "…" : text;
-}
-
-async function extractDescription(
-  pageText: string,
-  listing: typeof freelanceListings.$inferSelect,
-  adapter: ReturnType<typeof createProviderAdapter>,
-  modelId: string,
-): Promise<string> {
-  const { text } = await generateText({
-    model: adapter.createModel(modelId),
-    system:
-      "You are a precise data extraction assistant. Extract ONLY the job or project description from the page content provided. " +
-      "Return only the actual project requirements and description the client wrote — no platform UI text, no navigation, no pricing tables, no sidebar content, no HTML. " +
-      "Plain text only. If you cannot find a clear description, return an empty string.",
-    messages: [
-      {
-        role: "user",
-        content:
-          `Extract the project description from this page for the listing titled "${listing.title}":\n\n${pageText}`,
-      },
-    ],
-  });
-  return text.trim();
-}
-
 async function buildSystemPrompt(
   listing: typeof freelanceListings.$inferSelect,
   fullDescription: string | null,
@@ -100,7 +58,8 @@ async function buildSystemPrompt(
 
   const platformName = listing.platform === "upwork" ? "Upwork" : "Freelancer.com";
   // null = not yet fetched, "" = fetch attempted but failed → both fall back to RSS description
-  const descriptionToUse = (fullDescription && fullDescription.length > 0) ? fullDescription : listing.description;
+  const hasFullDescription = Boolean(fullDescription && fullDescription.length > 0);
+  const descriptionToUse = hasFullDescription ? fullDescription : listing.description;
 
   let prompt = `You are a seasoned freelance strategist helping a developer evaluate and bid on a ${platformName} listing.
 
@@ -115,7 +74,28 @@ URL: ${listing.url}
 Description:
 ${descriptionToUse}
 
+${hasFullDescription
+    ? "The Description above is the COMPLETE project description, already fetched and extracted from the listing page. It is everything the page shows. Do NOT re-fetch the listing URL — no http_request, no web_fetch, no browser/chrome-devtools tools — answer from the description you already have."
+    : "The Description above is the short RSS preview; the full listing page could not be fetched automatically. If you need more detail, you may fetch the listing URL once with http_request — never open a browser for it."}
+
 Your role: You are expert freelancer and communication expert. Help the user craft compelling proposals, analyze this opportunity, estimate timelines and pricing, spot red flags, and draft bid responses they can copy-paste directly to the client.
+
+---
+
+DELIVERY MODEL — how the user actually delivers projects (this changes how you evaluate listings):
+
+The user does not do the development work personally. Projects are built by an autonomous AI agent system (specialized agents for backend, frontend, database, DevOps, QA, UI/UX, research) that can read/write files, run shell commands, use git, browse the web, and call APIs. The user can install any software, libraries, or tools the agents need.
+
+The user (human operator) handles everything that is not coding: client communication, requirements clarification, obtaining credentials/accounts/datasets/platform access, deployment, demos, delivery, design sign-off, and ongoing operations. These are routine parts of the workflow, not obstacles.
+
+Therefore, when the user asks whether a project is feasible or worth bidding on, judge ONE thing: can the AI agents create/develop/code 100% of what the client asked for? NEVER count any of the following against a listing, as blockers, red flags, or reasons to skip:
+- Budget, pricing, effort-vs-reward, or rate-vs-market comparisons (AI agents have no salary; cost-of-labor math doesn't apply)
+- Seniority or years-of-experience requirements, "full-time role" or "end-to-end ownership" wording, job-description framing
+- Vague scope, undefined success criteria, missing timelines, unclear deliverables (the human clarifies these with the client)
+- Client-owned credentials, accounts, datasets, existing codebases, or platform access (the human obtains them)
+- Deployment, rollout, monitoring, on-call, operations, design sign-off, stakeholder communication
+
+The only true blockers are things that make the development work itself impossible for AI agents: physical hardware the code must run on that can't be simulated or accessed remotely, proprietary closed systems with no API or documentation, or work that is fundamentally not software (on-site presence, video presenting, etc.).
 
 ---
 
@@ -179,7 +159,7 @@ FILLER AND HEDGING:
 VOICE:
 - Use contractions: don't, can't, I'll, you'd, it's, we're, wouldn't.
 - Mix sentence lengths. Short ones hit harder.
-- Have opinions. Say "skip this one" or "the budget is too low for this scope" when you mean it.
+- Have opinions. Say "skip this one" when you mean it — but only for the true blockers defined in the DELIVERY MODEL section, never for budget or scope vagueness.
 - When writing a bid proposal or client message, write it as final copy the user sends as-is.
 - Stop when done. No trailing sign-off.${skillsSection ? `
 
@@ -292,30 +272,14 @@ async function streamAndPersist(
 ): Promise<void> {
   let fullContent = "";
   try {
-    // Fetch and cache full description on first use.
-    // null  = never attempted → run fetch + extraction
-    // ""    = attempted but failed → skip, use RSS description
-    // "..." = successfully extracted → use directly
-    let fullDescription: string | null = listing.fullDescription;
-
     const { adapter, modelId } = await getDefaultProviderAndModel();
 
-    if (fullDescription === null) {
-      broadcastToWebview(FREELANCE_EVENTS.CHAT_FETCHING, { listingId });
-      try {
-        const pageText = await fetchPageText(listing.url);
-        fullDescription = await extractDescription(pageText, listing, adapter, modelId);
-      } catch (err) {
-        console.error("[freelance-chat] Failed to fetch/extract description:", err);
-        // Save "" so we don't retry on every subsequent message
-        fullDescription = "";
-      }
-      await db
-        .update(freelanceListings)
-        .set({ fullDescription })
-        .where(eq(freelanceListings.id, listingId));
-      broadcastToWebview(FREELANCE_EVENTS.CHAT_FETCH_DONE, { listingId });
-    }
+    // Fetch + cache the full description on first use (shared with the bid
+    // pipeline via ensureFullDescription). "" → fall back to RSS description.
+    const fullDescription = await ensureFullDescription(listing, adapter, modelId, {
+      onFetchStart: () => broadcastToWebview(FREELANCE_EVENTS.CHAT_FETCHING, { listingId }),
+      onFetchDone: () => broadcastToWebview(FREELANCE_EVENTS.CHAT_FETCH_DONE, { listingId }),
+    });
 
     const model = adapter.createModel(modelId);
     const systemPrompt = await buildSystemPrompt(listing, fullDescription);

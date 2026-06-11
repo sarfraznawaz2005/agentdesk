@@ -20,8 +20,8 @@ import type { FreelanceListingDto } from "../../../shared/rpc/freelance";
 
 const QUICK_STARTS = [
   {
-    label: "Write a bid proposal",
-    prompt: "Write a compelling bid proposal for this project that I can send directly to the client.",
+    label: "What's this project",
+    prompt: "Explain what this project is actually about in plain terms: what the client wants built, the expected deliverables, the technologies involved, and anything that is ambiguous or unstated in the listing.",
   },
   {
     label: "Create Project Timelines",
@@ -46,12 +46,52 @@ Give a realistic end-to-end delivery estimate (optimistic, realistic, pessimisti
 Base your estimates on the complexity of the listed requirements and skills. Assume AI agents work continuously without human bottlenecks except for the final client approval.`,
   },
   {
-    label: "Spot red flags",
-    prompt: "Are there any red flags or concerns in this job posting I should be aware of before bidding?",
+    label: "Should we bid?",
+    prompt: `Give me a go/no-go recommendation on bidding for this project. The work would be built by an autonomous AI agent system that can read/write files, run shell commands, use git, browse the web, and call APIs, and the user can install any software, libraries, or tools the agents need.
+
+The verdict must be based on ONE question only: **can the AI agents create/develop/code 100% of what the client asked for, on their own?**
+
+A human operator works alongside the agents and will ALWAYS handle the non-coding parts, so NONE of the following count against the verdict — do not list them as blockers or concerns:
+- Client communication, requirements clarification, vague specs, undefined success criteria, missing timelines
+- Client-owned accounts, credentials, API keys, datasets, or platform access (the human will obtain and provide them)
+- Deployment, rollout, monitoring, on-call, incident response, operations
+- Design sign-off, stakeholder feedback, demos, delivery
+- Budget, pricing, effort-vs-reward, seniority/experience requirements in the posting (agents don't have a salary — years-of-experience asks are irrelevant)
+- Ongoing-ownership or full-time-role wording
+
+Start with a clear verdict: **BID** or **SKIP** — followed by a one-sentence reason.
+
+Then cover:
+
+## What agents will build
+The concrete development work the agents would deliver end-to-end.
+
+## True blockers (if any)
+ONLY things that make the development work itself impossible for AI agents — e.g. physical hardware the code must run on that can't be simulated, proprietary closed systems with no API or docs, or work that is fundamentally not software (on-site installation, video presenting, etc.). If there are none, say "None."
+
+## Notes for the human
+A short FYI list of what the human operator will need to handle (credentials, clarifications, deployment, communication). Informational only — these do NOT affect the verdict.
+
+## Verdict recap
+Restate the verdict and your confidence that agents can build everything the client asked for.`,
   },
   {
-    label: "Draft questions for client",
-    prompt: "What clarifying questions should I ask the client before starting this project?",
+    label: "How would we build it?",
+    prompt: `Outline how an autonomous AI agent system would actually build this project. The system has specialized agents for backend, frontend, database, DevOps, QA, UI/UX, and research.
+
+Cover:
+
+## Recommended tech stack
+The languages, frameworks, libraries, and services you'd use, with a one-line reason for each non-obvious choice.
+
+## Architecture overview
+The main components and how they fit together. Keep it high level — a short description per component.
+
+## Agent task breakdown
+The concrete tasks, in execution order, and which agent role handles each.
+
+## Hardest parts
+The 2-3 riskiest or most complex pieces and how you'd de-risk them.`,
   },
 ];
 

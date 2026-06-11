@@ -269,7 +269,8 @@ src/
 > edits → user clicks Send) or **Full-auto** (opt-in behind a risk ack). Platform specifics
 > live in one descriptor (`src/shared/freelance/platforms.ts`); Freelancer.com only
 > (PeoplePerHour was removed — may return later).
-> Key files: `src/bun/freelance/{session/{governor,humanize,ingest,normalizer},reply-pipeline,bid-pipeline,similarity,watchdog,auto-earn-settings}.ts`,
+> Key files: `src/bun/freelance/{session/{governor,humanize,ingest,normalizer},reply-pipeline,bid-pipeline,description,similarity,watchdog,auto-earn-settings}.ts`
+> (`description.ts` = shared `ensureFullDescription`: fetch + AI-extract + cache `freelance_listings.fullDescription`, used by both the listing chat and the bid pipeline; failed fetches retry once per app session),
 > `src/bun/rpc/{freelance-inbox,freelance-outbox}.ts`, `src/mainview/components/freelance/{inbox-tab,auto-earn-settings}.tsx`.
 > Plan: `auto-earn-plan.md`.
 

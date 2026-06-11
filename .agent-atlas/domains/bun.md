@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 261
-**Symbols:** 1976
+**Files:** 262
+**Symbols:** 1977
 
 ## Files
 
@@ -1394,10 +1394,10 @@
 ### `src/bun/freelance/bid-pipeline.ts`
 
 **Functions:**
-- `buildProposalSystem` (line 21)
-- `resolveProviderAndModel` (line 28)
-- `getAccountAutonomy` (line 42)
-- `draftBidForListing` (line 50)
+- `buildProposalSystem` (line 22)
+- `resolveProviderAndModel` (line 29)
+- `getAccountAutonomy` (line 43)
+- `draftBidForListing` (line 51)
 
 
 ### `src/bun/freelance/budget.ts`
@@ -1421,6 +1421,14 @@
 - `getCurrencyRates` (line 128)
 - `convertAmount` (line 178)
 - `invalidateMemCache` (line 197)
+
+
+### `src/bun/freelance/description.ts`
+
+**Functions:**
+- `fetchPageText` (line 29)
+- `extractDescription` (line 47)
+- `ensureFullDescription` (line 75)
 
 
 ### `src/bun/freelance/events.ts`
@@ -3042,18 +3050,16 @@
 ### `src/bun/rpc/freelance-chat.ts`
 
 **Functions:**
-- `buildFreelanceTools` (line 31)
-- `fetchPageText` (line 52)
-- `extractDescription` (line 70)
-- `buildSystemPrompt` (line 93)
-- `getDefaultProviderAndModel` (line 216)
-- `getMessages` (line 243)
-- `clearMessages` (line 264)
-- `isAbortError` (line 277)
-- `streamAndPersist` (line 286)
-- `sendMessage` (line 405)
-- `regenerate` (line 450)
-- `stopChat` (line 493)
+- `buildFreelanceTools` (line 30)
+- `buildSystemPrompt` (line 51)
+- `getDefaultProviderAndModel` (line 196)
+- `getMessages` (line 223)
+- `clearMessages` (line 244)
+- `isAbortError` (line 257)
+- `streamAndPersist` (line 266)
+- `sendMessage` (line 369)
+- `regenerate` (line 414)
+- `stopChat` (line 457)
 
 
 ### `src/bun/rpc/freelance-expert.ts`

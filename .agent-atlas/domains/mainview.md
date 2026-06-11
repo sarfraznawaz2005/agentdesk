@@ -558,34 +558,34 @@
 ### `src/mainview/components/freelance/freelance-chat-modal.tsx`
 
 **Interfaces:**
-- `StreamingMessage` (line 62)
-- `ErrorMessage` (line 69)
-- `FreelanceChatModalProps` (line 266)
+- `StreamingMessage` (line 102)
+- `ErrorMessage` (line 109)
+- `FreelanceChatModalProps` (line 306)
 
 **Types:**
-- `DisplayMessage` (line 75)
+- `DisplayMessage` (line 115)
 
 **Functions:**
-- `isStreaming` (line 77)
-- `isError` (line 81)
-- `CopyButton` (line 137)
-- `handleCopy` (line 140)
-- `FetchingBubble` (line 165)
-- `MessageBubble` (line 181)
-- `FreelanceChatModal` (line 272)
-- `onFetching` (line 354)
-- `onFetchDone` (line 360)
-- `onToolStart` (line 366)
-- `onToolDone` (line 377)
-- `onToken` (line 389)
-- `onComplete` (line 398)
-- `onError` (line 415)
-- `onStopped` (line 427)
-- `handleKeyDown` (line 496)
-- `handleClear` (line 536)
+- `isStreaming` (line 117)
+- `isError` (line 121)
+- `CopyButton` (line 177)
+- `handleCopy` (line 180)
+- `FetchingBubble` (line 205)
+- `MessageBubble` (line 221)
+- `FreelanceChatModal` (line 312)
+- `onFetching` (line 394)
+- `onFetchDone` (line 400)
+- `onToolStart` (line 406)
+- `onToolDone` (line 417)
+- `onToken` (line 429)
+- `onComplete` (line 438)
+- `onError` (line 455)
+- `onStopped` (line 467)
+- `handleKeyDown` (line 536)
+- `handleClear` (line 576)
 
 **Methods:**
-- `code` (line 90)
+- `code` (line 130)
 
 
 ### `src/mainview/components/freelance/inbox-tab.tsx`

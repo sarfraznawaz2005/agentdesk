@@ -1036,7 +1036,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 277,
+      "line": 257,
       "symbol": "isAbortError",
       "type": "function"
     },
@@ -2322,7 +2322,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 42,
+      "line": 43,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -2892,13 +2892,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 216,
+      "line": 196,
       "symbol": "getDefaultProviderAndModel",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 243,
+      "line": 223,
       "symbol": "getMessages",
       "type": "function"
     },
@@ -3860,7 +3860,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 21,
+      "line": 22,
       "symbol": "buildProposalSystem",
       "type": "function"
     },
@@ -3878,7 +3878,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 93,
+      "line": 51,
       "symbol": "buildSystemPrompt",
       "type": "function"
     },
@@ -5756,7 +5756,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 28,
+      "line": 29,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -9006,19 +9006,19 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 31,
+      "line": 30,
       "symbol": "buildFreelanceTools",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 266,
+      "line": 306,
       "symbol": "FreelanceChatModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 272,
+      "line": 312,
       "symbol": "FreelanceChatModal",
       "type": "function"
     },
@@ -9784,7 +9784,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 277,
+      "line": 257,
       "symbol": "isAbortError",
       "type": "function"
     },
@@ -9838,19 +9838,19 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 69,
+      "line": 109,
       "symbol": "ErrorMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 81,
+      "line": 121,
       "symbol": "isError",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 415,
+      "line": 455,
       "symbol": "onError",
       "type": "function"
     },
@@ -11154,7 +11154,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 405,
+      "line": 369,
       "symbol": "sendMessage",
       "type": "function"
     },
@@ -11426,7 +11426,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 405,
+      "line": 369,
       "symbol": "sendMessage",
       "type": "function"
     },
@@ -11570,25 +11570,25 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 62,
+      "line": 102,
       "symbol": "StreamingMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 69,
+      "line": 109,
       "symbol": "ErrorMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 75,
+      "line": 115,
       "symbol": "DisplayMessage",
       "type": "type"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 181,
+      "line": 221,
       "symbol": "MessageBubble",
       "type": "function"
     },
@@ -15185,6 +15185,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/description.ts",
+      "line": 29,
+      "symbol": "fetchPageText",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/reply-pipeline.ts",
       "line": 73,
       "symbol": "buildConversationText",
@@ -15243,12 +15249,6 @@
       "line": 190,
       "symbol": "TextDocumentSyncOptions",
       "type": "interface"
-    },
-    {
-      "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 52,
-      "symbol": "fetchPageText",
-      "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -15348,7 +15348,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 286,
+      "line": 266,
       "symbol": "streamAndPersist",
       "type": "function"
     },
@@ -15500,7 +15500,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 264,
+      "line": 244,
       "symbol": "clearMessages",
       "type": "function"
     },
@@ -15518,7 +15518,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 536,
+      "line": 576,
       "symbol": "handleClear",
       "type": "function"
     },
@@ -15908,7 +15908,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "draftBidForListing",
       "type": "function"
     },
@@ -16148,7 +16148,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 28,
+      "line": 29,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -16244,7 +16244,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 216,
+      "line": 196,
       "symbol": "getDefaultProviderAndModel",
       "type": "function"
     },
@@ -17366,13 +17366,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 366,
+      "line": 406,
       "symbol": "onToolStart",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 377,
+      "line": 417,
       "symbol": "onToolDone",
       "type": "function"
     },
@@ -19077,6 +19077,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/description.ts",
+      "line": 75,
+      "symbol": "ensureFullDescription",
+      "type": "function"
+    },
+    {
       "file": "src/bun/playground/paths.ts",
       "line": 35,
       "symbol": "ensurePlaygroundDirs",
@@ -19156,7 +19162,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 28,
+      "line": 29,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -19168,13 +19174,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 216,
+      "line": 196,
       "symbol": "getDefaultProviderAndModel",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 286,
+      "line": 266,
       "symbol": "streamAndPersist",
       "type": "function"
     },
@@ -19362,13 +19368,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 243,
+      "line": 223,
       "symbol": "getMessages",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 264,
+      "line": 244,
       "symbol": "clearMessages",
       "type": "function"
     },
@@ -19610,6 +19616,12 @@
       "file": "src/bun/db/maintenance.ts",
       "line": 28,
       "symbol": "runFullVacuum",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/description.ts",
+      "line": 75,
+      "symbol": "ensureFullDescription",
       "type": "function"
     },
     {
@@ -19900,7 +19912,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 496,
+      "line": 536,
       "symbol": "handleKeyDown",
       "type": "function"
     },
@@ -20003,8 +20015,8 @@
       "type": "function"
     },
     {
-      "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 70,
+      "file": "src/bun/freelance/description.ts",
+      "line": 47,
       "symbol": "extractDescription",
       "type": "function"
     },
@@ -21748,7 +21760,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 216,
+      "line": 196,
       "symbol": "getDefaultProviderAndModel",
       "type": "function"
     },
@@ -22200,7 +22212,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 21,
+      "line": 22,
       "symbol": "buildProposalSystem",
       "type": "function"
     },
@@ -22278,13 +22290,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 31,
+      "line": 30,
       "symbol": "buildFreelanceTools",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 93,
+      "line": 51,
       "symbol": "buildSystemPrompt",
       "type": "function"
     },
@@ -23106,7 +23118,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 75,
+      "line": 115,
       "symbol": "DisplayMessage",
       "type": "type"
     },
@@ -25896,7 +25908,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 31,
+      "line": 30,
       "symbol": "buildFreelanceTools",
       "type": "function"
     },
@@ -28034,7 +28046,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 93,
+      "line": 51,
       "symbol": "buildSystemPrompt",
       "type": "function"
     },
@@ -28266,7 +28278,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 493,
+      "line": 457,
       "symbol": "stopChat",
       "type": "function"
     },
@@ -28414,7 +28426,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 427,
+      "line": 467,
       "symbol": "onStopped",
       "type": "function"
     }
@@ -29102,19 +29114,19 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 140,
+      "line": 180,
       "symbol": "handleCopy",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 496,
+      "line": 536,
       "symbol": "handleKeyDown",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 536,
+      "line": 576,
       "symbol": "handleClear",
       "type": "function"
     },
@@ -31390,7 +31402,7 @@
     },
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "draftBidForListing",
       "type": "function"
     },
@@ -31637,6 +31649,18 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/description.ts",
+      "line": 47,
+      "symbol": "extractDescription",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/freelance/description.ts",
+      "line": 75,
+      "symbol": "ensureFullDescription",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/expert/orchestrator.ts",
       "line": 159,
       "symbol": "getListingFullDescription",
@@ -31646,12 +31670,6 @@
       "file": "src/bun/freelance/normalizer.ts",
       "line": 50,
       "symbol": "cleanDescription",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 70,
-      "symbol": "extractDescription",
       "type": "function"
     },
     {
@@ -33344,7 +33362,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 366,
+      "line": 406,
       "symbol": "onToolStart",
       "type": "function"
     },
@@ -34511,6 +34529,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/freelance/description.ts",
+      "line": 29,
+      "symbol": "fetchPageText",
+      "type": "function"
+    },
+    {
       "file": "src/bun/freelance/fetcher.ts",
       "line": 46,
       "symbol": "fetchAllPlatforms",
@@ -34643,12 +34667,6 @@
       "type": "function"
     },
     {
-      "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 52,
-      "symbol": "fetchPageText",
-      "type": "function"
-    },
-    {
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 300,
       "symbol": "fetchPageText",
@@ -34668,7 +34686,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 360,
+      "line": 400,
       "symbol": "onFetchDone",
       "type": "function"
     },
@@ -35026,13 +35044,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 360,
+      "line": 400,
       "symbol": "onFetchDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 377,
+      "line": 417,
       "symbol": "onToolDone",
       "type": "function"
     },
@@ -39174,7 +39192,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 493,
+      "line": 457,
       "symbol": "stopChat",
       "type": "function"
     },
@@ -39252,13 +39270,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 266,
+      "line": 306,
       "symbol": "FreelanceChatModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 272,
+      "line": 312,
       "symbol": "FreelanceChatModal",
       "type": "function"
     },
@@ -43648,13 +43666,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 137,
+      "line": 177,
       "symbol": "CopyButton",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 140,
+      "line": 180,
       "symbol": "handleCopy",
       "type": "function"
     },
@@ -44808,7 +44826,7 @@
   "model": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 28,
+      "line": 29,
       "symbol": "resolveProviderAndModel",
       "type": "function"
     },
@@ -44898,7 +44916,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 216,
+      "line": 196,
       "symbol": "getDefaultProviderAndModel",
       "type": "function"
     },
@@ -45130,7 +45148,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 389,
+      "line": 429,
       "symbol": "onToken",
       "type": "function"
     },
@@ -45362,7 +45380,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 90,
+      "line": 130,
       "symbol": "code",
       "type": "method"
     },
@@ -47493,8 +47511,8 @@
   ],
   "page": [
     {
-      "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 52,
+      "file": "src/bun/freelance/description.ts",
+      "line": 29,
       "symbol": "fetchPageText",
       "type": "function"
     },
@@ -47604,7 +47622,7 @@
   "persist": [
     {
       "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 286,
+      "line": 266,
       "symbol": "streamAndPersist",
       "type": "function"
     },
@@ -47648,14 +47666,6 @@
       "file": "src/mainview/stores/chat-event-handlers.ts",
       "line": 443,
       "symbol": "persistShellApprovalDecision",
-      "type": "function"
-    }
-  ],
-  "regenerate": [
-    {
-      "file": "src/bun/rpc/freelance-chat.ts",
-      "line": 450,
-      "symbol": "regenerate",
       "type": "function"
     }
   ],
@@ -49248,7 +49258,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 266,
+      "line": 306,
       "symbol": "FreelanceChatModalProps",
       "type": "interface"
     },
@@ -51218,13 +51228,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 165,
+      "line": 205,
       "symbol": "FetchingBubble",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 181,
+      "line": 221,
       "symbol": "MessageBubble",
       "type": "function"
     },
@@ -51948,7 +51958,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 398,
+      "line": 438,
       "symbol": "onComplete",
       "type": "function"
     },
@@ -54296,7 +54306,7 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 496,
+      "line": 536,
       "symbol": "handleKeyDown",
       "type": "function"
     },
@@ -54678,13 +54688,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 62,
+      "line": 102,
       "symbol": "StreamingMessage",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 77,
+      "line": 117,
       "symbol": "isStreaming",
       "type": "function"
     }
@@ -54950,13 +54960,13 @@
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 266,
+      "line": 306,
       "symbol": "FreelanceChatModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 272,
+      "line": 312,
       "symbol": "FreelanceChatModal",
       "type": "function"
     },
@@ -54994,7 +55004,7 @@
   "button": [
     {
       "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 137,
+      "line": 177,
       "symbol": "CopyButton",
       "type": "function"
     },
@@ -55033,20 +55043,6 @@
       "line": 146,
       "symbol": "SelectScrollDownButton",
       "type": "export"
-    }
-  ],
-  "fetching": [
-    {
-      "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 165,
-      "symbol": "FetchingBubble",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
-      "line": 354,
-      "symbol": "onFetching",
-      "type": "function"
     }
   ],
   "blur": [
@@ -59220,7 +59216,7 @@
   "account": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 42,
+      "line": 43,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -59258,7 +59254,7 @@
   "autonomy": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 42,
+      "line": 43,
       "symbol": "getAccountAutonomy",
       "type": "function"
     },
@@ -59799,22 +59795,6 @@
       "type": "function"
     }
   ],
-  "callout": [
-    {
-      "file": "src/mainview/components/freelance/auto-earn-help.tsx",
-      "line": 21,
-      "symbol": "Callout",
-      "type": "function"
-    }
-  ],
-  "faq": [
-    {
-      "file": "src/mainview/components/freelance/auto-earn-help.tsx",
-      "line": 29,
-      "symbol": "Faq",
-      "type": "function"
-    }
-  ],
   "titlebar": [
     {
       "file": "src/bun/index.ts",
@@ -59834,7 +59814,7 @@
   "draft": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "draftBidForListing",
       "type": "function"
     },
@@ -59872,7 +59852,7 @@
   "bid": [
     {
       "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 50,
+      "line": 51,
       "symbol": "draftBidForListing",
       "type": "function"
     },
@@ -60619,14 +60599,6 @@
       "type": "function"
     }
   ],
-  "proposal": [
-    {
-      "file": "src/bun/freelance/bid-pipeline.ts",
-      "line": 21,
-      "symbol": "buildProposalSystem",
-      "type": "function"
-    }
-  ],
   "humanizer": [
     {
       "file": "src/bun/freelance/humanizer-prompt.ts",
@@ -60974,6 +60946,52 @@
       "file": "src/mainview/components/freelance/settings-tab.tsx",
       "line": 120,
       "symbol": "CurrencyCombobox",
+      "type": "function"
+    }
+  ],
+  "proposal": [
+    {
+      "file": "src/bun/freelance/bid-pipeline.ts",
+      "line": 22,
+      "symbol": "buildProposalSystem",
+      "type": "function"
+    }
+  ],
+  "regenerate": [
+    {
+      "file": "src/bun/rpc/freelance-chat.ts",
+      "line": 414,
+      "symbol": "regenerate",
+      "type": "function"
+    }
+  ],
+  "callout": [
+    {
+      "file": "src/mainview/components/freelance/auto-earn-help.tsx",
+      "line": 21,
+      "symbol": "Callout",
+      "type": "function"
+    }
+  ],
+  "faq": [
+    {
+      "file": "src/mainview/components/freelance/auto-earn-help.tsx",
+      "line": 29,
+      "symbol": "Faq",
+      "type": "function"
+    }
+  ],
+  "fetching": [
+    {
+      "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
+      "line": 205,
+      "symbol": "FetchingBubble",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/freelance-chat-modal.tsx",
+      "line": 394,
+      "symbol": "onFetching",
       "type": "function"
     }
   ]
