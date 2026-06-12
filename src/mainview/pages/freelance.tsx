@@ -67,9 +67,7 @@ export function FreelancePage() {
     "rounded-none border-b-2 border-transparent px-4 pb-2 pt-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground";
 
   return (
-    // The Inbox tab embeds the live Freelancer preview, so give it the full width;
-    // the other tabs keep the comfortable reading width.
-    <div className={`p-6 mx-auto ${effectiveTab === "inbox" ? "max-w-none" : "max-w-6xl"}`}>
+    <div className="p-6 mx-auto max-w-[90%]">
       <Tabs value={effectiveTab} onValueChange={onTabChange}>
         <TabsList className="mb-5 h-auto bg-transparent p-0 border-b border-border rounded-none w-full justify-start gap-0">
           <TabsTrigger value="listings" className={triggerCls}>Listings</TabsTrigger>
@@ -94,7 +92,7 @@ export function FreelancePage() {
         {autoEarnEnabled && (
           <TabsContent value="inbox">
             {/* Portal slot — the background-engine InboxTab renders itself here. */}
-            <div ref={slotRef} />
+            <div ref={slotRef} className="w-full" />
           </TabsContent>
         )}
 

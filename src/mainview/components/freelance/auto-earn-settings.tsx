@@ -137,9 +137,9 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
         <HelpIcon text="When a listing is auto-shortlisted, automatically draft a proposal and queue it for you (in Full-auto it's also filled into the bid form, ready to place). Bids are NEVER auto-placed — you always click Place Bid. Off by default." />
       </label>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Rendered manually (not via <Field>) so the modal trigger isn't nested in
-            a <label> that would also toggle the select. */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        {/* ── Sending behaviour ────────────────────────────── */}
+        {/* Rendered manually so the modal trigger isn't nested in a <label>. */}
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             Default autonomy
@@ -162,6 +162,8 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             onChange={(e) => patch({ maxSendsPerHour: num(e.target.value, 4) })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
         </Field>
+
+        {/* ── Rate limits ───────────────────────────────────── */}
         <Field
           label="Max bids / day"
           help="Hard daily budget for proposals across all projects (rolling 24h). Freelancer memberships include a monthly bid quota — this keeps automated bidding well inside it and far below spam velocity. Set to 0 to disable the daily cap (hourly limits still apply)."
@@ -178,6 +180,8 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             onChange={(e) => patch({ minGapSeconds: num(e.target.value, 90) })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
         </Field>
+
+        {/* ── Timing / rhythm ───────────────────────────────── */}
         <Field
           label="Active hours"
           help="Sending and background inbox sync only run between these two hours (e.g. 9 to 22 = 9am–10pm). Outside the window everything pauses, so there's no robotic 3am activity. Hours use the timezone set in Settings → General (default UTC)."
@@ -186,12 +190,28 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             <input type="number" min={0} max={23} value={s.activeHours.start}
               onChange={(e) => patch({ activeHours: { ...s.activeHours, start: num(e.target.value, 9) } })}
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
-            <span className="text-muted-foreground">to</span>
+            <span className="shrink-0 text-muted-foreground">to</span>
             <input type="number" min={0} max={23} value={s.activeHours.end}
               onChange={(e) => patch({ activeHours: { ...s.activeHours, end: num(e.target.value, 22) } })}
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
           </div>
         </Field>
+        <Field
+          label="Inbox sync interval (s)"
+          help="The app re-checks your inbox at a random interval between these two values, creating a jittered human-like polling cadence instead of a fixed rhythm."
+        >
+          <div className="flex items-center gap-2">
+            <input type="number" min={30} value={s.pollMin}
+              onChange={(e) => patch({ pollMin: num(e.target.value, 180) })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+            <span className="shrink-0 text-muted-foreground">to</span>
+            <input type="number" min={30} value={s.pollMax}
+              onChange={(e) => patch({ pollMax: num(e.target.value, 480) })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+          </div>
+        </Field>
+
+        {/* ── Bid timing ────────────────────────────────────── */}
         <Field
           label="Default delivery days"
           help="The 'This project will be delivered in … days' value prefilled on every bid. You can still change it per-bid in the live session before placing the bid."
@@ -208,6 +228,8 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             onChange={(e) => patch({ bidStaleHours: num(e.target.value, 24) })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
         </Field>
+
+        {/* ── Bid amount ────────────────────────────────────── */}
         <Field
           label="Bid pricing"
           help="How the bid amount is chosen from the project budget. Average = middle of the range; Min/Max = the low/high end; Percentile = a chosen position in the range. Hourly projects use the hourly rate below when set."
@@ -220,7 +242,7 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             <option value="percentile">Percentile of range</option>
           </select>
         </Field>
-        {s.bidPricingMode === "percentile" && (
+        {s.bidPricingMode === "percentile" ? (
           <Field
             label="Bid percentile (%)"
             help="Where in the budget range to bid: 0 = minimum, 100 = maximum, 25 = lower quarter."
@@ -229,7 +251,7 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
               onChange={(e) => patch({ bidPercentile: num(e.target.value, 50) })}
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
           </Field>
-        )}
+        ) : <div />}
         <Field label="Bid floor (min)" help="Never bid below this amount. 0 = no floor.">
           <input type="number" min={0} value={s.bidMinClamp}
             onChange={(e) => patch({ bidMinClamp: num(e.target.value, 0) })}
@@ -245,22 +267,7 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             onChange={(e) => patch({ bidHourlyRate: num(e.target.value, 0) })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
         </Field>
-        <Field
-          label="Inbox sync min interval (s)"
-          help="Floor of the random delay between automatic inbox refreshes. The app re-checks your inbox at a random time between this and the max, so the rhythm doesn't look mechanical."
-        >
-          <input type="number" min={30} value={s.pollMin}
-            onChange={(e) => patch({ pollMin: num(e.target.value, 180) })}
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
-        </Field>
-        <Field
-          label="Inbox sync max interval (s)"
-          help="Ceiling of the random delay between automatic inbox refreshes. Paired with the min to create a jittered, human-like polling cadence instead of a fixed interval."
-        >
-          <input type="number" min={30} value={s.pollMax}
-            onChange={(e) => patch({ pollMax: num(e.target.value, 480) })}
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
-        </Field>
+        <div />
       </div>
 
       <div className="flex flex-col gap-2">

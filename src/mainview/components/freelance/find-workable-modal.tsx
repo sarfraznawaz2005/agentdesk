@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Tip } from "@/components/ui/tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { AlertTriangle, CheckSquare, ChevronDown, ChevronRight, Info, Loader2, Square, StopCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -358,12 +359,17 @@ function ResultsStep({
                       <span className="flex items-center gap-1 shrink-0 tabular-nums">
                         <span className="text-xs text-muted-foreground">{budget.primary}</span>
                         {budget.converted && (
-                          <span
-                            className="text-xs font-semibold text-blue-900 dark:text-blue-300 cursor-default"
-                            title={budget.tooltipRate ?? undefined}
-                          >
-                            ({budget.converted})
-                          </span>
+                          budget.tooltipRate ? (
+                            <Tip content={budget.tooltipRate} side="top">
+                              <span className="text-xs font-semibold text-blue-900 dark:text-blue-300 cursor-default">
+                                ({budget.converted})
+                              </span>
+                            </Tip>
+                          ) : (
+                            <span className="text-xs font-semibold text-blue-900 dark:text-blue-300 cursor-default">
+                              ({budget.converted})
+                            </span>
+                          )
                         )}
                       </span>
                     )}

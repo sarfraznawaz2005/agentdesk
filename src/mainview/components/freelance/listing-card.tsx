@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -531,12 +532,9 @@ export function FreelanceListingCard({
             </span>
           )}
           {postedAgo && listing.postedAt && (
-            <span
-              className="text-xs text-muted-foreground"
-              title={`Posted: ${formatFullDate(listing.postedAt, timezone)}`}
-            >
-              {postedAgo}
-            </span>
+            <Tip content={`Posted: ${formatFullDate(listing.postedAt, timezone)}`} side="top">
+              <span className="text-xs text-muted-foreground">{postedAgo}</span>
+            </Tip>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -552,12 +550,12 @@ export function FreelanceListingCard({
             </button>
           )}
           {analysisData && (
-            <button
-              type="button"
-              onClick={() => setAnalysisOpen(true)}
-              aria-label="View AI analysis"
-              title="View AI analysis"
-              className={cn(
+            <Tip content="View AI analysis" side="top">
+              <button
+                type="button"
+                onClick={() => setAnalysisOpen(true)}
+                aria-label="View AI analysis"
+                className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 analysisData.verdict === "workable"
                   ? "bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/20"
@@ -566,7 +564,8 @@ export function FreelanceListingCard({
             >
               <Sparkles className="size-3.5" />
               Analysis
-            </button>
+              </button>
+            </Tip>
           )}
         </div>
       </div>
@@ -584,12 +583,17 @@ export function FreelanceListingCard({
                 {budget.primary}
               </span>
               {budget.converted && (
-                <span
-                  className="text-sm font-semibold text-blue-900 dark:text-blue-300 tabular-nums cursor-default"
-                  title={budget.tooltipRate ?? undefined}
-                >
-                  ({budget.converted})
-                </span>
+                budget.tooltipRate ? (
+                  <Tip content={budget.tooltipRate} side="top">
+                    <span className="text-sm font-semibold text-blue-900 dark:text-blue-300 tabular-nums cursor-default">
+                      ({budget.converted})
+                    </span>
+                  </Tip>
+                ) : (
+                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-300 tabular-nums cursor-default">
+                    ({budget.converted})
+                  </span>
+                )
               )}
             </div>
           </div>

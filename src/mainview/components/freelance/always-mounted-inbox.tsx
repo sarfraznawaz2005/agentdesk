@@ -28,7 +28,11 @@ export function AlwaysMountedInbox() {
   const slot = useFreelanceEngineStore((s) => s.slot);
   // Stable container InboxTab is portaled into — its identity NEVER changes, so the
   // portal (and InboxTab) never remounts. We only move this element in the DOM.
-  const [hostEl] = useState(() => document.createElement("div"));
+  const [hostEl] = useState(() => {
+    const el = document.createElement("div");
+    el.style.width = "100%";
+    return el;
+  });
   const hiddenRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Tip } from "../ui/tooltip";
 import { rpc } from "../../lib/rpc";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
 import { getPlatform, endpointPaths } from "../../../shared/freelance/platforms";
@@ -796,15 +797,16 @@ export function InboxTab() {
         )}
         {account?.connected && (
           <>
-            <select
-              value={account.autonomyMode}
-              onChange={(e) => setAutonomy(e.target.value as "assisted" | "full_auto")}
-              title="Autonomy mode"
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-xs"
-            >
-              <option value="assisted">Assisted (you send)</option>
-              <option value="full_auto">Full-auto</option>
-            </select>
+            <Tip content="Switch between Assisted (you approve each send) and Full-auto (AI sends on your behalf)" side="bottom">
+              <select
+                value={account.autonomyMode}
+                onChange={(e) => setAutonomy(e.target.value as "assisted" | "full_auto")}
+                className="shrink-0 rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+              >
+                <option value="assisted">Assisted (you send)</option>
+                <option value="full_auto">Full-auto</option>
+              </select>
+            </Tip>
             <button
               onClick={disconnect}
               className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
@@ -840,30 +842,30 @@ export function InboxTab() {
             </span>
           ) : (
             <>
-              <span
-                className="text-muted-foreground"
-                title="Sends used this hour vs cap (reply / bid). Bids are throttled harder. 'next in' is the minimum gap remaining."
-              >
-                Sends this hour — reply {gov.reply.usedThisHour}/{gov.reply.cap} · bid{" "}
-                {gov.bid.usedThisHour}/{gov.bid.cap}
-                {gov.reply.nextAllowedInMs > 0 ? ` · next in ${Math.ceil(gov.reply.nextAllowedInMs / 1000)}s` : ""}
-                {!gov.withinActiveHours ? " · outside active hours" : ""}
-              </span>
-              <select
-                value=""
-                onChange={(e) => {
-                  const h = Number(e.target.value);
-                  if (h > 0) pauseFor(h);
-                }}
-                title="Pause all sending + full-auto for a while. Inbox sync keeps running."
-                className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-              >
-                <option value="">Pause…</option>
-                <option value="1">1 hour</option>
-                <option value="3">3 hours</option>
-                <option value="8">8 hours</option>
-                <option value="24">24 hours</option>
-              </select>
+              <Tip content="Sends used this hour vs cap (reply / bid). Bids are throttled harder. 'next in' is the minimum gap remaining." side="bottom">
+                <span className="text-muted-foreground">
+                  Sends this hour — reply {gov.reply.usedThisHour}/{gov.reply.cap} · bid{" "}
+                  {gov.bid.usedThisHour}/{gov.bid.cap}
+                  {gov.reply.nextAllowedInMs > 0 ? ` · next in ${Math.ceil(gov.reply.nextAllowedInMs / 1000)}s` : ""}
+                  {!gov.withinActiveHours ? " · outside active hours" : ""}
+                </span>
+              </Tip>
+              <Tip content="Pause all sending + full-auto for a while. Inbox sync keeps running." side="bottom">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const h = Number(e.target.value);
+                    if (h > 0) pauseFor(h);
+                  }}
+                  className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                >
+                  <option value="">Pause…</option>
+                  <option value="1">1 hour</option>
+                  <option value="3">3 hours</option>
+                  <option value="8">8 hours</option>
+                  <option value="24">24 hours</option>
+                </select>
+              </Tip>
             </>
           )}
         </div>
@@ -1084,7 +1086,7 @@ export function InboxTab() {
       )}
 
       {/* Live session (sync engine) */}
-      <div className="rounded-md border border-border">
+      <div className="mt-4 rounded-md border border-border">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <span className="text-sm font-medium">Live session</span>
           <span className="text-xs text-muted-foreground">— logs in &amp; feeds your inbox</span>
@@ -1108,7 +1110,7 @@ export function InboxTab() {
           <div
             ref={holderRef}
             className="w-full overflow-hidden"
-            style={{ height: sessionOpen ? "90vh" : 0 }}
+            style={{ height: sessionOpen ? "80vh" : 0 }}
           />
         ) : (
           <div className="p-4 text-sm text-red-600 dark:text-red-400">

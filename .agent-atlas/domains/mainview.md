@@ -490,8 +490,8 @@
 
 **Functions:**
 - `AlwaysMountedInbox` (line 26)
-- `load` (line 35)
-- `onSettings` (line 43)
+- `load` (line 39)
+- `onSettings` (line 47)
 
 
 ### `src/mainview/components/freelance/auto-earn-help.tsx`
@@ -514,7 +514,7 @@
 - `AutoEarnSettings` (line 105)
 - `patch` (line 106)
 - `num` (line 108)
-- `Field` (line 339)
+- `Field` (line 346)
 
 
 ### `src/mainview/components/freelance/expert-dashboard.tsx`
@@ -533,26 +533,26 @@
 ### `src/mainview/components/freelance/find-workable-modal.tsx`
 
 **Interfaces:**
-- `ProgressItem` (line 15)
-- `BudgetDisplay` (line 26)
-- `FindWorkableModalProps` (line 427)
+- `ProgressItem` (line 16)
+- `BudgetDisplay` (line 27)
+- `FindWorkableModalProps` (line 433)
 
 **Types:**
-- `WizardStep` (line 13)
+- `WizardStep` (line 14)
 
 **Functions:**
-- `convertAmount` (line 32)
-- `fmt` (line 47)
-- `buildBudgetDisplay` (line 51)
-- `ConfigStep` (line 101)
-- `AnalyzingStep` (line 157)
-- `FailedListingRow` (line 245)
-- `ResultsStep` (line 280)
-- `FindWorkableModal` (line 433)
-- `onProgress` (line 476)
-- `onComplete` (line 500)
-- `onError` (line 511)
-- `onStopped` (line 517)
+- `convertAmount` (line 33)
+- `fmt` (line 48)
+- `buildBudgetDisplay` (line 52)
+- `ConfigStep` (line 102)
+- `AnalyzingStep` (line 158)
+- `FailedListingRow` (line 246)
+- `ResultsStep` (line 281)
+- `FindWorkableModal` (line 439)
+- `onProgress` (line 482)
+- `onComplete` (line 506)
+- `onError` (line 517)
+- `onStopped` (line 523)
 
 
 ### `src/mainview/components/freelance/freelance-chat-modal.tsx`
@@ -591,29 +591,29 @@
 ### `src/mainview/components/freelance/inbox-tab.tsx`
 
 **Types:**
-- `WebviewTagEl` (line 153)
+- `WebviewTagEl` (line 154)
 
 **Functions:**
-- `parseHostMessage` (line 162)
-- `AutoGrowTextarea` (line 180)
-- `navUrl` (line 230)
-- `hourInTz` (line 243)
-- `fmtTime` (line 255)
-- `InboxTab` (line 264)
-- `maybeFetchProfileSkills` (line 487)
-- `inject` (line 498)
-- `onNav` (line 509)
-- `onHostMessage` (line 521)
-- `onUpdated` (line 625)
-- `onOutbox` (line 630)
-- `onStatus` (line 631)
-- `withinActiveHours` (line 660)
-- `schedule` (line 666)
-- `tick` (line 709)
-- `selectThread` (line 739)
-- `syncNow` (line 748)
-- `setAutonomy` (line 756)
-- `disconnect` (line 760)
+- `parseHostMessage` (line 163)
+- `AutoGrowTextarea` (line 181)
+- `navUrl` (line 231)
+- `hourInTz` (line 244)
+- `fmtTime` (line 256)
+- `InboxTab` (line 265)
+- `maybeFetchProfileSkills` (line 488)
+- `inject` (line 499)
+- `onNav` (line 510)
+- `onHostMessage` (line 522)
+- `onUpdated` (line 626)
+- `onOutbox` (line 631)
+- `onStatus` (line 632)
+- `withinActiveHours` (line 661)
+- `schedule` (line 667)
+- `tick` (line 710)
+- `selectThread` (line 740)
+- `syncNow` (line 749)
+- `setAutonomy` (line 757)
+- `disconnect` (line 761)
 
 
 ### `src/mainview/components/freelance/keyword-input.tsx`
@@ -632,31 +632,31 @@
 ### `src/mainview/components/freelance/listing-card.tsx`
 
 **Interfaces:**
-- `BudgetDisplay` (line 78)
-- `FreelanceListingCardProps` (line 341)
+- `BudgetDisplay` (line 79)
+- `FreelanceListingCardProps` (line 342)
 
 **Functions:**
-- `convertAmount` (line 24)
-- `fmtNum` (line 39)
-- `relativeTime` (line 49)
-- `formatFullDate` (line 62)
-- `buildBudgetDisplay` (line 84)
-- `getPlatformColor` (line 163)
-- `PlatformBadge` (line 170)
-- `SkillChips` (line 183)
-- `AnalysisModal` (line 246)
-- `FreelanceListingCard` (line 363)
-- `onActive` (line 403)
-- `onDone` (line 407)
-- `handleApprove` (line 441)
-- `handleShortlist` (line 450)
-- `handleMarkDone` (line 460)
-- `handleAnalyze` (line 470)
-- `handleDelete` (line 477)
-- `handleViewOnPlatform` (line 487)
+- `convertAmount` (line 25)
+- `fmtNum` (line 40)
+- `relativeTime` (line 50)
+- `formatFullDate` (line 63)
+- `buildBudgetDisplay` (line 85)
+- `getPlatformColor` (line 164)
+- `PlatformBadge` (line 171)
+- `SkillChips` (line 184)
+- `AnalysisModal` (line 247)
+- `FreelanceListingCard` (line 364)
+- `onActive` (line 404)
+- `onDone` (line 408)
+- `handleApprove` (line 442)
+- `handleShortlist` (line 451)
+- `handleMarkDone` (line 461)
+- `handleAnalyze` (line 471)
+- `handleDelete` (line 478)
+- `handleViewOnPlatform` (line 488)
 
 **Methods:**
-- `code` (line 212)
+- `code` (line 213)
 
 
 ### `src/mainview/components/freelance/listings-tab.tsx`
