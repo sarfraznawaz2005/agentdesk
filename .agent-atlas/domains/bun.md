@@ -3183,12 +3183,12 @@
 - `saveSettings` (line 29)
 - `getCurrencyRatesHandler` (line 58)
 - `getListings` (line 66)
-- `getListingCounts` (line 155)
-- `markListingDone` (line 179)
-- `deleteListing` (line 207)
-- `deleteListings` (line 234)
-- `triggerFetch` (line 256)
-- `approveListing` (line 277)
+- `getListingCounts` (line 156)
+- `markListingDone` (line 180)
+- `deleteListing` (line 208)
+- `deleteListings` (line 235)
+- `triggerFetch` (line 257)
+- `approveListing` (line 278)
 
 
 ### `src/bun/rpc/git.ts`

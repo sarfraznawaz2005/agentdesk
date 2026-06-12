@@ -358,7 +358,7 @@ export interface FreelanceListingCardProps {
   onToggleSelect?: () => void;
 }
 
-const DESCRIPTION_TRUNCATE_LENGTH = 200;
+const DESCRIPTION_TRUNCATE_LENGTH = 200; // only used to decide whether to show "View Full Description"
 
 export function FreelanceListingCard({
   listing,
@@ -389,7 +389,7 @@ export function FreelanceListingCard({
     blockers: string[];
     analysisText: string;
   } | null>(null);
-  const [showFullDescription, setShowFullDescription] = useState(false);
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -397,6 +397,7 @@ export function FreelanceListingCard({
   // stays mounted (and its state preserved) even while chatOpen is false.
   const [chatStreaming, setChatStreaming] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
   useEffect(() => {
     const onActive = (e: Event) => {
@@ -488,10 +489,6 @@ export function FreelanceListingCard({
   };
 
   const isTruncatable = listing.description.length > DESCRIPTION_TRUNCATE_LENGTH;
-  const displayedDescription =
-    isTruncatable && !showFullDescription
-      ? listing.description.slice(0, DESCRIPTION_TRUNCATE_LENGTH).trimEnd() + "…"
-      : listing.description;
 
   const postedAgo = relativeTime(listing.postedAt);
   const isNew = listing.status === "new";
@@ -602,14 +599,14 @@ export function FreelanceListingCard({
       {/* Description */}
       {listing.description && (
         <div className="text-sm text-foreground leading-relaxed">
-          <span>{displayedDescription}</span>
-          {isTruncatable && (
+          <span>{listing.description}</span>
+          {isTruncatable && listing.fullDescription && (
             <button
               type="button"
-              onClick={() => setShowFullDescription((prev) => !prev)}
+              onClick={() => setDescriptionOpen(true)}
               className="ml-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
             >
-              {showFullDescription ? "Show less" : "Show more"}
+              View Full Description
             </button>
           )}
         </div>
@@ -826,6 +823,21 @@ export function FreelanceListingCard({
           analysisText={analysisData.analysisText}
         />
       )}
+
+      {/* Full description modal */}
+      <Dialog open={descriptionOpen} onOpenChange={setDescriptionOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold leading-snug pr-6">
+              {listing.title}
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Full project description</p>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0 mt-1 text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+            {listing.fullDescription}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

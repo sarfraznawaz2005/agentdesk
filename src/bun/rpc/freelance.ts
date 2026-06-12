@@ -146,6 +146,7 @@ export async function getListings(params: {
     })(),
     wizardAnalysisText: row.wizardAnalysisText ?? null,
     hasBid: sentBidIds.has(row.id),
+    fullDescription: row.fullDescription ?? null,
   }));
 
   return { listings, total, page };

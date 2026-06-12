@@ -28,6 +28,8 @@ export interface FreelanceListingDto {
   wizardAnalysisText: string | null;
   /** True when a bid for this listing has already been sent (outbox status = 'sent'). */
   hasBid: boolean;
+  /** Full description extracted from the listing page. null = never fetched, "" = fetch failed. */
+  fullDescription: string | null;
 }
 
 export interface WizardWorkableListing {

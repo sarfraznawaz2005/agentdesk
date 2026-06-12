@@ -122,22 +122,22 @@
 **Interfaces:**
 - `FreelanceChatMessageDto` (line 3)
 - `FreelanceListingDto` (line 10)
-- `WizardWorkableListing` (line 33)
-- `WizardFailedListing` (line 42)
-- `FreelanceAccountDto` (line 51)
-- `FreelanceInboxThreadDto` (line 60)
-- `FreelanceAutoEarnSettingsDto` (line 77)
-- `FreelanceGovernorActionStateDto` (line 102)
-- `FreelanceGovernorStateDto` (line 107)
-- `FreelanceOutboxItemDto` (line 114)
-- `FreelanceInboxMessageDto` (line 127)
-- `FreelanceEscalationDto` (line 139)
-- `FreelanceJobDto` (line 152)
-- `FreelanceEarningsDto` (line 169)
+- `WizardWorkableListing` (line 35)
+- `WizardFailedListing` (line 44)
+- `FreelanceAccountDto` (line 53)
+- `FreelanceInboxThreadDto` (line 62)
+- `FreelanceAutoEarnSettingsDto` (line 79)
+- `FreelanceGovernorActionStateDto` (line 104)
+- `FreelanceGovernorStateDto` (line 109)
+- `FreelanceOutboxItemDto` (line 116)
+- `FreelanceInboxMessageDto` (line 129)
+- `FreelanceEscalationDto` (line 141)
+- `FreelanceJobDto` (line 154)
+- `FreelanceEarningsDto` (line 171)
 
 **Types:**
 - `FreelanceListingStatus` (line 1)
-- `FreelanceRequests` (line 179)
+- `FreelanceRequests` (line 181)
 
 
 ### `src/shared/rpc/git.ts`

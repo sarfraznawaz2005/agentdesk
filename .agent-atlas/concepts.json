@@ -3006,7 +3006,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 155,
+      "line": 156,
       "symbol": "getListingCounts",
       "type": "function"
     },
@@ -5658,13 +5658,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 60,
+      "line": 62,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 127,
+      "line": 129,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
@@ -7460,13 +7460,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 107,
+      "line": 109,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     }
@@ -8702,7 +8702,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 486,
+      "line": 487,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -9084,67 +9084,67 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "FreelanceAccountDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 60,
+      "line": 62,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 77,
+      "line": 79,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 107,
+      "line": 109,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 114,
+      "line": 116,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 127,
+      "line": 129,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 139,
+      "line": 141,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 152,
+      "line": 154,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 169,
+      "line": 171,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 179,
+      "line": 181,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -11714,7 +11714,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 127,
+      "line": 129,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
@@ -17016,7 +17016,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 152,
+      "line": 154,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
@@ -23344,7 +23344,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 486,
+      "line": 487,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -28506,7 +28506,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 402,
+      "line": 403,
       "symbol": "onActive",
       "type": "function"
     },
@@ -29144,37 +29144,37 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 440,
+      "line": 441,
       "symbol": "handleApprove",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 449,
+      "line": 450,
       "symbol": "handleShortlist",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 459,
+      "line": 460,
       "symbol": "handleMarkDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 469,
+      "line": 470,
       "symbol": "handleAnalyze",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 476,
+      "line": 477,
       "symbol": "handleDelete",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 486,
+      "line": 487,
       "symbol": "handleViewOnPlatform",
       "type": "function"
     },
@@ -30330,7 +30330,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 256,
+      "line": 257,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -30610,7 +30610,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 77,
+      "line": 79,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     }
@@ -31444,25 +31444,25 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 155,
+      "line": 156,
       "symbol": "getListingCounts",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 179,
+      "line": 180,
       "symbol": "markListingDone",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 207,
+      "line": 208,
       "symbol": "deleteListing",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 277,
+      "line": 278,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -31504,13 +31504,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "WizardWorkableListing",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 42,
+      "line": 44,
       "symbol": "WizardFailedListing",
       "type": "interface"
     },
@@ -32428,7 +32428,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     }
@@ -34674,7 +34674,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 256,
+      "line": 257,
       "symbol": "triggerFetch",
       "type": "function"
     },
@@ -35038,7 +35038,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 179,
+      "line": 180,
       "symbol": "markListingDone",
       "type": "function"
     },
@@ -35056,13 +35056,13 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 406,
+      "line": 407,
       "symbol": "onDone",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 459,
+      "line": 460,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -36784,7 +36784,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 77,
+      "line": 79,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     },
@@ -37674,7 +37674,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 179,
+      "line": 181,
       "symbol": "FreelanceRequests",
       "type": "type"
     },
@@ -39142,7 +39142,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 234,
+      "line": 235,
       "symbol": "deleteListings",
       "type": "function"
     },
@@ -39784,13 +39784,13 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 207,
+      "line": 208,
       "symbol": "deleteListing",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 234,
+      "line": 235,
       "symbol": "deleteListings",
       "type": "function"
     },
@@ -39934,7 +39934,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 476,
+      "line": 477,
       "symbol": "handleDelete",
       "type": "function"
     },
@@ -40592,7 +40592,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 114,
+      "line": 116,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     }
@@ -40812,61 +40812,61 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "FreelanceAccountDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 60,
+      "line": 62,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 77,
+      "line": 79,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 107,
+      "line": 109,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 114,
+      "line": 116,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 127,
+      "line": 129,
       "symbol": "FreelanceInboxMessageDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 139,
+      "line": 141,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 152,
+      "line": 154,
       "symbol": "FreelanceJobDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 169,
+      "line": 171,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     },
@@ -45692,7 +45692,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 42,
+      "line": 44,
       "symbol": "WizardFailedListing",
       "type": "interface"
     }
@@ -46672,7 +46672,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 179,
+      "line": 180,
       "symbol": "markListingDone",
       "type": "function"
     },
@@ -46708,7 +46708,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 459,
+      "line": 460,
       "symbol": "handleMarkDone",
       "type": "function"
     },
@@ -47734,13 +47734,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "WizardWorkableListing",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 42,
+      "line": 44,
       "symbol": "WizardFailedListing",
       "type": "interface"
     }
@@ -47760,7 +47760,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 469,
+      "line": 470,
       "symbol": "handleAnalyze",
       "type": "function"
     }
@@ -47812,7 +47812,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 449,
+      "line": 450,
       "symbol": "handleShortlist",
       "type": "function"
     }
@@ -47838,7 +47838,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 155,
+      "line": 156,
       "symbol": "getListingCounts",
       "type": "function"
     },
@@ -47870,7 +47870,7 @@
     },
     {
       "file": "src/bun/rpc/freelance.ts",
-      "line": 277,
+      "line": 278,
       "symbol": "approveListing",
       "type": "function"
     },
@@ -47888,7 +47888,7 @@
     },
     {
       "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 440,
+      "line": 441,
       "symbol": "handleApprove",
       "type": "function"
     }
@@ -58204,7 +58204,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 33,
+      "line": 35,
       "symbol": "WizardWorkableListing",
       "type": "interface"
     }
@@ -59070,7 +59070,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 114,
+      "line": 116,
       "symbol": "FreelanceOutboxItemDto",
       "type": "interface"
     }
@@ -59208,7 +59208,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 77,
+      "line": 79,
       "symbol": "FreelanceAutoEarnSettingsDto",
       "type": "interface"
     }
@@ -59240,7 +59240,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 51,
+      "line": 53,
       "symbol": "FreelanceAccountDto",
       "type": "interface"
     },
@@ -59372,7 +59372,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 60,
+      "line": 62,
       "symbol": "FreelanceInboxThreadDto",
       "type": "interface"
     },
@@ -60036,13 +60036,13 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 102,
+      "line": 104,
       "symbol": "FreelanceGovernorActionStateDto",
       "type": "interface"
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 107,
+      "line": 109,
       "symbol": "FreelanceGovernorStateDto",
       "type": "interface"
     }
@@ -60440,7 +60440,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 139,
+      "line": 141,
       "symbol": "FreelanceEscalationDto",
       "type": "interface"
     }
@@ -60474,7 +60474,7 @@
     },
     {
       "file": "src/shared/rpc/freelance.ts",
-      "line": 169,
+      "line": 171,
       "symbol": "FreelanceEarningsDto",
       "type": "interface"
     }
@@ -60747,14 +60747,6 @@
       "type": "function"
     }
   ],
-  "chips": [
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 183,
-      "symbol": "SkillChips",
-      "type": "function"
-    }
-  ],
   "newer": [
     {
       "file": "src/bun/rpc/whats-new.ts",
@@ -60992,6 +60984,14 @@
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 727,
       "symbol": "normalizeNewlines",
+      "type": "function"
+    }
+  ],
+  "chips": [
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 183,
+      "symbol": "SkillChips",
       "type": "function"
     }
   ]
