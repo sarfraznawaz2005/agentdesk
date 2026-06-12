@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.0.3",
+        "title":  "Enhanced Freelance Listings",
+        "changes":  [
+                        "New full description modal added to freelance listing cards for better details.",
+                        "Fixed race condition in wizard verdict persistence, ensuring immediate UI updates."
+                    ]
+    },
+    {
         "version":  "2.0.2",
         "title":  "Enhanced Freelance Features",
         "changes":  [
