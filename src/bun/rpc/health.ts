@@ -13,12 +13,11 @@
  *   setSchedulerRunning()   — called by index.ts after scheduler init/shutdown
  */
 
-import { existsSync } from "fs";
+import { isPathAccessible } from "../lib/path-utils";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { aiProviders, projects } from "../db/schema";
-import { deleteProjectCascade } from "./projects";
 import { engines, removeEngine, getRunningAgentCount } from "../engine-manager";
 import { initCronScheduler, shutdownCronScheduler } from "../scheduler";
 import { getChannelStatuses } from "../channels";
@@ -198,9 +197,10 @@ async function checkAiProviderSubsystem(): Promise<HealthStatus["aiProvider"]> {
 }
 
 /**
- * Workspace paths — checks fs.existsSync for every project's workspacePath.
- * If a path is missing (folder deleted from disk), the project is silently
- * cascade-deleted from the DB so it never surfaces as a warning again.
+ * Workspace paths — checks every active project's workspacePath with retry
+ * to tolerate cloud/network paths (OneDrive, Dropbox, NAS) that may be slow
+ * to respond. Projects with unreachable paths are reported as warnings but
+ * are NEVER auto-deleted — only explicit user action removes a project.
  */
 async function checkWorkspaceSubsystem(): Promise<HealthStatus["workspace"]> {
 	try {
@@ -209,16 +209,24 @@ async function checkWorkspaceSubsystem(): Promise<HealthStatus["workspace"]> {
 			.from(projects)
 			.where(eq(projects.status, "active"));
 
-		for (const row of rows) {
-			if (!existsSync(row.workspacePath)) {
-				console.log(`[health] Workspace path missing, auto-removing project ${row.id}: ${row.workspacePath}`);
-				await deleteProjectCascade(row.id).catch((err) => {
-					console.warn(`[health] Failed to auto-delete project ${row.id}:`, err);
-				});
-			}
-		}
+		const missingPaths: string[] = [];
+		await Promise.all(
+			rows.map(async (row) => {
+				const accessible = await isPathAccessible(row.workspacePath);
+				if (!accessible) {
+					console.warn(`[health] Workspace path unreachable (NOT auto-deleted): ${row.workspacePath}`);
+					missingPaths.push(row.workspacePath);
+				}
+			}),
+		);
 
-		return { status: "healthy", missingPaths: [] };
+		return {
+			status: missingPaths.length > 0 ? "degraded" : "healthy",
+			missingPaths,
+			...(missingPaths.length > 0 && {
+				message: `${missingPaths.length} workspace path(s) temporarily unreachable (cloud/network path may be offline).`,
+			}),
+		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		return {

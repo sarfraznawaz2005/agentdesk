@@ -2,6 +2,7 @@ import { eq, like, sql } from "drizzle-orm";
 import { mkdirSync, existsSync, readdirSync, statSync, readFileSync, symlinkSync, lstatSync, rmSync, readlinkSync, unlinkSync } from "fs";
 import { readdir } from "fs/promises";
 import { join, relative, resolve, basename } from "path";
+import { isPathAccessible } from "../lib/path-utils";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { projects, settings } from "../db/schema";
@@ -24,26 +25,33 @@ export interface ProjectListItem {
 	workingBranch: string | null;
 	createdAt: string;
 	updatedAt: string;
+	workspaceOffline?: boolean;
 }
 
 /**
- * Return all projects ordered by creation date descending.
- * Projects whose workspace folder no longer exists on disk are silently
- * excluded from the list and cascade-deleted in the background.
+ * Return all projects ordered by name.
+ * Projects whose workspace folder is temporarily unreachable (cloud/network paths,
+ * OneDrive Files-on-Demand, NAS) are returned with workspaceOffline=true so the
+ * dashboard can show a warning — they are NEVER auto-deleted just because a path
+ * check fails. Only projects explicitly deleted by the user are removed.
  */
 export async function getProjectsList(): Promise<ProjectListItem[]> {
 	const rows = await db.select().from(projects);
-	const valid: ProjectListItem[] = [];
 
-	for (const row of rows) {
-		if (row.status !== "deleted" && !existsSync(row.workspacePath)) {
-			// Fire-and-forget — don't block the response while deleting
-			deleteProjectCascade(row.id).catch((err) =>
-				console.warn(`[projects] Auto-removed missing-path project ${row.id}:`, err),
-			);
-			continue;
-		}
-		valid.push({
+	// Check all non-deleted project paths concurrently with retry for cloud paths.
+	const results = await Promise.all(
+		rows.map(async (row) => {
+			if (row.status === "deleted") return { row, offline: false };
+			const accessible = await isPathAccessible(row.workspacePath);
+			if (!accessible) {
+				console.warn(`[projects] Workspace temporarily unreachable (marked offline, NOT deleted): ${row.workspacePath}`);
+			}
+			return { row, offline: !accessible };
+		}),
+	);
+
+	return results
+		.map(({ row, offline }) => ({
 			id: row.id,
 			name: row.name,
 			description: row.description,
@@ -53,12 +61,9 @@ export async function getProjectsList(): Promise<ProjectListItem[]> {
 			workingBranch: row.workingBranch,
 			createdAt: row.createdAt,
 			updatedAt: row.updatedAt,
-		});
-	}
-
-	return valid.sort((a, b) =>
-		a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-	);
+			workspaceOffline: offline || undefined,
+		}))
+		.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
 export interface CreateProjectParams {
@@ -992,7 +997,12 @@ export async function syncWorkspaceFolders(): Promise<{ synced: number }> {
 		let globalWorkspace = "";
 		try { globalWorkspace = JSON.parse(gwpRows[0].value) as string; } catch { globalWorkspace = gwpRows[0].value; }
 
-		if (!globalWorkspace || !existsSync(globalWorkspace)) return { synced: 0 };
+		if (!globalWorkspace) return { synced: 0 };
+		const gwpAccessible = await isPathAccessible(globalWorkspace);
+		if (!gwpAccessible) {
+			console.warn(`[workspace-sync] Global workspace path temporarily unreachable, skipping sync: ${globalWorkspace}`);
+			return { synced: 0 };
+		}
 
 		// Get all folders in the global workspace (async so a large workspace never blocks).
 		const entries = await readdir(globalWorkspace, { withFileTypes: true });

@@ -454,17 +454,17 @@
 
 **Interfaces:**
 - `Project` (line 25)
-- `ProjectCardProps` (line 37)
+- `ProjectCardProps` (line 38)
 
 **Types:**
-- `BadgeStatus` (line 63)
+- `BadgeStatus` (line 65)
 
 **Functions:**
-- `toStatus` (line 65)
-- `ProjectCard` (line 70)
-- `handleCardClick` (line 79)
-- `handleDeleteClick` (line 84)
-- `handleConfirmDelete` (line 89)
+- `toStatus` (line 67)
+- `ProjectCard` (line 72)
+- `handleCardClick` (line 81)
+- `handleDeleteClick` (line 86)
+- `handleConfirmDelete` (line 91)
 
 
 ### `src/mainview/components/deploy/deploy-tab.tsx`
@@ -1970,18 +1970,18 @@
 - `Project` (line 21)
 
 **Types:**
-- `SortKey` (line 33)
-- `StatusFilter` (line 34)
+- `SortKey` (line 34)
+- `StatusFilter` (line 35)
 
 **Functions:**
-- `DashboardPage` (line 36)
-- `toggleCardsCollapsed` (line 57)
-- `fetchCounts` (line 109)
-- `handleDeleteProject` (line 187)
-- `handlePermanentDeleteProject` (line 201)
-- `handleRestoreProject` (line 216)
-- `handleStatusChange` (line 230)
-- `ProjectGridSkeleton` (line 414)
+- `DashboardPage` (line 37)
+- `toggleCardsCollapsed` (line 58)
+- `fetchCounts` (line 110)
+- `handleDeleteProject` (line 188)
+- `handlePermanentDeleteProject` (line 202)
+- `handleRestoreProject` (line 217)
+- `handleStatusChange` (line 231)
+- `ProjectGridSkeleton` (line 415)
 
 
 ### `src/mainview/pages/freelance.tsx`

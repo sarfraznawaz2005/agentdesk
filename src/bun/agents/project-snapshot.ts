@@ -89,7 +89,9 @@ export function getProjectSnapshot(workspacePath?: string | null): string {
 		}
 
 		const result = lines.join("\n");
-		snapshotCache.set(workspacePath, result);
+		// Only cache if we got meaningful content — don't cache empty results so
+		// the next call retries (handles cloud paths that were offline at first).
+		if (lines.length > 1) snapshotCache.set(workspacePath, result);
 		return result;
 	} catch {
 		return "";

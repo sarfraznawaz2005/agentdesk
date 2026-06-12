@@ -1,8 +1,8 @@
 # Domain: bun
 
 **Directory:** `src/bun`
-**Files:** 262
-**Symbols:** 1977
+**Files:** 263
+**Symbols:** 1979
 
 ## Files
 
@@ -2083,6 +2083,13 @@
 - `isPortableBuild` (line 34)
 
 
+### `src/bun/lib/path-utils.ts`
+
+**Functions:**
+- `isPathAccessible` (line 15)
+- `isPathAccessibleSync` (line 35)
+
+
 ### `src/bun/lib/secret-crypto.ts`
 
 **Functions:**
@@ -3253,21 +3260,21 @@
 ### `src/bun/rpc/health.ts`
 
 **Interfaces:**
-- `HealthStatus` (line 63)
+- `HealthStatus` (line 62)
 
 **Functions:**
-- `setSchedulerRunning` (line 55)
-- `checkDatabaseSubsystem` (line 109)
-- `checkAiProviderSubsystem` (line 164)
+- `setSchedulerRunning` (line 54)
+- `checkDatabaseSubsystem` (line 108)
+- `checkAiProviderSubsystem` (line 163)
 - `checkWorkspaceSubsystem` (line 205)
-- `checkSchedulerSubsystem` (line 238)
-- `checkIntegrationsSubsystem` (line 256)
-- `checkEnginesSubsystem` (line 291)
-- `checkBackendSubsystem` (line 320)
-- `getHealthStatus` (line 336)
-- `checkDatabase` (line 365)
-- `restartScheduler` (line 390)
-- `cleanupEngines` (line 408)
+- `checkSchedulerSubsystem` (line 246)
+- `checkIntegrationsSubsystem` (line 264)
+- `checkEnginesSubsystem` (line 299)
+- `checkBackendSubsystem` (line 328)
+- `getHealthStatus` (line 344)
+- `checkDatabase` (line 373)
+- `restartScheduler` (line 398)
+- `cleanupEngines` (line 416)
 
 
 ### `src/bun/rpc/inbox-rules.ts`
@@ -3460,35 +3467,35 @@
 ### `src/bun/rpc/projects.ts`
 
 **Interfaces:**
-- `ProjectListItem` (line 17)
-- `CreateProjectParams` (line 64)
+- `ProjectListItem` (line 18)
+- `CreateProjectParams` (line 69)
 
 **Types:**
-- `StmtCache` (line 512)
+- `StmtCache` (line 517)
 
 **Functions:**
-- `getProjectsList` (line 34)
-- `createProjectHandler` (line 84)
-- `getProjectRepoState` (line 255)
-- `cloneProjectRepo` (line 272)
-- `deleteProjectHandler` (line 329)
-- `cleanupProjectWorkspaceFolder` (line 343)
-- `permanentDeleteProjectHandler` (line 394)
-- `getProject` (line 449)
-- `updateProject` (line 469)
-- `buildStmts` (line 515)
-- `getStmts` (line 547)
-- `deleteProjectCascade` (line 556)
-- `resetProjectData` (line 605)
-- `saveProjectSetting` (line 638)
-- `getProjectSettings` (line 670)
-- `detectVerifyCommand` (line 689)
-- `exists` (line 706)
-- `readJson` (line 707)
-- `listWorkspaceFiles` (line 831)
-- `readWorkspaceFile` (line 903)
-- `readWorkspaceImageFile` (line 942)
-- `syncWorkspaceFolders` (line 982)
+- `getProjectsList` (line 38)
+- `createProjectHandler` (line 89)
+- `getProjectRepoState` (line 260)
+- `cloneProjectRepo` (line 277)
+- `deleteProjectHandler` (line 334)
+- `cleanupProjectWorkspaceFolder` (line 348)
+- `permanentDeleteProjectHandler` (line 399)
+- `getProject` (line 454)
+- `updateProject` (line 474)
+- `buildStmts` (line 520)
+- `getStmts` (line 552)
+- `deleteProjectCascade` (line 561)
+- `resetProjectData` (line 610)
+- `saveProjectSetting` (line 643)
+- `getProjectSettings` (line 675)
+- `detectVerifyCommand` (line 694)
+- `exists` (line 711)
+- `readJson` (line 712)
+- `listWorkspaceFiles` (line 836)
+- `readWorkspaceFile` (line 908)
+- `readWorkspaceImageFile` (line 947)
+- `syncWorkspaceFolders` (line 987)
 
 
 ### `src/bun/rpc/prompts.ts`

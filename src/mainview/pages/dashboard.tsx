@@ -28,6 +28,7 @@ interface Project {
 	workingBranch: string | null;
 	createdAt: string;
 	updatedAt: string;
+	workspaceOffline?: boolean;
 }
 
 type SortKey = "name" | "updatedAt" | "createdAt" | "status";
@@ -390,7 +391,7 @@ export function DashboardPage() {
 				>
 					{filteredProjects.map((project) => (
 						<li key={project.id} className="flex">
-							<ProjectCard project={project} onDelete={handleDeleteProject} onRestore={handleRestoreProject} onPermanentDelete={handlePermanentDeleteProject} onStatusChange={handleStatusChange} activeAgentCount={activeProjectAgents[project.id] ?? 0} taskStats={taskStats[project.id]} collapsed={cardsCollapsed} />
+							<ProjectCard project={project} onDelete={handleDeleteProject} onRestore={handleRestoreProject} onPermanentDelete={handlePermanentDeleteProject} onStatusChange={handleStatusChange} activeAgentCount={activeProjectAgents[project.id] ?? 0} taskStats={taskStats[project.id]} collapsed={cardsCollapsed} workspaceOffline={project.workspaceOffline} />
 						</li>
 					))}
 				</ul>

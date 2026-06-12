@@ -54,13 +54,13 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 291,
+      "line": 299,
       "symbol": "checkEnginesSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 408,
+      "line": 416,
       "symbol": "cleanupEngines",
       "type": "function"
     },
@@ -3132,7 +3132,7 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 336,
+      "line": 344,
       "symbol": "getHealthStatus",
       "type": "function"
     },
@@ -3312,31 +3312,31 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 34,
+      "line": 38,
       "symbol": "getProjectsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 255,
+      "line": 260,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 449,
+      "line": 454,
       "symbol": "getProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 547,
+      "line": 552,
       "symbol": "getStmts",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 670,
+      "line": 675,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -3752,7 +3752,7 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 55,
+      "line": 54,
       "symbol": "setSchedulerRunning",
       "type": "function"
     }
@@ -4164,7 +4164,7 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 55,
+      "line": 54,
       "symbol": "setSchedulerRunning",
       "type": "function"
     },
@@ -4444,13 +4444,13 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 63,
+      "line": 62,
       "symbol": "HealthStatus",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 336,
+      "line": 344,
       "symbol": "getHealthStatus",
       "type": "function"
     },
@@ -4486,13 +4486,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 63,
+      "line": 65,
       "symbol": "BadgeStatus",
       "type": "type"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 65,
+      "line": 67,
       "symbol": "toStatus",
       "type": "function"
     },
@@ -4558,13 +4558,13 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 34,
+      "line": 35,
       "symbol": "StatusFilter",
       "type": "type"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 230,
+      "line": 231,
       "symbol": "handleStatusChange",
       "type": "function"
     },
@@ -6354,19 +6354,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 84,
+      "line": 89,
       "symbol": "createProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 329,
+      "line": 334,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 394,
+      "line": 399,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
@@ -7056,13 +7056,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 64,
+      "line": 69,
       "symbol": "CreateProjectParams",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 84,
+      "line": 89,
       "symbol": "createProjectHandler",
       "type": "function"
     },
@@ -7280,7 +7280,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 255,
+      "line": 260,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
@@ -7774,13 +7774,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 903,
+      "line": 908,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 942,
+      "line": 947,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -7988,6 +7988,18 @@
       "file": "src/bun/index.ts",
       "line": 52,
       "symbol": "getWindowStateFilePath",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/path-utils.ts",
+      "line": 15,
+      "symbol": "isPathAccessible",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/path-utils.ts",
+      "line": 35,
+      "symbol": "isPathAccessibleSync",
       "type": "function"
     },
     {
@@ -8482,7 +8494,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 638,
+      "line": 643,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
@@ -9436,7 +9448,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 638,
+      "line": 643,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
@@ -9624,7 +9636,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 230,
+      "line": 231,
       "symbol": "handleStatusChange",
       "type": "function"
     },
@@ -12158,85 +12170,85 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 17,
+      "line": 18,
       "symbol": "ProjectListItem",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 64,
+      "line": 69,
       "symbol": "CreateProjectParams",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 84,
+      "line": 89,
       "symbol": "createProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 255,
+      "line": 260,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 272,
+      "line": 277,
       "symbol": "cloneProjectRepo",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 329,
+      "line": 334,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 343,
+      "line": 348,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 394,
+      "line": 399,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 449,
+      "line": 454,
       "symbol": "getProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 469,
+      "line": 474,
       "symbol": "updateProject",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 556,
+      "line": 561,
       "symbol": "deleteProjectCascade",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 605,
+      "line": 610,
       "symbol": "resetProjectData",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 638,
+      "line": 643,
       "symbol": "saveProjectSetting",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 670,
+      "line": 675,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -12272,13 +12284,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 37,
+      "line": 38,
       "symbol": "ProjectCardProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 70,
+      "line": 72,
       "symbol": "ProjectCard",
       "type": "function"
     },
@@ -12368,25 +12380,25 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 187,
+      "line": 188,
       "symbol": "handleDeleteProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 201,
+      "line": 202,
       "symbol": "handlePermanentDeleteProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 216,
+      "line": 217,
       "symbol": "handleRestoreProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 414,
+      "line": 415,
       "symbol": "ProjectGridSkeleton",
       "type": "function"
     },
@@ -14422,13 +14434,13 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 255,
+      "line": 260,
       "symbol": "getProjectRepoState",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 272,
+      "line": 277,
       "symbol": "cloneProjectRepo",
       "type": "function"
     },
@@ -14742,31 +14754,31 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 343,
+      "line": 348,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 831,
+      "line": 836,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 903,
+      "line": 908,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 942,
+      "line": 947,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 982,
+      "line": 987,
       "symbol": "syncWorkspaceFolders",
       "type": "function"
     },
@@ -16256,7 +16268,7 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 164,
+      "line": 163,
       "symbol": "checkAiProviderSubsystem",
       "type": "function"
     },
@@ -19564,7 +19576,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 942,
+      "line": 947,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -19778,7 +19790,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 33,
+      "line": 34,
       "symbol": "SortKey",
       "type": "type"
     },
@@ -19942,7 +19954,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 33,
+      "line": 34,
       "symbol": "SortKey",
       "type": "type"
     },
@@ -21278,7 +21290,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 831,
+      "line": 836,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
@@ -21430,7 +21442,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 469,
+      "line": 474,
       "symbol": "updateProject",
       "type": "function"
     },
@@ -21832,7 +21844,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 414,
+      "line": 415,
       "symbol": "ProjectGridSkeleton",
       "type": "function"
     }
@@ -22326,7 +22338,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 515,
+      "line": 520,
       "symbol": "buildStmts",
       "type": "function"
     },
@@ -22730,19 +22742,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 17,
+      "line": 18,
       "symbol": "ProjectListItem",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 34,
+      "line": 38,
       "symbol": "getProjectsList",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 831,
+      "line": 836,
       "symbol": "listWorkspaceFiles",
       "type": "function"
     },
@@ -24546,7 +24558,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 707,
+      "line": 712,
       "symbol": "readJson",
       "type": "function"
     },
@@ -25562,19 +25574,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 707,
+      "line": 712,
       "symbol": "readJson",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 903,
+      "line": 908,
       "symbol": "readWorkspaceFile",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 942,
+      "line": 947,
       "symbol": "readWorkspaceImageFile",
       "type": "function"
     },
@@ -25654,7 +25666,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 34,
+      "line": 35,
       "symbol": "StatusFilter",
       "type": "type"
     },
@@ -26512,7 +26524,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 689,
+      "line": 694,
       "symbol": "detectVerifyCommand",
       "type": "function"
     },
@@ -26775,6 +26787,12 @@
       "type": "export"
     },
     {
+      "file": "src/bun/lib/path-utils.ts",
+      "line": 35,
+      "symbol": "isPathAccessibleSync",
+      "type": "function"
+    },
+    {
       "file": "src/bun/lsp/types.ts",
       "line": 190,
       "symbol": "TextDocumentSyncOptions",
@@ -26818,7 +26836,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 982,
+      "line": 987,
       "symbol": "syncWorkspaceFolders",
       "type": "function"
     },
@@ -28346,7 +28364,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 605,
+      "line": 610,
       "symbol": "resetProjectData",
       "type": "function"
     },
@@ -29096,19 +29114,19 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 79,
+      "line": 81,
       "symbol": "handleCardClick",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 84,
+      "line": 86,
       "symbol": "handleDeleteClick",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 89,
+      "line": 91,
       "symbol": "handleConfirmDelete",
       "type": "function"
     },
@@ -29630,25 +29648,25 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 187,
+      "line": 188,
       "symbol": "handleDeleteProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 201,
+      "line": 202,
       "symbol": "handlePermanentDeleteProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 216,
+      "line": 217,
       "symbol": "handleRestoreProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 230,
+      "line": 231,
       "symbol": "handleStatusChange",
       "type": "function"
     },
@@ -30776,13 +30794,13 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 109,
+      "line": 108,
       "symbol": "checkDatabaseSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 164,
+      "line": 163,
       "symbol": "checkAiProviderSubsystem",
       "type": "function"
     },
@@ -30794,31 +30812,31 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 238,
+      "line": 246,
       "symbol": "checkSchedulerSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 256,
+      "line": 264,
       "symbol": "checkIntegrationsSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 291,
+      "line": 299,
       "symbol": "checkEnginesSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 320,
+      "line": 328,
       "symbol": "checkBackendSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 365,
+      "line": 373,
       "symbol": "checkDatabase",
       "type": "function"
     },
@@ -30936,7 +30954,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 512,
+      "line": 517,
       "symbol": "StmtCache",
       "type": "type"
     }
@@ -34716,7 +34734,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 109,
+      "line": 110,
       "symbol": "fetchCounts",
       "type": "function"
     },
@@ -35162,19 +35180,19 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 55,
+      "line": 54,
       "symbol": "setSchedulerRunning",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 238,
+      "line": 246,
       "symbol": "checkSchedulerSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 390,
+      "line": 398,
       "symbol": "restartScheduler",
       "type": "function"
     },
@@ -35816,7 +35834,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 512,
+      "line": 517,
       "symbol": "StmtCache",
       "type": "type"
     }
@@ -35862,13 +35880,13 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 109,
+      "line": 108,
       "symbol": "checkDatabaseSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 365,
+      "line": 373,
       "symbol": "checkDatabase",
       "type": "function"
     },
@@ -36234,7 +36252,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 605,
+      "line": 610,
       "symbol": "resetProjectData",
       "type": "function"
     },
@@ -36532,7 +36550,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 670,
+      "line": 675,
       "symbol": "getProjectSettings",
       "type": "function"
     },
@@ -36816,7 +36834,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 34,
+      "line": 38,
       "symbol": "getProjectsList",
       "type": "function"
     },
@@ -36828,7 +36846,7 @@
     },
     {
       "file": "src/shared/rpc/projects.ts",
-      "line": 13,
+      "line": 15,
       "symbol": "ProjectsRequests",
       "type": "type"
     }
@@ -37914,7 +37932,7 @@
     },
     {
       "file": "src/shared/rpc/projects.ts",
-      "line": 13,
+      "line": 15,
       "symbol": "ProjectsRequests",
       "type": "type"
     },
@@ -39844,19 +39862,19 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 329,
+      "line": 334,
       "symbol": "deleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 394,
+      "line": 399,
       "symbol": "permanentDeleteProjectHandler",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 556,
+      "line": 561,
       "symbol": "deleteProjectCascade",
       "type": "function"
     },
@@ -39910,13 +39928,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 84,
+      "line": 86,
       "symbol": "handleDeleteClick",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 89,
+      "line": 91,
       "symbol": "handleConfirmDelete",
       "type": "function"
     },
@@ -40024,13 +40042,13 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 187,
+      "line": 188,
       "symbol": "handleDeleteProject",
       "type": "function"
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 201,
+      "line": 202,
       "symbol": "handlePermanentDeleteProject",
       "type": "function"
     },
@@ -40460,7 +40478,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 17,
+      "line": 18,
       "symbol": "ProjectListItem",
       "type": "interface"
     },
@@ -42858,7 +42876,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 64,
+      "line": 69,
       "symbol": "CreateProjectParams",
       "type": "interface"
     },
@@ -42970,7 +42988,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 343,
+      "line": 348,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
@@ -43708,7 +43726,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 706,
+      "line": 711,
       "symbol": "exists",
       "type": "function"
     }
@@ -43722,7 +43740,7 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 390,
+      "line": 398,
       "symbol": "restartScheduler",
       "type": "function"
     }
@@ -46958,7 +46976,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 216,
+      "line": 217,
       "symbol": "handleRestoreProject",
       "type": "function"
     }
@@ -47092,13 +47110,13 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 408,
+      "line": 416,
       "symbol": "cleanupEngines",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 343,
+      "line": 348,
       "symbol": "cleanupProjectWorkspaceFolder",
       "type": "function"
     },
@@ -47286,7 +47304,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 36,
+      "line": 37,
       "symbol": "DashboardPage",
       "type": "function"
     },
@@ -47542,7 +47560,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 36,
+      "line": 37,
       "symbol": "DashboardPage",
       "type": "function"
     },
@@ -47844,7 +47862,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 109,
+      "line": 110,
       "symbol": "fetchCounts",
       "type": "function"
     }
@@ -48072,13 +48090,13 @@
   "health": [
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 63,
+      "line": 62,
       "symbol": "HealthStatus",
       "type": "interface"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 336,
+      "line": 344,
       "symbol": "getHealthStatus",
       "type": "function"
     },
@@ -48110,7 +48128,7 @@
   "integrations": [
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 256,
+      "line": 264,
       "symbol": "checkIntegrationsSubsystem",
       "type": "function"
     },
@@ -48582,7 +48600,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 57,
+      "line": 58,
       "symbol": "toggleCardsCollapsed",
       "type": "function"
     },
@@ -48653,20 +48671,6 @@
       "type": "function"
     }
   ],
-  "permanent": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 394,
-      "symbol": "permanentDeleteProjectHandler",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/pages/dashboard.tsx",
-      "line": 201,
-      "symbol": "handlePermanentDeleteProject",
-      "type": "function"
-    }
-  ],
   "detect": [
     {
       "file": "src/bun/agents/tools/preview.ts",
@@ -48676,7 +48680,7 @@
     },
     {
       "file": "src/bun/rpc/projects.ts",
-      "line": 689,
+      "line": 694,
       "symbol": "detectVerifyCommand",
       "type": "function"
     },
@@ -49234,7 +49238,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 37,
+      "line": 38,
       "symbol": "ProjectCardProps",
       "type": "interface"
     },
@@ -50450,19 +50454,19 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 37,
+      "line": 38,
       "symbol": "ProjectCardProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 70,
+      "line": 72,
       "symbol": "ProjectCard",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 79,
+      "line": 81,
       "symbol": "handleCardClick",
       "type": "function"
     },
@@ -50836,7 +50840,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 414,
+      "line": 415,
       "symbol": "ProjectGridSkeleton",
       "type": "function"
     },
@@ -51248,7 +51252,7 @@
   "cards": [
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 57,
+      "line": 58,
       "symbol": "toggleCardsCollapsed",
       "type": "function"
     },
@@ -51268,7 +51272,7 @@
     },
     {
       "file": "src/mainview/pages/dashboard.tsx",
-      "line": 57,
+      "line": 58,
       "symbol": "toggleCardsCollapsed",
       "type": "function"
     }
@@ -51288,7 +51292,7 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 63,
+      "line": 65,
       "symbol": "BadgeStatus",
       "type": "type"
     },
@@ -51406,13 +51410,13 @@
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 79,
+      "line": 81,
       "symbol": "handleCardClick",
       "type": "function"
     },
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 84,
+      "line": 86,
       "symbol": "handleDeleteClick",
       "type": "function"
     },
@@ -52352,7 +52356,7 @@
   "confirm": [
     {
       "file": "src/mainview/components/dashboard/project-card.tsx",
-      "line": 89,
+      "line": 91,
       "symbol": "handleConfirmDelete",
       "type": "function"
     },
@@ -58923,52 +58927,6 @@
       "type": "export"
     }
   ],
-  "clone": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 272,
-      "symbol": "cloneProjectRepo",
-      "type": "function"
-    }
-  ],
-  "stmts": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 515,
-      "symbol": "buildStmts",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 547,
-      "symbol": "getStmts",
-      "type": "function"
-    }
-  ],
-  "cascade": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 556,
-      "symbol": "deleteProjectCascade",
-      "type": "function"
-    }
-  ],
-  "verify": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 689,
-      "symbol": "detectVerifyCommand",
-      "type": "function"
-    }
-  ],
-  "folders": [
-    {
-      "file": "src/bun/rpc/projects.ts",
-      "line": 982,
-      "symbol": "syncWorkspaceFolders",
-      "type": "function"
-    }
-  ],
   "pat": [
     {
       "file": "src/bun/rpc/github-api.ts",
@@ -60102,13 +60060,13 @@
   "subsystem": [
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 109,
+      "line": 108,
       "symbol": "checkDatabaseSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 164,
+      "line": 163,
       "symbol": "checkAiProviderSubsystem",
       "type": "function"
     },
@@ -60120,25 +60078,25 @@
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 238,
+      "line": 246,
       "symbol": "checkSchedulerSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 256,
+      "line": 264,
       "symbol": "checkIntegrationsSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 291,
+      "line": 299,
       "symbol": "checkEnginesSubsystem",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 320,
+      "line": 328,
       "symbol": "checkBackendSubsystem",
       "type": "function"
     },
@@ -60158,7 +60116,7 @@
   "backend": [
     {
       "file": "src/bun/rpc/health.ts",
-      "line": 320,
+      "line": 328,
       "symbol": "checkBackendSubsystem",
       "type": "function"
     },
@@ -60992,6 +60950,80 @@
       "file": "src/mainview/components/freelance/listing-card.tsx",
       "line": 184,
       "symbol": "SkillChips",
+      "type": "function"
+    }
+  ],
+  "accessible": [
+    {
+      "file": "src/bun/lib/path-utils.ts",
+      "line": 15,
+      "symbol": "isPathAccessible",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/lib/path-utils.ts",
+      "line": 35,
+      "symbol": "isPathAccessibleSync",
+      "type": "function"
+    }
+  ],
+  "clone": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 277,
+      "symbol": "cloneProjectRepo",
+      "type": "function"
+    }
+  ],
+  "permanent": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 399,
+      "symbol": "permanentDeleteProjectHandler",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/pages/dashboard.tsx",
+      "line": 202,
+      "symbol": "handlePermanentDeleteProject",
+      "type": "function"
+    }
+  ],
+  "stmts": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 520,
+      "symbol": "buildStmts",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 552,
+      "symbol": "getStmts",
+      "type": "function"
+    }
+  ],
+  "cascade": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 561,
+      "symbol": "deleteProjectCascade",
+      "type": "function"
+    }
+  ],
+  "verify": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 694,
+      "symbol": "detectVerifyCommand",
+      "type": "function"
+    }
+  ],
+  "folders": [
+    {
+      "file": "src/bun/rpc/projects.ts",
+      "line": 987,
+      "symbol": "syncWorkspaceFolders",
       "type": "function"
     }
   ]

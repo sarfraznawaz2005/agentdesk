@@ -8,6 +8,8 @@ type ProjectRow = {
   workingBranch: string | null;
   createdAt: string;
   updatedAt: string;
+  /** True when the workspace folder could not be reached (cloud/network path temporarily offline). Project is NOT deleted. */
+  workspaceOffline?: boolean;
 };
 
 export type ProjectsRequests = {

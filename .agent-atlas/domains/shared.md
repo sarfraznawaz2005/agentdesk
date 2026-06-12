@@ -299,7 +299,7 @@
 
 **Types:**
 - `ProjectRow` (line 1)
-- `ProjectsRequests` (line 13)
+- `ProjectsRequests` (line 15)
 
 
 ### `src/shared/rpc/providers.ts`

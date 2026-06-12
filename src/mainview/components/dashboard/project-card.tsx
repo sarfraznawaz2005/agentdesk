@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { relativeTimeVerbose } from "@/lib/date-utils";
-import { Circle, FolderOpen, GitBranch, Github, Loader2, MoreVertical, RotateCcw, Trash2 } from "lucide-react";
+import { Circle, CloudOff, FolderOpen, GitBranch, Github, Loader2, MoreVertical, RotateCcw, Trash2 } from "lucide-react";
 import { Tip } from "@/components/ui/tooltip";
 
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -32,6 +32,7 @@ interface Project {
   workingBranch: string | null;
   createdAt: string;
   updatedAt: string;
+  workspaceOffline?: boolean;
 }
 
 interface ProjectCardProps {
@@ -43,6 +44,7 @@ interface ProjectCardProps {
   activeAgentCount?: number;
   taskStats?: { done: number; total: number };
   collapsed?: boolean;
+  workspaceOffline?: boolean;
 }
 
 const STATUS_OPTIONS: { value: BadgeStatus; label: string; color: string }[] = [
@@ -67,7 +69,7 @@ function toStatus(raw: string): BadgeStatus {
   return (allowed.includes(raw as BadgeStatus) ? raw : "active") as BadgeStatus;
 }
 
-export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, onStatusChange, activeAgentCount = 0, taskStats, collapsed = false }: ProjectCardProps) {
+export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, onStatusChange, activeAgentCount = 0, taskStats, collapsed = false, workspaceOffline = false }: ProjectCardProps) {
   const navigate = useNavigate();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [confirmPermanentDeleteOpen, setConfirmPermanentDeleteOpen] = useState(false);
@@ -101,7 +103,9 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
           "group relative flex w-full flex-1 flex-col rounded-xl border-2 bg-card transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           isDeleted
             ? "opacity-50 cursor-default"
-            : "cursor-pointer hover:border-primary/40",
+            : workspaceOffline
+              ? "cursor-pointer border-amber-400/60 hover:border-amber-400"
+              : "cursor-pointer hover:border-primary/40",
         )}
         role="article"
         tabIndex={0}
@@ -126,6 +130,14 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
                 {project.name}{collapsed && hasTasks && ` (${taskPct}%)`}
               </h3>
               {unread && !isDeleted && <UnreadDot />}
+              {workspaceOffline && (
+                <Tip content="Workspace folder is temporarily unreachable (cloud or network path offline). The project is safe — it will reappear normally once the path is available again." side="top">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                    <CloudOff className="h-2.5 w-2.5" />
+                    Offline
+                  </span>
+                </Tip>
+              )}
             </div>
             <div className="shrink-0 -mt-0.5 -mr-1.5" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
