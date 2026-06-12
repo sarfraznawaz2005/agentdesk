@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 263
-**Symbols:** 1979
+**Symbols:** 1981
 
 ## Files
 
@@ -3144,10 +3144,11 @@
 **Interfaces:**
 - `SkillGateResult` (line 134)
 - `ClientData` (line 212)
-- `GateResult` (line 253)
+- `BudgetData` (line 219)
+- `GateResult` (line 311)
 
 **Types:**
-- `Verdict` (line 519)
+- `Verdict` (line 578)
 
 **Functions:**
 - `getAnalysisProviderAndModel` (line 29)
@@ -3158,28 +3159,29 @@
 - `norm` (line 151)
 - `buildWizardTools` (line 180)
 - `isAbortError` (line 197)
-- `extractClientDataFromHtml` (line 219)
-- `daysSince` (line 241)
-- `clientQualityGate` (line 259)
-- `fetchPageText` (line 300)
-- `extractDescription` (line 322)
-- `buildAnalysisSystemPrompt` (line 351)
-- `buildUserMessage` (line 418)
-- `buildAnalysisWritePrompt` (line 471)
-- `coerceVerdict` (line 521)
-- `extractJsonFromText` (line 562)
-- `formatToolOutput` (line 581)
-- `clean` (line 585)
-- `analyzeListingWorkability` (line 597)
-- `collectToolResults` (line 622)
-- `normalizeNewlines` (line 727)
-- `isCacheValid` (line 741)
-- `runWizard` (line 751)
-- `startWizard` (line 992)
-- `stopWizard` (line 998)
-- `runAutoShortlist` (line 1012)
-- `analyzeListing` (line 1231)
-- `shortlistListings` (line 1318)
+- `extractClientDataFromHtml` (line 226)
+- `extractBudgetFromHtml` (line 263)
+- `daysSince` (line 299)
+- `clientQualityGate` (line 317)
+- `fetchPageText` (line 358)
+- `extractDescription` (line 381)
+- `buildAnalysisSystemPrompt` (line 410)
+- `buildUserMessage` (line 477)
+- `buildAnalysisWritePrompt` (line 530)
+- `coerceVerdict` (line 580)
+- `extractJsonFromText` (line 621)
+- `formatToolOutput` (line 640)
+- `clean` (line 644)
+- `analyzeListingWorkability` (line 656)
+- `collectToolResults` (line 681)
+- `normalizeNewlines` (line 786)
+- `isCacheValid` (line 800)
+- `runWizard` (line 810)
+- `startWizard` (line 1062)
+- `stopWizard` (line 1068)
+- `runAutoShortlist` (line 1082)
+- `analyzeListing` (line 1312)
+- `shortlistListings` (line 1413)
 
 
 ### `src/bun/rpc/freelance.ts`

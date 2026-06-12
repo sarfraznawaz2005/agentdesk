@@ -216,26 +216,84 @@ interface ClientData {
   paymentVerified: boolean;
 }
 
-function extractClientDataFromHtml(html: string): ClientData {
-  // Freelancer.com embeds a "client" JSON object in the page's Angular state (~1MB in).
-  // We extract it from the raw HTML before stripping/truncating, so the 12k text limit
-  // doesn't cut it off. The regex matches the known field ordering in the JSON blob.
-  const m = html.match(
-    /"client":\{"registrationTime":(\d+),"address":\{[^}]*\},"rating":\{"average":([0-9.]+),"reviewCount":(\d+)\},"verification":\{"paymentVerified":(true|false)/,
-  );
-  if (!m) return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false };
+interface BudgetData {
+  budgetMin: number | null;
+  budgetMax: number | null;
+  budgetType: "fixed" | "hourly";
+  currency: string | null;
+}
 
-  const regDate = new Date(parseInt(m[1], 10));
-  const memberSince = isNaN(regDate.getTime())
-    ? null
-    : regDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+function extractClientDataFromHtml(html: string): ClientData {
+  // Freelancer.com embeds a "client" object in the page's Angular state (~1MB in).
+  // We take a ~4000-char window starting at the "client": key so individual field
+  // extractions are order-independent — the old single-combined regex broke whenever
+  // Freelancer changed the field order inside the object.
+  const startIdx = html.indexOf('"client":{') !== -1
+    ? html.indexOf('"client":{')
+    : html.indexOf('"client": {');
+  if (startIdx === -1) return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false };
+
+  const win = html.slice(startIdx, startIdx + 4000);
+
+  const regTimeMatch = win.match(/"registrationTime"\s*:\s*(\d+)/);
+  const reviewCountMatch = win.match(/"reviewCount"\s*:\s*(\d+)/);
+  const ratingMatch = win.match(/"average"\s*:\s*([0-9.]+)/);
+  const paymentMatch = win.match(/"paymentVerified"\s*:\s*(true|false)/);
+
+  if (!regTimeMatch && !reviewCountMatch) {
+    return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false };
+  }
+
+  let memberSince: string | null = null;
+  if (regTimeMatch) {
+    const regDate = new Date(parseInt(regTimeMatch[1], 10));
+    memberSince = isNaN(regDate.getTime())
+      ? null
+      : regDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
 
   return {
-    rating: parseFloat(m[2]),
-    reviewCount: parseInt(m[3], 10),
+    rating: ratingMatch ? parseFloat(ratingMatch[1]) : null,
+    reviewCount: reviewCountMatch ? parseInt(reviewCountMatch[1], 10) : null,
     memberSince,
-    paymentVerified: m[4] === "true",
+    paymentVerified: paymentMatch ? paymentMatch[1] === "true" : false,
   };
+}
+
+function extractBudgetFromHtml(html: string): BudgetData | null {
+  // Freelancer's Angular state uses minified JSON. The page embeds:
+  //   "budget":{"min":250,"max":750}
+  //   "currencyDetails":{"id":8,"code":"EUR","sign":"€",...}
+  // (Confirmed on both USD and non-USD projects — field names are "min"/"max",
+  //  not "minimum"/"maximum", and currency is under "currencyDetails", not "currency".)
+  const bidx = html.indexOf('"budget":{');
+  if (bidx === -1) return null;
+
+  const bwin = html.slice(bidx, bidx + 100);
+  const minMatch = bwin.match(/"min"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+  if (!minMatch) return null;
+
+  const budgetMin = Math.round(parseFloat(minMatch[1]));
+  const maxMatch = bwin.match(/"max"\s*:\s*([0-9]+(?:\.[0-9]+)?)/);
+  const budgetMax = maxMatch ? Math.round(parseFloat(maxMatch[1])) : null;
+
+  // Hourly detection: look near the budget key to avoid false positives from other objects
+  const nearBudget = html.slice(Math.max(0, bidx - 500), bidx + 200);
+  const isHourly =
+    /"type"\s*:\s*"hourly"/.test(nearBudget) ||
+    html.includes('"hourlyProjectInfo"') ||
+    html.includes('"hourly_project_info"');
+
+  // Currency: Freelancer uses "currencyDetails":{"id":N,"code":"EUR",...} in page HTML
+  let currency: string | null = null;
+  const cdidx = html.indexOf('"currencyDetails":{');
+  if (cdidx !== -1) {
+    const cwin = html.slice(cdidx, cdidx + 200);
+    const codeMatch = cwin.match(/"code"\s*:\s*"([A-Za-z]{2,5})"/);
+    if (codeMatch) currency = codeMatch[1].toUpperCase();
+  }
+
+  return { budgetMin, budgetMax, budgetType: isHourly ? "hourly" : "fixed", currency };
 }
 
 function daysSince(memberSinceStr: string): number | null {
@@ -297,7 +355,7 @@ function clientQualityGate(
   };
 }
 
-async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ text: string; clientData: ClientData }> {
+async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ text: string; clientData: ClientData; budgetData: BudgetData | null }> {
   const signal = abortSignal
     ? AbortSignal.any([abortSignal, AbortSignal.timeout(20_000)])
     : AbortSignal.timeout(20_000);
@@ -310,13 +368,14 @@ async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ 
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const html = await response.text();
-  // Extract client data from raw HTML BEFORE stripping/truncating — the Angular-rendered
-  // client JSON sits ~1MB into the page, well past the 12k plain-text limit.
+  // Extract client + budget data from raw HTML BEFORE stripping/truncating — the Angular
+  // state JSON sits ~1MB into the page, well past the 12k plain-text limit.
   const clientData = extractClientDataFromHtml(html);
+  const budgetData = extractBudgetFromHtml(html);
   const root = parseHtml(html);
   root.querySelectorAll("script, style, nav, header, footer, aside, noscript").forEach((el) => el.remove());
   const text = he.decode(root.textContent.replace(/\s+/g, " ").trim());
-  return { text: text.length > 12_000 ? text.slice(0, 12_000) + "…" : text, clientData };
+  return { text: text.length > 12_000 ? text.slice(0, 12_000) + "…" : text, clientData, budgetData };
 }
 
 async function extractDescription(
@@ -817,13 +876,20 @@ async function runWizard(count: number): Promise<void> {
           current: idx + 1, total, listingId: listing.id, title: listing.title, phase: "fetching",
         });
         try {
-          const { text: pageText, clientData } = await fetchPageText(listing.url, signal);
+          const { text: pageText, clientData, budgetData } = await fetchPageText(listing.url, signal);
           if (signal.aborted) return;
           // Client data extracted from raw HTML (before 12k truncation) — always persist, null = fail-open
           listing.clientRating = clientData.rating;
           listing.clientReviewCount = clientData.reviewCount;
           listing.clientMemberSince = clientData.memberSince;
           listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
+          // Budget — extracted from raw HTML before stripping; only fills in what RSS omitted
+          if (budgetData !== null && listing.budgetMin === null) {
+            listing.budgetMin = budgetData.budgetMin;
+            listing.budgetMax = budgetData.budgetMax;
+            listing.budgetType = budgetData.budgetType;
+            if (budgetData.currency !== null) listing.currency = budgetData.currency;
+          }
           listing.fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
         } catch (err) {
           if (!isAbortError(err)) console.error(`[wizard] Failed to fetch description for ${listing.id}:`, err);
@@ -837,6 +903,10 @@ async function runWizard(count: number): Promise<void> {
               clientReviewCount: listing.clientReviewCount,
               clientMemberSince: listing.clientMemberSince,
               clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+              budgetMin: listing.budgetMin,
+              budgetMax: listing.budgetMax,
+              budgetType: listing.budgetType,
+              currency: listing.currency,
             })
             .where(eq(freelanceListings.id, listing.id));
         }
@@ -1095,13 +1165,20 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       let fullDescription = listing.fullDescription;
       if (fullDescription === null) {
         try {
-          const { text: pageText, clientData } = await fetchPageText(listing.url, signal);
+          const { text: pageText, clientData, budgetData } = await fetchPageText(listing.url, signal);
           if (signal.aborted) break;
           // Client data from raw HTML — always persist, null = fail-open in clientQualityGate
           listing.clientRating = clientData.rating;
           listing.clientReviewCount = clientData.reviewCount;
           listing.clientMemberSince = clientData.memberSince;
           listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
+          // Budget — extracted from raw HTML before stripping; only fills in what RSS omitted
+          if (budgetData !== null && listing.budgetMin === null) {
+            listing.budgetMin = budgetData.budgetMin;
+            listing.budgetMax = budgetData.budgetMax;
+            listing.budgetType = budgetData.budgetType;
+            if (budgetData.currency !== null) listing.currency = budgetData.currency;
+          }
           fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
         } catch (err) {
           if (isAbortError(err)) break;
@@ -1115,6 +1192,10 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             clientReviewCount: listing.clientReviewCount,
             clientMemberSince: listing.clientMemberSince,
             clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+            budgetMin: listing.budgetMin,
+            budgetMax: listing.budgetMax,
+            budgetType: listing.budgetType,
+            currency: listing.currency,
           })
           .where(eq(freelanceListings.id, listing.id));
       }
@@ -1258,16 +1339,26 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   }
 
   let fullDescription = listing.fullDescription;
-  if (fullDescription === null) {
+  if (fullDescription === null || listing.budgetMin === null) {
     try {
-      const { text: pageText, clientData } = await fetchPageText(listing.url);
+      const { text: pageText, clientData, budgetData } = await fetchPageText(listing.url);
       listing.clientRating = clientData.rating;
       listing.clientReviewCount = clientData.reviewCount;
       listing.clientMemberSince = clientData.memberSince;
       listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
-      fullDescription = await extractDescription(pageText, listing, adapter, modelId);
+      // Budget data — fill in when RSS omitted it (e.g. non-USD projects)
+      if (budgetData !== null && listing.budgetMin === null) {
+        listing.budgetMin = budgetData.budgetMin;
+        listing.budgetMax = budgetData.budgetMax;
+        listing.budgetType = budgetData.budgetType;
+        if (budgetData.currency !== null) listing.currency = budgetData.currency;
+      }
+      // Only run AI description extraction if it wasn't already present
+      if (fullDescription === null) {
+        fullDescription = await extractDescription(pageText, listing, adapter, modelId);
+      }
     } catch {
-      fullDescription = "";
+      if (fullDescription === null) fullDescription = "";
     }
     await db.update(freelanceListings)
       .set({
@@ -1276,6 +1367,10 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
         clientReviewCount: listing.clientReviewCount,
         clientMemberSince: listing.clientMemberSince,
         clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+        budgetMin: listing.budgetMin,
+        budgetMax: listing.budgetMax,
+        budgetType: listing.budgetType,
+        currency: listing.currency,
       })
       .where(eq(freelanceListings.id, listing.id));
   }

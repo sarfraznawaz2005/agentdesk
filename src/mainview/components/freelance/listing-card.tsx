@@ -651,19 +651,6 @@ export function FreelanceListingCard({
           </Button>
         )}
 
-        {(isNew || isShortlisted) && !isClosed && (
-          <Button
-            size="sm"
-            onClick={() => setConfirmApprove(true)}
-            disabled={isApproving}
-            className="gap-1.5"
-            aria-label="Approve listing"
-          >
-            {isApproving && <Loader2 className="size-3.5 animate-spin" />}
-            {isApproving ? "Approving…" : "Approve"}
-          </Button>
-        )}
-
         {/* Create Proposal (bid) — Auto-Earn only, shortlisted listings only: queue an AI proposal */}
         {autoEarnEnabled && isShortlisted && !isClosed && (
           listing.hasBid ? (
@@ -701,6 +688,19 @@ export function FreelanceListingCard({
               {isDrafting ? "Creating…" : "Create Proposal"}
             </Button>
           )
+        )}
+
+        {(isNew || isShortlisted) && !isClosed && (
+          <Button
+            size="sm"
+            onClick={() => setConfirmApprove(true)}
+            disabled={isApproving}
+            className="gap-1.5"
+            aria-label="Approve listing"
+          >
+            {isApproving && <Loader2 className="size-3.5 animate-spin" />}
+            {isApproving ? "Approving…" : "Approve"}
+          </Button>
         )}
 
         {/* Mark Done — visible for all non-closed listings */}
@@ -773,11 +773,11 @@ export function FreelanceListingCard({
       <Dialog open={confirmApprove} onOpenChange={setConfirmApprove}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Approve this listing?</DialogTitle>
+            <DialogTitle>Has the client approved your bid?</DialogTitle>
             <DialogDescription className="pt-1 text-foreground">
-              Approving <span className="font-medium">"{listing.title}"</span> will
-              create a new project in AgentDesk and kick off the full agent workflow — planning,
-              coding, and review. This cannot be undone automatically.
+              Only approve <span className="font-medium">"{listing.title}"</span> once the
+              client has awarded you the project on Freelancer.com. This will create a new
+              AgentDesk project and start the agent workflow.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-2">
@@ -786,7 +786,7 @@ export function FreelanceListingCard({
               onClick={() => setConfirmApprove(false)}
               disabled={isApproving}
             >
-              Cancel
+              No
             </Button>
             <Button
               onClick={async () => {
@@ -797,7 +797,7 @@ export function FreelanceListingCard({
               className="gap-1.5"
             >
               {isApproving && <Loader2 className="size-3.5 animate-spin" />}
-              {isApproving ? "Approving…" : "Yes, create project"}
+              {isApproving ? "Approving…" : "Yes, proceed"}
             </Button>
           </DialogFooter>
         </DialogContent>
