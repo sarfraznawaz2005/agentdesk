@@ -21,6 +21,11 @@ export function initClientErrorHandler(): void {
 		// by the browser — no actionable info available.
 		if (message === "Script error." && !source) return false;
 
+		// Benign ResizeObserver warning — fires when a resize callback triggers
+		// another layout change before the browser finishes notifying observers.
+		// The browser recovers automatically; nothing is lost.
+		if (message.includes("ResizeObserver loop")) return false;
+
 		const stack =
 			error?.stack ?? (source ? `at ${source}:${lineno}:${colno}` : undefined);
 
