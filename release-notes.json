@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.0.4",
+        "title":  "Enhanced Project Management and UI",
+        "changes":  [
+                        "Added path accessibility checks for cloud and network paths in project management.",
+                        "Improved UI and functionality for freelance components.",
+                        "Fixed benign ResizeObserver warning in global error handler."
+                    ]
+    },
+    {
         "version":  "2.0.3",
         "title":  "Enhanced Freelance Listings",
         "changes":  [
