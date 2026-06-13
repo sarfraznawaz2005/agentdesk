@@ -188,3 +188,71 @@ jobs:
   # Intel (x64) macOS build intentionally omitted — macos-13 runners have very
   # long queue times on GitHub Actions. Apple Silicon covers the vast majority
   # of current Mac users. Re-add build-macos-x64 here if Intel support is needed.
+
+  # ── Linux x64 build ───────────────────────────────────────────────────────────
+  # CEF is bundled (see electrobun.config.ts linux.bundleCEF: true) — larger
+  # download but required because WebKitGTK has significant limitations.
+  # Note: ApplicationMenu and ContextMenu are no-ops on Linux (Electrobun limitation)
+  # but AgentDesk only calls setApplicationMenu([]) to clear it, so no functional loss.
+  build-linux-x64:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend (Vite)
+        run: bun run vite build
+
+      - name: Install zstd
+        run: sudo apt-get install -y zstd
+
+      - name: Build app (Electrobun stable)
+        run: bunx electrobun build --env=stable
+
+      - name: Prepare distribution files
+        run: |
+          set -e
+          dir="build/stable-linux-x64"
+
+          semver="${{ needs.create-release.outputs.tag }}"
+          semver="${semver#v}"
+
+          # Locate metadata.json (root or inside app subdirectory)
+          metadata=$(find "$dir" -name "metadata.json" | head -1)
+          echo "Metadata: $metadata"
+
+          # update.json for Updater.checkForUpdate()
+          jq --arg v "$semver" '. + {version: $v}' "$metadata" > "$dir/stable-linux-x64-update.json"
+
+          # If electrobun already produced a tar.zst reuse it, otherwise create one
+          existing_zst=$(find "$dir" -maxdepth 1 -name "*.tar.zst" | head -1)
+          if [ -n "$existing_zst" ]; then
+            cp "$existing_zst" "$dir/stable-linux-x64-AgentDesk.tar.zst"
+          else
+            app_name=$(find "$dir" -mindepth 1 -maxdepth 1 -type d | head -1 | xargs basename)
+            tar -cf - -C "$dir" "$app_name" | zstd --stdout > "$dir/stable-linux-x64-AgentDesk.tar.zst"
+          fi
+
+          # Portable tar.gz for direct user download — extract updater bundle and repack
+          staging="build/linux-staging"
+          mkdir -p "$staging"
+          tar -xf "$dir/stable-linux-x64-AgentDesk.tar.zst" -C "$staging"
+          tar -czf "$dir/AgentDesk-linux-x64.tar.gz" -C "$staging" .
+          rm -rf "$staging"
+
+      - name: Upload Linux artifacts
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          files: |
+            build/stable-linux-x64/AgentDesk-linux-x64.tar.gz
+            build/stable-linux-x64/stable-linux-x64-update.json
+            build/stable-linux-x64/stable-linux-x64-AgentDesk.tar.zst
+          fail_on_unmatched_files: true
