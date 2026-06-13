@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.0.7",
+        "title":  "Freelance Wizard Enhancement",
+        "changes":  [
+                        "The freelance wizard now fetches client data to improve quality gate evaluation."
+                    ]
+    },
+    {
         "version":  "2.0.6",
         "title":  "Linux Build Support",
         "changes":  [
