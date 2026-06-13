@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.0.6",
+        "title":  "Linux Build Support",
+        "changes":  [
+                        "Added support for building AgentDesk on Linux."
+                    ]
+    },
+    {
         "version":  "2.0.5",
         "title":  "New Freelance Wizard Feature",
         "changes":  [
