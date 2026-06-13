@@ -1,7 +1,7 @@
 import he from "he";
 import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
-import { eq, and, notInArray, desc } from "drizzle-orm";
+import { eq, and, notInArray, desc, gte } from "drizzle-orm";
 import { parse as parseHtml } from "node-html-parser";
 import { sqlite } from "../db/connection";
 import { db } from "../db";
@@ -807,7 +807,7 @@ function isCacheValid(listing: typeof freelanceListings.$inferSelect): boolean {
 // Core wizard runner
 // ---------------------------------------------------------------------------
 
-async function runWizard(count: number): Promise<void> {
+async function runWizard(options: { count: number } | { since: Date }): Promise<void> {
   const controller = new AbortController();
   activeController = controller;
   const { signal } = controller;
@@ -831,22 +831,30 @@ async function runWizard(count: number): Promise<void> {
     const profileSkills = getProfileSkills();
     const aeSettings = await getAutoEarnSettings();
 
-    // Always take the N most-recent listings regardless of prior analysis.
-    // Cached entries get an instant verdict read; new entries get AI analysis.
+    // Base filter: exclude deleted, approved and closed listings.
     // Shortlisted entries are included — they're still recent and their cached
     // workable verdict should remain visible on re-runs.
-    // Only approved and closed listings are excluded (they're done).
     const baseWhere = and(
       eq(freelanceListings.isDeleted, 0),
       notInArray(freelanceListings.status, ["approved", "closed"]),
+      "since" in options
+        // DB stores fetched_at as 'YYYY-MM-DD HH:MM:SS' (no T, no Z).
+        // toISOString() produces 'YYYY-MM-DDTHH:MM:SS.mmmZ' — space < T in ASCII
+        // so the gte comparison would always fail. Match the DB format exactly.
+        ? gte(freelanceListings.fetchedAt, options.since.toISOString().slice(0, 19).replace("T", " "))
+        : undefined,
     );
 
-    const candidates = await db
+    const query = db
       .select()
       .from(freelanceListings)
       .where(baseWhere)
-      .orderBy(desc(freelanceListings.fetchedAt))
-      .limit(count);
+      .orderBy(desc(freelanceListings.fetchedAt));
+
+    // Count mode: cap at N listings. Hourly mode: no count cap — the time
+    // window is the natural boundary. Cached entries resolve instantly, so
+    // a wider window doesn't proportionally increase AI cost.
+    const candidates = await ("count" in options ? query.limit(options.count) : query);
 
     if (candidates.length === 0) {
       broadcastToWebview(FREELANCE_EVENTS.WIZARD_COMPLETE, { workableListings: [], failedListings: [] });
@@ -1057,12 +1065,18 @@ async function runWizard(count: number): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// RPC: startWizard
+// RPC: startWizard / stopWizard
 // ---------------------------------------------------------------------------
 
-export async function startWizard(params: { count: number }): Promise<{ success: boolean }> {
-  const count = Math.max(1, Math.min(25, params.count));
-  runWizard(count).catch(() => {});
+export async function startWizard(params: { count?: number; hours?: number }): Promise<{ success: boolean }> {
+  if (params.hours != null) {
+    const hours = Math.max(1, Math.min(5, params.hours));
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    runWizard({ since }).catch(() => {});
+  } else {
+    const count = Math.max(1, Math.min(25, params.count ?? 10));
+    runWizard({ count }).catch(() => {});
+  }
   return { success: true };
 }
 

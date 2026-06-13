@@ -99,54 +99,107 @@ let converted: string;
 // Step 1 — Config
 // ---------------------------------------------------------------------------
 
+type ConfigMode = "count" | "hourly";
+
 function ConfigStep({
+  mode,
+  onModeChange,
   count,
   onCountChange,
+  hours,
+  onHoursChange,
   onStart,
 }: {
+  mode: ConfigMode;
+  onModeChange: (m: ConfigMode) => void;
   count: number;
   onCountChange: (v: number) => void;
+  hours: number;
+  onHoursChange: (v: number) => void;
   onStart: () => void;
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          This wizard analyzes your latest listings to find which ones are fully deliverable.
-          For each listing it checks two things: whether your local system has all required
-          software installed, and whether the AI agent system can complete all technical
-          requirements on its own.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="wizard-count" className="text-sm font-medium text-foreground">
-          Listings to analyze
-        </label>
-        <input
-          id="wizard-count"
-          type="number"
-          min={1}
-          max={25}
-          value={count}
-          onChange={(e) => {
-            const v = parseInt(e.target.value, 10);
-            if (!isNaN(v)) onCountChange(Math.max(1, Math.min(25, v)));
-          }}
-          className="w-28 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-
-      <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
-        <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
-        Increasing listing count consumes more tokens. Each listing requires at least one AI analysis call.
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        This wizard analyzes your latest listings to find which ones are fully deliverable.
+        For each listing it checks two things: whether your local system has all required
+        software installed, and whether the AI agent system can complete all technical
+        requirements on its own.
       </p>
 
-      <div className="flex justify-end">
-        <Button onClick={onStart} className="gap-2">
-          Analyze Listings
-        </Button>
+      {/* Mode toggle */}
+      <div className="flex gap-0 rounded-lg border border-border overflow-hidden w-fit">
+        {(["count", "hourly"] as ConfigMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => onModeChange(m)}
+            className={[
+              "px-4 py-1.5 text-sm font-medium transition-colors focus:outline-none",
+              mode === m
+                ? "bg-primary text-primary-foreground"
+                : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted",
+            ].join(" ")}
+          >
+            {m === "count" ? "Listing count" : "Run hourly"}
+          </button>
+        ))}
       </div>
+
+      {mode === "count" ? (
+        <>
+          <div className="space-y-2">
+            <label htmlFor="wizard-count" className="text-sm font-medium text-foreground">
+              Listings to analyze
+            </label>
+            <input
+              id="wizard-count"
+              type="number"
+              min={1}
+              max={25}
+              value={count}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v)) onCountChange(Math.max(1, Math.min(25, v)));
+              }}
+              className="w-28 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+            <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
+            Increasing listing count consumes more tokens. Each listing requires at least one AI analysis call.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={onStart}>Analyze Listings</Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <label htmlFor="wizard-hours" className="text-sm font-medium text-foreground">
+              Run for
+            </label>
+            <div className="flex items-center gap-2">
+              <select
+                id="wizard-hours"
+                value={hours}
+                onChange={(e) => onHoursChange(Number(e.target.value))}
+                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {[1, 2, 3, 4, 5].map((h) => (
+                  <option key={h} value={h}>{h} {h === 1 ? "hour" : "hours"}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+            <Info className="size-3.5 mt-0.5 shrink-0" />
+            Analyzes all listings fetched in the last {hours} {hours === 1 ? "hour" : "hours"}. Previously analyzed listings use cached results instantly.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={onStart}>Start Hourly Analysis</Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -438,7 +491,9 @@ interface FindWorkableModalProps {
 
 export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkableModalProps) {
   const [step, setStep] = useState<WizardStep>("config");
+  const [mode, setMode] = useState<ConfigMode>("count");
   const [count, setCount] = useState(10);
+  const [hours, setHours] = useState(1);
   const [total, setTotal] = useState(0);
   const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [workableListings, setWorkableListings] = useState<WizardWorkableListing[]>([]);
@@ -456,7 +511,9 @@ export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkable
   useEffect(() => {
     if (open) {
       setStep("config");
+      setMode("count");
       setCount(10);
+      setHours(1);
       setTotal(0);
       setProgress([]);
       progressRef.current = [];
@@ -551,12 +608,16 @@ export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkable
     progressRef.current = [];
     setErrorMsg(null);
     try {
-      await rpc.freelanceWizardStart(count);
+      if (mode === "hourly") {
+        await rpc.freelanceWizardStart({ hours });
+      } else {
+        await rpc.freelanceWizardStart({ count });
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to start analysis");
       setStep("results");
     }
-  }, [count]);
+  }, [mode, count, hours]);
 
   const handleToggle = useCallback((id: string) => {
     setSelected((prev) => {
@@ -640,8 +701,12 @@ export function FindWorkableModal({ open, onClose, onShortlisted }: FindWorkable
               </div>
             ) : step === "config" ? (
               <ConfigStep
+                mode={mode}
+                onModeChange={setMode}
                 count={count}
                 onCountChange={setCount}
+                hours={hours}
+                onHoursChange={setHours}
                 onStart={() => void handleStart()}
               />
             ) : step === "analyzing" ? (

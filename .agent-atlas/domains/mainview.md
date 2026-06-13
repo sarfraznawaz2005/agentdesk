@@ -2,7 +2,7 @@
 
 **Directory:** `src/mainview`
 **Files:** 168
-**Symbols:** 1434
+**Symbols:** 1435
 
 ## Files
 
@@ -535,24 +535,25 @@
 **Interfaces:**
 - `ProgressItem` (line 16)
 - `BudgetDisplay` (line 27)
-- `FindWorkableModalProps` (line 433)
+- `FindWorkableModalProps` (line 486)
 
 **Types:**
 - `WizardStep` (line 14)
+- `ConfigMode` (line 102)
 
 **Functions:**
 - `convertAmount` (line 33)
 - `fmt` (line 48)
 - `buildBudgetDisplay` (line 52)
-- `ConfigStep` (line 102)
-- `AnalyzingStep` (line 158)
-- `FailedListingRow` (line 246)
-- `ResultsStep` (line 281)
-- `FindWorkableModal` (line 439)
-- `onProgress` (line 482)
-- `onComplete` (line 506)
-- `onError` (line 517)
-- `onStopped` (line 523)
+- `ConfigStep` (line 104)
+- `AnalyzingStep` (line 211)
+- `FailedListingRow` (line 299)
+- `ResultsStep` (line 334)
+- `FindWorkableModal` (line 492)
+- `onProgress` (line 539)
+- `onComplete` (line 563)
+- `onError` (line 574)
+- `onStopped` (line 580)
 
 
 ### `src/mainview/components/freelance/freelance-chat-modal.tsx`

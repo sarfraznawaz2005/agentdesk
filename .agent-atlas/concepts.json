@@ -6211,6 +6211,12 @@
       "type": "function"
     },
     {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 102,
+      "symbol": "ConfigMode",
+      "type": "type"
+    },
+    {
       "file": "src/mainview/components/notes/note-editor.tsx",
       "line": 17,
       "symbol": "EditorMode",
@@ -6876,7 +6882,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 62,
+      "line": 127,
       "symbol": "createModel",
       "type": "method"
     },
@@ -7701,6 +7707,18 @@
       "type": "type"
     },
     {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 40,
+      "symbol": "CredentialsFile",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 44,
+      "symbol": "readCredentialsFile",
+      "type": "function"
+    },
+    {
       "file": "src/bun/remote-sync/client.ts",
       "line": 138,
       "symbol": "downloadFile",
@@ -8186,7 +8204,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 24,
+      "line": 94,
       "symbol": "loadOAuthToken",
       "type": "function"
     },
@@ -9844,7 +9862,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 517,
+      "line": 574,
       "symbol": "onError",
       "type": "function"
     },
@@ -10754,7 +10772,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 55,
+      "line": 120,
       "symbol": "ClaudeSubscriptionAdapter",
       "type": "class"
     },
@@ -13624,7 +13642,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 119,
+      "line": 204,
       "symbol": "testConnection",
       "type": "method"
     },
@@ -18524,13 +18542,13 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 433,
+      "line": 486,
       "symbol": "FindWorkableModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 439,
+      "line": 492,
       "symbol": "FindWorkableModal",
       "type": "function"
     }
@@ -22598,7 +22616,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 97,
+      "line": 182,
       "symbol": "listModels",
       "type": "method"
     },
@@ -24344,7 +24362,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1083,
+      "line": 1097,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -25537,6 +25555,12 @@
       "type": "function"
     },
     {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 44,
+      "symbol": "readCredentialsFile",
+      "type": "function"
+    },
+    {
       "file": "src/bun/remote-sync/client.ts",
       "line": 142,
       "symbol": "readFile",
@@ -26032,7 +26056,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 281,
+      "line": 334,
       "symbol": "ResultsStep",
       "type": "function"
     }
@@ -28326,7 +28350,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1069,
+      "line": 1083,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -28462,7 +28486,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 523,
+      "line": 580,
       "symbol": "onStopped",
       "type": "function"
     },
@@ -30166,7 +30190,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 246,
+      "line": 299,
       "symbol": "FailedListingRow",
       "type": "function"
     },
@@ -30616,7 +30640,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1083,
+      "line": 1097,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -30988,6 +31012,12 @@
       "file": "src/bun/agents/prompt-logger.ts",
       "line": 29,
       "symbol": "refreshEnabled",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 55,
+      "symbol": "tryRefreshOAuthToken",
       "type": "function"
     },
     {
@@ -31480,7 +31510,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1324,
+      "line": 1338,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -31510,7 +31540,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 246,
+      "line": 299,
       "symbol": "FailedListingRow",
       "type": "function"
     },
@@ -32915,6 +32945,12 @@
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
       "line": 102,
+      "symbol": "ConfigMode",
+      "type": "type"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 104,
       "symbol": "ConfigStep",
       "type": "function"
     },
@@ -33362,7 +33398,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1063,
+      "line": 1071,
       "symbol": "startWizard",
       "type": "function"
     },
@@ -34692,7 +34728,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 71,
+      "line": 137,
       "symbol": "interceptFetch",
       "type": "function"
     },
@@ -35340,7 +35376,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 119,
+      "line": 204,
       "symbol": "testConnection",
       "type": "method"
     },
@@ -35716,7 +35752,19 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 24,
+      "line": 31,
+      "symbol": "OAuthCredentials",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 55,
+      "symbol": "tryRefreshOAuthToken",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 94,
       "symbol": "loadOAuthToken",
       "type": "function"
     },
@@ -35762,7 +35810,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 55,
+      "line": 120,
       "symbol": "ClaudeSubscriptionAdapter",
       "type": "class"
     },
@@ -35782,7 +35830,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 55,
+      "line": 120,
       "symbol": "ClaudeSubscriptionAdapter",
       "type": "class"
     },
@@ -39178,7 +39226,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1438,
+      "line": 1452,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -44892,7 +44940,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 62,
+      "line": 127,
       "symbol": "createModel",
       "type": "method"
     },
@@ -45026,7 +45074,7 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 97,
+      "line": 182,
       "symbol": "listModels",
       "type": "method"
     },
@@ -45130,7 +45178,13 @@
     },
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 24,
+      "line": 55,
+      "symbol": "tryRefreshOAuthToken",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 94,
       "symbol": "loadOAuthToken",
       "type": "function"
     },
@@ -45222,7 +45276,7 @@
   "intercept": [
     {
       "file": "src/bun/providers/claude-subscription.ts",
-      "line": 71,
+      "line": 137,
       "symbol": "interceptFetch",
       "type": "function"
     },
@@ -45513,6 +45567,24 @@
       "type": "function"
     },
     {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 31,
+      "symbol": "OAuthCredentials",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 40,
+      "symbol": "CredentialsFile",
+      "type": "interface"
+    },
+    {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 44,
+      "symbol": "readCredentialsFile",
+      "type": "function"
+    },
+    {
       "file": "src/bun/remote-sync/client.ts",
       "line": 20,
       "symbol": "RemoteCredentials",
@@ -45734,7 +45806,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 246,
+      "line": 299,
       "symbol": "FailedListingRow",
       "type": "function"
     },
@@ -47732,13 +47804,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1063,
+      "line": 1071,
       "symbol": "startWizard",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1069,
+      "line": 1083,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -49220,7 +49292,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 433,
+      "line": 486,
       "symbol": "FindWorkableModalProps",
       "type": "interface"
     },
@@ -51600,19 +51672,19 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 102,
+      "line": 104,
       "symbol": "ConfigStep",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 158,
+      "line": 211,
       "symbol": "AnalyzingStep",
       "type": "function"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 281,
+      "line": 334,
       "symbol": "ResultsStep",
       "type": "function"
     },
@@ -51920,7 +51992,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 506,
+      "line": 563,
       "symbol": "onComplete",
       "type": "function"
     },
@@ -52796,7 +52868,7 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 482,
+      "line": 539,
       "symbol": "onProgress",
       "type": "function"
     },
@@ -54893,6 +54965,12 @@
   ],
   "try": [
     {
+      "file": "src/bun/providers/claude-subscription.ts",
+      "line": 55,
+      "symbol": "tryRefreshOAuthToken",
+      "type": "function"
+    },
+    {
       "file": "src/bun/rpc/recommendations.ts",
       "line": 86,
       "symbol": "tryGetVersion",
@@ -54922,13 +55000,13 @@
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 433,
+      "line": 486,
       "symbol": "FindWorkableModalProps",
       "type": "interface"
     },
     {
       "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 439,
+      "line": 492,
       "symbol": "FindWorkableModal",
       "type": "function"
     },
@@ -58163,26 +58241,6 @@
       "type": "function"
     }
   ],
-  "workable": [
-    {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 433,
-      "symbol": "FindWorkableModalProps",
-      "type": "interface"
-    },
-    {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 439,
-      "symbol": "FindWorkableModal",
-      "type": "function"
-    },
-    {
-      "file": "src/shared/rpc/freelance.ts",
-      "line": 35,
-      "symbol": "WizardWorkableListing",
-      "type": "interface"
-    }
-  ],
   "os": [
     {
       "file": "src/bun/rpc/env-vars.ts",
@@ -60643,14 +60701,6 @@
       "type": "function"
     }
   ],
-  "electroview": [
-    {
-      "file": "src/mainview/lib/rpc.ts",
-      "line": 331,
-      "symbol": "electroview",
-      "type": "export"
-    }
-  ],
   "release": [
     {
       "file": "src/shared/rpc/index.ts",
@@ -60827,14 +60877,6 @@
       "type": "function"
     }
   ],
-  "analyzing": [
-    {
-      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
-      "line": 158,
-      "symbol": "AnalyzingStep",
-      "type": "function"
-    }
-  ],
   "tag": [
     {
       "file": "src/mainview/components/freelance/inbox-tab.tsx",
@@ -60960,7 +61002,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1324,
+      "line": 1338,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -60974,13 +61016,13 @@
   "shortlist": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1083,
+      "line": 1097,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1438,
+      "line": 1452,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -61060,6 +61102,42 @@
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 786,
       "symbol": "normalizeNewlines",
+      "type": "function"
+    }
+  ],
+  "electroview": [
+    {
+      "file": "src/mainview/lib/rpc.ts",
+      "line": 331,
+      "symbol": "electroview",
+      "type": "export"
+    }
+  ],
+  "workable": [
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 486,
+      "symbol": "FindWorkableModalProps",
+      "type": "interface"
+    },
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 492,
+      "symbol": "FindWorkableModal",
+      "type": "function"
+    },
+    {
+      "file": "src/shared/rpc/freelance.ts",
+      "line": 35,
+      "symbol": "WizardWorkableListing",
+      "type": "interface"
+    }
+  ],
+  "analyzing": [
+    {
+      "file": "src/mainview/components/freelance/find-workable-modal.tsx",
+      "line": 211,
+      "symbol": "AnalyzingStep",
       "type": "function"
     }
   ]

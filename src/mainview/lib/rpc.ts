@@ -1467,9 +1467,10 @@ export const rpc = {
   freelanceChatStop: (listingId: string) =>
     electroviewRpc.request["freelance.chat.stop"]({ listingId }),
 
-  /** Start the "Find Workable Projects" wizard (fire-and-forget). */
-  freelanceWizardStart: (count: number) =>
-    electroviewRpc.request["freelance.wizard.start"]({ count }),
+  /** Start the "Find Workable Projects" wizard (fire-and-forget).
+   *  Pass { count } for a one-shot run or { hours } to repeat every hour. */
+  freelanceWizardStart: (params: { count?: number; hours?: number }) =>
+    electroviewRpc.request["freelance.wizard.start"](params),
 
   /** Stop the running wizard immediately. */
   freelanceWizardStop: () =>

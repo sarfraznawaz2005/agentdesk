@@ -2,7 +2,7 @@
 
 **Directory:** `src/bun`
 **Files:** 263
-**Symbols:** 1981
+**Symbols:** 1985
 
 ## Files
 
@@ -2468,16 +2468,22 @@
 ### `src/bun/providers/claude-subscription.ts`
 
 **Classes:**
-- `ClaudeSubscriptionAdapter` (line 55)
+- `ClaudeSubscriptionAdapter` (line 120)
+
+**Interfaces:**
+- `OAuthCredentials` (line 31)
+- `CredentialsFile` (line 40)
 
 **Functions:**
-- `loadOAuthToken` (line 24)
-- `interceptFetch` (line 71)
+- `readCredentialsFile` (line 44)
+- `tryRefreshOAuthToken` (line 55)
+- `loadOAuthToken` (line 94)
+- `interceptFetch` (line 137)
 
 **Methods:**
-- `createModel` (line 62)
-- `listModels` (line 97)
-- `testConnection` (line 119)
+- `createModel` (line 127)
+- `listModels` (line 182)
+- `testConnection` (line 204)
 
 
 ### `src/bun/providers/deepseek.ts`
@@ -3177,11 +3183,11 @@
 - `normalizeNewlines` (line 786)
 - `isCacheValid` (line 800)
 - `runWizard` (line 810)
-- `startWizard` (line 1063)
-- `stopWizard` (line 1069)
-- `runAutoShortlist` (line 1083)
-- `analyzeListing` (line 1324)
-- `shortlistListings` (line 1438)
+- `startWizard` (line 1071)
+- `stopWizard` (line 1083)
+- `runAutoShortlist` (line 1097)
+- `analyzeListing` (line 1338)
+- `shortlistListings` (line 1452)
 
 
 ### `src/bun/rpc/freelance.ts`

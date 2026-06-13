@@ -418,7 +418,8 @@ export type FreelanceRequests = {
     response: { success: boolean };
   };
   "freelance.wizard.start": {
-    params: { count: number };
+    // Mutually exclusive: pass count (one-shot) or hours (repeat every hour for N hours).
+    params: { count?: number; hours?: number };
     response: { success: boolean };
   };
   "freelance.wizard.stop": {

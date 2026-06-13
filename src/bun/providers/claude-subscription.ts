@@ -3,10 +3,17 @@ import { generateText } from "ai";
 import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 
 const CREDENTIALS_PATH = join(homedir(), ".claude", ".credentials.json");
+
+// Path candidates for the claude CLI — same dir as the app exe first, then PATH
+const CLAUDE_CLI_CANDIDATES = [
+  join(dirname(process.execPath), "claude"),
+  join(dirname(process.execPath), "claude.exe"),
+  "claude",
+];
 
 const CLAUDE_MODELS = [
   "claude-opus-4-8",
@@ -21,27 +28,82 @@ const CLAUDE_MODELS = [
   "claude-3-opus-20240229",
 ];
 
+interface OAuthCredentials {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  scopes?: string[];
+  subscriptionType?: string;
+  rateLimitTier?: string;
+}
+
+interface CredentialsFile {
+  claudeAiOauth?: OAuthCredentials;
+}
+
+function readCredentialsFile(): CredentialsFile {
+  const raw = readFileSync(CREDENTIALS_PATH, "utf-8");
+  return JSON.parse(raw) as CredentialsFile;
+}
+
+/**
+ * Refresh the OAuth token by spawning the Claude CLI in non-interactive mode.
+ * The CLI handles the full OAuth refresh flow (including Cloudflare-protected
+ * endpoints) and writes fresh credentials back to ~/.claude/.credentials.json.
+ * We then re-read the file to get the new access token.
+ */
+async function tryRefreshOAuthToken(): Promise<string | null> {
+  for (const cli of CLAUDE_CLI_CANDIDATES) {
+    try {
+      const proc = Bun.spawn([cli, "-p", "hi"], {
+        stdout: "null",
+        stderr: "null",
+        env: { ...process.env },
+      });
+
+      // Wait up to 30 s; kill if it hangs
+      const exited = await Promise.race([
+        proc.exited,
+        new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 30_000)),
+      ]);
+
+      if (exited === "timeout") {
+        proc.kill();
+        console.warn("[ClaudeSubscription] claude CLI timed out during token refresh.");
+        return null;
+      }
+
+      // Re-read the credentials file — the CLI will have written a fresh token
+      const creds = readCredentialsFile();
+      const newToken = creds.claudeAiOauth?.accessToken;
+      if (newToken) {
+        console.log("[ClaudeSubscription] OAuth token refreshed via claude CLI.");
+        return newToken;
+      }
+      return null;
+    } catch {
+      // This candidate wasn't found — try the next
+      continue;
+    }
+  }
+
+  console.warn("[ClaudeSubscription] claude CLI not found; cannot refresh token automatically.");
+  return null;
+}
+
 function loadOAuthToken(): string {
-  let raw: string;
+  let creds: CredentialsFile;
   try {
-    raw = readFileSync(CREDENTIALS_PATH, "utf-8");
+    creds = readCredentialsFile();
   } catch {
     throw new Error(
       "Claude credentials not found. Please authenticate by running `claude` in a terminal.",
     );
   }
-  const data = JSON.parse(raw) as {
-    claudeAiOauth?: { accessToken?: string; expiresAt?: number };
-  };
-  const token = data.claudeAiOauth?.accessToken;
+  const token = creds.claudeAiOauth?.accessToken;
   if (!token) {
     throw new Error(
       "No Claude OAuth token found. Please authenticate by running `claude` in a terminal.",
-    );
-  }
-  if (data.claudeAiOauth?.expiresAt && data.claudeAiOauth.expiresAt < Date.now()) {
-    console.warn(
-      "[ClaudeSubscription] OAuth token is expired. Run `claude` to refresh credentials.",
     );
   }
   return token;
@@ -51,6 +113,9 @@ function loadOAuthToken(): string {
  * Provider adapter that uses Claude Code's stored OAuth credentials to call
  * the Anthropic API directly — no separate API key required. Enabled only when
  * a `claude` feature-flag file exists next to the app executable.
+ *
+ * Tokens are refreshed automatically on 401 responses, so no manual `claude`
+ * invocation is needed after the token expires.
  */
 export class ClaudeSubscriptionAdapter implements ProviderAdapter {
   private config: ProviderConfig;
@@ -68,20 +133,40 @@ export class ClaudeSubscriptionAdapter implements ProviderAdapter {
     // Cap max_tokens at 32000 — the Max subscription API quota is measured in
     // output tokens per minute, and 128K max_tokens per request exhausts it instantly.
     const MAX_OUTPUT_TOKENS = 8192;
-    const interceptFetch = (url: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]): ReturnType<typeof fetch> => {
+
+    const interceptFetch = async (
+      url: Parameters<typeof fetch>[0],
+      init: Parameters<typeof fetch>[1],
+    ): Promise<Response> => {
       const u = typeof url === "string" ? url : url instanceof URL ? url.href : (url as Request).url;
       const patched = u.includes("?") ? u : `${u}?beta=true`;
+
+      let patchedInit = init;
       if (init?.body && typeof init.body === "string") {
         try {
           const body = JSON.parse(init.body) as Record<string, unknown>;
           if (typeof body.max_tokens === "number" && body.max_tokens > MAX_OUTPUT_TOKENS) {
             body.max_tokens = MAX_OUTPUT_TOKENS;
-            return globalThis.fetch(patched, { ...init, body: JSON.stringify(body) });
+            patchedInit = { ...init, body: JSON.stringify(body) };
           }
         } catch { /* leave body as-is on parse error */ }
       }
-      return globalThis.fetch(patched, init);
+
+      let response = await globalThis.fetch(patched, patchedInit);
+
+      // On 401: the stored token is likely expired. Try to refresh and retry once.
+      if (response.status === 401) {
+        const newToken = await tryRefreshOAuthToken();
+        if (newToken) {
+          const headers = new Headers(patchedInit?.headers as HeadersInit | undefined);
+          headers.set("authorization", `Bearer ${newToken}`);
+          response = await globalThis.fetch(patched, { ...patchedInit, headers });
+        }
+      }
+
+      return response;
     };
+
     return createAnthropic({
       authToken: token,
       headers: {
