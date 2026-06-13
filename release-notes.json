@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.0.8",
+        "title":  "OAuth and Freelance Wizard Enhancements",
+        "changes":  [
+                        "Improved management of OAuth tokens for better security and usability.",
+                        "Added hourly analysis for Find Workable feature of freelance."
+                    ]
+    },
+    {
         "version":  "2.0.7",
         "title":  "Freelance Wizard Enhancement",
         "changes":  [
