@@ -863,7 +863,8 @@ async function runWizard(count: number): Promise<void> {
     // ---------------------------------------------------------------------------
     const DESC_CONCURRENCY = 3;
     const needsDescFetch = candidates.filter(
-      (l) => l.fullDescription === null && !isObviouslyNonSoftware(l) && !isCacheValid(l),
+      (l) => !isObviouslyNonSoftware(l) && !isCacheValid(l) &&
+             (l.fullDescription === null || (aeSettings.clientFilterEnabled && l.clientReviewCount === null)),
     );
 
     for (let i = 0; i < needsDescFetch.length; i += DESC_CONCURRENCY) {
@@ -1163,7 +1164,8 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       }
 
       let fullDescription = listing.fullDescription;
-      if (fullDescription === null) {
+      // Also fetch when client data is missing so the quality gate has data to evaluate.
+      if (fullDescription === null || (aeSettings.clientFilterEnabled && listing.clientReviewCount === null)) {
         try {
           const { text: pageText, clientData, budgetData } = await fetchPageText(listing.url, signal);
           if (signal.aborted) break;
@@ -1179,10 +1181,12 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             listing.budgetType = budgetData.budgetType;
             if (budgetData.currency !== null) listing.currency = budgetData.currency;
           }
-          fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
+          if (fullDescription === null) {
+            fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
+          }
         } catch (err) {
           if (isAbortError(err)) break;
-          fullDescription = "";
+          if (fullDescription === null) fullDescription = "";
         }
         if (signal.aborted) break;
         await db.update(freelanceListings)
@@ -1198,6 +1202,14 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             currency: listing.currency,
           })
           .where(eq(freelanceListings.id, listing.id));
+
+        // Re-check client quality gate now that client data is freshly populated from the page.
+        // The pre-fetch check above failed-open because clientReviewCount was null in the DB.
+        const cGateRecheck = clientQualityGate(listing, aeSettings);
+        if (cGateRecheck) {
+          verdictMap.set(listing.id, { verdict: "not_workable", reason: cGateRecheck.reason, blockers: cGateRecheck.blockers, analysisText: cGateRecheck.analysisText });
+          continue;
+        }
       }
 
       if (signal.aborted) break;
@@ -1339,7 +1351,9 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   }
 
   let fullDescription = listing.fullDescription;
-  if (fullDescription === null || listing.budgetMin === null) {
+  const aeSettings = await getAutoEarnSettings();
+  // Also fetch when client data is missing so the quality gate has data to evaluate.
+  if (fullDescription === null || listing.budgetMin === null || (aeSettings.clientFilterEnabled && listing.clientReviewCount === null)) {
     try {
       const { text: pageText, clientData, budgetData } = await fetchPageText(listing.url);
       listing.clientRating = clientData.rating;
@@ -1373,6 +1387,17 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
         currency: listing.currency,
       })
       .where(eq(freelanceListings.id, listing.id));
+  }
+
+  // Client quality gate — runs after page fetch so clientReviewCount/clientMemberSince are populated.
+  const cGate = clientQualityGate(listing, aeSettings);
+  if (cGate) {
+    const nowTs = new Date().toISOString();
+    sqlite.prepare(
+      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
+    ).run("not_workable", nowTs, cGate.reason, JSON.stringify(cGate.blockers), cGate.analysisText, listing.id);
+    broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+    return { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText };
   }
 
   const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");

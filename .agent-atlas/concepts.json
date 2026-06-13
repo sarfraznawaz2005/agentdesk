@@ -24344,7 +24344,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1082,
+      "line": 1083,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -28326,7 +28326,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1068,
+      "line": 1069,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -30616,7 +30616,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1082,
+      "line": 1083,
       "symbol": "runAutoShortlist",
       "type": "function"
     },
@@ -31480,7 +31480,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1312,
+      "line": 1324,
       "symbol": "analyzeListing",
       "type": "function"
     },
@@ -33362,7 +33362,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1062,
+      "line": 1063,
       "symbol": "startWizard",
       "type": "function"
     },
@@ -39178,7 +39178,7 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1413,
+      "line": 1438,
       "symbol": "shortlistListings",
       "type": "function"
     },
@@ -47732,13 +47732,13 @@
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1062,
+      "line": 1063,
       "symbol": "startWizard",
       "type": "function"
     },
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1068,
+      "line": 1069,
       "symbol": "stopWizard",
       "type": "function"
     },
@@ -60951,6 +60951,54 @@
       "type": "function"
     }
   ],
+  "analyze": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 656,
+      "symbol": "analyzeListingWorkability",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 1324,
+      "symbol": "analyzeListing",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 471,
+      "symbol": "handleAnalyze",
+      "type": "function"
+    }
+  ],
+  "shortlist": [
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 1083,
+      "symbol": "runAutoShortlist",
+      "type": "function"
+    },
+    {
+      "file": "src/bun/rpc/freelance-wizard.ts",
+      "line": 1438,
+      "symbol": "shortlistListings",
+      "type": "function"
+    },
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 451,
+      "symbol": "handleShortlist",
+      "type": "function"
+    }
+  ],
+  "chips": [
+    {
+      "file": "src/mainview/components/freelance/listing-card.tsx",
+      "line": 184,
+      "symbol": "SkillChips",
+      "type": "function"
+    }
+  ],
   "obviously": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -60999,26 +61047,6 @@
       "type": "function"
     }
   ],
-  "analyze": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 656,
-      "symbol": "analyzeListingWorkability",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1312,
-      "symbol": "analyzeListing",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 471,
-      "symbol": "handleAnalyze",
-      "type": "function"
-    }
-  ],
   "workability": [
     {
       "file": "src/bun/rpc/freelance-wizard.ts",
@@ -61032,34 +61060,6 @@
       "file": "src/bun/rpc/freelance-wizard.ts",
       "line": 786,
       "symbol": "normalizeNewlines",
-      "type": "function"
-    }
-  ],
-  "shortlist": [
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1082,
-      "symbol": "runAutoShortlist",
-      "type": "function"
-    },
-    {
-      "file": "src/bun/rpc/freelance-wizard.ts",
-      "line": 1413,
-      "symbol": "shortlistListings",
-      "type": "function"
-    },
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 451,
-      "symbol": "handleShortlist",
-      "type": "function"
-    }
-  ],
-  "chips": [
-    {
-      "file": "src/mainview/components/freelance/listing-card.tsx",
-      "line": 184,
-      "symbol": "SkillChips",
       "type": "function"
     }
   ]
