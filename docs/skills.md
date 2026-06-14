@@ -83,7 +83,7 @@ skills/
 
 ### Frontmatter (YAML)
 
-All fields are optional. Only `description` is recommended.
+`name` and `description` are **required**. The other fields are optional.
 
 ```yaml
 ---
@@ -95,13 +95,15 @@ agent: frontend_engineer
 ---
 ```
 
-| Field                      | Type    | Default         | Description |
-|----------------------------|---------|-----------------|-------------|
-| `name`                     | string  | directory name  | Display name. Lowercase letters, numbers, hyphens only (max 64 chars). |
-| `description`              | string  | first paragraph | What the skill does. Agents see this in their compact listing. **Recommended.** |
-| `allowed-tools`            | string  | (none)          | Comma-separated tool names the skill references (informational — shown in UI). |
-| `argument-hint`            | string  | (none)          | Hint for expected arguments, e.g. `[issue-number]`. Shown in UI. |
-| `agent`                    | string  | (none)          | Preferred agent role (e.g. `frontend_engineer`, `backend-engineer`). Informational — shown in listings. |
+| Field                      | Type    | Required | Description |
+|----------------------------|---------|----------|-------------|
+| `name`                     | string  | **Yes**  | Skill name. **Must exactly equal the parent directory name.** Lowercase letters, numbers, and hyphens only; max 64 chars; must not start or end with a hyphen; no consecutive hyphens (`--`). Validation failures are recorded in `errors`. |
+| `description`              | string  | **Yes**  | What the skill does. Agents see this in their compact listing. Falls back to the first paragraph of the body only when assembling a description for display; a missing/blank `description` is still a validation error (max 1024 chars). |
+| `allowed-tools`            | string  | No       | Tool names the skill references (informational — shown in UI). Parsed by splitting on commas **or** whitespace, so both `Read, Grep` and `Read Grep` work. |
+| `argument-hint`            | string  | No       | Hint for expected arguments, e.g. `[issue-number]`. Shown in UI. |
+| `agent`                    | string  | No       | Preferred agent role (e.g. `frontend_engineer`, `backend-engineer`). Informational — shown in listings. |
+| `hidden`                   | boolean | No       | When `true`, the skill is hidden from the Skills UI (but still available to agents). |
+| `feature`                  | string  | No       | Feature gate. When set (e.g. `freelance`), the skill is only included in agent prompts and the UI when that feature is enabled. |
 
 > **Removed fields**: `disable-model-invocation` and `user-invocable` are no
 > longer used. All discovered skills are loaded and visible to all agents. The
@@ -120,6 +122,7 @@ load this on demand via the `read_skill` tool.
 | `$ARGUMENTS[N]`         | Specific argument by 0-based index. |
 | `$N`                    | Shorthand for `$ARGUMENTS[N]` (e.g. `$0`, `$1`). |
 | `${AGENTDESK_SKILL_DIR}` | Absolute path to the skill's directory. Use to reference bundled scripts/files. |
+| `${AGENTDESK_SKILLS_USER_DIR}` | Absolute path to the user skills directory. Use when creating new skills. |
 
 #### Dynamic Context Injection
 
@@ -173,6 +176,12 @@ refresh from the UI.
 6. Store in `SkillRegistry` (in-memory `Map<name, Skill>`)
 
 **All discovered skills are loaded — there is no enabled/disabled toggle.**
+Visibility, however, is filtered: a skill marked `hidden: true` is omitted from the
+Skills UI, and a skill with a `feature` gate (e.g. `freelance`) is omitted from both
+the UI and agent prompts when that feature is disabled. The UI visibility check
+(`isSkillVisible` in `src/bun/rpc/skills.ts`) filters on both `hidden` and the feature
+gate; agent prompts (`buildSkillsDescriptionSection` in `src/bun/agents/prompts.ts`)
+filter on the feature gate only.
 
 ### Skill Object Shape
 
@@ -187,6 +196,10 @@ interface Skill {
   argumentHint?: string;           // e.g. "[issue-number]"
   preferredAgent?: string;         // e.g. "frontend_engineer"
   supportingFiles: string[];       // relative paths of other files in skill dir
+  errors: SkillValidationError[];  // frontmatter validation errors ([] = valid)
+  isBundled: boolean;              // true = ships with the app; false = user-installed
+  hidden: boolean;                 // true = hidden from Skills UI (still available to agents)
+  feature?: string;                // optional feature gate (e.g. "freelance")
 }
 ```
 
@@ -216,17 +229,20 @@ instructions when relevant. Use `find_skills` to search for skills by keyword.
 - **react-best-practices**: React 19 patterns, hooks rules, optimization [agent: frontend_engineer]
 ```
 
-This section is **always present** for all agents (PM and sub-agents). All
-discovered skills are listed — there is no filtering.
+This section is **always present** for all agents (PM and sub-agents). Discovered
+skills are listed except those behind a disabled `feature` gate, which are filtered
+out of the prompt (see `buildSkillsDescriptionSection` in `prompts.ts`).
 
 ### How Agents Use Skills
 
-Agents have two skill tools available:
+Agents have four skill tools available:
 
 | Tool | Description |
 |------|-------------|
-| `read_skill` | Loads the full content of a skill by exact name. Returns the resolved SKILL.md body (after substitutions and bash injections). Agents call this when they determine a skill is relevant to their current task. |
+| `read_skill` | Loads the full content of a skill by exact name. Returns the resolved SKILL.md body (after substitutions and bash injections), plus the skill directory path and a list of supporting files with full paths. Agents call this when they determine a skill is relevant to their current task. |
+| `read_skill_file` | Reads a supporting file from a skill's directory by full path. Used after `read_skill` to access companion docs, scripts, or reference files. Path-guarded to skills directories; refuses binary files and caps size at 512KB. |
 | `find_skills` | Searches skill names and descriptions by keyword query. Returns matching skill summaries. Agents use this when they need to discover skills beyond the compact listing (e.g. searching for a concept). |
+| `validate_skill` | Validates a skill directory after creating or editing it. Parses SKILL.md, checks frontmatter, naming conventions, line count, and structure, and returns errors/warnings. Should be called after creating a skill. |
 
 **The LLM decides relevance** — no auto-matching or keyword overlap scoring is
 performed by the engine. The system prompt tells agents about the tools and the
@@ -277,9 +293,21 @@ Available to all agents (PM and sub-agents).
 **Parameters:**
 - `name` (string, required) — Exact skill name as listed in Available Skills
 
-**Returns:** Full resolved skill content (markdown body with substitutions applied)
+**Returns:** Full resolved skill content (markdown body with substitutions applied),
+followed by the skill directory path and a list of supporting text files with full
+paths, plus a mandatory-compliance checklist.
 
 **Error:** Returns error message with list of available skill names if not found.
+
+### `read_skill_file`
+
+Available to all agents (PM and sub-agents).
+
+**Parameters:**
+- `file_path` (string, required) — Full absolute path to the file (as shown in `read_skill` output)
+
+**Returns:** The file's text content. Path must be inside a skills directory
+(bundled or user); binary files are rejected and files larger than 512KB are refused.
 
 ### `find_skills`
 
@@ -290,6 +318,18 @@ Available to all agents (PM and sub-agents).
 
 **Returns:** Array of matching skills with name and description. Matches against
 skill names and descriptions (case-insensitive substring match).
+
+### `validate_skill`
+
+Available to all agents (PM and sub-agents).
+
+**Parameters:**
+- `skill_dir` (string, required) — Absolute path to the skill directory (folder containing SKILL.md)
+
+**Returns:** JSON validation result — `valid` flag, parsed name/description/line count,
+`allowedTools`, supporting files, an `errors` array (frontmatter + content checks such
+as line count > 500 and hardcoded absolute paths), and optional `warnings` (e.g. bloat
+files like `package.json` or `README.md`).
 
 ---
 
@@ -335,8 +375,9 @@ skills: {
   getSkill: { params: { name: string }; response: SkillDetail | null };
   refreshSkills: { params: {}; response: { count: number } };
   getSkillsDirectory: { params: {}; response: { path: string } };
-  openSkillInEditor: { params: { name: string }; response: { success: boolean } };
+  openSkillInEditor: { params: { name: string }; response: { success: boolean; error?: string } };
   openSkillsFolder: { params: {}; response: { success: boolean } };
+  deleteSkill: { params: { name: string }; response: { success: boolean; error?: string } };
   getAvailableTools: { params: {}; response: Array<{ name: string; category: string; description: string }> };
 }
 ```
@@ -349,6 +390,7 @@ skills: {
 - `getSkillsDirectory()` — returns the skills directory absolute path
 - `openSkillInEditor(name)` — opens the skill's SKILL.md in the OS default editor
 - `openSkillsFolder()` — ensures directory exists (mkdirSync), opens in OS explorer
+- `deleteSkill(name)` — deletes a user-installed skill's directory via `registry.deleteSkill`; refuses bundled skills (returns `{ success: false, error }`)
 - `getAvailableTools()` — returns all agent tool definitions (name, category, description) for the UI reference dialog
 
 ---
@@ -365,7 +407,7 @@ src/bun/skills/
 ├── loader.ts          # Parse SKILL.md, frontmatter, bash injection, substitutions
 ├── registry.ts        # In-memory SkillRegistry, dual-dir loading (bundled + user)
 src/bun/agents/tools/
-├── skills.ts          # read_skill, find_skills tools (available to all agents)
+├── skills.ts          # read_skill, read_skill_file, find_skills, validate_skill tools (all agents)
 src/bun/rpc/
 ├── skills.ts          # RPC handlers
 src/shared/rpc/

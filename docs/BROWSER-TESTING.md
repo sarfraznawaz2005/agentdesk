@@ -1,89 +1,66 @@
 # Browser Testing — Agent Reference
 
-## Prerequisites
-- App started via `run.ps1` (sets `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`)
-- chrome-devtools-mcp configured: `claude mcp add chrome-devtools --scope user -- npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222`
-- Restart Claude Code after MCP config change
+AgentDesk agents can drive a web browser two ways. They are **not** interchangeable,
+and **neither attaches to the running WebView2 desktop app** (there is no
+`--remote-debugging-port=9222` on the app, and nothing reads such a port). Both
+drive a *separate* browser. Pick deliberately.
 
-## Verify connection
-```bash
-curl http://localhost:9222/json  # must return AgentDesk target
-```
-```js
-// evaluate_script — returns false in plain browser, true in WebView2 desktop app
-() => ({ hasElectrobun: !!window.electrobun })
-```
+## The two tools
 
-## MCP tool sequence
-1. `list_pages` — confirm `http://localhost:5173/` is selected
-2. `take_snapshot` — get accessibility tree with element UIDs
-3. `click uid=X` — navigate/interact using UIDs from snapshot
-4. `take_screenshot` — verify visual state
-5. `evaluate_script` — inspect JS state, React store, DOM
+### 1. `live-browser` skill — the user's REAL, logged-in browser
+- **Use for:** anything behind a sign-in, sites that block bots (Gmail/Google,
+  banking, social), or any task that needs the user's existing session.
+- **What it is:** a persistent, logged-in Chrome/Edge/Brave profile launched with
+  **no** automation flags — `navigator.webdriver` stays `false` and there is no
+  "controlled by automated test software" banner, so sites treat it as an ordinary
+  human. Logins survive across runs.
+- **How it's wired:** `skills/live-browser/SKILL.md`. The launcher
+  (`skills/live-browser/scripts/launch.mjs`) starts a dedicated profile on an
+  **uncommon free port** and persists it; the CDP client
+  (`skills/live-browser/scripts/cdp.mjs`) reads that persisted port. It
+  **deliberately never probes 9222** (see `cdp.mjs:102`, `launch.mjs:12`,
+  `lib.mjs:9`) so it can never hijack a foreign debug browser.
+- **How agents invoke it:** `read_skill("live-browser")`, then run the
+  `launch.mjs` / `cdp.mjs` commands via `run_shell` (see the SKILL for the
+  command set: `list`, `shot`, `snap`, `eval`, `nav`, `click`, `type`, …).
 
-## Known constraints
-- `window.electrobun` is always `false` in Helium/Chrome — RPC to Bun backend is unavailable
-- UI renders and is navigable; agent-triggered actions (chat, workflows) require the desktop app
-- Helium browser path: `C:\Users\Sarfraz\AppData\Local\imput\Helium\Application\chrome.exe`
+### 2. chrome-devtools MCP — its own throwaway automation browser
+- **Use for:** throwaway inspection, scraping public pages, performance traces,
+  network/console debugging, and automating sites that don't fight automation.
+- **What it is:** the `chrome-devtools_*` tools driving a Chromium instance the
+  MCP server **launches itself**. It is an automation browser
+  (`navigator.webdriver` is true, shows the automation banner) and carries **no**
+  saved logins, so bot-detecting sites often block or challenge it.
+- **How it's wired:** seeded into the app's MCP config in
+  `src/bun/db/seed.ts:1506-1512` —
+  `npx -y chrome-devtools-mcp@latest --no-performance-crux --no-usage-statistics`.
+  Note there is **no `--browserUrl`**: it spawns its own browser rather than
+  attaching to anything. Configure it in-app (Settings → MCP), not via
+  `claude mcp add`.
+- **Key constraint:** because it drives its own separate browser, it **cannot see
+  the in-app preview** (Playground iframe, WebView2 UI). The Playground agent
+  explicitly removes `chrome-devtools_*` from its toolset for this reason
+  (`src/bun/playground/orchestrator.ts:319-322`).
 
-## Wrong flags (do not use)
-- `--port 9222` — launches a NEW Chrome, does not connect to existing WebView2
-- `--browser-ws-endpoint` — not a valid flag for this MCP
-- Setting env var in `src/bun/index.ts` — too late, native host already spawned
+## How agents choose
 
----
+The PM and sub-agent prompts arbitrate between the two via
+`BROWSER_TOOLING_GUIDANCE` and the PM's browser-choice note in
+`src/bun/agents/prompts.ts:707-715` (PM delegation note) and `771-809`
+(sub-agent decision section). Summary of the rules:
 
-# For Humans — How to Setup
+- Needs the user's login / an authenticated session, or targets a bot-blocking
+  site → **`live-browser`**.
+- Throwaway inspection, scraping public pages, performance/network/console
+  debugging, or an automation-friendly dev site → **chrome-devtools MCP**.
+- Unsure and the task touches a real account or major consumer site →
+  prefer **`live-browser`** (getting blocked mid-task is worse than a little setup).
 
-Follow these steps once. After setup, just start the app and Claude can inspect it automatically.
+## What does NOT exist (do not attempt)
 
-### Step 1 — Start the app correctly
-
-Always use `run.ps1`, not `run.bat`:
-
-```powershell
-.\run.ps1
-```
-
-This sets the remote debugging environment variable before the app launches. Without it, port 9222 won't be available.
-
-### Step 2 — Verify the app is debuggable
-
-Open your browser and go to:
-
-```
-http://localhost:9222/json
-```
-
-You should see a JSON response with `"title": "AgentDesk"`. If you see nothing or an error, the app wasn't started via `run.ps1`.
-
-### Step 3 — Install the chrome-devtools MCP (one-time only)
-
-Open a terminal and run:
-
-```bash
-claude mcp add chrome-devtools --scope user -- npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222
-```
-
-### Step 4 — Restart Claude Code
-
-Close and reopen Claude Code so it picks up the new MCP configuration.
-
-### Step 5 — Open the app in your browser (optional)
-
-If you want to visually browse the app yourself, open **Helium** (or any Chromium browser) and go to:
-
-```
-http://localhost:5173
-```
-
-The UI will render and you can navigate it. Note that sending messages or triggering agents won't work in the browser — those require the desktop app to be running.
-
-### Step 6 — Tell Claude to inspect the UI
-
-Just ask Claude to take a screenshot, click something, or check how a feature looks. Claude will use the MCP to interact with the live running app.
-
-**Example prompts:**
-- "Take a screenshot of the kanban board"
-- "Click into the blogApp project and show me the activity pane"
-- "Check the console for errors"
+- ❌ Attaching chrome-devtools MCP to the running app via
+  `claude mcp add ... --browserUrl http://127.0.0.1:9222`.
+- ❌ Starting the app with `--remote-debugging-port=9222` to inspect the WebView2
+  UI over CDP — nothing in the app exposes or reads port 9222.
+- ❌ Any hardcoded Helium / Chrome browser path. The `live-browser` launcher
+  auto-detects Chrome → Edge → Brave.

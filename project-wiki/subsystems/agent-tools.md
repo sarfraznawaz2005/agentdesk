@@ -1,0 +1,234 @@
+---
+title: Agent Tools
+type: subsystem
+status: verified
+verified_at: 2026-06-14
+sources:
+  - src/bun/agents/tools/index.ts
+  - src/bun/agents/tools/pm-tools.ts
+  - src/bun/agents/tools/file-ops.ts
+  - src/bun/agents/tools/file-tracker.ts
+  - src/bun/agents/tools/shell.ts
+  - src/bun/agents/tools/truncation.ts
+  - src/bun/agents/tools/kanban.ts
+  - src/bun/agents/tools/communication.ts
+  - src/bun/agents/tools/planning.ts
+  - src/bun/agents/tools/ignore.ts
+  - src/bun/agents/agent-loop.ts
+tags: [agents, tools]
+---
+
+# Agent Tools
+
+Every action an AI agent can take in AgentDesk — reading a file, running a shell
+command, moving a kanban card, dispatching another agent — is a **Vercel AI SDK
+`tool()`** registered in `src/bun/agents/tools/`. The subsystem has two halves:
+a **static registry** of tool families assembled once at module load
+(`src/bun/agents/tools/index.ts:39`), and a **per-run binding layer** in
+[[agent-loop]] that overlays workspace-, agent-, and session-scoped versions on
+top before each agent run. The single most important thing to understand: the
+registry holds *placeholder* tools; the tools an agent actually receives are
+filtered, workspace-injected, and identity-bound at dispatch time.
+
+## Key idea: a static registry that nobody runs verbatim
+
+`toolRegistry` (`index.ts:39-53`) spreads ~13 family modules into one
+`Record<name, {tool, category}>`. But three classes of tool in that registry are
+deliberately *stubs*:
+
+- **File tools** (`read_file`, `write_file`, `edit_file`, …) in
+  `fileOpsTools` (`file-ops.ts:1682`) have no workspace boundary and no change
+  tracking. The real ones are produced per-run by `createTrackedFileTools()`
+  (`file-ops.ts:979`) and **override** the registry entries
+  (`agent-loop.ts:868,883`).
+- **Kanban tools** carry an `actorId` for audit logging, so the registry holds a
+  version built with `"unknown"` (`kanban.ts:102`); `getToolsForAgent` rebuilds
+  them per agent via `createKanbanTools(agentName)` (`index.ts:108-111`).
+- **`request_human_input`** must label the dialog with *who* is asking, so the
+  registry holds a `("unknown","Agent")` stub (`communication.ts:60`) and the
+  real one is rebuilt with the agent's display name (`index.ts:133-136`).
+
+This is why grep-ing the registry tells you *which* tools exist but not *what an
+agent gets* — the answer is computed at runtime.
+
+## How a tool reaches an agent
+
+```mermaid
+flowchart TD
+    A[runSubAgent in agent-loop.ts] --> B["getToolsForAgent(agentName)<br/>index.ts:100"]
+    B -->|"agent_tools rows exist?"| C{filter}
+    C -->|yes| D["only isEnabled=1 tools"]
+    C -->|no rows| E["full registry (getAllTools)"]
+    D --> F[baseTools]
+    E --> F
+    F --> G["overlay tracked file tools<br/>file-ops.ts:979"]
+    G --> H["+ plugin tools, MCP tools,<br/>decisions tool, extraTools"]
+    H --> I["inject workspacePath default<br/>agent-loop.ts:886"]
+    I --> J{readOnly?}
+    J -->|yes| K["filterReadOnlyTools<br/>drop WRITE_TOOLS"]
+    J -->|no| L
+    K --> L["excludeTools / autoCommit removes git_commit"]
+    L --> M["pre/post hook wrap"]
+    M --> N[final tools passed to the model]
+```
+
+### Step 1 — role-based filtering (`getToolsForAgent`)
+
+`getToolsForAgent(agentName)` (`index.ts:100`) is the policy gate. It looks up the
+agent row, then queries `agent_tools` for that agent id (`index.ts:141-144`):
+
+- **If the agent has rows**, only tools where `isEnabled === 1` survive
+  (`index.ts:147-159`).
+- **If the agent has zero `agent_tools` rows**, it gets the *entire* registry
+  (`index.ts:168-171`). This is the documented "full registry" rule that makes
+  `playground-agent` and `issue-fixer` all-powerful — they intentionally have no
+  `agent_tools` rows. (Confirmed in `[[agent-roster]]`.)
+
+The agent-bound kanban and communication tools are always overlaid regardless of
+filtering (`index.ts:157`, `index.ts:169`). Results are memoised in
+`toolConfigCache` (`index.ts:71`); call `clearToolCache(agentName?)`
+(`index.ts:79`) when tool assignments change.
+
+### Step 2 — per-run overlays (`agent-loop.ts`)
+
+`getToolsForAgent` returns `baseTools` (`agent-loop.ts:805,856`). Then the loop
+layers on the rest (`agent-loop.ts:867-883`), in this merge order (later wins):
+
+1. `baseTools` (the filtered registry)
+2. **tracked file tools** — real read/write/edit bound to a fresh `FileTracker`
+   and the workspace boundary, plus the skills dir as an allowed read path
+   (`agent-loop.ts:868`)
+3. **plugin tools** + **MCP tools** (`agent-loop.ts:869-871`)
+4. **decisions log tool** (only when there's a workspace) (`agent-loop.ts:877`)
+5. **`extraTools`** — last, so callers like the Playground can override built-ins
+   (e.g. swap in an auto-approved `run_shell`) (`agent-loop.ts:883`)
+
+### Step 3 — workspace injection & boundary
+
+Because the Bun process CWD is the Electrobun build dir (not the project),
+relative paths would resolve wrong. Two mechanisms fix this:
+
+- `validatePath()` (`file-ops.ts:79`) resolves relative paths against
+  `workspacePath` and **throws if the result escapes** the workspace (or an
+  allowed path) — a directory-traversal guard applied by every tracked file tool
+  via the `vp()` shorthand (`file-ops.ts:986`).
+- The loop wraps `list_directory`, `search_files`, `directory_tree`,
+  `search_content`, and `run_shell` to default their dir/cwd argument to the
+  workspace (`agent-loop.ts:886-922`), so the model never has to guess the path.
+
+### Step 4 — read-only & exclusion filtering
+
+If `readOnly` (read-only agent, or Plan Mode), `filterReadOnlyTools`
+(`agent-loop.ts:245`) drops everything in the `WRITE_TOOLS` set
+(`agent-loop.ts:225-233`) — file writes, `run_shell`, mutating git, and mutating
+kanban. `excludeTools` then removes named tools (supports a trailing `*` prefix
+wildcard, `agent-loop.ts:930-936`), and `git_commit` is deleted when auto-commit
+is on (`agent-loop.ts:940-945`) since the [[review-cycle]] commits automatically.
+
+## Tool families
+
+| Family (file) | Representative tools | Category |
+|---|---|---|
+| `file-ops.ts` (registry `:1682`; tracked `:979`) | `read_file`, `write_file`, `edit_file`, `multi_edit_file`, `patch_file`, `search_content`, `directory_tree`, `find_dead_code`, `archive`, `download_file` | `file` |
+| `shell.ts:286` | `run_shell` (denylist + approval gate) | `shell` |
+| `git.ts:728` | `git_status/diff/commit/branch/push/pull/fetch/log/pr/stash/reset/cherry_pick` | `git` |
+| `kanban.ts` | `create_task`, `move_task`, `check_criteria`, `verify_implementation`, `submit_review`, `list_tasks`, `get_task` | `kanban` |
+| `pm-tools.ts:247` (factory) | `run_agent`, `run_agents_parallel`, `create_project`, doc/conversation/inbox read tools, `verify_project` | mixed |
+| `planning.ts:87` | `define_tasks` (pre-approval definitions) | `kanban` |
+| `notes.ts:42` | `create_note`, `update_note`, `delete_note` (+ run-scoped decisions tool) | `notes` |
+| `web.ts:371` | `web_search`, `web_fetch`, `http_request`, `enhanced_web_search` | `web` |
+| `lsp.ts:275` | `lsp_diagnostics/hover/definition/references/document_symbols` | `file` |
+| `skills.ts:38` | `read_skill`, `find_skills` | `skills` |
+| `process.ts:439` | `run_background`, `check_process`, `kill_process`, `list_background_jobs` | `process` |
+| `scheduler.ts:42` | `create_cron_job` (+ schedule mgmt) | — |
+| `screenshot.ts:294` | `take_screenshot`, `read_image` | `web`/`file` |
+| `system.ts:179` | `environment_info`, `get_env`, `get_agentdesk_paths`, `sleep` | `system` |
+| `communication.ts:13` (factory) | `request_human_input` | `communication` |
+
+`pm-tools.ts` and `kanban`/`communication` are **factories** that close over
+project/conversation deps; they are not in the static registry's spread.
+
+## Cross-cutting mechanics worth knowing
+
+**Output truncation (`truncation.ts`).** The single biggest token saver: any large
+tool result is capped (default 500 lines / 40 KB, `truncation.ts:89-90`), the full
+output written to `truncated-outputs/` on disk, and the model gets a preview plus a
+hint to re-read a range (`truncation.ts:144-153`). Presets exist for shell (200
+lines, *tail*), search (50), and tree (300) (`truncation.ts:161-178`).
+
+**File freshness tracking (`file-tracker.ts`).** One `FileTracker` per agent run
+(`agent-loop.ts:867`) stores each touched file's mtime. Before an edit,
+`checkFreshness()` (`file-tracker.ts:53`) compares stored vs disk mtime to detect
+a concurrent external modification, and `getModifiedFiles()` (`file-tracker.ts:81`)
+feeds `filesModified` (used for the [[handoff]] summary). Never persisted.
+
+**Shell safety (`shell.ts`).** `run_shell` rejects a hardcoded denylist of
+destructive commands (`shell.ts:12-19`) before anything else, then passes through
+an approval gate (`shell.ts:185-197`) unless built with `autoApprove` — the
+auto-approved variant (`autoApprovedShellTool`, `shell.ts:284`) is a *separate
+tool instance* for the Playground/freelance contexts so the gate is removed at the
+tool level, not via shared mutable state. The shell is resolved per-platform (Git
+Bash on Windows, `shell.ts:49-103`) and killed as a process tree on abort/timeout.
+
+**Ignore filter (`ignore.ts`).** All file-discovery tools share `ALWAYS_IGNORE`
+(`ignore.ts:17-45`, e.g. `node_modules`, `dist`, `.git`) plus nested `.gitignore`
+parsing, so searches/trees skip junk by default.
+
+**`run_agent` orchestration guards (`pm-tools.ts:255`).** The PM's dispatch tool is
+where the sequential-agent model is enforced: a closure `writeAgentRunning`
+(`pm-tools.ts:250`), a module-level `dispatchingAgents` set that closes the
+Promise.all parallel-dispatch race (`pm-tools.ts:241,346-358`), Plan-Mode
+read-only enforcement (`pm-tools.ts:361`), and a block on dispatch while a task is
+in `review` (`pm-tools.ts:392-404`). See [[agent-engine]] for the full PM loop.
+
+## Key files
+
+| File | Role |
+|---|---|
+| `src/bun/agents/tools/index.ts` | Static registry assembly + `getToolsForAgent` role filter + tool cache |
+| `src/bun/agents/agent-loop.ts` | Per-run overlay, workspace injection, read-only/exclude filtering, hook wrap |
+| `src/bun/agents/tools/file-ops.ts` | File tools; `validatePath` boundary + `createTrackedFileTools` factory |
+| `src/bun/agents/tools/file-tracker.ts` | Per-run mtime freshness tracking + modified-file list |
+| `src/bun/agents/tools/truncation.ts` | Disk-overflow output capping (token control) |
+| `src/bun/agents/tools/shell.ts` | `run_shell` denylist, approval gate, cross-platform shell |
+| `src/bun/agents/tools/pm-tools.ts` | PM-only factory: `run_agent`, parallel dispatch, project/doc/inbox tools |
+| `src/bun/agents/tools/kanban.ts` | Kanban CRUD + verification/review tools (actor-bound) |
+| `src/bun/agents/tools/communication.ts` | `request_human_input` (identity-bound factory) |
+| `src/bun/agents/tools/planning.ts` | `define_tasks` pre-approval store (`peek/drain/restore`) |
+| `src/bun/agents/tools/ignore.ts` | Shared `.gitignore` + always-ignore filter for discovery tools |
+
+## Gotchas / Constraints
+
+- **Registry file/kanban/communication entries are stubs.** Do not assume the
+  registry's `read_file` has a workspace boundary or that registry kanban tools
+  audit correctly — only the per-run overlays do (`index.ts:108-136`,
+  `agent-loop.ts:868`).
+- **Zero `agent_tools` rows = full registry, not no tools.** This is intentional
+  (custom agents, `playground-agent`, `issue-fixer`) but surprising
+  (`index.ts:168-171`). Adding a single `agent_tools` row flips the agent into
+  allowlist mode and may strip everything else.
+- **Tool cache is manual.** Changing `agent_tools` requires `clearToolCache()`
+  or assignments appear stale within a session (`index.ts:79`).
+- **Read-only filtering is name-based.** `filterReadOnlyTools` keys off the
+  `WRITE_TOOLS` set (`agent-loop.ts:225`); a new write-capable tool not added to
+  that set will leak to read-only agents.
+- **`run_shell` denylist is substring matching** (`shell.ts:21-24`) — it is a
+  guardrail against accidents, not a sandbox. The approval gate + workspace cwd
+  are the real containment.
+- **`define_tasks` does not touch the board.** Definitions sit in an in-memory
+  map keyed by project id (`planning.ts:64`) until the PM drains them after
+  approval — they are lost on restart.
+
+## Related
+- [[agent-loop]]
+- [[agent-engine]]
+- [[review-cycle]]
+- [[handoff]]
+- [[agent-roster]]
+- [[kanban-workflow]]
+
+## Open questions
+- Plugin/MCP tool loading (`getPluginTools`, `getMcpTools`) is overlaid here but
+  documented elsewhere — needs a [[plugins]] / [[mcp]] page to cross-link.
+- The full kanban verification/review state machine (`verify_implementation` →
+  `submit_review` → `done`) is summarised here but belongs to [[review-cycle]].

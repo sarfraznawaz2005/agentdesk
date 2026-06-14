@@ -1,7 +1,9 @@
 # Elevated Helper Process — Implementation Plan
 
-> Status: **Planned** | Priority: Implement when a concrete elevated operation is needed
-> Scope: Windows only (macOS/Linux use polkit/sudo — separate plan if needed)
+> ⚠️ **STATUS: NOT BUILT (as of 2026-06).** No elevated helper exists in the codebase —
+> no `src/bun/elevated/`, no `helper/` project, no `elevated_exec`/`schedule_os_task` tool.
+> This is a forward-looking design only; implement when a concrete elevated OS operation is needed.
+> Scope: Windows only (macOS/Linux use polkit/sudo — separate plan if needed).
 
 ---
 

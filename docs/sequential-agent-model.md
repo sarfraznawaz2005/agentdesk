@@ -121,7 +121,7 @@ creates all files sequentially with full context — CSS matches HTML class name
 | `src/bun/agents/engine-types.ts` | Removed `isCodeAgentRunning` from callback types; added handoff summary types |
 | `src/bun/agents/prompts.ts` | Strengthened PM prompt re: sequential dispatch + handoff context |
 | `src/bun/engine-manager.ts` | `runningAgentControllers` Map; `registerAgentController` / `unregisterAgentController` / `abortAllAgents` / `getRunningAgentCount` / `getRunningAgentNames` |
-| `src/bun/rpc-registration.ts` | Registered `getRunningAgents` RPC |
+| `src/bun/rpc-groups/conversations-control.ts` | Registered `getRunningAgents` RPC (merged by `rpc-registration.ts`) |
 | `src/shared/rpc/agents.ts` | Added `getRunningAgents` contract |
 | `src/mainview/stores/chat-store.ts` | `syncRunningAgents()` on page load; `runningAgentCount` incremented on `agentInlineStart`, decremented on `agentInlineComplete` |
 | `docs/workflow.md` | Updated execution phase docs |

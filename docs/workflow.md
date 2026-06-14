@@ -67,9 +67,10 @@ Human request
    the pre-approval artifact (communication). Kanban tasks are the post-approval
    artifact (execution). A hard gate separates them.
 
-3. **Source-aware approval.** In-app and channels both use chat-based approval
-   with keyword detection (fast) and LLM fallback (flexible). Both trigger the
-   same approval logic (keyword detection in `AgentEngine.sendMessage()`).
+3. **Source-aware approval.** In-app and channels both use chat-based approval.
+   There is no deterministic pre-LLM keyword gate — `AgentEngine.sendMessage()`
+   forwards the reply to the PM, and the PM LLM interprets approval intent from
+   the message (with the pending plan in its context).
 
 4. **Two-way visibility.** Every PM response goes to the app webview AND all
    connected channels. Every channel message is visible in-app as a conversation.
@@ -106,25 +107,23 @@ Message arrives at engine.sendMessage(conversationId, content, metadata?)
   |
   |-- metadata.source = "app" | "discord" | "whatsapp" | "email"
   |
-  |-- GATE 1: Soft Approval Gate
-  |     Is there a pending plan awaiting approval for this conversation
-  |     in "awaiting_approval" state?
+  |-- Soft Approval Gate (no deterministic keyword interception)
+  |     There is no pre-LLM keyword gate. `sendMessage` forwards every message
+  |     to the PM via `_runPMProcessing`. When a plan is pending, the PM's
+  |     context tells it so, and the PM LLM interprets whether the reply is an
+  |     approval, a rejection, or an unrelated question:
   |     |
-  |     |-- YES + clear approval keyword ("approve", "yes", "go ahead", "lgtm")
-  |     |     -> PM approval logic triggers immediately (no LLM)
+  |     |-- Approval intent ("approve", "yes", "go ahead", "lgtm")
+  |     |     -> PM calls create_tasks_from_plan and begins execution
   |     |
-  |     |-- YES + clear rejection keyword ("reject", "no", "change")
-  |     |     -> PM rejection logic triggers immediately (no LLM)
+  |     |-- Rejection intent ("reject", "no", "change")
+  |     |     -> PM re-invokes task-planner with the feedback
   |     |
-  |     |-- YES + ambiguous message
-  |     |     -> Pass to PM with context: "There is a pending plan awaiting approval"
-  |     |     -> PM answers the question AND can remind about the pending plan
-  |     |
-  |     |-- NO
-  |           -> Continue to PM
+  |     |-- Ambiguous / unrelated message
+  |           -> PM answers the question and can remind about the pending plan
   |
-  |-- GATE 2: Normal PM Processing
-        PM runs via streamText. Decides based on message content:
+  |-- PM Processing (streamText)
+        PM decides based on message content:
         - Simple question/status  -> answer directly
         - New feature request     -> planning flow
         - "Start working"         -> execute existing backlog
@@ -215,18 +214,18 @@ In a single invocation, the task-planner:
    - `blocked_by` — array of indices referencing other tasks in this array
    - `acceptance_criteria` — array of checkable criteria strings
 
-### Step 3: PM calls `request_plan_approval(note_id)`
+### Step 3: PM calls `request_plan_approval({ title, summary })`
 
-This PM tool:
-1. Reads the plan note content
-2. Stores the `taskDefinitions` from the task-planner's `define_tasks` call in the PM's context
-3. Presents the plan for approval:
-   - **In-app (`source: "app"`):** broadcasts `planPresented` to the webview, which
-     inserts the plan as a chat message (amber card) with approval instructions
+This PM tool takes `title` (short plan title) and `summary` (markdown summary of
+the plan). It uses the most recently created plan note as the approval card
+content where available, falling back to `summary`. It then:
+1. Presents the plan for approval:
+   - **In-app (`source: "app"`):** persists the plan as an assistant message to the
+     `messages` table (so it survives refresh), then broadcasts `planPresented` to the
+     webview, which inserts the plan as a chat message (amber card) with approval instructions
    - **Channel (`source: "discord"` etc.):** sends the plan as chunked messages to
-     the channel with explicit instructions: "Reply APPROVE to start, or describe changes."
-4. Saves the plan as a markdown file in `{workspace}/plans/plan-{timestamp}.md`
-5. Returns immediately — PM's turn ends, awaiting user reply
+     the channel with explicit instructions: "Reply approve to start implementation, or reject to cancel."
+2. Stops the PM stream — PM's turn ends, awaiting user reply
 
 ### PM's Final Message (Turn 1)
 
@@ -246,39 +245,26 @@ This PM tool:
 
 ## Approval Gate
 
-The approval gate is a soft interception layer in `sendMessage` that checks for
-an active `awaiting_approval` workflow before running the PM.
-
-### Skipping the Approval Gate
-
-The approval gate can be skipped entirely by the PM via `request_plan_approval` with
-`skip_approval: true`. This calls the PM's workflow start logic which:
-
-1. Creates kanban tasks deterministically from the task-planner's `taskDefinitions`
-2. Transitions the workflow directly to `executing` (no `awaiting_approval` step)
-3. Dispatches agents immediately — no human interaction required
-
-**When the PM should skip approval:**
-- The workspace already contains a README, PRD, requirements doc, or plan describing the work
-- The user explicitly asks to skip ("just do it", "no approval needed", "start immediately")
-- The work is quick, low-risk, or has an obvious scope (small refactor, isolated bug fix, adding tests)
-- The user signals urgency ("quickly", "ASAP", "don't bother with formalities")
-
-The PM briefly informs the user when skipping: *"Jumping straight into execution — no approval step needed."*
+The approval gate is "soft" — there is no deterministic interception layer in
+`sendMessage`. Every reply is forwarded to the PM via `_runPMProcessing`, and the
+PM LLM interprets approval intent from the message while the pending plan is in
+its context.
 
 ### Chat-Based Approval (Primary)
 
 Both in-app and channel approval use the same mechanism: the plan is presented
-as a chat message and the user replies with approval or rejection keywords.
+as a chat message and the user replies in natural language.
 
 When a message arrives for a conversation with a pending approval:
 
-1. **Keyword check** (no LLM, instant):
-   - Approval: `approve`, `approved`, `yes`, `go ahead`, `lgtm`, `looks good`,
-     `go`, `start`, `proceed`
-   - Rejection: `reject`, `no`, `change`, `modify`, `update`, `instead`
-2. **Ambiguous** — passes through to PM, which knows there's a pending plan and
-   handles naturally (answers the question, reminds about pending approval)
+1. **LLM interpretation** (no pre-LLM keyword gate): the PM reads the reply with
+   the pending plan in context and decides intent. Typical approval phrasings
+   (`approve`, `approved`, `yes`, `go ahead`, `lgtm`, `looks good`, `go`, `start`,
+   `proceed`) lead the PM to call `create_tasks_from_plan`; rejection phrasings
+   (`reject`, `no`, `change`, `modify`, `update`, `instead`) lead it to re-invoke
+   the task-planner with the feedback.
+2. **Ambiguous / unrelated** — the PM answers the question and can remind the
+   user about the pending approval.
 
 ### Rejection Flow
 
@@ -299,7 +285,7 @@ This is the first time the kanban board is touched. Kanban creation is
 
 When the user approves (says "approve" / "yes" / "go ahead"), the PM:
 
-1. Recognises the approval keyword (soft gate in `engine.ts` or PM reads it directly)
+1. Interprets the reply as approval (the PM LLM reads the message; no deterministic gate)
 2. Calls `create_tasks_from_plan` PM tool, which reads the stored `taskDefinitions`
 3. For each task definition, creates a kanban task:
    - `project_id` — from workflow context
@@ -368,7 +354,7 @@ Each inline worker agent:
 ### Completion Tracking
 
 - **Task marked done:** `review-cycle.ts` moves the task to "done" when `submit_review` returns `approved`
-  - `kanban-integration.ts` triggers `notifyTaskInReview()` when any task enters the "review" column
+  - The review cycle is triggered from `tools/kanban.ts` — `move_task(..., "review")` and `submit_review` call `notifyTaskInReview()` (defined in `review-cycle.ts`) when a task enters the "review" column
   - On pass → done. On fail → back to working (up to `maxReviewRounds`, default 2). On max rounds → force-done with warning.
 - **All tasks done:** PM detects completion via `list_tasks` and delivers completion summary
 - **Task done notification:** `broadcastTaskDoneNotification` in `channels/manager.ts` fires for connected channels
@@ -397,26 +383,24 @@ When the PM workflow transitions to `done`:
 
 ## Agent Failure Handling
 
-When a worker agent fails during execution:
+Failure handling is **LLM-driven**, not a deterministic retry counter. There is no
+`notifyTaskFailed` function and no `retries < 2` auto-retry/auto-pause logic.
+
+When a worker agent finishes with `status: "failed"`, the engine appends a
+`[Next Action]` hint to the agent's result before handing control back to the PM
+(`src/bun/agents/engine.ts`):
 
 ```
-PM.notifyTaskFailed(workflowId, taskId, error)
-  |
-  |-- retries < 2
-  |     -> Re-dispatch the same task (fresh agent instance)
-  |     -> Increment retry count
-  |
-  |-- retries >= 2
-        -> Pause the workflow
-        -> PM sends to conversation:
-           "Task '${title}' failed after retries: ${error}.
-            Should I skip it, retry with a different approach, or stop?"
-        -> Human responds
-        -> PM handles instruction:
-           - "Skip"  -> mark task as done (with skip note), resume workflow
-           - "Retry" -> PM adjusts task description, re-dispatch
-           - "Stop"  -> transition workflow to "failed"
+[Next Action] INVESTIGATE — <agent> failed. Review the error above and decide
+whether to retry, fix, or skip. Do NOT automatically re-dispatch without
+understanding the failure.
 ```
+
+The PM LLM reads the error plus this hint and decides what to do itself — retry,
+adjust the task and re-dispatch, skip, or ask the human. The same `[Next Action]`
+mechanism is used on success to steer the PM (e.g. `WAIT` while a reviewer runs,
+`MOVE TO REVIEW` if an agent forgot to move its task, or dispatch the next
+unblocked backlog task) so the PM rarely has to call `get_next_task` itself.
 
 ---
 
@@ -489,7 +473,7 @@ Rejection flow:
 |---|---|
 | `run_agent` | Run a sub-agent inline. Only one write agent at a time (`writeAgentRunning` guard). Agent gets fresh context (system prompt + task only). Tool calls visible as message parts. |
 | `run_agents_parallel` | Run multiple **read-only** agents in parallel (`code-explorer`, `research-expert`, `task-planner` only). Write agents rejected with an error. |
-| `request_plan_approval` | Present a plan for human approval. Broadcasts `planPresented` to webview (amber plan card) or sends chunked message to channel. Saves plan to `{workspace}/plans/`. PM turn ends — awaits user reply. |
+| `request_plan_approval` | Present a plan for human approval. Signature: `{ title, summary }`. Uses the most recent plan note as the card content (falls back to `summary`), persists the plan as an assistant message in the DB, then broadcasts `planPresented` to the webview (amber plan card) or sends a chunked message to the channel. Stops the PM stream — awaits user reply. |
 | `create_tasks_from_plan` | Create kanban tasks deterministically from the task-planner's `define_tasks` output. Called by PM after user approves. |
 | `set_feature_branch` | AI-generates a feature branch name from recent conversation context and stores it in settings (`currentFeatureBranch:<projectId>`). Called by PM when feature branch workflow is enabled. |
 | `clear_feature_branch` | Resets the stored feature branch name for the project. |
@@ -587,7 +571,7 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 | `src/bun/agents/context-notes.ts` | Syncs README/plan files as project notes for agent context |
 | `src/bun/agents/prompts.ts` | System prompt builders for PM and sub-agents; feature branch instructions |
 | `src/bun/agents/tools/pm-tools.ts` | PM tools: `run_agent`, `run_agents_parallel`, `request_plan_approval`, `create_tasks_from_plan`, `set_feature_branch`, etc. |
-| `src/bun/agents/tools/kanban.ts` | Kanban tools: `move_task`, `submit_review`, `check_criteria`, `create_task`, etc. |
+| `src/bun/agents/tools/kanban.ts` | Kanban tools: `move_task`, `submit_review`, `check_criteria`, `create_task`, etc. Triggers the review cycle (`notifyTaskInReview`) when a task enters the "review" column. |
 | `src/bun/agents/tools/notes.ts` | Notes tools: `create_note`, `update_note`, `delete_note` |
 | `src/bun/agents/tools/planning.ts` | `define_tasks` — stores structured task definitions pre-approval |
 | `src/bun/agents/tools/file-ops.ts` | File tools: read/write/edit/multi_edit/append/delete/move/copy/patch, search, file_info, find_dead_code, etc. |
@@ -600,7 +584,7 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 | `src/bun/agents/tools/process.ts` | Background process tools: `run_background`, `check_process`, `kill_process` |
 | `src/bun/agents/tools/web.ts` | Web tools: `web_search`, `web_fetch`, `http_request`, `enhanced_web_search` |
 | `src/bun/agents/tools/index.ts` | Tool registry — assembles and filters tools per agent role |
-| `src/bun/agents/kanban-integration.ts` | Bridges kanban UI events to agent engine; triggers review cycle on "review" column |
+| `src/bun/agents/kanban-integration.ts` | Bridges kanban UI events to the agent engine |
 | `src/bun/engine-manager.ts` | Creates/caches AgentEngine per project; global abort controller registry; `broadcastTaskDoneNotification` |
 | `src/bun/channels/manager.ts` | Routes inbound channel messages; `broadcastTaskDoneNotification` for connected channels |
 | `src/bun/db/seed.ts` | Agent definitions + system prompts + default tool sets per agent |

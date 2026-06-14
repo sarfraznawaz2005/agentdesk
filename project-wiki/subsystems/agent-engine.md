@@ -1,0 +1,276 @@
+---
+title: Agent Engine
+type: subsystem
+status: verified
+verified_at: 2026-06-14
+sources:
+  - src/bun/agents/engine.ts
+  - src/bun/agents/engine-types.ts
+  - src/bun/agents/agent-loop.ts
+  - src/bun/agents/review-cycle.ts
+  - src/bun/agents/context.ts
+  - src/bun/agents/handoff.ts
+  - src/bun/agents/summarizer.ts
+  - src/bun/agents/safety.ts
+  - src/bun/agents/tools/pm-tools.ts
+  - src/bun/agents/kanban-integration.ts
+  - docs/workflow.md
+  - docs/sequential-agent-model.md
+tags: [agents, orchestration]
+---
+
+# Agent Engine
+
+The agent engine is AgentDesk's orchestration core. There is **no separate
+workflow state machine** — the Project Manager (PM) LLM *is* the orchestrator.
+One `AgentEngine` instance per project (`src/bun/agents/engine.ts:47`, cached by
+`EngineManager`) streams the PM's response, and the PM dispatches specialist
+sub-agents **inline in the same conversation** via tools. Sub-agents get a
+*fresh* context (system prompt + task only) and stream their own tool calls into
+the chat as message parts (`src/bun/agents/agent-loop.ts:784`). The single most
+important invariant: **the PM never re-enters while it is already running, and
+only one write-agent runs at a time** — everything else (approval gate, review
+cycle, handoffs, compaction) is built around keeping that serialization correct.
+
+## Key idea: PM as a self-restarting loop
+
+The PM does not run a fixed agent loop. Instead it streams once per "turn", and
+each turn ends in one of three ways:
+
+1. **Plain text** — answer the user, done.
+2. **Dispatch a sub-agent** — the PM stream is *stopped* after the current step
+   (`stopPMStream` sets `planApprovalRequested`, `engine.ts:380`,`engine.ts:662`),
+   the agent runs in the background, and when it finishes the engine **restarts
+   the PM** by sending itself a synthetic `[Agent Report]` message
+   (`pm-tools.ts:480` → `onAgentDone`, `engine.ts:390`).
+3. **Request approval** — same stop mechanism, but the PM stays paused until the
+   *human* replies "approve"/"reject".
+
+This self-restart is why the engine can drive a multi-task workflow with no state
+machine: each agent completion feeds a computed `[Next Action]` hint back into
+the PM (`engine.ts:402`–`engine.ts:454`) that tells it exactly what to do next
+(DISPATCH / WAIT / MOVE TO REVIEW / ALL DONE / BLOCKED), so the PM rarely has to
+reason about kanban state itself.
+
+## How a turn works
+
+```mermaid
+flowchart TD
+  U[User / Agent Report msg] --> SM[sendMessage]
+  SM -->|abort prior PM + agents| RP[_runPMProcessing]
+  RP --> SC{slash cmd?}
+  SC -->|/info /preview| DET[deterministic / rewrite]
+  SC -->|no| CTX[buildContext + pre-send compaction]
+  CTX --> ST[streamText PM with pmTools]
+  ST -->|text only| DONE[persist + reposition rowid]
+  ST -->|run_agent| GUARD[write-agent guard]
+  GUARD --> AG[runInlineAgent in background]
+  AG --> ADONE[onAgentDone -> compute Next Action]
+  ADONE -->|not WAIT| SM
+  ST -->|request_plan_approval| PAUSE[stop stream, await human]
+```
+
+### 1. Serialization in `sendMessage` (`engine.ts:86`)
+A new message aborts the in-flight PM stream (`pmAbort.abort()`) and all running
+sub-agents (`abortAgentsFn`), then **awaits the previous processing promise**
+before starting — otherwise two PM streams race and the stale one overwrites the
+fresh answer (`engine.ts:104`). `[Agent Report]` messages are special-cased:
+they do **not** abort sub-agents, because a review-cycle agent may legitimately
+be running (`engine.ts:91`,`engine.ts:96`). The processing lock
+(`pmProcessingPromise`) is installed synchronously before any `await` so
+back-to-back calls queue correctly (`engine.ts:116`).
+
+### 2. Context + provider resolution (`engine.ts:219`)
+The PM system prompt is built by `getPMSystemPrompt` (`prompts.ts:871`); the
+provider/model is resolved from project-level `chatProviderId/chatModelId`
+overrides falling back to the global default (`engine.ts:1047`). `buildContext`
+(`context.ts:28`) loads the latest conversation summary + the last 50 messages,
+sorted **in JS** by parsed timestamp (SQLite `CURRENT_TIMESTAMP` and JS ISO
+strings don't sort lexicographically the same — `context.ts:42`).
+
+### 3. PM streaming with retries + guards (`engine.ts:533`)
+`streamText` runs with `stopWhen: stepCountIs(100)` and the assembled `pmTools`.
+The fullStream loop handles several non-obvious cases:
+- **Premature-text retraction** (`engine.ts:651`): if a step emits narration text
+  *and* dispatches a wait-type agent (`run_agent`/`run_agents_parallel`), the
+  text is retracted (it would render before the agent's own output). It is
+  restored only if the model never regenerates (`engine.ts:680`).
+- **Hallucination guard** (`engine.ts:710`): when a `[Next Action] DISPATCH` hint
+  was injected but the PM wrote text *without* calling `run_agent`, the engine
+  injects an in-memory correction and re-loops (up to 2×) — the hallucinated text
+  is never written to DB so it can't poison future context.
+- **Transient-error retry** (`engine.ts:746`): up to 3 attempts with exponential
+  backoff (`safety.ts:143`,`safety.ts:155`), distinguishing real aborts from
+  empty/network failures.
+
+### 4. Message repositioning (`engine.ts:856`)
+The PM's placeholder row is inserted *before* streaming (so before any sub-agent
+rows). The UI orders by SQLite `rowid`, so after the turn the engine bumps the
+PM row's `rowid` to `MAX+1` so its final text renders *after* the sub-agents it
+spawned — while the LLM-context path (`context.ts`, `summarizer.ts`) orders by
+`createdAt`, which is also bumped to the finish time (`engine.ts:835`). Both
+views stay chronological.
+
+## Inline sub-agent execution (`agent-loop.ts:784`)
+
+`runInlineAgent` is a single `generateText` call (not a manual loop) whose
+behaviour is shaped by `prepareStep`/`onStepFinish`/`stopWhen`:
+
+- **Fresh context**: the agent message array is just the task (plus optional
+  `priorMessages` for the Playground) — it never sees the parent conversation
+  (`agent-loop.ts:1007`). The PM's task description is therefore the agent's
+  *entire* context, which is why `run_agent`'s schema demands a comprehensive
+  task (`pm-tools.ts:256`).
+- **Tool assembly** (`agent-loop.ts:856`–`agent-loop.ts:954`): role tools from
+  `getToolsForAgent` + tracked file tools + plugin + MCP + decisions tool, then
+  workspace-cwd wrappers, optional read-only filter (`WRITE_TOOLS`,
+  `agent-loop.ts:225`), `excludeTools`, and `git_commit` removal when auto-commit
+  is on (the review cycle commits instead).
+- **Progressive compaction** in `prepareStep` keyed on `lastPromptTokens /
+  getContextLimit`: >0.60 aggressive tool-result pruning, >0.70 rule-based
+  compaction (zero-token deterministic summary, `agent-loop.ts:446`) escalating
+  to AI compaction if the summary is large, >0.85 strip, >0.90 hard stop
+  (`agent-loop.ts:1098`–`agent-loop.ts:1151`). There is **no iteration cap** —
+  only context, a 30-min timeout, stuck-loop detection (MCP tools repeated 15×,
+  `agent-loop.ts:1188`), or abort can stop it.
+- **Persistence toggle**: `persistToDb:false` skips all DB writes (Playground)
+  while still firing callbacks (`agent-loop.ts:791`).
+
+`READ_ONLY_AGENTS` = `{code-explorer, research-expert, task-planner}`
+(`agent-loop.ts:239`) is the canonical list of agents safe to run in parallel.
+
+## The sequential write-agent guard
+
+Enforced in `createPMTools` (`pm-tools.ts:247`). Because the Vercel AI SDK runs
+parallel tool calls from one LLM step via `Promise.all`, two `run_agent` calls
+can both pass a naive check before either registers. Three layers close that gap:
+1. **`dispatchingAgents` module Set** (`pm-tools.ts:241`,`pm-tools.ts:346`) —
+   atomic check-and-set keyed `projectId:agent`, blocking the duplicate before it
+   even registers an abort controller.
+2. **`writeAgentRunning` closure boolean** (`pm-tools.ts:250`,`pm-tools.ts:370`)
+   — only one write agent at a time; read-only agents bypass it.
+3. **Cross-cutting checks**: global running count (`pm-tools.ts:381`), and a
+   "task in review" block so new dispatch waits for code review (`pm-tools.ts:392`).
+`run_agents_parallel` validates every agent is in `READ_ONLY_AGENTS`
+(`pm-tools.ts:831`) and staggers starts by 1.5s to avoid provider overload.
+
+## Soft approval gate (Plan → Approve → Execute)
+
+There is no hard gate — approval is keyword-driven and enforced at two levels:
+- The PM is *instructed* to call `request_plan_approval` as a tool, never as text
+  (`prompts.ts:326`,`prompts.ts:345`).
+- **Code-level enforcement** in `run_agent`'s completion handler: when
+  `task-planner` finishes with pending `define_tasks` definitions and there are
+  no active kanban tasks, the engine shows the approval card itself
+  (`pm-tools.ts:673`–`pm-tools.ts:758`) — even if the PM forgot the tool — and
+  deliberately does **not** restart the PM, so the card is visible before any
+  second dispatch. On the user's "approve", `create_tasks_from_plan`
+  (`pm-tools.ts:1691`) drains the stored definitions into kanban tasks
+  (resolving `blocked_by` indices to real IDs). For channels the plan is sent as
+  a chunked text message and the PM waits for an "approve"/"reject" reply
+  (`pm-tools.ts:1604`).
+
+## Automatic review cycle (`review-cycle.ts`)
+
+Fully independent of the engine — no `WorkflowEngine` dependency. When a task
+moves to "review", `run_agent`'s handler calls `autoCommitTask` (commits the work
+so the reviewer can `git show` the diff — `review-cycle.ts:349`) then
+`notifyTaskInReview` (`review-cycle.ts:460`):
+1. Spawns `code-reviewer` via the self-contained `spawnReviewAgent`
+   (`review-cycle.ts:224`).
+2. Reads the verdict from the most recent `submit_review` tool call
+   (`getSubmitReviewDetails`, `review-cycle.ts:80`), with a keyword heuristic
+   fallback (`review-cycle.ts:118`).
+3. **Approved** → move to "done" + `triggerPMAutoContinue` (sends the PM a
+   `[Agent Report]` with the next DISPATCH hint, `review-cycle.ts:151`).
+4. **Changes requested** → back to "working", spawn the original assigned agent
+   with the reviewer's per-issue feedback, up to `maxReviewRounds` (default 2,
+   `review-cycle.ts:54`). The `activeReviews` guard is released *before* spawning
+   the fix agent so its `move_task("review")` can re-trigger a fresh review
+   (`review-cycle.ts:564`).
+5. **Max rounds exceeded / errors** → force "done" with a warning note so a task
+   can never get stuck.
+`activeReviews` (`review-cycle.ts:42`) dedups concurrent reviewer spawns;
+`reviewRounds`/`taskCommitHashes` are in-memory (reset on restart).
+
+## Handoffs between sequential tasks (`handoff.ts`)
+
+After a write agent finishes a kanban task, `generateHandoffSummary`
+(`handoff.ts:14`) summarizes the modified files — deterministic regex extraction
+for small changes (≤3 files, <200 lines: exports, CSS classes, DOM IDs/selectors),
+AI summary for larger ones. It is stored as the task's `importantNotes`
+(`pm-tools.ts:609`) and surfaced to the next agent via `get_next_task`'s
+`priorWork`, so file/class/ID names stay consistent across files — the exact
+problem `docs/sequential-agent-model.md` was written to solve.
+
+## Conversation compaction
+
+Two distinct mechanisms:
+- **Per-conversation summarization** (`summarizer.ts:50`): keeps the most recent
+  10 messages, AI-summarizes + deletes the rest, carries forward the prior
+  summary. Triggered pre-send when estimated tokens ≥ threshold (default 200k,
+  `engine.ts:257`,`engine.ts:1098`) and post-turn when context ≥80%
+  (`context.ts:90`).
+- **Between-task tool-output pruning** (`pruneAgentToolResults`,
+  `agent-loop.ts:319`): when context ≥60% after an agent finishes, verbose tool
+  outputs are replaced with short placeholders (`pm-tools.ts:659`), preserving
+  `read_file`/edit results which the agent needs as working memory.
+
+## Key files
+
+| File | Role |
+|---|---|
+| `src/bun/agents/engine.ts` | `AgentEngine` — PM streaming, serialization lock, approval gate, next-action computation, retries, message repositioning |
+| `src/bun/agents/engine-types.ts` | Callback/metadata types, thinking-budget options, `applyAnthropicCaching`, `getPluginTools` |
+| `src/bun/agents/agent-loop.ts` | `runInlineAgent` inline sub-agent executor; `READ_ONLY_AGENTS`, `WRITE_TOOLS`, compaction/pruning, stuck-loop + timeout guards |
+| `src/bun/agents/tools/pm-tools.ts` | `run_agent`/`run_agents_parallel` dispatch + write-agent guard; `request_plan_approval`/`create_tasks_from_plan`; `get_next_task` |
+| `src/bun/agents/review-cycle.ts` | Standalone auto code-review cycle, auto-commit, PM auto-continue |
+| `src/bun/agents/handoff.ts` | Handoff summaries between sequential tasks |
+| `src/bun/agents/context.ts` | `buildContext` (summary + recent messages, token estimate) |
+| `src/bun/agents/summarizer.ts` | AI conversation compaction (keep-recent + summarize-rest) |
+| `src/bun/agents/safety.ts` | Transient-error detection, exponential backoff, loop detection |
+| `src/bun/agents/kanban-integration.ts` | Bridges human/agent kanban moves; blocked-task enforcement |
+| `src/bun/engine-manager.ts` | One engine per project; global agent abort registry; running-agent counts |
+
+## Gotchas / Constraints
+
+- **`[Agent Report]` is load-bearing.** It is both the PM-restart mechanism and
+  the abort exemption that keeps review-cycle agents alive (`engine.ts:91`). Don't
+  rename it or change the prefix without updating both sites.
+- **`run_agent` is fire-and-forget.** It returns `"dispatched"` immediately
+  (`pm-tools.ts:795`) and the real work + kanban moves + handoff happen in the
+  backgrounded `.then()` (`pm-tools.ts:578`). The write-agent guard is cleared in
+  *both* the `.then()` and `.catch()` — a missed clear deadlocks all future write
+  dispatch for the engine's lifetime.
+- **Only the review system moves tasks to "done".** Agents call
+  `verify_implementation` (auto-moves working→review); the column flow
+  backlog→working→review→done is enforced and agents cannot skip it.
+- **Duplicate-dispatch races are real.** The SDK's `Promise.all` over tool calls
+  is the reason `dispatchingAgents` exists alongside `writeAgentRunning`; both are
+  needed (`pm-tools.ts:241`).
+- **No iteration cap on sub-agents** — they run until task complete, context full
+  (90%), 30-min timeout, stuck loop, or abort. A misconfigured tiny context limit
+  will surface as immediate `context_full`.
+- **Token counts are estimates.** Context math uses ~4 chars/token
+  (`context.ts:24`), *not* `messages.tokenCount` (which stores API usage and
+  overestimates).
+- **Engine state is per-project and in-memory.** `pmProcessing`, the dispatch
+  Set, and review round counters reset on app restart.
+
+## Related
+- [[review-cycle]]
+- [[pm-tools]]
+- [[sequential-agent-model]]
+- [[context-and-compaction]]
+- [[engine-manager]]
+- [[agent-roster]]
+- [[kanban-flow]]
+
+## Open questions
+- `kanban-integration.ts` (`KanbanIntegration`) is read here but its wiring point
+  (which RPC/callback constructs it) was not traced — confirm where
+  `handleHumanMove` is invoked from the kanban UI.
+- `context-notes.ts` and `project-snapshot.ts` (listed in scope) were not opened;
+  document how project notes/dir-tree are injected into agent context.
+- `prompts.ts` PM-prompt assembly (`getPMSystemPrompt`, `getAgentSystemPrompt`)
+  deserves its own page — only the approval-gate instructions were verified here.

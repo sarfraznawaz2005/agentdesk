@@ -1,0 +1,11 @@
+#!/bin/sh
+# AgentDesk — project-wiki drift nudge (NON-BLOCKING).
+#
+# The wiki is semantic prose: a hook can't regenerate it (only an agent can).
+# So this hook only DETECTS drift — it lists wiki pages whose `sources:` include
+# a file you're committing, so you (or an agent, per project-wiki/WIKI.md) can
+# update them. It never blocks the commit.
+command -v bun >/dev/null 2>&1 || exit 0
+[ -f scripts/wiki-check.mjs ] || exit 0
+bun scripts/wiki-check.mjs --staged || true
+exit 0

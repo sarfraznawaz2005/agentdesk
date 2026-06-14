@@ -1,0 +1,173 @@
+---
+title: Message Streaming & Broadcasts
+type: flow
+status: verified
+verified_at: 2026-06-14
+sources:
+  - src/bun/agents/engine.ts
+  - src/bun/engine-manager.ts
+  - src/bun/agents/engine-types.ts
+  - src/bun/agents/agent-loop.ts
+  - src/mainview/lib/rpc.ts
+  - src/mainview/stores/chat-event-handlers.ts
+  - src/mainview/components/chat/message-bubble.tsx
+tags: [rpc, streaming]
+---
+
+# Message Streaming & Broadcasts
+
+**How live agent output reaches the chat UI.** The Bun backend has no socket to
+the renderer — it pushes everything as **fire-and-forget RPC messages** that the
+webview turns into `agentdesk:*` DOM `CustomEvent`s. Two parallel channels carry
+the data: a **token stream** (the PM's plain-text reply, buffered and rendered
+optimistically) and **message parts** (the structured tool-call/text/reasoning
+rows that sub-agents emit, persisted to `message_parts` and rendered per-bubble).
+Understanding the split — store-level for tokens, component-local for parts — is
+the single most important thing here.
+
+## Why this shape
+
+There is no WebSocket. Electrobun gives a typed RPC bridge where Bun can call
+`webview.rpc.send.<method>(payload)` and the webview's message-handler runs. The
+backend never imports React; it only knows callback names. So every realtime
+update is: **engine callback → `broadcastToWebview(method, payload)` → webview
+RPC message handler → `window.dispatchEvent(new CustomEvent("agentdesk:...", …))`
+→ a `window.addEventListener` somewhere in the renderer.** The DOM event bus is
+the decoupling layer: the backend doesn't know which React component (if any) is
+mounted, and the listeners filter by `activeConversationId` themselves.
+
+## How it works
+
+```mermaid
+flowchart TD
+  subgraph Bun["Bun backend"]
+    A["AgentEngine.fullStream loop<br/>engine.ts:629"] -->|onStreamToken/Reset/Complete| CB
+    AL["runInlineAgent<br/>agent-loop.ts"] -->|onPartCreated/Updated| CB
+    CB["AgentEngineCallbacks<br/>engine-manager.ts:464"] --> BW["broadcastToWebview()<br/>engine-manager.ts:252"]
+  end
+  BW -->|"webview.rpc.send.streamToken(...)"| RPC
+  subgraph View["Renderer (webview)"]
+    RPC["RPC message handlers<br/>rpc.ts:46"] -->|dispatchEvent| DOM["agentdesk:* CustomEvent"]
+    DOM -->|stream-token/complete| CEH["chat-event-handlers.ts<br/>→ useChatStore"]
+    DOM -->|part-created/updated| MB["message-bubble.tsx:290<br/>(component-local parts)"]
+  end
+  CEH --> UI["chat re-renders streamingContent"]
+  MB --> UI
+```
+
+### 1. The PM token stream
+The engine drives `result.fullStream` and, per `text-delta`, calls
+`onStreamToken(conversationId, messageId, delta, null)` at `engine.ts:645`. The
+callback (`engine-manager.ts:465`) forwards it to `broadcastToWebview("streamToken", …)`,
+which becomes `agentdesk:stream-token`. `onStreamToken` in
+`chat-event-handlers.ts:83` appends the delta to `buffers.tokenBuffer` and
+schedules a flush. **Tokens are not rendered one-by-one** — `flushTokenBuffer`
+(`chat-event-handlers.ts:46`) coalesces them on a 32 ms (~30 fps) timer and only
+then writes `streamingContent` into the Zustand store, creating the PM placeholder
+message on first flush.
+
+### 2. Stream reset & completion
+`onStreamReset` (`chat-event-handlers.ts:105`) clears the token buffer and resets
+`streamingContent` — the engine fires it to **retract premature PM narration**
+when a step both wrote text and dispatched a wait-type sub-agent
+(`engine.ts:651-657`), and on hallucination retries (`engine.ts:715`).
+`onStreamComplete` (`engine-manager.ts:479`) carries the final `content`,
+`metadata`, and `usage`; the handler (`chat-event-handlers.ts:148`) flushes the
+buffer, marks the stream completed, and commits the message in place — bumping
+`createdAt` to the PM's finish time so the PM bubble sorts **below** the
+sub-agents it spawned.
+
+### 3. Late-token & stale-stream guards
+A capped `completedStreamIds` set (`chat-event-handlers.ts:15`) drops
+`stream-token` events that arrive after a stream finished (otherwise the bubble
+sticks in a streaming state). `onStreamComplete` also handles the **stale**
+case: if a newer stream is active (user sent a new message that aborted the old
+PM stream), it updates only the message content and leaves streaming state alone
+(`chat-event-handlers.ts:206`).
+
+### 4. Message parts (the structured channel)
+Sub-agents run via `runInlineAgent` (`agent-loop.ts`), which emits typed
+`MessagePart` rows (start / text / reasoning / tool-call / end) and persists them
+to `message_parts`. Each emit fires `onPartCreated`/`onPartUpdated`
+(`agent-loop.ts:124`), bridged in `engine.ts:306-313` to the engine callbacks,
+then broadcast as `agentdesk:part-created` / `part-updated`
+(`engine-manager.ts:551,570`). Crucially these are **not** handled by the store —
+each `MessageBubble` registers its own listeners (`message-bubble.tsx:290`) and
+filters by `messageId === message.id`, appending/patching its local `parts` state.
+On mount, a bubble with `hasParts` lazy-loads its parts via `rpc.getMessageParts`
+(`message-bubble.tsx:277`).
+
+### 5. Inline-agent lifecycle & PM "thinking"
+`onAgentInlineStart`/`Complete` (`engine-manager.ts:543-550`) become
+`agentdesk:agent-inline-start`/`complete`; the store handlers
+(`chat-event-handlers.ts:534,554`) maintain `runningAgentCount`,
+`activeInlineAgent`, and `pmPending` (with an 8 s safety-net timeout that clears a
+stuck stop button). PM reasoning is streamed separately: the engine accumulates
+`reasoning-delta` parts and flushes them through `onAgentActivity` (type
+`thinking`) on a 300 ms timer (`engine.ts:602-638`); the manager forwards only
+`thinking` events (`engine-manager.ts:611`) → `agentdesk:pm-thinking` →
+`pmThinkingText` in the store, which `onStreamComplete` folds into the message's
+`reasoning` metadata.
+
+### 6. Whole-message broadcasts
+Agent messages persisted as a unit (not streamed) come through `onNewMessage`
+(`engine-manager.ts:533`) → `agentdesk:new-message`. `onNewMessage`
+(`chat-event-handlers.ts:451`) detects agent messages via `metadata.source ===
+"agent"`, sets `hasParts: 1`, and commits any in-flight PM `streamingContent`
+before appending so the agent card lands as the latest item. Plan cards
+(`presentPlan` → `agentdesk:plan-presented`) arrive right after their
+`new-message` and just clear busy state.
+
+## Key files
+
+| File | Role |
+|---|---|
+| `src/bun/agents/engine.ts` | PM `fullStream` loop; invokes `onStreamToken/Reset/Complete`, reasoning flush, text retraction |
+| `src/bun/agents/agent-loop.ts` | Sub-agent executor; emits `MessagePart`s via `onPartCreated/Updated/onTextDelta` |
+| `src/bun/agents/engine-types.ts` | `AgentEngineCallbacks` interface — the contract between engine and manager |
+| `src/bun/engine-manager.ts` | Wires callbacks → `broadcastToWebview()` (the central backend→UI hub) |
+| `src/mainview/lib/rpc.ts` | Webview RPC message handlers that `dispatchEvent` the `agentdesk:*` events |
+| `src/mainview/stores/chat-event-handlers.ts` | Store-level listeners: token buffering, completion, agent lifecycle, thinking |
+| `src/mainview/components/chat/message-bubble.tsx` | Component-local `part-created/updated` listeners + lazy part load |
+
+## Gotchas / Constraints
+
+- **Two render paths, deliberately split.** Tokens go to the store
+  (`streamingContent`); parts go to per-bubble React state. Don't try to route
+  parts through the store — bubbles self-filter by `messageId`.
+- **Tokens are batched at ~30 fps** (`TOKEN_FLUSH_INTERVAL = 32`). The store
+  never sees per-character updates; a missing PM bubble until first flush is
+  expected.
+- **All broadcasts are best-effort.** `broadcastToWebview` swallows errors when
+  the window is closed (`engine-manager.ts:255`) — if the user is on another page
+  the events are silently lost and the DB is the source of truth on navigation
+  back (`onStreamComplete` bails when the conversation isn't loaded,
+  `chat-event-handlers.ts:226`).
+- **Every store handler filters by `activeConversationId`** — broadcasts are
+  global (one window, all projects), so a handler for a non-active conversation
+  must early-return.
+- **`completedStreamIds` is capped at 50** — across a very long session the
+  oldest entries are evicted, so a *very* late token for an ancient stream could
+  theoretically slip through.
+- **Listeners register once** — `initChatEventHandlers` is HMR-guarded
+  (`chat-event-handlers.ts:655`) to avoid duplicate listeners; bubble listeners
+  unregister on unmount.
+- **PM bubble ordering depends on a `createdAt` bump** in `onStreamComplete`; the
+  backend repositions the same row by rowid so live view, reload, and model
+  replay agree (`chat-event-handlers.ts:248-253`).
+
+## Related
+- [[agent-engine]] — the engine that drives the `fullStream` loop and callbacks
+- [[rpc-client]] — the webview RPC handlers that translate messages into DOM events
+- [[rpc-layer]] — the typed RPC contract boundary
+- [[frontend-stores]] — `useChatStore` shape consuming these events
+- [[backend-core]] — `engine-manager` lifecycle and `broadcastToWebview`
+- [[plan-approve-execute]] — plan-presented broadcast in the approval flow
+
+## Open questions
+- Channel-sourced conversations relay the PM reply back to Discord/WhatsApp/email
+  inside `onStreamComplete` (`engine-manager.ts:494`); the chunking/ordering of
+  that relay vs. the in-app stream is not covered here.
+- Whether `part-updated` events can race ahead of their `part-created` over RPC
+  (and whether `message-bubble` tolerates an update for an unknown partId) is
+  unverified.

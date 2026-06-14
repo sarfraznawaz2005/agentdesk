@@ -62,7 +62,7 @@ AgentDesk your password — you simply log in in a browser window, like normal.
 
 Go to **Settings → General** and set your **Timezone** (for example
 `Asia/Karachi`). This makes the "active hours" work on *your* clock. If you skip
-this, the app uses **UTC**, and "9 to 22" might not match your real day.
+this, the app uses **your computer's local time**, and "9 to 22" might not match your intended day.
 
 ### Step 2 — Turn Auto-Earn on
 
@@ -223,7 +223,7 @@ shows you, at a glance, what the AI is doing on your behalf:
     a polite request.)
   - **A sensitive message** — anything about money, contracts, going off-platform, or
     a dispute is handed to you instead of being auto-answered.
-  - **"Queue is stuck"** — in Full-auto, nothing has sent for a few hours (usually
+  - **"Queue is stuck"** — in Full-auto, nothing has sent for about an hour (usually
     you're logged out, outside your active hours, or paused). Fix that and it carries on.
   - **"Auto-bid couldn't draft proposals"** — proposal drafting failed (often an AI
     provider problem).
@@ -298,7 +298,7 @@ In **Auto-Earn settings** there are two notification options:
 | **Inbox stays empty after syncing** while logged in | The website may have changed its layout. | Click **Sync now**. If it's still empty, let us know so we can re-tune it. |
 | A **"Needs attention" alert** (Auto-Earn tab + desktop) | In Full-auto, the AI got stuck or hit something it must not do on its own. | Read the reason, handle it (answer the client, fix access, etc.), then click **Resolve** so the agent continues. |
 | A **"Ready to deliver — approve"** alert | The AI finished and reviewed the work and is waiting for your go-ahead. | Review it, then click **Approve delivery** on the Auto-Earn tab — it delivers for you. It can't hand over work until you do this. |
-| A **"Queue is stuck"** alert | In Full-auto, nothing has been sent for a few hours. | You're usually logged out, outside your active hours, or paused. Log in / adjust active hours / **Resume**, and it carries on. |
+| A **"Queue is stuck"** alert | In Full-auto, nothing has been sent for about an hour. | You're usually logged out, outside your active hours, or paused. Log in / adjust active hours / **Resume**, and it carries on. |
 | A job sits at **"delivered"** but the client hasn't been paid/closed | The AI delivered the files and messaged the client, but pressing the platform's formal **deliver/milestone** button is still your step today. | Open the job on the platform and confirm the milestone yourself. |
 
 ---
