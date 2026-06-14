@@ -182,6 +182,15 @@ surface the error.
   CLI + stored OAuth credentials; absent those, `loadOAuthToken()` throws a
   user-facing "authenticate by running `claude`" error
   (`claude-subscription.ts:98-109`).
+- **Forced tool choice is NOT portable across providers.** The AI SDK's
+  `toolChoice: 'required'` / `toolChoice: { type: 'tool', toolName }` is honored
+  by some backends (Anthropic, OpenAI) but silently ignored or rejected by others
+  (Ollama and many OpenAI-compatible / OpenRouter-proxied models). Because the
+  providers layer is deliberately uniform, the engine MUST NOT depend on forced
+  tool calling to guarantee a transition — any "force the PM to call `run_agent`"
+  design must keep a non-forcing fallback (the post-hoc hallucination guard at
+  `engine.ts:710`) for providers that don't support it. Treat `toolChoice` as a
+  best-effort hint, never a hard guarantee.
 
 ## Related
 - [[agent-engine]]
