@@ -281,6 +281,13 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 				),
 			}),
 			execute: async (args) => {
+				// Whether the background agent dispatch was actually launched. If a
+				// synchronous-path error throws BEFORE dispatch, the .then/.catch chain that
+				// normally releases the guards is never attached — so the outer catch must
+				// release them or all future write-agent dispatch deadlocks until app restart.
+				// Declared outside the try so they remain in scope inside the catch.
+				let dispatchInitiated = false;
+				let releaseGuards: (() => void) | null = null;
 				try {
 					// Validate task is not empty — return error so PM retries with a description
 					if (!args.task?.trim()) {
@@ -356,6 +363,15 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						}
 					}
 					dispatchingAgents.add(dispatchKey);
+					// Capture guard-release so the outer catch can free the guards if a
+					// synchronous-path error (e.g. the agent-rows db.select, cross-project
+					// channel-conversation resolution, or a dynamic import) throws before the
+					// background dispatch launches. writeAgentRunning may be set further below;
+					// the closure reads it at call time, so a no-op clear when unset is harmless.
+					releaseGuards = () => {
+						dispatchingAgents.delete(dispatchKey);
+						if (!isReadOnly) writeAgentRunning = false;
+					};
 
 					// Plan mode: only read-only agents are allowed.
 					if (deps.planMode && !isReadOnly) {
@@ -788,6 +804,9 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							filesModified: [],
 						});
 					});
+					// Dispatch launched: the .then/.catch chain above now owns guard cleanup,
+					// so the outer catch must NOT touch the guards from here on.
+					dispatchInitiated = true;
 
 					// Stop PM stream — PM is done until agent completes
 					deps.stopPMStream?.();
@@ -799,6 +818,11 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						message: `${displayName} is now working on the task. I'll update you when it's done.`,
 					});
 				} catch (err) {
+					// A throw on the synchronous dispatch path lands here. If dispatch never
+					// launched, release the write-agent/dispatch guards — otherwise they stay
+					// held for the engine's lifetime and deadlock all future write dispatch.
+					// If dispatch DID launch, its .then/.catch chain owns cleanup; don't touch.
+					if (!dispatchInitiated) releaseGuards?.();
 					// Move kanban task to backlog on unexpected error
 					if (args.kanban_task_id) {
 						try {

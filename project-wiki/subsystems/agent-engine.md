@@ -93,12 +93,20 @@ strings don't sort lexicographically the same — `context.ts:42`).
 The fullStream loop handles several non-obvious cases:
 - **Premature-text retraction** (`engine.ts:651`): if a step emits narration text
   *and* dispatches a wait-type agent (`run_agent`/`run_agents_parallel`), the
-  text is retracted (it would render before the agent's own output). It is
-  restored only if the model never regenerates (`engine.ts:680`).
+  text is retracted (it would render before the agent's own output) and re-emitted
+  to the reasoning/thinking lane via `onAgentActivity` so it is not a silent
+  flash-then-vanish. It is still restored to the answer lane if the model never
+  regenerates (`engine.ts:680`).
 - **Hallucination guard** (`engine.ts:710`): when a `[Next Action] DISPATCH` hint
   was injected but the PM wrote text *without* calling `run_agent`, the engine
   injects an in-memory correction and re-loops (up to 2×) — the hallucinated text
-  is never written to DB so it can't poison future context.
+  is never written to DB so it can't poison future context. On each retry the tool
+  set is also narrowed to dispatch-only (`activeTools = { run_agent,
+  run_agents_parallel }`) so the model *cannot* answer with prose again — a
+  provider-agnostic substitute for `toolChoice:'required'` (which Ollama and many
+  OpenAI-compatible proxies silently ignore, and which Anthropic forbids alongside
+  extended thinking). If all retries are exhausted the engine logs a warning rather
+  than silently persisting the misleading "I'll dispatch…" narration as the answer.
 - **Transient-error retry** (`engine.ts:746`): up to 3 attempts with exponential
   backoff (`safety.ts:143`,`safety.ts:155`), distinguishing real aborts from
   empty/network failures.
@@ -237,11 +245,20 @@ Two distinct mechanisms:
 - **`[Agent Report]` is load-bearing.** It is both the PM-restart mechanism and
   the abort exemption that keeps review-cycle agents alive (`engine.ts:91`). Don't
   rename it or change the prefix without updating both sites.
-- **`run_agent` is fire-and-forget.** It returns `"dispatched"` immediately
-  (`pm-tools.ts:795`) and the real work + kanban moves + handoff happen in the
-  backgrounded `.then()` (`pm-tools.ts:578`). The write-agent guard is cleared in
-  *both* the `.then()` and `.catch()` — a missed clear deadlocks all future write
-  dispatch for the engine's lifetime.
+- **`run_agent` is fire-and-forget.** It returns `"dispatched"` immediately and the
+  real work + kanban moves + handoff happen in the backgrounded
+  `.then()`/`.catch()`, which both release the guards (`writeAgentRunning`,
+  `dispatchingAgents`). Because `.catch()` is chained *after* `.then()`, a throw
+  inside the `.then()` body is also caught and cleared — that chain is robust.
+  **The real deadlock risk is the *synchronous* dispatch path**, not the chain: a
+  throw between `writeAgentRunning = true` and the launch of `runInlineAgent`
+  (e.g. the agent-rows `db.select`, cross-project channel-conversation resolution,
+  or a dynamic `import`) lands in the *outer* `catch`, where the `.then`/`.catch`
+  chain was never attached. That handler now releases the guards via a captured
+  `releaseGuards` closure, gated on a `dispatchInitiated` flag so it never frees
+  guards a running agent still owns. Before this fix the outer catch cleared
+  nothing, so a DB/import hiccup mid-dispatch permanently wedged all write dispatch
+  for the engine's lifetime.
 - **Only the review system moves tasks to "done".** Agents call
   `verify_implementation` (auto-moves working→review); the column flow
   backlog→working→review→done is enforced and agents cannot skip it.

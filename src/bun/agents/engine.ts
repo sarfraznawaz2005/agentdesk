@@ -522,6 +522,11 @@ export class AgentEngine {
 			const isDispatchExpected = content.includes("[Next Action] DISPATCH");
 			let hallucinRetries = 0;
 			const MAX_HALLUCIN_RETRIES = 2;
+			// Tools handed to the PM. Narrowed to dispatch-only on a hallucination retry
+			// (see below) so the model cannot answer with prose again — a provider-agnostic
+			// alternative to toolChoice:'required' (which Ollama/OpenAI-compatible proxies
+			// silently ignore and which Anthropic forbids alongside extended thinking).
+			let activeTools: typeof pmTools = pmTools;
 
 			const pmThinkingOptions = buildPMThinkingOptions(pmThinkingBudget, providerRow.providerType);
 
@@ -543,7 +548,7 @@ export class AgentEngine {
 					model,
 					system: cached.system,
 					messages: cached.messages,
-					tools: pmTools,
+					tools: activeTools,
 					stopWhen: [stepCountIs(100)],
 					abortSignal: abortController?.signal,
 					...pmThinkingOptions,
@@ -653,6 +658,19 @@ export class AgentEngine {
 							retractedFallback = stepTextEmitted;
 							fullText = fullText.slice(0, fullText.length - stepTextEmitted.length);
 							this.callbacks.onStreamReset(conversationId, assistantMessageId);
+							// Surface the retracted narration as reasoning instead of letting it
+							// flash-then-vanish in the answer lane. The restore-fallback below still
+							// rescues it as the answer if the model never regenerates.
+							this.callbacks.onAgentActivity?.({
+								projectId: this.projectId,
+								conversationId,
+								agentId: "project-manager",
+								agentName: "project-manager",
+								agentColor: pmColor,
+								type: "thinking",
+								data: { text: stepTextEmitted, isPartial: false },
+								timestamp: new Date().toISOString(),
+							});
 							console.log(`[PM] Retracted premature text (${stepTextEmitted.length} chars) — wait-agent dispatched in same step`);
 						}
 						stepTextEmitted = "";
@@ -714,6 +732,16 @@ export class AgentEngine {
 					fullText = "";
 					this.callbacks.onStreamReset(conversationId, assistantMessageId);
 
+					// Provider-agnostic forcing: on the retry, expose ONLY the dispatch tools so
+					// the model cannot answer with prose again. This works on every provider (it
+					// removes the choice), unlike toolChoice:'required' which many providers
+					// (Ollama, OpenAI-compatible proxies) silently ignore and which Anthropic
+					// rejects alongside extended thinking.
+					activeTools = {
+						run_agent: pmTools.run_agent,
+						run_agents_parallel: pmTools.run_agents_parallel,
+					} as typeof pmTools;
+
 					// Append hallucinated response + correction to in-memory context only.
 					// This lets the LLM see its own mistake and the explicit correction
 					// without polluting the DB conversation history.
@@ -725,6 +753,12 @@ export class AgentEngine {
 						{ role: "user" as const, content: `[DISPATCH REQUIRED] You wrote the above without calling run_agent — the agent was NOT spawned. Do not write any more text. Call run_agent${taskIdHint} NOW as a tool call.` },
 					];
 					continue;
+				}
+
+				// Retries exhausted but the PM still won't dispatch: surface it loudly instead of
+				// silently persisting misleading "I'll dispatch…" narration as the final answer.
+				if (isDispatchExpected && fullText.trim() && hallucinRetries >= MAX_HALLUCIN_RETRIES) {
+					console.warn(`[PM] Dispatch not corrected after ${MAX_HALLUCIN_RETRIES} retries — persisting PM text as a fallback; workflow may stall until the next user message or the review cycle re-drives it.`);
 				}
 
 				if (fullText.trim()) {
