@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.1.0",
+        "title":  "Enhanced Agent Engine Features",
+        "changes":  [
+                        "Improved handling of hallucinations in the agent engine for better accuracy.",
+                        "Enhanced tool management capabilities, allowing for more effective use of tools."
+                    ]
+    },
+    {
         "version":  "2.0.8",
         "title":  "OAuth and Freelance Wizard Enhancements",
         "changes":  [
