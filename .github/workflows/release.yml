@@ -224,28 +224,51 @@ jobs:
           semver="${{ needs.create-release.outputs.tag }}"
           semver="${semver#v}"
 
-          # Locate metadata.json (root or inside app subdirectory)
-          metadata=$(find "$dir" -name "metadata.json" | head -1)
-          echo "Metadata: $metadata"
-
-          # update.json for Updater.checkForUpdate()
-          jq --arg v "$semver" '. + {version: $v}' "$metadata" > "$dir/stable-linux-x64-update.json"
-
-          # If electrobun already produced a tar.zst reuse it, otherwise create one
-          existing_zst=$(find "$dir" -maxdepth 1 -name "*.tar.zst" | head -1)
-          if [ -n "$existing_zst" ]; then
-            cp "$existing_zst" "$dir/stable-linux-x64-AgentDesk.tar.zst"
-          else
-            app_name=$(find "$dir" -mindepth 1 -maxdepth 1 -type d | head -1 | xargs basename)
-            tar -cf - -C "$dir" "$app_name" | zstd --stdout > "$dir/stable-linux-x64-AgentDesk.tar.zst"
+          # ── Source of truth ──────────────────────────────────────────────────
+          # Electrobun does NOT leave its final deliverables in the build folder.
+          # It renames them into the project-root "artifacts/" folder (its default
+          # `artifactFolder`) with a "<channel>-<os>-<arch>-" prefix. The genuine
+          # *runtime* app bundle (the one whose bin/launcher is the real 92KB
+          # static launcher, NOT the self-extractor) is:
+          #     artifacts/stable-linux-x64-AgentDesk.tar.zst
+          # The leftover build/stable-linux-x64/AgentDesk/ directory is the
+          # macOS-style self-extractor bundle and must NOT be shipped on Linux —
+          # its launcher only self-extracts from a single appended-archive binary.
+          runtime_zst="artifacts/stable-linux-x64-AgentDesk.tar.zst"
+          if [ ! -f "$runtime_zst" ]; then
+            echo "ERROR: runtime tarball not found at $runtime_zst"
+            echo "--- artifacts/ ---";        ls -la artifacts/ || true
+            echo "--- $dir ---";              ls -la "$dir" || true
+            exit 1
           fi
 
-          # Portable tar.gz for direct user download — extract updater bundle and repack
-          staging="build/linux-staging"
-          mkdir -p "$staging"
-          tar -xf "$dir/stable-linux-x64-AgentDesk.tar.zst" -C "$staging"
+          # update.json for Updater.checkForUpdate().
+          # Built from the bundle's metadata.json (has identifier/name/channel/hash,
+          # same shape the macOS/Windows jobs use) with the tag version injected.
+          metadata=$(find "$dir" -name "metadata.json" | head -1)
+          echo "Metadata: $metadata"
+          jq --arg v "$semver" '. + {version: $v}' "$metadata" > "$dir/stable-linux-x64-update.json"
+
+          # Updater tarball — electrobun's canonical runtime bundle, used as-is.
+          cp "$runtime_zst" "$dir/stable-linux-x64-AgentDesk.tar.zst"
+
+          # Portable tar.gz for direct user download. We ship the already-unpacked
+          # runtime bundle so users just `tar -xzf` and run ./AgentDesk/bin/launcher
+          # directly — no self-extraction step. This deliberately avoids electrobun's
+          # Linux self-extracting installer, whose embedded tar reader rejects some
+          # archive entries (TarUnsupportedFileType).
+          staging="build/linux-portable-staging"
+          rm -rf "$staging"; mkdir -p "$staging"
+          zstd -d "$runtime_zst" -o "$staging/app.tar"
+          tar -xf "$staging/app.tar" -C "$staging"
+          rm -f "$staging/app.tar"
           tar -czf "$dir/AgentDesk-linux-x64.tar.gz" -C "$staging" .
           rm -rf "$staging"
+
+          echo "Linux artifacts prepared:"
+          ls -la "$dir/stable-linux-x64-AgentDesk.tar.zst" \
+                 "$dir/stable-linux-x64-update.json" \
+                 "$dir/AgentDesk-linux-x64.tar.gz"
 
       - name: Upload Linux artifacts
         uses: softprops/action-gh-release@v3.0.0

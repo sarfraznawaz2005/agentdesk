@@ -56,8 +56,8 @@ async function tryRefreshOAuthToken(): Promise<string | null> {
   for (const cli of CLAUDE_CLI_CANDIDATES) {
     try {
       const proc = Bun.spawn([cli, "-p", "hi"], {
-        stdout: "null",
-        stderr: "null",
+        stdout: "ignore",
+        stderr: "ignore",
         env: { ...process.env },
       });
 
