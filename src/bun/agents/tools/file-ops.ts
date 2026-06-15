@@ -36,17 +36,46 @@ function formatDiagnosticsSuffix(diagnostics: string[]): string {
  * `content.length` (undefined) or silently write the string "undefined", and
  * the model would receive no actionable signal.
  *
- * Returns an error string (starting with "Error:") when content is absent, or
- * null when it is a valid string. An empty string ("") is allowed — writing an
- * intentionally empty file is legitimate; only a *missing* content is rejected.
+ * Returns an error string (starting with "Error:") when content is absent — or, for a
+ * code/markup file, when it is empty/whitespace-only — and null when it is acceptable.
+ * A blank body for a code/markup file is almost never intended (models under output-token
+ * pressure emit an empty `index.html`, which renders blank and dead-ends the playground
+ * loop); it is rejected unless the caller opts in via `allowEmpty`. An empty body for any
+ * other extension (logs, `.gitkeep`, stubs) is still allowed.
  */
-function requireContent(toolName: string, content: unknown, filePath: string): string | null {
-	if (typeof content === "string") return null;
-	return (
-		`Error: ${toolName} was called for "${filePath}" without a "content" argument. ` +
-		`The full file body must be included in the SAME tool call — do not send the path alone. ` +
-		`Re-send ${toolName} with the complete content.`
-	);
+const EMPTY_REJECT_EXTENSIONS = new Set([
+	".html", ".htm", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
+	".css", ".scss", ".sass", ".less", ".json", ".jsonc", ".md", ".mdx",
+	".vue", ".svelte", ".astro", ".php", ".py", ".rb", ".go", ".rs",
+	".java", ".kt", ".swift", ".c", ".cc", ".cpp", ".h", ".hpp", ".cs",
+	".xml", ".yaml", ".yml", ".toml",
+]);
+
+function requireContent(
+	toolName: string,
+	content: unknown,
+	filePath: string,
+	allowEmpty = false,
+): string | null {
+	if (typeof content !== "string") {
+		return (
+			`Error: ${toolName} was called for "${filePath}" without a "content" argument. ` +
+			`The full file body must be included in the SAME tool call — do not send the path alone. ` +
+			`Re-send ${toolName} with the complete content.`
+		);
+	}
+	if (!allowEmpty && content.trim() === "") {
+		const ext = path.extname(filePath).toLowerCase();
+		if (EMPTY_REJECT_EXTENSIONS.has(ext)) {
+			return (
+				`Error: ${toolName} produced an EMPTY file for "${filePath}" — the "content" body was blank or whitespace only. ` +
+				`This is almost never intended for a ${ext} file and would render or compile blank. ` +
+				`Re-send ${toolName} with the COMPLETE file body in the SAME call. ` +
+				`If you genuinely want an empty file, pass "allowEmpty": true.`
+			);
+		}
+	}
+	return null;
 }
 
 /**
@@ -119,6 +148,7 @@ const readFileParams = z.object({
 const writeFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to write"),
 	content: z.string().describe("REQUIRED — the full text content to write to the file. Always include the complete file body in this same tool call; never omit it or send the path alone."),
+	allowEmpty: z.boolean().optional().describe("Set true ONLY if you intentionally want an empty file. Otherwise a blank/whitespace body for a code/markup file (.html/.js/.css/…) is rejected as a likely mistake."),
 });
 const editFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to edit"),
@@ -138,6 +168,7 @@ const multiEditFileParams = z.object({
 const appendFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to append to"),
 	content: z.string().describe("REQUIRED — the text to append. Always include this in the same tool call; never send the path alone."),
+	allowEmpty: z.boolean().optional().describe("Set true ONLY if you intentionally want to append nothing. Otherwise a blank/whitespace body for a code/markup file is rejected as a likely mistake."),
 });
 const patchFileParams = z.object({
 	path: z.string().describe("Absolute or relative path to the file to patch"),
@@ -209,7 +240,7 @@ const writeFileTool = tool({
 	inputSchema: writeFileParams,
 	execute: async (args): Promise<string> => {
 		try {
-			const contentErr = requireContent("write_file", args.content, args.path);
+			const contentErr = requireContent("write_file", args.content, args.path, args.allowEmpty);
 			if (contentErr) return contentErr;
 			const resolvedPath = validatePath(args.path);
 			const parentDir = path.dirname(resolvedPath);
@@ -515,7 +546,7 @@ const appendFileTool = tool({
 	inputSchema: appendFileParams,
 	execute: async (args): Promise<string> => {
 		try {
-			const contentErr = requireContent("append_file", args.content, args.path);
+			const contentErr = requireContent("append_file", args.content, args.path, args.allowEmpty);
 			if (contentErr) return contentErr;
 			const resolvedPath = validatePath(args.path);
 			const parentDir = path.dirname(resolvedPath);
@@ -1007,7 +1038,7 @@ export function createTrackedFileTools(
 		inputSchema: writeFileParams,
 		execute: async (args) => {
 			try {
-				const contentErr = requireContent("write_file", args.content, args.path);
+				const contentErr = requireContent("write_file", args.content, args.path, args.allowEmpty);
 				if (contentErr) return contentErr;
 				const resolvedPath = vp(args.path);
 				const parentDir = path.dirname(resolvedPath);
@@ -1147,7 +1178,7 @@ export function createTrackedFileTools(
 		inputSchema: appendFileParams,
 		execute: async (args) => {
 			try {
-				const contentErr = requireContent("append_file", args.content, args.path);
+				const contentErr = requireContent("append_file", args.content, args.path, args.allowEmpty);
 				if (contentErr) return contentErr;
 				const resolvedPath = vp(args.path);
 				const parentDir = path.dirname(resolvedPath);

@@ -14,8 +14,9 @@
 import { tool } from "ai";
 import type { Tool } from "ai";
 import { z } from "zod";
-import { writeFileSync } from "node:fs";
-import { PREVIEW_FILE, ensurePlaygroundDirs } from "../../playground/paths";
+import { writeFileSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { PREVIEW_FILE, PLAYGROUND_FILES_DIR, ensurePlaygroundDirs } from "../../playground/paths";
 import { PLAYGROUND_SERVER_PORT } from "../../playground/server";
 
 export type PlaygroundPreviewKind = "static" | "devserver" | "file";
@@ -61,6 +62,33 @@ async function broadcast(method: string, payload: unknown): Promise<void> {
 function staticUrl(entry: string): string {
 	const clean = entry.replace(/^\/+/, "");
 	return `http://127.0.0.1:${PLAYGROUND_SERVER_PORT}/${clean}`;
+}
+
+/**
+ * Guard against rendering a missing or empty entry file. A blank `index.html` would show
+ * a white page and produce no console errors — the exact dead-end where the agent thinks
+ * it's done but the preview is empty. Refuse with guidance so it writes real content first.
+ * Returns an error string to return to the model, or null when the entry is renderable.
+ */
+function checkRenderableEntry(entry: string): string | null {
+	const clean = entry.replace(/^\/+/, "");
+	const abs = join(PLAYGROUND_FILES_DIR, clean);
+	let body: string;
+	try {
+		body = readFileSync(abs, "utf-8");
+	} catch {
+		return (
+			`Error: the entry file "${clean}" does not exist in the workspace. ` +
+			`Write the artifact (with its complete content) before calling playground_render_preview.`
+		);
+	}
+	if (body.trim() === "") {
+		return (
+			`Error: the entry file "${clean}" is EMPTY — it would render a blank page. ` +
+			`Write the COMPLETE artifact content into "${clean}" (do not leave it empty), then call playground_render_preview again.`
+		);
+	}
+	return null;
 }
 
 const renderPreviewTool = tool({
@@ -125,7 +153,10 @@ const renderPreviewTool = tool({
 				? `http://127.0.0.1:${PLAYGROUND_SERVER_PORT}/__pdf?file=${encodeURIComponent(file.replace(/^\/+/, ""))}`
 				: staticUrl(file);
 		} else {
-			previewUrl = staticUrl(entry || "index.html");
+			const entryFile = entry || "index.html";
+			const entryErr = checkRenderableEntry(entryFile);
+			if (entryErr) return entryErr;
+			previewUrl = staticUrl(entryFile);
 		}
 
 		const preview: PlaygroundPreview = {

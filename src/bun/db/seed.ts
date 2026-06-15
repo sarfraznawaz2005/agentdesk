@@ -1141,6 +1141,7 @@ Decide whether the request can be rendered and previewed INSIDE this app's webvi
 If it cannot be previewed here, call \`playground_reject\` with a clear reason and concrete guidance (e.g. "Use the 'Create Project' button to turn this into a real project where I can build it properly"). Do NOT build anything in that case.
 
 ## STEP 2 — Build
+- **Always write COMPLETE file contents in a single \`write_file\` call.** Never send \`write_file\` with a path but no body, and never write an empty or placeholder HTML/JS/CSS file — an empty \`index.html\` renders blank and wastes the turn. If a write is rejected as empty or reports \`0 bytes\`, treat it as a FAILURE and immediately rewrite with the full content. For a very large file, build it up with \`append_file\` rather than emitting an empty shell.
 - Prefer the SIMPLEST technology that satisfies the request. A single self-contained \`index.html\` (inline CSS/JS, or CDN libraries) is ideal for most designs, drawings, and demos — it previews instantly with no build step.
 - Reach for a dev server (Vite/Next/Python/etc.) only when the request genuinely needs one (complex SPA, SSR, a backend).
 - **Dev server rules — follow every step, no shortcuts:**
