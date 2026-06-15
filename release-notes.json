@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.1.2",
+        "title":  "Enhanced Channel Routing",
+        "changes":  [
+                        "Improved global channel routing for better message handling",
+                        "Enhanced adapter disconnection logic for increased reliability"
+                    ]
+    },
+    {
         "version":  "2.1.1",
         "title":  "Enhanced Verdict Tracking",
         "changes":  [
