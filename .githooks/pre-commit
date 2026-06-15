@@ -1,11 +1,31 @@
 #!/bin/sh
-# AgentDesk — project-wiki drift nudge (NON-BLOCKING).
+# AgentDesk pre-commit:
+#   1) project-wiki drift nudge   (NON-BLOCKING — informational)
+#   2) project health check       (BLOCKING — delegates to check.bat: typecheck + tests + lint)
 #
-# The wiki is semantic prose: a hook can't regenerate it (only an agent can).
-# So this hook only DETECTS drift — it lists wiki pages whose `sources:` include
-# a file you're committing, so you (or an agent, per project-wiki/WIKI.md) can
-# update them. It never blocks the commit.
-command -v bun >/dev/null 2>&1 || exit 0
-[ -f scripts/wiki-check.mjs ] || exit 0
-bun scripts/wiki-check.mjs --staged || true
+# Bypass everything:        git commit --no-verify
+# Bypass just the check:    SKIP_CHECK=1 git commit ...
+
+# --- 1) Wiki drift nudge (never blocks) ---------------------------------------
+# Lists wiki pages whose `sources:` include a file you're committing, so they can
+# be kept fresh (see project-wiki/WIKI.md). Detection only — never blocks.
+if command -v bun >/dev/null 2>&1 && [ -f scripts/wiki-check.mjs ]; then
+  bun scripts/wiki-check.mjs --staged || true
+fi
+
+# --- 2) Health check (blocks on failure) --------------------------------------
+# Runs the SAME check.bat you run by hand — single source of truth for the
+# parallel/cached typecheck + tests + lint and the pwsh/powershell selection.
+if [ "$SKIP_CHECK" = "1" ]; then
+  echo "check: skipped (SKIP_CHECK=1)"
+  exit 0
+fi
+[ -f check.bat ] || exit 0
+
+./check.bat || {
+  echo ""
+  echo "Commit blocked by failing checks above."
+  echo "Fix them, or bypass with: git commit --no-verify"
+  exit 1
+}
 exit 0
