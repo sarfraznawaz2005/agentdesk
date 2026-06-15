@@ -11,6 +11,7 @@ import { formatBudget } from "../freelance/budget";
 import { fetchAllPlatforms } from "../freelance/fetcher";
 import { getCurrencyRates } from "../freelance/currency-exchange";
 import { getOrCreateEngine, broadcastToWebview } from "../engine-manager";
+import { isFilteredVerdict } from "./freelance-wizard";
 import type { FreelanceListingDto, FreelanceListingStatus } from "../../shared/rpc/freelance";
 
 const PAGE_SIZE = 20;
@@ -145,6 +146,9 @@ export async function getListings(params: {
       try { return row.wizardBlockers ? (JSON.parse(row.wizardBlockers) as string[]) : null; } catch { return null; }
     })(),
     wizardAnalysisText: row.wizardAnalysisText ?? null,
+    // Yellow (filtered) vs red (true Condition A/B fail): prefers the persisted
+    // wizard_block_kind (v44+); falls back to the reason string for legacy rows.
+    wizardFiltered: isFilteredVerdict(row.wizardVerdict, row.wizardBlockKind, row.wizardReason),
     hasBid: sentBidIds.has(row.id),
     fullDescription: row.fullDescription ?? null,
   }));

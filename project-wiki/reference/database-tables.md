@@ -2,7 +2,7 @@
 title: Database Tables Reference
 type: reference
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-15
 sources:
   - src/bun/db/schema.ts
   - src/bun/db/migrate.ts
@@ -94,7 +94,7 @@ every column — read the cited line for the full definition.
 | `remote_sync_items` | `:950` | Local↔remote file manifest (drives push diff detection). | `remotePath`/`localPath`, `size`, `remoteMtime`, `sha256` |
 | `custom_env_vars` | `:968` | User-defined env vars from Settings. | `name` (unique), `value` |
 | `remote_sync_runs` | `:978` | Remote-sync operation history (Activity tab). | `direction`, `status`, `okFiles`/`failedFiles`, `bytes` |
-| `freelance_listings` | `:675` | Fetched job listings (Auto-Earn). `skills` JSON; wizard verdict + client-quality columns. | `platform`/`externalId`, `wizardVerdict`, `wizardBlockers` (JSON), `fullDescription`, `clientRating`, `status`, `isDeleted` |
+| `freelance_listings` | `:675` | Fetched job listings (Auto-Earn). `skills` JSON; wizard verdict + client-quality columns. `wizardBlockKind` (v44) records a not_workable verdict's origin — `non_software`/`skill_gate`/`client_quality` (pre-filter → yellow) vs `analysis` (Condition A/B → red/green); NULL on legacy rows. | `platform`/`externalId`, `wizardVerdict`, `wizardBlockKind`, `wizardBlockers` (JSON), `fullDescription`, `clientRating`, `status`, `isDeleted` |
 | `freelance_chat_messages` | `:706` | Per-listing AI chat history. | `listingId` (FK), `role`, `content` |
 | `freelance_accounts` | `:722` | Connected freelance accounts (one row/platform). `profileSkills` JSON pre-filters unbiddable projects. | `platform` (unique), `selfUserId`, `autonomyMode`, `profileSkills` |
 | `freelance_inbox_threads` | `:736` | Intercepted platform inbox threads. PK = platform thread id. `contextId` is the correlation key to listings. | `clientUserId`, `contextId`, `listingId`, `linkConfidence`, `lastMessageAt`, `unread` |

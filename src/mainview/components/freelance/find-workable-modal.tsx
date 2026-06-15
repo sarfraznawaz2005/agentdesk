@@ -311,6 +311,15 @@ function FailedListingRow({ listing }: { listing: WizardFailedListing }) {
           <Square className="size-4" />
         </span>
         <span className="flex-1 text-sm text-muted-foreground truncate">{listing.title}</span>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+            listing.filtered
+              ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+          }`}
+        >
+          {listing.filtered ? "Filtered" : "Analysis"}
+        </span>
         {hasDetails && (
           <span className="shrink-0 text-muted-foreground">
             {expanded ? <ChevronDown className="size-3.5" /> : <Info className="size-3.5" />}

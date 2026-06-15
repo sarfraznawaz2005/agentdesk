@@ -248,6 +248,7 @@ function AnalysisModal({
   open,
   onClose,
   verdict,
+  filtered,
   reason,
   blockers,
   analysisText,
@@ -255,12 +256,22 @@ function AnalysisModal({
   open: boolean;
   onClose: () => void;
   verdict: "workable" | "not_workable" | null;
+  filtered: boolean;
   reason: string | null;
   blockers: string[] | null;
   analysisText: string | null;
 }) {
   if (!open) return null;
   const isWorkable = verdict === "workable";
+  // Three states: workable → green, filtered-out by a pre-filter → yellow,
+  // failed the real Condition A/B analysis → red.
+  const badgeClass = isWorkable
+    ? "bg-green-500/15 text-green-600 border border-green-500/30"
+    : filtered
+      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+      : "bg-red-500/15 text-red-600 border border-red-500/30";
+  const bulletClass = filtered && !isWorkable ? "bg-amber-400" : "bg-red-400";
+  const badgeLabel = isWorkable ? "Workable" : filtered ? "Filtered Out" : "Not Workable";
 
   return (
     <div
@@ -279,12 +290,10 @@ function AnalysisModal({
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                isWorkable
-                  ? "bg-green-500/15 text-green-600 border border-green-500/30"
-                  : "bg-red-500/15 text-red-600 border border-red-500/30",
+                badgeClass,
               )}
             >
-              {isWorkable ? "Workable" : "Not Workable"}
+              {badgeLabel}
             </span>
           </div>
           <button
@@ -321,7 +330,7 @@ function AnalysisModal({
                 <ul className="mt-1 flex flex-col gap-1">
                   {blockers.map((b, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                      <span className="mt-1.5 size-1.5 rounded-full bg-red-400 shrink-0" />
+                      <span className={cn("mt-1.5 size-1.5 rounded-full shrink-0", bulletClass)} />
                       {b}
                     </li>
                   ))}
@@ -345,7 +354,7 @@ export interface FreelanceListingCardProps {
   onDelete: () => Promise<void>;
   onShortlist?: () => Promise<void>;
   onMarkDone?: () => Promise<void>;
-  onAnalyze?: () => Promise<{ verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string }>;
+  onAnalyze?: () => Promise<{ verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string; filtered: boolean }>;
   isAnalyzing?: boolean;
   autoOpenAnalysis?: boolean;
   onAnalysisModalClose?: () => void;
@@ -389,6 +398,7 @@ export function FreelanceListingCard({
     reason: string;
     blockers: string[];
     analysisText: string;
+    filtered: boolean;
   } | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -428,6 +438,7 @@ export function FreelanceListingCard({
     reason: listing.wizardReason ?? "",
     blockers: listing.wizardBlockers ?? [],
     analysisText: listing.wizardAnalysisText ?? "",
+    filtered: listing.wizardFiltered,
   } : null);
   const hasAnalysis = Boolean(analysisData);
 
@@ -559,7 +570,9 @@ export function FreelanceListingCard({
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 analysisData.verdict === "workable"
                   ? "bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/20"
-                  : "bg-red-500/10 text-red-600 border-red-500/30 hover:bg-red-500/20",
+                  : analysisData.filtered
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                    : "bg-red-500/10 text-red-600 border-red-500/30 hover:bg-red-500/20",
               )}
             >
               <Sparkles className="size-3.5" />
@@ -822,6 +835,7 @@ export function FreelanceListingCard({
             onAnalysisModalClose?.();
           }}
           verdict={analysisData.verdict}
+          filtered={analysisData.filtered}
           reason={analysisData.reason}
           blockers={analysisData.blockers}
           analysisText={analysisData.analysisText}

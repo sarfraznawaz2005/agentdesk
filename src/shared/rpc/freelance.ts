@@ -26,6 +26,13 @@ export interface FreelanceListingDto {
   wizardReason: string | null;
   wizardBlockers: string[] | null;
   wizardAnalysisText: string | null;
+  /**
+   * True when a `not_workable` verdict came from a deterministic pre-filter
+   * (non-software keyword, skill gate, client-quality gate) rather than the
+   * real Condition A/B feasibility analysis. Drives yellow vs red in the UI.
+   * Always false for `workable` and for AI-analysed `not_workable` verdicts.
+   */
+  wizardFiltered: boolean;
   /** True when a bid for this listing has already been sent (outbox status = 'sent'). */
   hasBid: boolean;
   /** Full description extracted from the listing page. null = never fetched, "" = fetch failed. */
@@ -46,6 +53,8 @@ export interface WizardFailedListing {
   title: string;
   reason: string;
   blockers: string[];
+  /** True when excluded by a deterministic pre-filter rather than the AI feasibility analysis. */
+  filtered: boolean;
 }
 
 // ─── Auto-Earn inbox (read-only v1) ───────────────────────────────────────────
@@ -433,6 +442,8 @@ export type FreelanceRequests = {
       reason: string;
       blockers: string[];
       analysisText: string;
+      /** True when the not_workable verdict came from a pre-filter, not the AI analysis. */
+      filtered: boolean;
     };
   };
   "freelance.shortlistListings": {

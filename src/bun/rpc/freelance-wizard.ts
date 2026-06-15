@@ -90,6 +90,10 @@ function isObviouslyNonSoftware(listing: typeof freelanceListings.$inferSelect):
   return NON_SOFTWARE_PATTERNS.some((p) => p.test(corpus));
 }
 
+// The verdict reason recorded when the keyword pre-filter fires. A constant so the
+// classifier below stays in sync with the value persisted in `runWizard` / `runAutoShortlist`.
+const NON_SOFTWARE_REASON = "Non-software or in-person project detected.";
+
 // ---------------------------------------------------------------------------
 // Skill-gate pre-filter
 // Freelancer.com only lets you bid when your PROFILE shares at least one skill
@@ -125,9 +129,12 @@ const SKILL_GATE_REASON = "Bidding blocked — your Freelancer profile has none 
 // instead of staying stale until the TTL expires.
 function isStaleGateVerdict(listing: typeof freelanceListings.$inferSelect): boolean {
   if (listing.wizardVerdict !== "not_workable") return false;
+  // Authoritative signal: the persisted block kind (v44+). Skill-gate and client-quality
+  // verdicts are recomputed live every run, so their cached copies must be treated as stale
+  // so a profile/threshold change takes effect immediately instead of waiting out the 24h TTL.
+  if (listing.wizardBlockKind) return LIVE_RECOMPUTED_BLOCK_KINDS.has(listing.wizardBlockKind);
+  // Legacy rows (pre-v44, block_kind NULL): fall back to the same reason strings the gates write.
   const reason = listing.wizardReason ?? "";
-  // Both skill-gate and client-quality-gate verdicts are recomputed live on every run,
-  // so cached copies must be treated as stale so threshold changes take effect immediately.
   return reason === SKILL_GATE_REASON || reason.startsWith(CLIENT_QUALITY_GATE_REASON_PREFIX);
 }
 
@@ -307,6 +314,63 @@ function daysSince(memberSinceStr: string): number | null {
 }
 
 const CLIENT_QUALITY_GATE_REASON_PREFIX = "Client quality:";
+
+// ---------------------------------------------------------------------------
+// Verdict origin classifier
+//
+// A `not_workable` verdict has two origins: the real Condition A/B feasibility
+// analysis, or one of the deterministic pre-filters (non-software keyword, skill
+// gate, client-quality gate). The UI shows red for a true analysis fail but yellow
+// for a pre-filter block.
+//
+// The authoritative signal is the persisted `wizard_block_kind` column (v44+).
+// `isFilteredNotWorkableReason` remains the fallback for legacy rows persisted
+// before v44 (block_kind NULL), classified by the same reason strings the gates
+// write — the approach `isStaleGateVerdict` already relies on.
+// ---------------------------------------------------------------------------
+
+// Persisted in `wizard_block_kind`. Filter kinds render yellow; "analysis" renders red/green.
+export const BLOCK_KIND_NON_SOFTWARE = "non_software";
+export const BLOCK_KIND_SKILL_GATE = "skill_gate";
+export const BLOCK_KIND_CLIENT_QUALITY = "client_quality";
+export const BLOCK_KIND_ANALYSIS = "analysis";
+
+const FILTER_BLOCK_KINDS = new Set<string>([
+  BLOCK_KIND_NON_SOFTWARE,
+  BLOCK_KIND_SKILL_GATE,
+  BLOCK_KIND_CLIENT_QUALITY,
+]);
+
+// Block kinds whose verdict depends on MUTABLE inputs (profile skills, client-quality
+// thresholds) and is therefore recomputed live on every run — a cached copy must be
+// treated as stale so a settings change takes effect immediately (see isStaleGateVerdict).
+// NON_SOFTWARE is deliberately excluded: it is also a filter, but its verdict is stable
+// (keyed only on the listing's own text) and is already re-checked before the cache path.
+const LIVE_RECOMPUTED_BLOCK_KINDS = new Set<string>([
+  BLOCK_KIND_SKILL_GATE,
+  BLOCK_KIND_CLIENT_QUALITY,
+]);
+
+export function isFilteredNotWorkableReason(reason: string | null | undefined): boolean {
+  if (!reason) return false;
+  return (
+    reason === NON_SOFTWARE_REASON ||
+    reason === SKILL_GATE_REASON ||
+    reason.startsWith(CLIENT_QUALITY_GATE_REASON_PREFIX)
+  );
+}
+
+// Single source of truth for the yellow-vs-red decision. Prefers the persisted
+// block kind; falls back to the reason string for legacy (pre-v44) rows.
+export function isFilteredVerdict(
+  verdict: string | null | undefined,
+  blockKind: string | null | undefined,
+  reason: string | null | undefined,
+): boolean {
+  if (verdict !== "not_workable") return false;
+  if (blockKind) return FILTER_BLOCK_KINDS.has(blockKind);
+  return isFilteredNotWorkableReason(reason);
+}
 
 interface GateResult {
   reason: string;
@@ -816,7 +880,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
   const failedListings: WizardFailedListing[] = [];
   // Verdicts are only persisted to DB when the wizard completes successfully (not when stopped).
   // This prevents stopped runs from polluting the cache for future runs.
-  const verdictMap = new Map<string, { verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string }>();
+  const verdictMap = new Map<string, { verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string; blockKind: string }>();
   try {
     let adapter: ReturnType<typeof createProviderAdapter>;
     let modelId: string;
@@ -933,8 +997,8 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
 
       // Keyword pre-filter: skip obvious non-software listings immediately
       if (isObviouslyNonSoftware(listing)) {
-        verdictMap.set(listing.id, { verdict: "not_workable", reason: "Non-software or in-person project detected.", blockers: [], analysisText: "This listing was automatically filtered out by keyword detection. It appears to require non-software or in-person work that AI agents cannot perform remotely." });
-        failedListings.push({ id: listing.id, title: listing.title, reason: "Non-software or in-person project detected.", blockers: [] });
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: NON_SOFTWARE_REASON, blockers: [], analysisText: "This listing was automatically filtered out by keyword detection. It appears to require non-software or in-person work that AI agents cannot perform remotely.", blockKind: BLOCK_KIND_NON_SOFTWARE });
+        failedListings.push({ id: listing.id, title: listing.title, reason: NON_SOFTWARE_REASON, blockers: [], filtered: true });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -945,8 +1009,8 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       // Freelancer would block the bid — mark not workable without spending AI analysis.
       const gate = skillGateBlocks(listing, profileSkills);
       if (gate) {
-        verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText });
-        failedListings.push({ id: listing.id, title: listing.title, reason: gate.reason, blockers: gate.blockers });
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, blockKind: BLOCK_KIND_SKILL_GATE });
+        failedListings.push({ id: listing.id, title: listing.title, reason: gate.reason, blockers: gate.blockers, filtered: true });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -956,8 +1020,8 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       // Client quality gate: filter out low-review / brand-new clients before AI analysis.
       const cGate = clientQualityGate(listing, aeSettings);
       if (cGate) {
-        verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText });
-        failedListings.push({ id: listing.id, title: listing.title, reason: cGate.reason, blockers: cGate.blockers });
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
+        failedListings.push({ id: listing.id, title: listing.title, reason: cGate.reason, blockers: cGate.blockers, filtered: true });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -981,7 +1045,13 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
             currency: listing.currency,
           });
         } else {
-          failedListings.push({ id: listing.id, title: listing.title, reason: "Did not pass workability check (cached result).", blockers: [] });
+          failedListings.push({
+            id: listing.id,
+            title: listing.title,
+            reason: "Did not pass workability check (cached result).",
+            blockers: [],
+            filtered: isFilteredVerdict(listing.wizardVerdict, listing.wizardBlockKind, listing.wizardReason),
+          });
         }
         continue;
       }
@@ -1003,7 +1073,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
         workable = verdict.workable;
         failReason = verdict.reason || failReason;
         failBlockers = verdict.blockers;
-        verdictMap.set(listing.id, { verdict: workable ? "workable" : "not_workable", reason: verdict.reason, blockers: verdict.blockers, analysisText });
+        verdictMap.set(listing.id, { verdict: workable ? "workable" : "not_workable", reason: verdict.reason, blockers: verdict.blockers, analysisText, blockKind: BLOCK_KIND_ANALYSIS });
       } catch (err) {
         if (isAbortError(err)) break;
         console.error(`[wizard] AI analysis failed for ${listing.id}:`, err);
@@ -1027,7 +1097,8 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
           currency: listing.currency,
         });
       } else {
-        failedListings.push({ id: listing.id, title: listing.title, reason: failReason, blockers: failBlockers });
+        // Reached only via the real Condition A/B analysis (or its error path) — never a pre-filter.
+        failedListings.push({ id: listing.id, title: listing.title, reason: failReason, blockers: failBlockers, filtered: false });
       }
     }
 
@@ -1039,11 +1110,11 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       if (verdictMap.size > 0) {
         const now = new Date().toISOString();
         const stmt = sqlite.prepare(
-          "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
+          "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
         );
         sqlite.transaction(() => {
-          for (const [id, { verdict, reason, blockers, analysisText }] of verdictMap) {
-            stmt.run(verdict, now, reason, JSON.stringify(blockers), analysisText, id);
+          for (const [id, { verdict, reason, blockers, analysisText, blockKind }] of verdictMap) {
+            stmt.run(verdict, now, reason, JSON.stringify(blockers), analysisText, blockKind, id);
           }
         })();
       }
@@ -1111,7 +1182,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
   const { signal } = controller;
 
   const workableListings: WizardWorkableListing[] = [];
-  const verdictMap = new Map<string, { verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string }>();
+  const verdictMap = new Map<string, { verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string; blockKind: string }>();
 
   try {
     let adapter: ReturnType<typeof createProviderAdapter>;
@@ -1145,21 +1216,21 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       if (signal.aborted) break;
 
       if (isObviouslyNonSoftware(listing)) {
-        verdictMap.set(listing.id, { verdict: "not_workable", reason: "Non-software or in-person project detected.", blockers: [], analysisText: "This listing was automatically filtered out by keyword detection. It appears to require non-software or in-person work that AI agents cannot perform remotely." });
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: NON_SOFTWARE_REASON, blockers: [], analysisText: "This listing was automatically filtered out by keyword detection. It appears to require non-software or in-person work that AI agents cannot perform remotely.", blockKind: BLOCK_KIND_NON_SOFTWARE });
         continue;
       }
 
       // Skill-gate pre-filter (see skillGateBlocks): no profile-skill overlap ⇒ bid blocked.
       const gate = skillGateBlocks(listing, profileSkills);
       if (gate) {
-        verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText });
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, blockKind: BLOCK_KIND_SKILL_GATE });
         continue;
       }
 
       // Client quality gate (see clientQualityGate): low-review / brand-new client ⇒ blocked.
       const cGate = clientQualityGate(listing, aeSettings);
       if (cGate) {
-        verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText });
+        verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
         continue;
       }
 
@@ -1221,7 +1292,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         // The pre-fetch check above failed-open because clientReviewCount was null in the DB.
         const cGateRecheck = clientQualityGate(listing, aeSettings);
         if (cGateRecheck) {
-          verdictMap.set(listing.id, { verdict: "not_workable", reason: cGateRecheck.reason, blockers: cGateRecheck.blockers, analysisText: cGateRecheck.analysisText });
+          verdictMap.set(listing.id, { verdict: "not_workable", reason: cGateRecheck.reason, blockers: cGateRecheck.blockers, analysisText: cGateRecheck.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
           continue;
         }
       }
@@ -1230,7 +1301,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
 
       try {
         const { verdict, analysisText } = await analyzeListingWorkability(listing, fullDescription, adapter, modelId, signal, additionalNotes);
-        verdictMap.set(listing.id, { verdict: verdict.workable ? "workable" : "not_workable", reason: verdict.reason, blockers: verdict.blockers, analysisText });
+        verdictMap.set(listing.id, { verdict: verdict.workable ? "workable" : "not_workable", reason: verdict.reason, blockers: verdict.blockers, analysisText, blockKind: BLOCK_KIND_ANALYSIS });
         if (verdict.workable) {
           workableListings.push({
             id: listing.id,
@@ -1252,11 +1323,11 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       if (verdictMap.size > 0) {
         const now = new Date().toISOString();
         const stmt = sqlite.prepare(
-          "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
+          "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
         );
         sqlite.transaction(() => {
-          for (const [id, { verdict, reason, blockers, analysisText }] of verdictMap) {
-            stmt.run(verdict, now, reason, JSON.stringify(blockers), analysisText, id);
+          for (const [id, { verdict, reason, blockers, analysisText, blockKind }] of verdictMap) {
+            stmt.run(verdict, now, reason, JSON.stringify(blockers), analysisText, blockKind, id);
           }
         })();
       }
@@ -1269,7 +1340,6 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             .set({ status: "shortlisted", updatedAt: nowTs })
             .where(eq(freelanceListings.id, listing.id));
         }
-        broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
 
         const body = workableListings.length === 1
           ? `"${workableListings[0].title}" has been auto-shortlisted.`
@@ -1317,6 +1387,14 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         }
       }
 
+      // Reflect freshly persisted verdicts (analysis labels) AND any shortlist moves on an
+      // already-open Listings page immediately. This runs after all DB writes so one reload
+      // shows both. Crucially it fires even when zero workable were found — exactly the case
+      // the old workable-gated broadcast missed, leaving the page stale until manual navigation.
+      if (verdictMap.size > 0 || workableListings.length > 0) {
+        broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+      }
+
       // Update last run metadata
       const runTs = new Date().toISOString();
       await saveFreelanceSetting("autoShortlistLastRun", runTs);
@@ -1340,6 +1418,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   reason: string;
   blockers: string[];
   analysisText: string;
+  filtered: boolean;
 }> {
   const rows = await db.select().from(freelanceListings).where(eq(freelanceListings.id, params.listingId)).limit(1);
   const listing = rows[0];
@@ -1350,10 +1429,10 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   if (gate) {
     const nowTs = new Date().toISOString();
     sqlite.prepare(
-      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
-    ).run("not_workable", nowTs, gate.reason, JSON.stringify(gate.blockers), gate.analysisText, listing.id);
+      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
+    ).run("not_workable", nowTs, gate.reason, JSON.stringify(gate.blockers), gate.analysisText, BLOCK_KIND_SKILL_GATE, listing.id);
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
-    return { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText };
+    return { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, filtered: true };
   }
 
   let adapter: ReturnType<typeof createProviderAdapter>;
@@ -1408,10 +1487,10 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   if (cGate) {
     const nowTs = new Date().toISOString();
     sqlite.prepare(
-      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
-    ).run("not_workable", nowTs, cGate.reason, JSON.stringify(cGate.blockers), cGate.analysisText, listing.id);
+      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
+    ).run("not_workable", nowTs, cGate.reason, JSON.stringify(cGate.blockers), cGate.analysisText, BLOCK_KIND_CLIENT_QUALITY, listing.id);
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
-    return { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText };
+    return { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, filtered: true };
   }
 
   const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");
@@ -1421,13 +1500,14 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
 
     const now = new Date().toISOString();
     sqlite.prepare(
-      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ? WHERE id = ?",
+      "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
     ).run(
       verdict.workable ? "workable" : "not_workable",
       now,
       verdict.reason,
       JSON.stringify(verdict.blockers),
       analysisText,
+      BLOCK_KIND_ANALYSIS,
       listing.id,
     );
 
@@ -1436,6 +1516,8 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       reason: verdict.reason,
       blockers: verdict.blockers,
       analysisText,
+      // A real Condition A/B analysis — never a pre-filter, so always red/green (not yellow).
+      filtered: false,
     };
 
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });

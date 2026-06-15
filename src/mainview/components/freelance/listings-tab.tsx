@@ -190,13 +190,18 @@ export function ListingsTab() {
             toast("info", "No new listings found.");
           }
         }
+        // A fetch brings in new listings — jump to page 1 so they're visible.
+        setPage(1);
+        void loadListings(1, statusFilter, debouncedSearch);
+      } else {
+        // Verdict/label updates (Find Workable, background auto-shortlist, single Analyze)
+        // change cards in place — refresh the current page so the user isn't yanked to page 1.
+        void loadListings(page, statusFilter, debouncedSearch);
       }
-      setPage(1);
-      void loadListings(1, statusFilter, debouncedSearch);
     };
     window.addEventListener("agentdesk:freelance-listings-updated", handler);
     return () => window.removeEventListener("agentdesk:freelance-listings-updated", handler);
-  }, [statusFilter, debouncedSearch, loadListings]);
+  }, [page, statusFilter, debouncedSearch, loadListings]);
 
   // ---- Actions -------------------------------------------------------------
 
