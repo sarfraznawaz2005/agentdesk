@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.1.1",
+        "title":  "Enhanced Verdict Tracking",
+        "changes":  [
+                        "New wizard_block_kind added to freelance listings for improved verdict tracking."
+                    ]
+    },
+    {
         "version":  "2.1.0",
         "title":  "Enhanced Agent Engine Features",
         "changes":  [
