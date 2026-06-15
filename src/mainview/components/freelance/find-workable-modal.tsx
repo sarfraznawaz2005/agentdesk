@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { rpc } from "@/lib/rpc";
 import type { WizardWorkableListing, WizardFailedListing } from "../../../shared/rpc/freelance";
 import { getCurrencySymbol } from "../../../shared/freelance-currencies";
+import { BLOCK_KIND_LABEL, pillTone, type PillTone } from "./block-kind";
+
+// Failed-row badge color per tone — mirrors the card pill (no hover state here).
+const BADGE_TONE_CLASSES: Record<PillTone, string> = {
+  green: "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400",
+  amber: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  sky: "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  red: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -313,12 +322,10 @@ function FailedListingRow({ listing }: { listing: WizardFailedListing }) {
         <span className="flex-1 text-sm text-muted-foreground truncate">{listing.title}</span>
         <span
           className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-            listing.filtered
-              ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+            BADGE_TONE_CLASSES[pillTone("not_workable", listing.blockKind, listing.filtered)]
           }`}
         >
-          {listing.filtered ? "Filtered" : "Analysis"}
+          {listing.blockKind ? BLOCK_KIND_LABEL[listing.blockKind] : listing.filtered ? "Filtered" : "Analysis"}
         </span>
         {hasDetails && (
           <span className="shrink-0 text-muted-foreground">

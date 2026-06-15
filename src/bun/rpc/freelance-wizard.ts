@@ -19,7 +19,7 @@ import { escalateToHuman } from "../freelance/expert/notify";
 import { FREELANCE_EVENTS } from "../freelance/events";
 import { formatBudget } from "../freelance/budget";
 import { sendDesktopNotification } from "../notifications/desktop";
-import type { WizardWorkableListing, WizardFailedListing } from "../../shared/rpc/freelance";
+import type { WizardWorkableListing, WizardFailedListing, FreelanceBlockKind } from "../../shared/rpc/freelance";
 
 // ---------------------------------------------------------------------------
 // Provider resolution for wizard / auto-shortlist
@@ -370,6 +370,27 @@ export function isFilteredVerdict(
   if (verdict !== "not_workable") return false;
   if (blockKind) return FILTER_BLOCK_KINDS.has(blockKind);
   return isFilteredNotWorkableReason(reason);
+}
+
+// Canonical origin of a `not_workable` verdict, for the one-word card label.
+// Prefers the persisted `wizard_block_kind` (v44+); for legacy rows (block_kind
+// NULL) it classifies by the same reason strings the gates write, defaulting an
+// unrecognised reason to the AI analysis fail. Returns null for non-fail verdicts.
+export function resolveBlockKind(
+  verdict: string | null | undefined,
+  blockKind: string | null | undefined,
+  reason: string | null | undefined,
+): FreelanceBlockKind | null {
+  if (verdict !== "not_workable") return null;
+  if (blockKind) {
+    return (FILTER_BLOCK_KINDS.has(blockKind) || blockKind === BLOCK_KIND_ANALYSIS
+      ? blockKind
+      : BLOCK_KIND_ANALYSIS) as FreelanceBlockKind;
+  }
+  if (reason === NON_SOFTWARE_REASON) return BLOCK_KIND_NON_SOFTWARE;
+  if (reason === SKILL_GATE_REASON) return BLOCK_KIND_SKILL_GATE;
+  if (reason?.startsWith(CLIENT_QUALITY_GATE_REASON_PREFIX)) return BLOCK_KIND_CLIENT_QUALITY;
+  return BLOCK_KIND_ANALYSIS;
 }
 
 interface GateResult {
@@ -998,7 +1019,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       // Keyword pre-filter: skip obvious non-software listings immediately
       if (isObviouslyNonSoftware(listing)) {
         verdictMap.set(listing.id, { verdict: "not_workable", reason: NON_SOFTWARE_REASON, blockers: [], analysisText: "This listing was automatically filtered out by keyword detection. It appears to require non-software or in-person work that AI agents cannot perform remotely.", blockKind: BLOCK_KIND_NON_SOFTWARE });
-        failedListings.push({ id: listing.id, title: listing.title, reason: NON_SOFTWARE_REASON, blockers: [], filtered: true });
+        failedListings.push({ id: listing.id, title: listing.title, reason: NON_SOFTWARE_REASON, blockers: [], filtered: true, blockKind: BLOCK_KIND_NON_SOFTWARE });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -1010,7 +1031,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       const gate = skillGateBlocks(listing, profileSkills);
       if (gate) {
         verdictMap.set(listing.id, { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, blockKind: BLOCK_KIND_SKILL_GATE });
-        failedListings.push({ id: listing.id, title: listing.title, reason: gate.reason, blockers: gate.blockers, filtered: true });
+        failedListings.push({ id: listing.id, title: listing.title, reason: gate.reason, blockers: gate.blockers, filtered: true, blockKind: BLOCK_KIND_SKILL_GATE });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -1021,7 +1042,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       const cGate = clientQualityGate(listing, aeSettings);
       if (cGate) {
         verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
-        failedListings.push({ id: listing.id, title: listing.title, reason: cGate.reason, blockers: cGate.blockers, filtered: true });
+        failedListings.push({ id: listing.id, title: listing.title, reason: cGate.reason, blockers: cGate.blockers, filtered: true, blockKind: BLOCK_KIND_CLIENT_QUALITY });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
           current, total, listingId: listing.id, title: listing.title, phase: "done", workable: false,
         });
@@ -1048,9 +1069,10 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
           failedListings.push({
             id: listing.id,
             title: listing.title,
-            reason: "Did not pass workability check (cached result).",
+            reason: listing.wizardReason || "Did not pass workability check (cached result).",
             blockers: [],
             filtered: isFilteredVerdict(listing.wizardVerdict, listing.wizardBlockKind, listing.wizardReason),
+            blockKind: resolveBlockKind(listing.wizardVerdict, listing.wizardBlockKind, listing.wizardReason),
           });
         }
         continue;
@@ -1098,7 +1120,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
         });
       } else {
         // Reached only via the real Condition A/B analysis (or its error path) — never a pre-filter.
-        failedListings.push({ id: listing.id, title: listing.title, reason: failReason, blockers: failBlockers, filtered: false });
+        failedListings.push({ id: listing.id, title: listing.title, reason: failReason, blockers: failBlockers, filtered: false, blockKind: BLOCK_KIND_ANALYSIS });
       }
     }
 
@@ -1419,6 +1441,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   blockers: string[];
   analysisText: string;
   filtered: boolean;
+  blockKind: FreelanceBlockKind | null;
 }> {
   const rows = await db.select().from(freelanceListings).where(eq(freelanceListings.id, params.listingId)).limit(1);
   const listing = rows[0];
@@ -1432,7 +1455,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
     ).run("not_workable", nowTs, gate.reason, JSON.stringify(gate.blockers), gate.analysisText, BLOCK_KIND_SKILL_GATE, listing.id);
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
-    return { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, filtered: true };
+    return { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, filtered: true, blockKind: BLOCK_KIND_SKILL_GATE };
   }
 
   let adapter: ReturnType<typeof createProviderAdapter>;
@@ -1490,7 +1513,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
     ).run("not_workable", nowTs, cGate.reason, JSON.stringify(cGate.blockers), cGate.analysisText, BLOCK_KIND_CLIENT_QUALITY, listing.id);
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
-    return { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, filtered: true };
+    return { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, filtered: true, blockKind: BLOCK_KIND_CLIENT_QUALITY };
   }
 
   const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");
@@ -1518,6 +1541,8 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       analysisText,
       // A real Condition A/B analysis — never a pre-filter, so always red/green (not yellow).
       filtered: false,
+      // Only a fail carries an origin; a workable verdict shows no reason chip.
+      blockKind: verdict.workable ? null : BLOCK_KIND_ANALYSIS,
     };
 
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });

@@ -1,5 +1,13 @@
 export type FreelanceListingStatus = "new" | "approved" | "closed" | "shortlisted";
 
+/**
+ * Origin of a `not_workable` verdict. The first three are deterministic
+ * pre-filters (render yellow); `analysis` is the AI Condition A/B feasibility
+ * fail (renders red). Drives the one-word reason shown after the "Analysis"
+ * label on a listing card. `null` only for `workable`/un-analysed listings.
+ */
+export type FreelanceBlockKind = "skill_gate" | "client_quality" | "non_software" | "analysis";
+
 export interface FreelanceChatMessageDto {
   id: string;
   role: "user" | "assistant";
@@ -33,6 +41,13 @@ export interface FreelanceListingDto {
    * Always false for `workable` and for AI-analysed `not_workable` verdicts.
    */
   wizardFiltered: boolean;
+  /**
+   * Canonical origin of a `not_workable` verdict — drives the one-word reason
+   * shown after "Analysis" on the card. Resolved from the persisted
+   * `wizard_block_kind` (v44+) with a reason-string fallback for legacy rows.
+   * `null` for `workable` and un-analysed listings.
+   */
+  wizardBlockKind: FreelanceBlockKind | null;
   /** True when a bid for this listing has already been sent (outbox status = 'sent'). */
   hasBid: boolean;
   /** Full description extracted from the listing page. null = never fetched, "" = fetch failed. */
@@ -55,6 +70,8 @@ export interface WizardFailedListing {
   blockers: string[];
   /** True when excluded by a deterministic pre-filter rather than the AI feasibility analysis. */
   filtered: boolean;
+  /** Canonical fail origin → the one-word reason shown on the row (same labels as the card). */
+  blockKind: FreelanceBlockKind | null;
 }
 
 // ─── Auto-Earn inbox (read-only v1) ───────────────────────────────────────────
@@ -444,6 +461,8 @@ export type FreelanceRequests = {
       analysisText: string;
       /** True when the not_workable verdict came from a pre-filter, not the AI analysis. */
       filtered: boolean;
+      /** Canonical fail origin → the one-word reason chip after "Analysis"; null when workable. */
+      blockKind: FreelanceBlockKind | null;
     };
   };
   "freelance.shortlistListings": {

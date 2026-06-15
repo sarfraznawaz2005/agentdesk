@@ -3,7 +3,7 @@ import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { Bookmark, CheckCircle2, ExternalLink, Loader2, MessageSquare, Trash2, Sparkles, X } from "lucide-react";
+import { Bookmark, CheckCircle2, ExternalLink, Filter, Loader2, MessageSquare, Trash2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { FreelanceChatModal } from "./freelance-chat-modal";
-import type { FreelanceListingDto } from "../../../shared/rpc/freelance";
+import type { FreelanceListingDto, FreelanceBlockKind } from "../../../shared/rpc/freelance";
+import { pillLabel, pillTone, isFilterBlockKind, type PillTone } from "./block-kind";
 import { getCurrencySymbol } from "../../../shared/freelance-currencies";
 
 // ---------------------------------------------------------------------------
@@ -354,7 +355,7 @@ export interface FreelanceListingCardProps {
   onDelete: () => Promise<void>;
   onShortlist?: () => Promise<void>;
   onMarkDone?: () => Promise<void>;
-  onAnalyze?: () => Promise<{ verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string; filtered: boolean }>;
+  onAnalyze?: () => Promise<{ verdict: "workable" | "not_workable"; reason: string; blockers: string[]; analysisText: string; filtered: boolean; blockKind: FreelanceBlockKind | null }>;
   isAnalyzing?: boolean;
   autoOpenAnalysis?: boolean;
   onAnalysisModalClose?: () => void;
@@ -369,6 +370,15 @@ export interface FreelanceListingCardProps {
 }
 
 const DESCRIPTION_TRUNCATE_LENGTH = 200; // only used to decide whether to show "View Full Description"
+
+// Verdict-pill color per tone (see pillTone). client_quality → sky, distinct
+// from the amber skill/keyword filters; workable → green; AI fail → red.
+const PILL_TONE_CLASSES: Record<PillTone, string> = {
+  green: "bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/20",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20",
+  sky: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30 hover:bg-sky-500/20",
+  red: "bg-red-500/10 text-red-600 border-red-500/30 hover:bg-red-500/20",
+};
 
 export function FreelanceListingCard({
   listing,
@@ -399,6 +409,7 @@ export function FreelanceListingCard({
     blockers: string[];
     analysisText: string;
     filtered: boolean;
+    blockKind: FreelanceBlockKind | null;
   } | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -439,6 +450,7 @@ export function FreelanceListingCard({
     blockers: listing.wizardBlockers ?? [],
     analysisText: listing.wizardAnalysisText ?? "",
     filtered: listing.wizardFiltered,
+    blockKind: listing.wizardBlockKind,
   } : null);
   const hasAnalysis = Boolean(analysisData);
 
@@ -561,22 +573,29 @@ export function FreelanceListingCard({
             </button>
           )}
           {analysisData && (
-            <Tip content="View AI analysis" side="top">
+            <Tip
+              content={
+                analysisData.verdict !== "workable" && analysisData.reason
+                  ? analysisData.reason
+                  : "View AI analysis"
+              }
+              side="top"
+            >
               <button
                 type="button"
                 onClick={() => setAnalysisOpen(true)}
                 aria-label="View AI analysis"
                 className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                analysisData.verdict === "workable"
-                  ? "bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/20"
-                  : analysisData.filtered
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
-                    : "bg-red-500/10 text-red-600 border-red-500/30 hover:bg-red-500/20",
+                PILL_TONE_CLASSES[pillTone(analysisData.verdict, analysisData.blockKind, analysisData.filtered)],
               )}
             >
-              <Sparkles className="size-3.5" />
-              Analysis
+              {isFilterBlockKind(analysisData.blockKind) ? (
+                <Filter className="size-3.5" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {pillLabel(analysisData.verdict, analysisData.blockKind)}
               </button>
             </Tip>
           )}

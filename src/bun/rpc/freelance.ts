@@ -11,7 +11,7 @@ import { formatBudget } from "../freelance/budget";
 import { fetchAllPlatforms } from "../freelance/fetcher";
 import { getCurrencyRates } from "../freelance/currency-exchange";
 import { getOrCreateEngine, broadcastToWebview } from "../engine-manager";
-import { isFilteredVerdict } from "./freelance-wizard";
+import { isFilteredVerdict, resolveBlockKind } from "./freelance-wizard";
 import type { FreelanceListingDto, FreelanceListingStatus } from "../../shared/rpc/freelance";
 
 const PAGE_SIZE = 20;
@@ -149,6 +149,8 @@ export async function getListings(params: {
     // Yellow (filtered) vs red (true Condition A/B fail): prefers the persisted
     // wizard_block_kind (v44+); falls back to the reason string for legacy rows.
     wizardFiltered: isFilteredVerdict(row.wizardVerdict, row.wizardBlockKind, row.wizardReason),
+    // Canonical fail origin → the one-word reason chip after "Analysis" on the card.
+    wizardBlockKind: resolveBlockKind(row.wizardVerdict, row.wizardBlockKind, row.wizardReason),
     hasBid: sentBidIds.has(row.id),
     fullDescription: row.fullDescription ?? null,
   }));
