@@ -5,6 +5,8 @@ import { rpc } from "../../lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { FreelanceListingCard } from "./listing-card";
 import { FindWorkableModal } from "./find-workable-modal";
+import { Tip } from "@/components/ui/tooltip";
+import { LISTING_KIND_CHIPS } from "./block-kind";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { FreelanceListingDto } from "../../../shared/rpc/freelance";
+import type { FreelanceListingDto, FreelanceListingKind } from "../../../shared/rpc/freelance";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,6 +70,12 @@ export function ListingsTab() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
+  // New-tab verdict-chip filter. Held in a ref too so the post-action reload
+  // callbacks (approve/delete/etc.) pick up the current value without threading
+  // it through loadListings' signature.
+  const [kindFilter, setKindFilter] = useState<FreelanceListingKind | undefined>(undefined);
+  const kindFilterRef = useRef<FreelanceListingKind | undefined>(undefined);
+  kindFilterRef.current = kindFilter;
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [search, setSearch] = useState("");
@@ -148,7 +156,7 @@ export function ListingsTab() {
       setLoading(true);
       try {
         const [result] = await Promise.all([
-          rpc.freelanceGetListings({ status, page: p, search: q || undefined }),
+          rpc.freelanceGetListings({ status, page: p, search: q || undefined, kind: status === "new" ? kindFilterRef.current : undefined }),
           loadCounts(),
         ]);
         setListings(result.listings);
@@ -164,7 +172,25 @@ export function ListingsTab() {
 
   useEffect(() => {
     void loadListings(page, statusFilter, debouncedSearch);
-  }, [page, statusFilter, debouncedSearch, loadListings]);
+    // kindFilter is read via ref inside loadListings; listed here so changing a
+    // chip re-runs the load.
+  }, [page, statusFilter, debouncedSearch, kindFilter, loadListings]);
+
+  // The verdict chips live only on the New tab — clear the filter when leaving it.
+  useEffect(() => {
+    if (statusFilter !== "new") setKindFilter(undefined);
+  }, [statusFilter]);
+
+  // Toggle a verdict chip: clicking the active one clears it. Reset to page 1
+  // since the filtered result set changes.
+  const handleKindFilter = useCallback((kind: FreelanceListingKind) => {
+    setKindFilter((prev) => (prev === kind ? undefined : kind));
+    setPage(1);
+    // Selection is view-scoped — changing the chip changes the visible set, so
+    // reset it like the status/search/page navigations do (avoids deleting
+    // now-hidden listings still held in selectedIds).
+    setSelectedIds(new Set());
+  }, []);
 
   // ---- Server-push: fetch started (manual or scheduled) -------------------
 
@@ -483,6 +509,31 @@ export function ListingsTab() {
         </div>
       </div>
 
+      {/* Verdict filter chips — New tab only, far right, just above the list */}
+      {statusFilter === "new" && (
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Filter:</span>
+          {LISTING_KIND_CHIPS.map((chip) => {
+            const active = kindFilter === chip.kind;
+            return (
+              <Tip key={chip.kind} content={chip.tooltip} side="top">
+                <button
+                  type="button"
+                  aria-label={`Filter by ${chip.label}`}
+                  aria-pressed={active}
+                  onClick={() => handleKindFilter(chip.kind)}
+                  className={`size-5 rounded-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${chip.swatch} ${
+                    active
+                      ? `ring-2 ring-offset-2 ring-offset-background ${chip.ring}`
+                      : "opacity-50 hover:opacity-100"
+                  }`}
+                />
+              </Tip>
+            );
+          })}
+        </div>
+      )}
+
       {/* List area */}
       {loading ? (
         <div className="space-y-3" aria-busy="true" aria-label="Loading listings">
@@ -493,9 +544,13 @@ export function ListingsTab() {
       ) : listings.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-muted-foreground text-sm">
-            {debouncedSearch ? `No listings match "${debouncedSearch}".` : "No listings found."}
+            {debouncedSearch
+              ? `No listings match "${debouncedSearch}".`
+              : kindFilter
+                ? `No ${LISTING_KIND_CHIPS.find((c) => c.kind === kindFilter)?.label ?? ""} listings on this tab.`
+                : "No listings found."}
           </p>
-          {!debouncedSearch && (
+          {!debouncedSearch && !kindFilter && (
             <p className="text-muted-foreground text-xs mt-1">
               Configure keywords in Settings then click Fetch Now.
             </p>

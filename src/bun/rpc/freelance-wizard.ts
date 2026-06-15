@@ -1542,7 +1542,8 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       // A real Condition A/B analysis — never a pre-filter, so always red/green (not yellow).
       filtered: false,
       // Only a fail carries an origin; a workable verdict shows no reason chip.
-      blockKind: verdict.workable ? null : BLOCK_KIND_ANALYSIS,
+      // Cast pins the literal so the intermediate `const result` doesn't widen it to `string`.
+      blockKind: verdict.workable ? null : (BLOCK_KIND_ANALYSIS as FreelanceBlockKind),
     };
 
     broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });

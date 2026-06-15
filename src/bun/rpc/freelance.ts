@@ -1,4 +1,4 @@
-import { eq, desc, count, and, or, like, inArray } from "drizzle-orm";
+import { eq, desc, count, and, or, like, inArray, sql } from "drizzle-orm";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { sqlite } from "../db/connection";
@@ -12,7 +12,30 @@ import { fetchAllPlatforms } from "../freelance/fetcher";
 import { getCurrencyRates } from "../freelance/currency-exchange";
 import { getOrCreateEngine, broadcastToWebview } from "../engine-manager";
 import { isFilteredVerdict, resolveBlockKind } from "./freelance-wizard";
-import type { FreelanceListingDto, FreelanceListingStatus } from "../../shared/rpc/freelance";
+import type { FreelanceListingDto, FreelanceListingStatus, FreelanceListingKind } from "../../shared/rpc/freelance";
+
+// Verdict-bucket → SQL predicate for the New-tab filter chips. The red
+// "not_workable" chip merges in-person + AI fails (and legacy NULL-kind rows,
+// via COALESCE → 'analysis'); skill/client gates keep their own chips.
+function listingKindCondition(kind: FreelanceListingKind | undefined) {
+  switch (kind) {
+    case "unanalyzed":
+      return sql`${freelanceListings.wizardVerdict} IS NULL`;
+    case "workable":
+      return eq(freelanceListings.wizardVerdict, "workable");
+    case "skill_gate":
+      return and(eq(freelanceListings.wizardVerdict, "not_workable"), eq(freelanceListings.wizardBlockKind, "skill_gate"));
+    case "client_quality":
+      return and(eq(freelanceListings.wizardVerdict, "not_workable"), eq(freelanceListings.wizardBlockKind, "client_quality"));
+    case "not_workable":
+      return and(
+        eq(freelanceListings.wizardVerdict, "not_workable"),
+        sql`COALESCE(${freelanceListings.wizardBlockKind}, 'analysis') NOT IN ('skill_gate', 'client_quality')`,
+      );
+    default:
+      return undefined;
+  }
+}
 
 const PAGE_SIZE = 20;
 
@@ -68,6 +91,7 @@ export async function getListings(params: {
   status?: FreelanceListingStatus;
   page?: number;
   search?: string;
+  kind?: FreelanceListingKind;
 }): Promise<{ listings: FreelanceListingDto[]; total: number; page: number }> {
   const page = params.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
@@ -86,14 +110,21 @@ export async function getListings(params: {
     notDeleted,
     params.status ? eq(freelanceListings.status, params.status) : undefined,
     searchFilter,
+    listingKindCondition(params.kind),
   );
+
+  // New tab: newest by posted date, falling back to fetched date when a listing
+  // has no posted timestamp. Other tabs keep fetched-date ordering.
+  const orderBy = params.status === "new"
+    ? desc(sql`COALESCE(${freelanceListings.postedAt}, ${freelanceListings.fetchedAt})`)
+    : desc(freelanceListings.fetchedAt);
 
   const [rows, totalRows] = await Promise.all([
     db
       .select()
       .from(freelanceListings)
       .where(where)
-      .orderBy(desc(freelanceListings.fetchedAt))
+      .orderBy(orderBy)
       .limit(PAGE_SIZE)
       .offset(offset),
     db.select({ count: count() }).from(freelanceListings).where(where),

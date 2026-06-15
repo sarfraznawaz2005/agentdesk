@@ -1431,7 +1431,7 @@ export const rpc = {
     electroviewRpc.request["freelance.getListingCounts"]({}),
 
   /** Fetch paginated listings. */
-  freelanceGetListings: (params?: { status?: "new" | "approved" | "shortlisted" | "closed"; page?: number; search?: string }) =>
+  freelanceGetListings: (params?: { status?: "new" | "approved" | "shortlisted" | "closed"; page?: number; search?: string; kind?: import("../../shared/rpc/freelance").FreelanceListingKind }) =>
     electroviewRpc.request["freelance.getListings"](params ?? {}),
 
   /** Approve a listing (creates a project). */

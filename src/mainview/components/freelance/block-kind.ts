@@ -1,4 +1,4 @@
-import type { FreelanceBlockKind } from "../../../shared/rpc/freelance";
+import type { FreelanceBlockKind, FreelanceListingKind } from "../../../shared/rpc/freelance";
 
 // One-word reason for a failed (non-green) verdict, keyed by the verdict's
 // canonical origin (wizard_block_kind). Shared by the listing card pill and the
@@ -46,3 +46,21 @@ export function pillTone(
   // Legacy rows (blockKind null): fall back to the old amber-vs-red filtered split.
   return filtered ? "amber" : "red";
 }
+
+// New-tab filter chips: a solid color swatch per verdict bucket. Order:
+// gray (un-analyzed) → green (workable) → blue (client filter) → amber
+// (missing skills) → red (not workable). `not_workable` is the merged-red
+// bucket (in-person + AI fail); the labels/tones stay aligned with the pills.
+export const LISTING_KIND_CHIPS: ReadonlyArray<{
+  kind: FreelanceListingKind;
+  label: string;
+  tooltip: string;
+  swatch: string;
+  ring: string;
+}> = [
+  { kind: "unanalyzed", label: "Un-analyzed", tooltip: "Un-analyzed — no verdict yet", swatch: "bg-zinc-400", ring: "ring-zinc-400" },
+  { kind: "workable", label: "Workable", tooltip: "Workable — agents can build the full ask", swatch: "bg-green-500", ring: "ring-green-500" },
+  { kind: "client_quality", label: "Client Filter", tooltip: "Client Filter — client fails your quality filters", swatch: "bg-sky-500", ring: "ring-sky-500" },
+  { kind: "skill_gate", label: "Missing Skills", tooltip: "Missing Skills — your profile shares no skills with the project", swatch: "bg-amber-500", ring: "ring-amber-500" },
+  { kind: "not_workable", label: "Not Workable", tooltip: "Not Workable — in-person work or AI judged it unbuildable", swatch: "bg-red-500", ring: "ring-red-500" },
+];

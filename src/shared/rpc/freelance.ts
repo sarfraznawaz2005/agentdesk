@@ -8,6 +8,19 @@ export type FreelanceListingStatus = "new" | "approved" | "closed" | "shortliste
  */
 export type FreelanceBlockKind = "skill_gate" | "client_quality" | "non_software" | "analysis";
 
+/**
+ * Verdict bucket used by the New-tab filter chips. Maps a listing to one of the
+ * colored chips: `workable` (green), `skill_gate` (amber), `client_quality`
+ * (sky), `not_workable` (red — merges `non_software` + `analysis` fails),
+ * `unanalyzed` (gray — no verdict yet). Applied server-side across all rows.
+ */
+export type FreelanceListingKind =
+  | "workable"
+  | "skill_gate"
+  | "client_quality"
+  | "not_workable"
+  | "unanalyzed";
+
 export interface FreelanceChatMessageDto {
   id: string;
   role: "user" | "assistant";
@@ -392,7 +405,7 @@ export type FreelanceRequests = {
     };
   };
   "freelance.getListings": {
-    params: { status?: FreelanceListingStatus; page?: number; search?: string };
+    params: { status?: FreelanceListingStatus; page?: number; search?: string; kind?: FreelanceListingKind };
     response: {
       listings: FreelanceListingDto[];
       total: number;
