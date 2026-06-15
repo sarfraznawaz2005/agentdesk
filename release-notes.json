@@ -1,5 +1,15 @@
 [
     {
+        "version":  "2.1.3",
+        "title":  "Enhancements and New Features",
+        "changes":  [
+                        "New pre-commit hook for project health checks and wiki drift detection to ensure better project integrity.",
+                        "Improved freelance listings with new verdict filtering and enhanced display logic for a better user experience.",
+                        "Updated freelance listings with block kind resolution and user interface improvements.",
+                        "Enhanced content validation for file operations and playground entry files to ensure accuracy and reliability."
+                    ]
+    },
+    {
         "version":  "2.1.2",
         "title":  "Enhanced Channel Routing",
         "changes":  [
