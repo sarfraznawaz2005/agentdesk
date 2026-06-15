@@ -2,7 +2,7 @@
 title: External Channels
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-15
 sources:
   - src/bun/channels/manager.ts
   - src/bun/channels/types.ts
@@ -82,9 +82,11 @@ platforms:
    `senderId`, and (Discord only) `msgChannelId` so outbound replies go to the
    originating channel snowflake, not the username (`manager.ts:507-512`).
 3. **Resolve the target project with zero config required**: channel's own
-   `projectId` → `default_channel_project_id` setting → first project by
-   `createdAt` (`manager.ts:519-540`). This is why channels "just work" out of
-   the box.
+   `projectId` (bound mode) → `default_channel_project_id` setting (explicit
+   override) → a dedicated per-platform **`<Platform> Chat`** project for global-mode
+   channels (`getOrCreateGlobalChannelProject`, created on first use + reused), with a
+   first-project safety net only if that project can't be created (`manager.ts:519-548`).
+   This is why channels "just work" out of the box.
 4. Ensure a **daily conversation** exists (`getOrCreateChannelConversation`,
    `manager.ts:585`) titled `Platform - YYYY-MM-DD` with a `channel:`-prefixed
    composite ID (`channel:{channelId}:{projectId}:{date}`) so the backend can
@@ -163,10 +165,25 @@ uses `getDefaultRecipient()` (self JID) and Email needs a prior inbound context
   the sender JID/address; from Discord it is the originating snowflake; but in the
   engine metadata it is the **config row UUID**. The recipient for outbound is
   re-derived from `lastInboundContext`, not from the engine's `channelId`.
-- **Zero-config routing can surprise.** An inbound message on an unbound channel
-  is routed to `default_channel_project_id`, or failing that the **first project
-  ever created** (`manager.ts:533-538`). A message can therefore land in an
-  unexpected project.
+- **Global-mode routing creates a dedicated project.** An inbound message on an
+  unbound (global) channel routes to `default_channel_project_id` if set, else to a
+  per-platform **`<Platform> Chat`** project that is auto-created on first use and
+  reused thereafter (`getOrCreateGlobalChannelProject`). All global channels of the
+  same platform share that one project. The old "first project ever created" path is
+  now only a safety net for when the chat project can't be created (e.g. no
+  `global_workspace_path` set), so a message is never dropped.
+- **Deleting a channel config must tear down its live adapter.** The inbound handler
+  is a closure over the in-memory `ChannelConfig` and outbound replies use the live
+  adapter in `activeAdapters`, so deleting only the DB row leaves the socket running —
+  the user could still chat after "disconnecting". Every delete RPC
+  (`deleteWhatsAppConfig`/`deleteDiscordConfig`/`deleteEmailConfig`) therefore calls
+  `disconnectChannel(id)` first, which closes the adapter and clears `activeAdapters`,
+  `channelConfigs`, and `lastInboundContext`. WhatsApp delete passes
+  `disconnectChannel(id, { logout: true })` so the optional `adapter.logout()` runs a
+  real Baileys `sock.logout()` (device disappears from the phone's Linked Devices),
+  bounded by a 4s timeout that falls back to a local close. Transient teardown
+  (reconnect, `shutdownChannelManager`) calls plain `disconnect()` so the session
+  survives for re-use — logout is delete-only.
 - **Email has no standing recipient.** `broadcastTaskDoneNotification` /
   `broadcastSchedulerResult` skip email entirely unless someone has emailed in
   first this session (no `getDefaultRecipient` on `EmailAdapter`).

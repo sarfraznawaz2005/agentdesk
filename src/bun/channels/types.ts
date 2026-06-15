@@ -36,4 +36,10 @@ export interface ChannelAdapter {
 	onMessage(handler: (msg: IncomingMessage) => void): void;
 	/** Return a default recipient for proactive (outbound-only) notifications, or null if unknown. */
 	getDefaultRecipient?(): string | null;
+	/**
+	 * Permanently unlink/sign out from the platform (vs. `disconnect`, which only closes the
+	 * socket so the session can be reused). Optional — only platforms with a persistent device
+	 * link (WhatsApp) implement it; used on delete so the account stops trusting this device.
+	 */
+	logout?(): Promise<void>;
 }

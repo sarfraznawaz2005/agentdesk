@@ -248,6 +248,15 @@ export async function createProjectHandler(
 	);
 
 	logAudit({ action: "project.create", entityType: "project", entityId: id, details: { name: params.name } });
+
+	// Notify any open webview so a newly created project appears live without a
+	// navigation/restart. Matters most for background creators that have no UI
+	// round-trip of their own — channel global-mode auto-create and workspace sync.
+	try {
+		const { broadcastToWebview } = await import("../engine-manager");
+		broadcastToWebview("projectsUpdated", { id, name: params.name });
+	} catch { /* non-fatal — window may be closed */ }
+
 	return { success: true, id };
 }
 

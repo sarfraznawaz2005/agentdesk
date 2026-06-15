@@ -32,6 +32,14 @@ export async function saveWhatsAppConfig(params: {
 }
 
 export async function deleteWhatsAppConfig(id: string) {
+	// Tear down the live socket FIRST. Deleting only the DB rows leaves the Baileys
+	// adapter alive in activeAdapters — its message listener (a closure over the
+	// in-memory config) keeps receiving and the engine keeps replying, so the user
+	// could still chat after "disconnecting". `logout: true` also unlinks the device
+	// from WhatsApp (removes it from the phone's Linked Devices), matching the
+	// danger-zone copy ("remove the session… scan a new QR to reconnect").
+	const { disconnectChannel } = await import("../channels/manager");
+	await disconnectChannel(id, { logout: true });
 	await db.delete(whatsappSessions).where(eq(whatsappSessions.channelId, id));
 	await db.delete(channels).where(eq(channels.id, id));
 	return { success: true };

@@ -246,6 +246,9 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       activityUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:activity-updated", { detail: payload }));
       },
+      projectsUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:projects-updated", { detail: payload }));
+      },
       recommendationStatusChanged: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:recommendation-status-changed", { detail: payload }));
       },

@@ -8,7 +8,7 @@
 //   - Outbound: sendMessage delegates to the appropriate connected adapter
 //   - Lifecycle: getStatuses, shutdown
 
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, and, sql } from "drizzle-orm";
 import { db } from "../db";
 import { channels, conversations, projects, settings } from "../db/schema";
 import { writeInboxMessage } from "../rpc/inbox";
@@ -351,15 +351,22 @@ export async function getOrCreateProjectChannelConversation(
 /**
  * Disconnect a single active adapter by channel ID.
  * No-op if no adapter is connected for the given channelId.
+ *
+ * Pass `{ logout: true }` to permanently unlink the platform session (WhatsApp device
+ * unlink) instead of merely closing the socket — used on delete, never on transient
+ * teardown (reconnect/shutdown), which must keep the session reusable.
  */
-export async function disconnectChannel(channelId: string): Promise<void> {
+export async function disconnectChannel(channelId: string, opts?: { logout?: boolean }): Promise<void> {
 	const adapter = activeAdapters.get(channelId);
 	if (!adapter) return;
 	try {
-		await adapter.disconnect();
+		if (opts?.logout && adapter.logout) await adapter.logout();
+		else await adapter.disconnect();
 	} catch { /* ignore */ }
 	activeAdapters.delete(channelId);
 	channelConfigs.delete(channelId);
+	// Drop any stashed reply-routing context so a deleted channel can't be replied to.
+	lastInboundContext.delete(channelId);
 	console.log(`[ChannelManager] Disconnected channel ${channelId}.`);
 }
 
@@ -512,8 +519,10 @@ async function handleIncomingMessage(
 	});
 
 	// Step 2 — route to engine.
-	// Priority: channel.projectId → default_channel_project_id setting → first project in DB.
-	// This means channels work globally with zero configuration.
+	// Priority: channel.projectId (bound mode) → default_channel_project_id setting (explicit
+	// override) → dedicated per-platform "<Platform> Chat" project (global mode, auto-created
+	// + reused). A first-project safety net only triggers if the chat project can't be created,
+	// so an inbound message is never dropped.
 	if (!engineResolver) return;
 
 	let routingProjectId = config.projectId;
@@ -531,7 +540,13 @@ async function handleIncomingMessage(
 	}
 
 	if (!routingProjectId) {
-		// Fall back to the first project — channels work without any config
+		// Global mode: route to the dedicated per-platform chat project (created on first use).
+		routingProjectId = await getOrCreateGlobalChannelProject(msg.platform);
+	}
+
+	if (!routingProjectId) {
+		// Safety net — only reached if the chat project couldn't be created (e.g. no global
+		// workspace configured). Route to the first project so the message isn't lost.
 		const firstProject = await db.select({ id: projects.id }).from(projects)
 			.orderBy(asc(projects.createdAt)).limit(1);
 		if (firstProject.length > 0) routingProjectId = firstProject[0].id;
@@ -571,6 +586,59 @@ async function handleIncomingMessage(
 		});
 	} catch (err) {
 		console.error(`[ChannelManager] AgentEngine.sendMessage failed for channel ${config.id}:`, err);
+	}
+}
+
+// Human-friendly platform names for the auto-created global-mode chat project.
+const PLATFORM_DISPLAY_NAME: Record<ChannelPlatform, string> = {
+	discord: "Discord",
+	whatsapp: "WhatsApp",
+	email: "Email",
+	chat: "Chat",
+};
+
+/**
+ * Resolve the project that a GLOBAL-mode channel (no bound `projectId`) routes to:
+ * a dedicated per-platform "<Platform> Chat" project (e.g. "WhatsApp Chat"), created on
+ * first use and reused thereafter. All global-mode channels of the same platform share
+ * this one project, so channel conversations get a predictable, self-describing home
+ * instead of silently landing in whatever project happens to be oldest.
+ *
+ * Returns the project id, or null if it could not be found or created (e.g. no global
+ * workspace path is configured) — the caller then applies a last-ditch safety fallback
+ * so an inbound message is never dropped.
+ */
+async function getOrCreateGlobalChannelProject(platform: ChannelPlatform): Promise<string | null> {
+	const name = `${PLATFORM_DISPLAY_NAME[platform] ?? platform} Chat`;
+
+	// Reuse an existing project with this name (case-insensitive — mirrors the duplicate-name
+	// rule in createProjectHandler so we never try to create a colliding one).
+	const findByName = async (): Promise<string | null> => {
+		const rows = await db.select({ id: projects.id }).from(projects)
+			.where(sql`lower(${projects.name}) = lower(${name})`).limit(1);
+		return rows.length > 0 ? rows[0].id : null;
+	};
+
+	const existing = await findByName();
+	if (existing) return existing;
+
+	// Create it — workspace path is derived from the global_workspace_path setting.
+	try {
+		const { createProjectHandler } = await import("../rpc/projects");
+		const result = await createProjectHandler({
+			name,
+			description: `Conversations from the ${PLATFORM_DISPLAY_NAME[platform] ?? platform} channel (global mode).`,
+		});
+		if (result.success) return result.id;
+		// A concurrent inbound message may have created it between our check and now;
+		// re-read by name before giving up.
+		const raced = await findByName();
+		if (raced) return raced;
+		console.warn(`[ChannelManager] Could not create "${name}" project: ${result.error ?? "unknown error"}`);
+		return null;
+	} catch (err) {
+		console.error(`[ChannelManager] Error creating global channel project "${name}":`, err);
+		return null;
 	}
 }
 

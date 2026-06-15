@@ -99,6 +99,18 @@ export function DashboardPage() {
 		loadTaskStats();
 	}, [loadProjects, loadTaskStats]);
 
+	// Refresh the project list live when a project is created elsewhere — including
+	// background creators with no UI round-trip (channel global-mode auto-create,
+	// workspace sync) — so the new project appears without navigating away and back.
+	useEffect(() => {
+		const onProjectsUpdated = () => {
+			loadProjects();
+			loadTaskStats();
+		};
+		window.addEventListener("agentdesk:projects-updated", onProjectsUpdated);
+		return () => window.removeEventListener("agentdesk:projects-updated", onProjectsUpdated);
+	}, [loadProjects, loadTaskStats]);
+
 
 	// Load initial active-agent counts and keep them up to date via events.
 	// Re-fetch on agent start/complete and stream-complete (catches PM finishing

@@ -421,6 +421,10 @@ export type WebviewSchema = RPCSchema<{
       at: string;
     };
 
+    // A project was created (incl. background creators: channel auto-create, workspace sync)
+    // so open views (dashboard, project switcher) can refresh their list live.
+    projectsUpdated: { id: string; name: string };
+
     // Per-project unread agent activity changed (recorded or marked seen).
     activityUpdated: { projectId: string; location: string };
 

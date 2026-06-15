@@ -138,6 +138,35 @@ export class WhatsAppAdapter implements ChannelAdapter {
         this.status = "disconnected";
     }
 
+    /**
+     * Permanently unlink this device from WhatsApp — removes it from the phone's
+     * "Linked Devices" list — then close the socket. Used on delete/disconnect, NOT on
+     * transient teardown (reconnect/shutdown), which must keep the session for re-use.
+     * Bounded with a timeout so an offline socket can't hang the caller; on failure it
+     * still closes the socket locally so message processing stops regardless.
+     */
+    async logout(): Promise<void> {
+        this.destroyed = true;
+        const sock = this.sock;
+        this.sock = null;
+        this.status = "disconnected";
+        if (!sock) return;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            await Promise.race([
+                sock.logout(),
+                new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => reject(new Error("WhatsApp logout timed out")), 4000);
+                }),
+            ]);
+        } catch {
+            // Offline / already invalidated — ensure the socket is closed locally regardless.
+            try { sock.end(undefined); } catch { /* ignore */ }
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
+
     async sendMessage(channelId: string, content: string, _options?: SendOptions): Promise<void> {
         if (!this.sock) throw new Error("WhatsApp not connected");
         const result = await this.sock.sendMessage(channelId, { text: content });

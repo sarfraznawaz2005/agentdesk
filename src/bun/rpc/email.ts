@@ -56,6 +56,10 @@ export async function saveEmailConfig(params: {
 }
 
 export async function deleteEmailConfig(id: string) {
+	// Disconnect the live adapter first — deleting only the DB row leaves the IMAP IDLE
+	// loop running and still replying (the inbound handler closes over the in-memory config).
+	const { disconnectChannel } = await import("../channels/manager");
+	await disconnectChannel(id);
 	await db.delete(channels).where(eq(channels.id, id));
 	return { success: true };
 }
