@@ -23,9 +23,8 @@ fi
 [ -f check.bat ] || exit 0
 
 ./check.bat || {
-  echo ""
-  echo "Commit blocked by failing checks above."
-  echo "Fix them, or bypass with: git commit --no-verify"
+  echo "Commit blocked: a check failed. See details with one of: bun run typecheck | bun test | bun run lint"
+  echo "Bypass with: git commit --no-verify"
   exit 1
 }
 exit 0
