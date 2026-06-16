@@ -1,11 +1,18 @@
 [
     {
+        "version":  "2.1.5",
+        "title":  "Enhanced Freelance Listings",
+        "changes":  [
+                        "You can now exclude specific listing kinds in the freelance listings tab for a more tailored experience."
+                    ]
+    },
+    {
         "version":  "2.1.4",
         "title":  "New Freelance Listing Feature",
         "changes":  [
                         "Added a client_country field to freelance listings for better localization.",
-						"Improved freelance listings with more information",
-						"Improved icons and small fixes in freelance listings"
+                        "Improved freelance listings with more information",
+                        "Improved icons and small fixes in freelance listings"
                     ]
     },
     {
