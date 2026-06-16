@@ -44,6 +44,7 @@ import * as v41 from "./migrations/v41_freelance-profile-skills";
 import * as v42 from "./migrations/v42_request-human-input-backfill";
 import * as v43 from "./migrations/v43_freelance-client-quality";
 import * as v44 from "./migrations/v44_freelance-wizard-block-kind";
+import * as v45 from "./migrations/v45_freelance-client-country";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -112,6 +113,7 @@ const migrations: Migration[] = [
 	{ version: 42, name: v42.name, run: v42.run },
 	{ version: 43, name: v43.name, run: v43.run },
 	{ version: 44, name: v44.name, run: v44.run },
+	{ version: 45, name: v45.name, run: v45.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -287,6 +289,13 @@ function ensureRuntimeSchema(): void {
 		v44.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: freelance wizard-block-kind column failed:", err);
+	}
+
+	// Defensive: ensure freelance_listings.client_country exists (v45 guards with PRAGMA).
+	try {
+		v45.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance client-country column failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

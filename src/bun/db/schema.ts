@@ -695,6 +695,7 @@ export const freelanceListings = sqliteTable("freelance_listings", {
 	clientReviewCount:     integer("client_review_count"), // number of reviews the client has
 	clientMemberSince:     text("client_member_since"),    // e.g. "Jun 11, 2026"
 	clientPaymentVerified: integer("client_payment_verified").notNull().default(0),
+	clientCountry:         text("client_country"),         // e.g. "India" — for country-block filter
 	postedAt:          text("posted_at"),
 	status:      text("status").notNull().default("new"),
 	isDeleted:   integer("is_deleted").notNull().default(0),

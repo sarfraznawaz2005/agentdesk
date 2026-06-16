@@ -65,6 +65,14 @@ export interface FreelanceListingDto {
   hasBid: boolean;
   /** Full description extracted from the listing page. null = never fetched, "" = fetch failed. */
   fullDescription: string | null;
+  /** Client's country extracted from the listing page. null = not yet fetched. */
+  clientCountry: string | null;
+  /** Client's average rating (0.0–5.0). null = not yet fetched. */
+  clientRating: number | null;
+  /** Number of reviews the client has received. null = not yet fetched. */
+  clientReviewCount: number | null;
+  /** Whether the client has a verified payment method on file. */
+  clientPaymentVerified: boolean;
 }
 
 export interface WizardWorkableListing {
@@ -135,9 +143,10 @@ export interface FreelanceAutoEarnSettingsDto {
   bidMinClamp: number;      // absolute floor for the bid amount (0 = none)
   bidMaxClamp: number;      // absolute ceiling for the bid amount (0 = none)
   bidHourlyRate: number;    // rate to bid on hourly projects (0 = use the budget)
-  clientFilterEnabled: boolean; // filter out low-quality clients before AI analysis
-  clientMinReviews: number;     // block clients with fewer than this many reviews (0 = disabled)
-  clientBlockNewDays: number;   // block clients who joined within this many days (0 = disabled)
+  clientFilterEnabled: boolean;       // filter out low-quality clients before AI analysis
+  clientMinReviews: number;           // block clients with fewer than this many reviews (0 = disabled)
+  clientBlockNewDays: number;         // block clients who joined within this many days (0 = disabled)
+  clientBlockedCountries: string;     // comma-separated country names to block (empty = disabled)
 }
 
 export interface FreelanceGovernorActionStateDto {

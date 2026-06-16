@@ -30,9 +30,10 @@ export interface AutoEarnSettings {
 	bidMinClamp: number;            // absolute floor for the bid amount (0 = none)
 	bidMaxClamp: number;            // absolute ceiling for the bid amount (0 = none)
 	bidHourlyRate: number;          // rate to bid on hourly projects (0 = use the budget)
-	clientFilterEnabled: boolean;   // filter out low-quality clients before AI analysis
-	clientMinReviews: number;       // block clients with fewer than this many reviews (0 = off)
-	clientBlockNewDays: number;     // block clients who joined within N days (0 = off)
+	clientFilterEnabled: boolean;       // filter out low-quality clients before AI analysis
+	clientMinReviews: number;           // block clients with fewer than this many reviews (0 = off)
+	clientBlockNewDays: number;         // block clients who joined within N days (0 = off)
+	clientBlockedCountries: string;     // comma-separated country names to block (empty = off)
 }
 
 const DEFAULTS: AutoEarnSettings = {
@@ -58,6 +59,7 @@ const DEFAULTS: AutoEarnSettings = {
 	clientFilterEnabled: false,
 	clientMinReviews: 1,
 	clientBlockNewDays: 30,
+	clientBlockedCountries: "",
 };
 
 const KEYS: Record<keyof AutoEarnSettings, string> = {
@@ -83,6 +85,7 @@ const KEYS: Record<keyof AutoEarnSettings, string> = {
 	clientFilterEnabled: "freelance_client_filter_enabled",
 	clientMinReviews: "freelance_client_min_reviews",
 	clientBlockNewDays: "freelance_client_block_new_days",
+	clientBlockedCountries: "freelance_client_blocked_countries",
 };
 
 export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
@@ -120,6 +123,7 @@ export async function getAutoEarnSettings(): Promise<AutoEarnSettings> {
 		clientFilterEnabled: get("clientFilterEnabled"),
 		clientMinReviews: get("clientMinReviews"),
 		clientBlockNewDays: get("clientBlockNewDays"),
+		clientBlockedCountries: get("clientBlockedCountries"),
 	};
 }
 
@@ -164,6 +168,7 @@ export async function saveAutoEarnSettings(input: AutoEarnSettings): Promise<voi
 		saveAutoEarnSetting("clientFilterEnabled", safe.clientFilterEnabled),
 		saveAutoEarnSetting("clientMinReviews", safe.clientMinReviews),
 		saveAutoEarnSetting("clientBlockNewDays", safe.clientBlockNewDays),
+		saveAutoEarnSetting("clientBlockedCountries", safe.clientBlockedCountries),
 	]);
 }
 

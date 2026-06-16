@@ -221,6 +221,7 @@ interface ClientData {
   reviewCount: number | null;
   memberSince: string | null;
   paymentVerified: boolean;
+  country: string | null;
 }
 
 interface BudgetData {
@@ -238,7 +239,7 @@ function extractClientDataFromHtml(html: string): ClientData {
   const startIdx = html.indexOf('"client":{') !== -1
     ? html.indexOf('"client":{')
     : html.indexOf('"client": {');
-  if (startIdx === -1) return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false };
+  if (startIdx === -1) return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false, country: null };
 
   const win = html.slice(startIdx, startIdx + 4000);
 
@@ -248,7 +249,7 @@ function extractClientDataFromHtml(html: string): ClientData {
   const paymentMatch = win.match(/"paymentVerified"\s*:\s*(true|false)/);
 
   if (!regTimeMatch && !reviewCountMatch) {
-    return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false };
+    return { rating: null, reviewCount: null, memberSince: null, paymentVerified: false, country: null };
   }
 
   let memberSince: string | null = null;
@@ -259,11 +260,20 @@ function extractClientDataFromHtml(html: string): ClientData {
       : regDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
 
+  // Country: Freelancer embeds "country":"India" (plain string) inside the client object.
+  // The first match is the client's country; later matches are currency country codes ("IN").
+  // Value may also be a city+country like "Bengaluru, India" — stored as-is; the gate
+  // handles the "City, Country" format when comparing against the blocked list.
+  let country: string | null = null;
+  const countryMatch = win.match(/"country"\s*:\s*"([^"]+)"/);
+  if (countryMatch) country = countryMatch[1];
+
   return {
     rating: ratingMatch ? parseFloat(ratingMatch[1]) : null,
     reviewCount: reviewCountMatch ? parseInt(reviewCountMatch[1], 10) : null,
     memberSince,
     paymentVerified: paymentMatch ? paymentMatch[1] === "true" : false,
+    country,
   };
 }
 
@@ -401,13 +411,29 @@ interface GateResult {
 
 function clientQualityGate(
   listing: typeof freelanceListings.$inferSelect,
-  settings: { clientFilterEnabled: boolean; clientMinReviews: number; clientBlockNewDays: number },
+  settings: { clientFilterEnabled: boolean; clientMinReviews: number; clientBlockNewDays: number; clientBlockedCountries: string },
 ): GateResult | null {
   if (!settings.clientFilterEnabled) return null;
 
   const blockers: string[] = [];
 
-  // Review count check — fail-open when data is null
+  // Country block — priority 1. Fail-open when clientCountry is null (data not yet fetched).
+  if (settings.clientBlockedCountries.trim() && listing.clientCountry !== null) {
+    const blocked = settings.clientBlockedCountries
+      .split(",")
+      .map((c) => c.trim().toLowerCase())
+      .filter(Boolean);
+    // Match exact country or "City, Country" format (e.g. "Bengaluru, India" → "india")
+    const countryLower = listing.clientCountry.toLowerCase().trim();
+    const isBlocked = blocked.some((b) => countryLower === b || countryLower.endsWith(`, ${b}`));
+    if (isBlocked) {
+      blockers.push(
+        `Client is from ${listing.clientCountry} — this country is in your blocked list.`,
+      );
+    }
+  }
+
+  // Review count check — priority 2. Fail-open when data is null.
   if (
     settings.clientMinReviews > 0 &&
     listing.clientReviewCount !== null &&
@@ -418,7 +444,7 @@ function clientQualityGate(
     );
   }
 
-  // Account age check — fail-open when data is null
+  // Account age check — priority 3. Fail-open when data is null.
   if (settings.clientBlockNewDays > 0 && listing.clientMemberSince) {
     const age = daysSince(listing.clientMemberSince);
     if (age !== null && age < settings.clientBlockNewDays) {
@@ -438,6 +464,50 @@ function clientQualityGate(
       `This client was filtered out by your Client Quality settings. ${blockers.join(" ")} ` +
       `You can adjust or disable these thresholds in Freelance → Settings → Client Quality Filters.`,
   };
+}
+
+// Pre-fetch the listing page to populate clientCountry (and other client fields if
+// missing) before running clientQualityGate. Needed so the country check — the
+// highest-priority gate — can fire even for listings that would otherwise be
+// short-circuited by the reviews/age check before a page fetch happens.
+// Returns true if the abort signal fired (caller should break their loop).
+async function prefetchClientCountryIfNeeded(
+  listing: typeof freelanceListings.$inferSelect,
+  settings: { clientFilterEnabled: boolean; clientBlockedCountries: string },
+  signal?: AbortSignal,
+): Promise<boolean> {
+  if (!settings.clientFilterEnabled || !settings.clientBlockedCountries.trim() || listing.clientCountry !== null) return false;
+  try {
+    const { clientData, budgetData } = await fetchPageText(listing.url, signal);
+    listing.clientCountry = clientData.country;
+    if (listing.clientReviewCount === null) listing.clientReviewCount = clientData.reviewCount;
+    if (listing.clientMemberSince === null) listing.clientMemberSince = clientData.memberSince;
+    if (listing.clientRating === null) listing.clientRating = clientData.rating;
+    if (listing.clientPaymentVerified === null) listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
+    if (budgetData !== null && listing.budgetMin === null) {
+      listing.budgetMin = budgetData.budgetMin;
+      listing.budgetMax = budgetData.budgetMax;
+      listing.budgetType = budgetData.budgetType;
+      if (budgetData.currency !== null) listing.currency = budgetData.currency;
+    }
+    await db.update(freelanceListings)
+      .set({
+        clientCountry: listing.clientCountry,
+        clientReviewCount: listing.clientReviewCount,
+        clientMemberSince: listing.clientMemberSince,
+        clientRating: listing.clientRating,
+        clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+        budgetMin: listing.budgetMin,
+        budgetMax: listing.budgetMax,
+        budgetType: listing.budgetType,
+        currency: listing.currency,
+      })
+      .where(eq(freelanceListings.id, listing.id));
+  } catch (err) {
+    if (isAbortError(err)) return true;
+    // fail-open: clientCountry stays null, country gate skipped
+  }
+  return signal?.aborted ?? false;
 }
 
 async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ text: string; clientData: ClientData; budgetData: BudgetData | null }> {
@@ -977,6 +1047,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
           listing.clientReviewCount = clientData.reviewCount;
           listing.clientMemberSince = clientData.memberSince;
           listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
+          listing.clientCountry = clientData.country;
           // Budget — extracted from raw HTML before stripping; only fills in what RSS omitted
           if (budgetData !== null && listing.budgetMin === null) {
             listing.budgetMin = budgetData.budgetMin;
@@ -997,6 +1068,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
               clientReviewCount: listing.clientReviewCount,
               clientMemberSince: listing.clientMemberSince,
               clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+              clientCountry: listing.clientCountry,
               budgetMin: listing.budgetMin,
               budgetMax: listing.budgetMax,
               budgetType: listing.budgetType,
@@ -1037,6 +1109,12 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
         });
         continue;
       }
+
+      // Pre-fetch country before the client gate so the highest-priority check
+      // (country) can fire even when the listing would otherwise be caught first
+      // by the reviews/age check before any page fetch.
+      if (await prefetchClientCountryIfNeeded(listing, aeSettings, signal)) break;
+      if (signal.aborted) break;
 
       // Client quality gate: filter out low-review / brand-new clients before AI analysis.
       const cGate = clientQualityGate(listing, aeSettings);
@@ -1249,6 +1327,10 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         continue;
       }
 
+      // Pre-fetch country before the client gate (same reason as Phase 2 wizard loop).
+      if (await prefetchClientCountryIfNeeded(listing, aeSettings, signal)) break;
+      if (signal.aborted) break;
+
       // Client quality gate (see clientQualityGate): low-review / brand-new client ⇒ blocked.
       const cGate = clientQualityGate(listing, aeSettings);
       if (cGate) {
@@ -1281,6 +1363,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
           listing.clientReviewCount = clientData.reviewCount;
           listing.clientMemberSince = clientData.memberSince;
           listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
+          listing.clientCountry = clientData.country;
           // Budget — extracted from raw HTML before stripping; only fills in what RSS omitted
           if (budgetData !== null && listing.budgetMin === null) {
             listing.budgetMin = budgetData.budgetMin;
@@ -1303,6 +1386,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             clientReviewCount: listing.clientReviewCount,
             clientMemberSince: listing.clientMemberSince,
             clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+            clientCountry: listing.clientCountry,
             budgetMin: listing.budgetMin,
             budgetMax: listing.budgetMax,
             budgetType: listing.budgetType,
@@ -1469,13 +1553,15 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   let fullDescription = listing.fullDescription;
   const aeSettings = await getAutoEarnSettings();
   // Also fetch when client data is missing so the quality gate has data to evaluate.
-  if (fullDescription === null || listing.budgetMin === null || (aeSettings.clientFilterEnabled && listing.clientReviewCount === null)) {
+  const needsCountryFetch = aeSettings.clientFilterEnabled && !!aeSettings.clientBlockedCountries.trim() && listing.clientCountry === null;
+  if (fullDescription === null || listing.budgetMin === null || (aeSettings.clientFilterEnabled && listing.clientReviewCount === null) || needsCountryFetch) {
     try {
       const { text: pageText, clientData, budgetData } = await fetchPageText(listing.url);
       listing.clientRating = clientData.rating;
       listing.clientReviewCount = clientData.reviewCount;
       listing.clientMemberSince = clientData.memberSince;
       listing.clientPaymentVerified = clientData.paymentVerified ? 1 : 0;
+      listing.clientCountry = clientData.country;
       // Budget data — fill in when RSS omitted it (e.g. non-USD projects)
       if (budgetData !== null && listing.budgetMin === null) {
         listing.budgetMin = budgetData.budgetMin;
@@ -1497,6 +1583,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
         clientReviewCount: listing.clientReviewCount,
         clientMemberSince: listing.clientMemberSince,
         clientPaymentVerified: listing.clientPaymentVerified ?? 0,
+        clientCountry: listing.clientCountry,
         budgetMin: listing.budgetMin,
         budgetMax: listing.budgetMax,
         budgetType: listing.budgetType,

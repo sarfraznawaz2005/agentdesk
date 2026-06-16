@@ -3,7 +3,7 @@ import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { Bookmark, CheckCircle2, ExternalLink, Filter, Loader2, MessageSquare, Trash2, Sparkles, X } from "lucide-react";
+import { Bookmark, Bot, CheckCircle, CheckCircle2, ExternalLink, Filter, Globe, Loader2, MapPin, MessageSquare, ShieldCheck, Sparkles, Star, ThumbsDown, Timer, Trash2, UserX, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -12,7 +12,7 @@ import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { FreelanceChatModal } from "./freelance-chat-modal";
 import type { FreelanceListingDto, FreelanceBlockKind } from "../../../shared/rpc/freelance";
-import { pillLabel, pillTone, isFilterBlockKind, type PillTone } from "./block-kind";
+import { pillLabel, pillTone, type PillTone } from "./block-kind";
 import { getCurrencySymbol } from "../../../shared/freelance-currencies";
 
 // ---------------------------------------------------------------------------
@@ -253,6 +253,7 @@ function AnalysisModal({
   reason,
   blockers,
   analysisText,
+  blockKind,
 }: {
   open: boolean;
   onClose: () => void;
@@ -261,18 +262,27 @@ function AnalysisModal({
   reason: string | null;
   blockers: string[] | null;
   analysisText: string | null;
+  blockKind: FreelanceBlockKind | null;
 }) {
   if (!open) return null;
   const isWorkable = verdict === "workable";
-  // Three states: workable → green, filtered-out by a pre-filter → yellow,
-  // failed the real Condition A/B analysis → red.
-  const badgeClass = isWorkable
-    ? "bg-green-500/15 text-green-600 border border-green-500/30"
-    : filtered
-      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-      : "bg-red-500/15 text-red-600 border border-red-500/30";
-  const bulletClass = filtered && !isWorkable ? "bg-amber-400" : "bg-red-400";
-  const badgeLabel = isWorkable ? "Workable" : filtered ? "Filtered Out" : "Not Workable";
+  const tone = verdict ? pillTone(verdict, blockKind, filtered) : "red";
+  // Mirror the card pill exactly: same tone → same color family, same label.
+  const MODAL_BADGE_CLASSES: Record<string, string> = {
+    green: "bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30",
+    amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30",
+    sky:   "bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30",
+    red:   "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30",
+  };
+  const MODAL_BULLET_CLASSES: Record<string, string> = {
+    green: "bg-green-400",
+    amber: "bg-amber-400",
+    sky:   "bg-sky-400",
+    red:   "bg-red-400",
+  };
+  const badgeClass = MODAL_BADGE_CLASSES[tone];
+  const bulletClass = MODAL_BULLET_CLASSES[tone];
+  const badgeLabel = verdict ? pillLabel(verdict, blockKind) : "Not Workable";
 
   return (
     <div
@@ -290,10 +300,19 @@ function AnalysisModal({
             <span className="text-sm font-semibold text-foreground">AI Analysis</span>
             <span
               className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
                 badgeClass,
               )}
             >
+              {isWorkable ? <CheckCircle className="size-3.5" />
+                : blockKind === "skill_gate" ? <Wrench className="size-3.5" />
+                : blockKind === "non_software" ? <UserX className="size-3.5" />
+                : blockKind === "client_quality" ? (
+                  reason?.includes("review") ? <ThumbsDown className="size-3.5" />
+                  : reason?.includes("joined") ? <Timer className="size-3.5" />
+                  : reason?.includes("is from") ? <Globe className="size-3.5" />
+                  : <Filter className="size-3.5" />
+                ) : <Bot className="size-3.5" />}
               {badgeLabel}
             </span>
           </div>
@@ -374,10 +393,10 @@ const DESCRIPTION_TRUNCATE_LENGTH = 200; // only used to decide whether to show 
 // Verdict-pill color per tone (see pillTone). client_quality → sky, distinct
 // from the amber skill/keyword filters; workable → green; AI fail → red.
 const PILL_TONE_CLASSES: Record<PillTone, string> = {
-  green: "bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/20",
+  green: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 hover:bg-green-500/20",
   amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20",
   sky: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30 hover:bg-sky-500/20",
-  red: "bg-red-500/10 text-red-600 border-red-500/30 hover:bg-red-500/20",
+  red: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20",
 };
 
 export function FreelanceListingCard({
@@ -590,10 +609,19 @@ export function FreelanceListingCard({
                 PILL_TONE_CLASSES[pillTone(analysisData.verdict, analysisData.blockKind, analysisData.filtered)],
               )}
             >
-              {isFilterBlockKind(analysisData.blockKind) ? (
-                <Filter className="size-3.5" />
+              {analysisData.verdict === "workable" ? (
+                <CheckCircle className="size-3.5" />
+              ) : analysisData.blockKind === "skill_gate" ? (
+                <Wrench className="size-3.5" />
+              ) : analysisData.blockKind === "non_software" ? (
+                <UserX className="size-3.5" />
+              ) : analysisData.blockKind === "client_quality" ? (
+                analysisData.reason.includes("review") ? <ThumbsDown className="size-3.5" />
+                : analysisData.reason.includes("joined") ? <Timer className="size-3.5" />
+                : analysisData.reason.includes("is from") ? <Globe className="size-3.5" />
+                : <Filter className="size-3.5" />
               ) : (
-                <Sparkles className="size-3.5" />
+                <Bot className="size-3.5" />
               )}
               {pillLabel(analysisData.verdict, analysisData.blockKind)}
               </button>
@@ -602,15 +630,82 @@ export function FreelanceListingCard({
         </div>
       </div>
 
-      {/* Title row: title (left) | budget (right) */}
+      {/* Title + description (left) | country + budget (right) */}
       {(() => {
         const budget = buildBudgetDisplay(listing, preferredCurrency, currencyRates);
         return (
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="text-sm font-semibold text-foreground leading-snug">
-              {listing.title}
-            </h3>
-            <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
+          <div className="flex items-stretch justify-between gap-3">
+            {/* Left: title + description stacked */}
+            <div className="flex flex-col gap-4 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground leading-snug">
+                {listing.title}
+              </h3>
+              {listing.description && (
+                <div className="text-sm text-foreground leading-relaxed">
+                  <span>{listing.description}</span>
+                  {isTruncatable && listing.fullDescription && (
+                    <button
+                      type="button"
+                      onClick={() => setDescriptionOpen(true)}
+                      className="ml-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                    >
+                      View Full Description
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* Skills */}
+              {listing.skills.length > 0 && <SkillChips skills={listing.skills} />}
+            </div>
+            <div className="w-px self-stretch bg-border shrink-0" />
+            {/* Right: country + client info + budget stacked */}
+            <div className="flex flex-col items-end justify-center gap-1.5 shrink-0">
+              {listing.clientCountry && (
+                <Tip content={`Client is from ${listing.clientCountry}`} side="top">
+                  <span className="flex items-center gap-1 text-base font-semibold text-foreground/70 cursor-default">
+                    <MapPin className="size-3 shrink-0" />
+                    {listing.clientCountry}
+                  </span>
+                </Tip>
+              )}
+              {(listing.clientReviewCount !== null || listing.clientPaymentVerified) && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground/70">
+                  {listing.clientReviewCount !== null && (
+                    <Tip
+                      content={
+                        listing.clientReviewCount === 0
+                          ? "Client has no reviews yet"
+                          : listing.clientRating !== null && listing.clientRating > 0
+                            ? `${listing.clientRating.toFixed(1)} avg rating across ${listing.clientReviewCount} review${listing.clientReviewCount !== 1 ? "s" : ""}`
+                            : `${listing.clientReviewCount} review${listing.clientReviewCount !== 1 ? "s" : ""}`
+                      }
+                      side="top"
+                    >
+                      <span className="flex items-center gap-1 cursor-default">
+                        {listing.clientRating !== null && listing.clientRating > 0 ? (
+                          <>
+                            <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+                            {listing.clientRating.toFixed(1)}
+                            <span className="text-foreground/70">({listing.clientReviewCount})</span>
+                          </>
+                        ) : (
+                          <>
+                            <Star className="size-3 text-foreground/50 shrink-0" />
+                            {listing.clientReviewCount} reviews
+                          </>
+                        )}
+                      </span>
+                    </Tip>
+                  )}
+                  {listing.clientPaymentVerified && (
+                    <Tip content="Payment method verified by Freelancer.com" side="top">
+                      <span className="flex items-center gap-0.5 text-green-600 dark:text-green-400 cursor-default">
+                        <ShieldCheck className="size-3 shrink-0" />
+                      </span>
+                    </Tip>
+                  )}
+                </div>
+              )}
               <span className="text-sm font-semibold text-foreground tabular-nums">
                 {budget.primary}
               </span>
@@ -631,25 +726,6 @@ export function FreelanceListingCard({
           </div>
         );
       })()}
-
-      {/* Description */}
-      {listing.description && (
-        <div className="text-sm text-foreground leading-relaxed">
-          <span>{listing.description}</span>
-          {isTruncatable && listing.fullDescription && (
-            <button
-              type="button"
-              onClick={() => setDescriptionOpen(true)}
-              className="ml-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
-            >
-              View Full Description
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Skills */}
-      {listing.skills.length > 0 && <SkillChips skills={listing.skills} />}
 
       {/* Actions */}
       <div className="-mx-4 px-4 pt-3 border-t border-border flex items-center gap-2">
@@ -858,6 +934,7 @@ export function FreelanceListingCard({
           reason={analysisData.reason}
           blockers={analysisData.blockers}
           analysisText={analysisData.analysisText}
+          blockKind={analysisData.blockKind}
         />
       )}
 

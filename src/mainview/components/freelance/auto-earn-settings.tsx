@@ -302,28 +302,42 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
           <HelpIcon text="When on, listings from clients who don't meet your thresholds are marked non-workable without running AI analysis. Off by default." />
         </label>
         {s.clientFilterEnabled && (
-          <div className="grid grid-cols-2 gap-4 pl-5">
+          <div className="flex flex-col gap-4 pl-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Min client reviews"
+                help="Block clients with fewer reviews than this. Set to 0 to disable this check. Default: 1 (blocks brand-new clients with zero reviews)."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  value={s.clientMinReviews}
+                  onChange={(e) => patch({ clientMinReviews: num(e.target.value, 1) })}
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                />
+              </Field>
+              <Field
+                label="Block accounts newer than (days)"
+                help="Block clients whose Freelancer account is younger than this many days. Set to 0 to disable. Default: 30 (one month)."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  value={s.clientBlockNewDays}
+                  onChange={(e) => patch({ clientBlockNewDays: num(e.target.value, 30) })}
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                />
+              </Field>
+            </div>
             <Field
-              label="Min client reviews"
-              help="Block clients with fewer reviews than this. Set to 0 to disable this check. Default: 1 (blocks brand-new clients with zero reviews)."
+              label="Blocked countries"
+              help="Comma-separated list of client countries to block, e.g. India, Pakistan, Bangladesh. Case-insensitive. Leave empty to allow all countries. Fail-open: if country data can't be extracted from the listing page, the listing is not blocked."
             >
               <input
-                type="number"
-                min={0}
-                value={s.clientMinReviews}
-                onChange={(e) => patch({ clientMinReviews: num(e.target.value, 1) })}
-                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-              />
-            </Field>
-            <Field
-              label="Block accounts newer than (days)"
-              help="Block clients whose Freelancer account is younger than this many days. Set to 0 to disable. Default: 30 (one month)."
-            >
-              <input
-                type="number"
-                min={0}
-                value={s.clientBlockNewDays}
-                onChange={(e) => patch({ clientBlockNewDays: num(e.target.value, 30) })}
+                type="text"
+                placeholder="e.g. India, Pakistan"
+                value={s.clientBlockedCountries}
+                onChange={(e) => patch({ clientBlockedCountries: e.target.value })}
                 className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
               />
             </Field>

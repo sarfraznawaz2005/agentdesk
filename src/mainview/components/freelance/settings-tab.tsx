@@ -49,6 +49,7 @@ const AUTO_EARN_DEFAULTS: FreelanceAutoEarnSettingsDto = {
   clientFilterEnabled: false,
   clientMinReviews: 1,
   clientBlockNewDays: 30,
+  clientBlockedCountries: "",
 };
 import { CURRENCIES } from "../../../shared/freelance-currencies";
 import { cn } from "@/lib/utils";

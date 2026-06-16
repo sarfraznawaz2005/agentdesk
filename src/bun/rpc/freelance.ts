@@ -184,6 +184,10 @@ export async function getListings(params: {
     wizardBlockKind: resolveBlockKind(row.wizardVerdict, row.wizardBlockKind, row.wizardReason),
     hasBid: sentBidIds.has(row.id),
     fullDescription: row.fullDescription ?? null,
+    clientCountry: row.clientCountry ?? null,
+    clientRating: row.clientRating ?? null,
+    clientReviewCount: row.clientReviewCount ?? null,
+    clientPaymentVerified: row.clientPaymentVerified === 1,
   }));
 
   return { listings, total, page };

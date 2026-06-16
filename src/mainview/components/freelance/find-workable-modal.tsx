@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Tip } from "@/components/ui/tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { AlertTriangle, CheckSquare, ChevronDown, ChevronRight, Info, Loader2, Square, StopCircle, X } from "lucide-react";
+import { AlertTriangle, Bot, CheckSquare, ChevronDown, ChevronRight, Filter, Globe, Info, Loader2, Square, StopCircle, ThumbsDown, Timer, UserX, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { rpc } from "@/lib/rpc";
 import type { WizardWorkableListing, WizardFailedListing } from "../../../shared/rpc/freelance";
@@ -321,10 +321,19 @@ function FailedListingRow({ listing }: { listing: WizardFailedListing }) {
         </span>
         <span className="flex-1 text-sm text-muted-foreground truncate">{listing.title}</span>
         <span
-          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+          className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
             BADGE_TONE_CLASSES[pillTone("not_workable", listing.blockKind, listing.filtered)]
           }`}
         >
+          {listing.blockKind === "skill_gate" ? <Wrench className="size-2.5" />
+            : listing.blockKind === "non_software" ? <UserX className="size-2.5" />
+            : listing.blockKind === "client_quality" ? (
+              listing.reason.includes("review") ? <ThumbsDown className="size-2.5" />
+              : listing.reason.includes("joined") ? <Timer className="size-2.5" />
+              : listing.reason.includes("is from") ? <Globe className="size-2.5" />
+              : <Filter className="size-2.5" />
+            ) : listing.blockKind === "analysis" ? <Bot className="size-2.5" />
+            : null}
           {listing.blockKind ? BLOCK_KIND_LABEL[listing.blockKind] : listing.filtered ? "Filtered" : "Analysis"}
         </span>
         {hasDetails && (
