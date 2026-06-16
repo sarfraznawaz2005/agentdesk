@@ -414,7 +414,7 @@ export type FreelanceRequests = {
     };
   };
   "freelance.getListings": {
-    params: { status?: FreelanceListingStatus; page?: number; search?: string; kind?: FreelanceListingKind };
+    params: { status?: FreelanceListingStatus; page?: number; search?: string; kind?: FreelanceListingKind; excludeKinds?: FreelanceListingKind[] };
     response: {
       listings: FreelanceListingDto[];
       total: number;

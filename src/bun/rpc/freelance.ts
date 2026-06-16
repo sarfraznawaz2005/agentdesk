@@ -1,4 +1,4 @@
-import { eq, desc, count, and, or, like, inArray, sql } from "drizzle-orm";
+import { eq, desc, count, and, or, like, inArray, not, sql } from "drizzle-orm";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { sqlite } from "../db/connection";
@@ -85,6 +85,15 @@ export async function getCurrencyRatesHandler(): Promise<{ rates: Record<string,
   return { rates: cached.rates, fetchedAt: cached.fetchedAt };
 }
 
+// Builds a NOT condition for each excluded kind and ANDs them together.
+function listingKindExcludeConditions(excludeKinds: FreelanceListingKind[] | undefined) {
+  if (!excludeKinds?.length) return undefined;
+  return and(...excludeKinds.map((k) => {
+    const inc = listingKindCondition(k);
+    return inc ? not(inc) : undefined;
+  }).filter(Boolean) as ReturnType<typeof listingKindCondition>[]);
+}
+
 // ─── getListings ─────────────────────────────────────────────────────────────
 // Deleted listings (is_deleted = 1) are never returned regardless of filter.
 export async function getListings(params: {
@@ -92,6 +101,7 @@ export async function getListings(params: {
   page?: number;
   search?: string;
   kind?: FreelanceListingKind;
+  excludeKinds?: FreelanceListingKind[];
 }): Promise<{ listings: FreelanceListingDto[]; total: number; page: number }> {
   const page = params.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
@@ -111,6 +121,7 @@ export async function getListings(params: {
     params.status ? eq(freelanceListings.status, params.status) : undefined,
     searchFilter,
     listingKindCondition(params.kind),
+    listingKindExcludeConditions(params.excludeKinds),
   );
 
   // New tab: newest by posted date, falling back to fetched date when a listing

@@ -73,9 +73,14 @@ export function ListingsTab() {
   // New-tab verdict-chip filter. Held in a ref too so the post-action reload
   // callbacks (approve/delete/etc.) pick up the current value without threading
   // it through loadListings' signature.
-  const [kindFilter, setKindFilter] = useState<FreelanceListingKind | undefined>(undefined);
-  const kindFilterRef = useRef<FreelanceListingKind | undefined>(undefined);
-  kindFilterRef.current = kindFilter;
+  const [hiddenKinds, setHiddenKinds] = useState<Set<FreelanceListingKind>>(() => {
+    try {
+      const stored = localStorage.getItem("agentdesk_freelance_hidden_kinds");
+      return stored ? new Set(JSON.parse(stored) as FreelanceListingKind[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const hiddenKindsRef = useRef<Set<FreelanceListingKind>>(hiddenKinds);
+  hiddenKindsRef.current = hiddenKinds;
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [search, setSearch] = useState("");
@@ -156,7 +161,7 @@ export function ListingsTab() {
       setLoading(true);
       try {
         const [result] = await Promise.all([
-          rpc.freelanceGetListings({ status, page: p, search: q || undefined, kind: status === "new" ? kindFilterRef.current : undefined }),
+          rpc.freelanceGetListings({ status, page: p, search: q || undefined, excludeKinds: status === "new" && hiddenKindsRef.current.size > 0 ? [...hiddenKindsRef.current] : undefined }),
           loadCounts(),
         ]);
         setListings(result.listings);
@@ -172,23 +177,21 @@ export function ListingsTab() {
 
   useEffect(() => {
     void loadListings(page, statusFilter, debouncedSearch);
-    // kindFilter is read via ref inside loadListings; listed here so changing a
+    // hiddenKinds is read via ref inside loadListings; listed here so toggling a
     // chip re-runs the load.
-  }, [page, statusFilter, debouncedSearch, kindFilter, loadListings]);
+  }, [page, statusFilter, debouncedSearch, hiddenKinds, loadListings]);
 
-  // The verdict chips live only on the New tab — clear the filter when leaving it.
-  useEffect(() => {
-    if (statusFilter !== "new") setKindFilter(undefined);
-  }, [statusFilter]);
 
   // Toggle a verdict chip: clicking the active one clears it. Reset to page 1
   // since the filtered result set changes.
   const handleKindFilter = useCallback((kind: FreelanceListingKind) => {
-    setKindFilter((prev) => (prev === kind ? undefined : kind));
+    setHiddenKinds((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) { next.delete(kind); } else { next.add(kind); }
+      try { localStorage.setItem("agentdesk_freelance_hidden_kinds", JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
     setPage(1);
-    // Selection is view-scoped — changing the chip changes the visible set, so
-    // reset it like the status/search/page navigations do (avoids deleting
-    // now-hidden listings still held in selectedIds).
     setSelectedIds(new Set());
   }, []);
 
@@ -509,23 +512,23 @@ export function ListingsTab() {
         </div>
       </div>
 
-      {/* Verdict filter chips — New tab only, far right, just above the list */}
+      {/* Verdict filter chips — New tab only. All chips visible by default; clicking hides that verdict type. */}
       {statusFilter === "new" && (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-3">
           <span className="text-xs font-medium text-muted-foreground">Filter:</span>
           {LISTING_KIND_CHIPS.map((chip) => {
-            const active = kindFilter === chip.kind;
+            const hidden = hiddenKinds.has(chip.kind);
             return (
-              <Tip key={chip.kind} content={chip.tooltip} side="top">
+              <Tip key={chip.kind} content={hidden ? `Filtering out ${chip.label} (click to show)` : `Showing ${chip.label} (click to filter out)`} side="top">
                 <button
                   type="button"
-                  aria-label={`Filter by ${chip.label}`}
-                  aria-pressed={active}
+                  aria-label={hidden ? `Show ${chip.label} listings` : `Hide ${chip.label} listings`}
+                  aria-pressed={hidden}
                   onClick={() => handleKindFilter(chip.kind)}
                   className={`size-5 rounded-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${chip.swatch} ${
-                    active
-                      ? `ring-2 ring-offset-2 ring-offset-background ${chip.ring}`
-                      : "opacity-50 hover:opacity-100"
+                    hidden
+                      ? "opacity-30 hover:opacity-60 ring-0"
+                      : `ring-2 ring-offset-2 ring-offset-background ${chip.ring}`
                   }`}
                 />
               </Tip>
@@ -546,11 +549,11 @@ export function ListingsTab() {
           <p className="text-muted-foreground text-sm">
             {debouncedSearch
               ? `No listings match "${debouncedSearch}".`
-              : kindFilter
-                ? `No ${LISTING_KIND_CHIPS.find((c) => c.kind === kindFilter)?.label ?? ""} listings on this tab.`
+              : hiddenKinds.size === LISTING_KIND_CHIPS.length
+                ? "All verdict types are filtered out. Click the chips above to show some."
                 : "No listings found."}
           </p>
-          {!debouncedSearch && !kindFilter && (
+          {!debouncedSearch && hiddenKinds.size < LISTING_KIND_CHIPS.length && (
             <p className="text-muted-foreground text-xs mt-1">
               Configure keywords in Settings then click Fetch Now.
             </p>
