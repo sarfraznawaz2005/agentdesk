@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.1.4",
+        "title":  "New Freelance Listing Feature",
+        "changes":  [
+                        "Added a client_country field to freelance listings for better localization.",
+						"Improved freelance listings with more information",
+						"Improved icons and small fixes in freelance listings"
+                    ]
+    },
+    {
         "version":  "2.1.3",
         "title":  "Enhancements and New Features",
         "changes":  [
