@@ -21,6 +21,7 @@ import {
   Cpu,
   Briefcase,
   FlaskConical,
+  WifiOff,
   type LucideIcon,
   icons,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import { rpc } from "@/lib/rpc";
 import { Tip } from "@/components/ui/tooltip";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { useUnreadStore, hasUnread } from "@/stores/unread-store";
+import { useNetworkStore } from "@/stores/network-store";
 import { FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION } from "../../../shared/freelance/attention";
 
 interface NavItem {
@@ -138,6 +140,7 @@ type UpdateState = "idle" | "checking" | "no-update" | "available" | "downloadin
 export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   // Derive active item from the router's current pathname (hash routing aware)
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isOnline = useNetworkStore((s) => s.isOnline);
 
   // Poll for unread inbox count every 30 seconds
   const [inboxUnread, setInboxUnread] = useState(0);
@@ -403,17 +406,29 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
 
       </nav>
 
-      {/* Footer: version + update panel */}
+      {/* Footer: version / No-Internet indicator + update panel */}
       <div className="shrink-0 border-t border-border py-2 relative" ref={panelRef}>
-        <Tip content="Check for updates" side="top">
-          <button
-            type="button"
-            onClick={handleVersionClick}
-            className="w-full text-sm font-bold text-muted-foreground hover:text-foreground select-none text-center transition-colors py-0.5"
-          >
-            v{pkg.version}
-          </button>
-        </Tip>
+        {isOnline === false ? (
+          <Tip content="No internet connection" side="top">
+            <div className="mx-2 flex items-center justify-center rounded-md bg-red-600 px-2 py-1 cursor-default select-none animate-pulse">
+              {collapsed ? (
+                <WifiOff className="size-3.5 text-white" />
+              ) : (
+                <span className="text-xs font-bold text-white">No Internet</span>
+              )}
+            </div>
+          </Tip>
+        ) : (
+          <Tip content="Check for updates" side="top">
+            <button
+              type="button"
+              onClick={handleVersionClick}
+              className="w-full text-sm font-bold text-muted-foreground hover:text-foreground select-none text-center transition-colors py-0.5"
+            >
+              v{pkg.version}
+            </button>
+          </Tip>
+        )}
         {(updateState === "available" || updateState === "ready") && (
           <Tip content="Click version number to update" side="top">
             <button

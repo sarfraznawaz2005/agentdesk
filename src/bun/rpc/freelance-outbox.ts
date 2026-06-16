@@ -424,6 +424,15 @@ const STUCK_HOURS = 1;
 const STUCK_COOLDOWN_MS = 6 * 3_600_000;
 const STUCK_KEY = "freelance_stuck_escalated_at";
 
+async function isNetworkAvailable(): Promise<boolean> {
+	try {
+		const res = await fetch("https://1.1.1.1", { method: "HEAD", signal: AbortSignal.timeout(3000) });
+		return res.status < 500;
+	} catch {
+		return false;
+	}
+}
+
 export async function checkStuckQueue(): Promise<void> {
 	// Oldest still-pending outbox item, in hours (julianday handles ISO/space formats).
 	const row = sqlite
@@ -433,6 +442,10 @@ export async function checkStuckQueue(): Promise<void> {
 		.get() as { hours: number | null } | undefined;
 	const hours = row?.hours ?? null;
 	if (hours == null || hours < STUCK_HOURS) return;
+	// Don't alert when offline — the queue is stuck because there's no internet,
+	// not because the session is misconfigured. Skip without writing the cooldown
+	// key so the alert fires once connectivity is restored.
+	if (!(await isNetworkAvailable())) return;
 	// A successful send inside the window means the queue is draining — not stuck.
 	const okRecent = sqlite
 		.prepare(

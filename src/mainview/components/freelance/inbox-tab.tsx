@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { Tip } from "../ui/tooltip";
 import { rpc } from "../../lib/rpc";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
@@ -282,6 +283,7 @@ export function InboxTab() {
   const [outbox, setOutbox] = useState<FreelanceOutboxItemDto[]>([]);
   const [drafting, setDrafting] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // The in-flight send awaiting its fl-send-result host-message.
   const pendingSend = useRef<{ id: string } | null>(null);
@@ -1008,6 +1010,19 @@ export function InboxTab() {
                   <span className="rounded bg-primary/15 px-1.5 py-0.5 uppercase text-primary">{item.kind}</span>
                   <span>{item.status}</span>
                   {item.autonomyMode === "full_auto" && <span className="text-amber-500">full-auto</span>}
+                  <Tip content={copiedId === item.id ? "Copied!" : "Copy draft"} side="top">
+                    <button
+                      type="button"
+                      className="ml-auto rounded p-1 hover:bg-accent"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(item.draftBody ?? "");
+                        setCopiedId(item.id);
+                        setTimeout(() => setCopiedId((prev) => (prev === item.id ? null : prev)), 1500);
+                      }}
+                    >
+                      {copiedId === item.id ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                    </button>
+                  </Tip>
                 </div>
                 {item.status === "draft" ? (
                   <AutoGrowTextarea

@@ -18,6 +18,7 @@ import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-cha
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
+import { useOnlineStatus } from "@/lib/use-online-status";
 // Side-effect import: attaches the Issue Fixer live-run listeners at app startup so runs
 // stream into the store regardless of which tab/page is open (matches the chat store).
 import "@/stores/issue-fixer-store";
@@ -114,6 +115,7 @@ function AppShellContent() {
   const [dataPath, setDataPath] = useState<string | null>(null);
   const [headerPhrase, setHeaderPhrase] = useState<string | null>(null);
   const { headerActions } = useHeaderContext();
+  useOnlineStatus(); // global internet detection — writes to useNetworkStore
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
