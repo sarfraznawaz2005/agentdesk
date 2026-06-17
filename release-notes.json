@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.1.6",
+        "title":  "Network Availability Enhancements",
+        "changes":  [
+                        "New network availability checks ensure better connectivity with the RPC system.",
+                        "Improved inbox functionality for a more efficient user experience."
+                    ]
+    },
+    {
         "version":  "2.1.5",
         "title":  "Enhanced Freelance Listings",
         "changes":  [
