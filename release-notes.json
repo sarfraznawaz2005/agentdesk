@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.2.0",
+        "title":  "Enhanced Freelance Listing Features",
+        "changes":  [
+                        "Improved description extraction for freelance listings",
+                        "Enhanced synchronization of freelance listing cards"
+                    ]
+    },
+    {
         "version":  "2.1.8",
         "title":  "Enhanced Freelance Features",
         "changes":  [
