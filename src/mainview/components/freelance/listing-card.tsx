@@ -459,6 +459,11 @@ export function FreelanceListingCard({
   const [localDescription, setLocalDescription] = useState<string | null | undefined>(listing.fullDescription);
   const [refreshingDesc, setRefreshingDesc] = useState(false);
 
+  // Sync when the parent refreshes the listing (e.g. after Analyze fetches the description)
+  useEffect(() => {
+    setLocalDescription(listing.fullDescription);
+  }, [listing.fullDescription]);
+
   useEffect(() => {
     const onActive = (e: Event) => {
       const detail = (e as CustomEvent<{ listingId: string }>).detail;

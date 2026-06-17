@@ -15,6 +15,7 @@ import { getFreelanceSettings, saveFreelanceSetting } from "../freelance/setting
 import { getAutoEarnSettings } from "../freelance/auto-earn-settings";
 import { isAutoEarnFeatureAvailable } from "../freelance/feature-flag";
 import { draftBidForListing } from "../freelance/bid-pipeline";
+import { extractDescription } from "../freelance/description";
 import { escalateToHuman } from "../freelance/expert/notify";
 import { FREELANCE_EVENTS } from "../freelance/events";
 import { formatBudget } from "../freelance/budget";
@@ -527,35 +528,22 @@ async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ 
   // state JSON sits ~1MB into the page, well past the 12k plain-text limit.
   const clientData = extractClientDataFromHtml(html);
   const budgetData = extractBudgetFromHtml(html);
-  const root = parseHtml(html);
+  const htmlWithBreaks = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|blockquote)>/gi, "\n\n")
+    .replace(/<\/(div|li|tr)>/gi, "\n");
+  const root = parseHtml(htmlWithBreaks);
   root.querySelectorAll("script, style, nav, header, footer, aside, noscript").forEach((el) => el.remove());
-  const text = he.decode(root.textContent.replace(/\s+/g, " ").trim());
+  const raw = he.decode(root.textContent);
+  const text = raw
+    .split("\n")
+    .map((line: string) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   return { text: text.length > 12_000 ? text.slice(0, 12_000) + "…" : text, clientData, budgetData };
 }
 
-async function extractDescription(
-  pageText: string,
-  listing: typeof freelanceListings.$inferSelect,
-  adapter: ReturnType<typeof createProviderAdapter>,
-  modelId: string,
-  abortSignal?: AbortSignal,
-): Promise<string> {
-  const { text } = await generateText({
-    model: adapter.createModel(modelId),
-    abortSignal,
-    system:
-      "You are a precise data extraction assistant. Extract ONLY the job or project description from the page content. " +
-      "Return only the actual project requirements the client wrote — no platform UI text, no navigation, no sidebars, no HTML. " +
-      "Plain text only. If you cannot find a clear description, return an empty string.",
-    messages: [
-      {
-        role: "user",
-        content: `Extract the project description from this page for the listing titled "${listing.title}":\n\n${pageText}`,
-      },
-    ],
-  });
-  return text.trim();
-}
 
 // ---------------------------------------------------------------------------
 // Improvement 5 — Smarter prompt structure

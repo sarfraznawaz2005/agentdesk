@@ -89,11 +89,20 @@ export async function getCurrencyRatesHandler(): Promise<{ rates: Record<string,
 }
 
 // Builds a NOT condition for each excluded kind and ANDs them together.
+// NULL-safe: kinds other than "unanalyzed" check wizard_verdict with equality, so
+// NOT(...) evaluates to NULL for unanalyzed rows (wizard_verdict IS NULL) and
+// silently excludes them. Adding OR wizard_verdict IS NULL keeps unanalyzed rows
+// passing through every non-"unanalyzed" exclusion filter.
 function listingKindExcludeConditions(excludeKinds: FreelanceListingKind[] | undefined) {
   if (!excludeKinds?.length) return undefined;
   return and(...excludeKinds.map((k) => {
     const inc = listingKindCondition(k);
-    return inc ? not(inc) : undefined;
+    if (!inc) return undefined;
+    // "unanalyzed" uses IS NULL — NOT IS NULL is already NULL-safe.
+    if (k === "unanalyzed") return not(inc);
+    // All other kinds: wizard_verdict equality checks yield NULL for unanalyzed rows,
+    // making NOT(...) = NULL (row excluded). Add an explicit IS NULL guard.
+    return or(sql`${freelanceListings.wizardVerdict} IS NULL`, not(inc));
   }).filter(Boolean) as ReturnType<typeof listingKindCondition>[]);
 }
 

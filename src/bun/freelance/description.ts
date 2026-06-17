@@ -59,14 +59,16 @@ async function fetchPageText(url: string): Promise<string> {
   return text.length > 12_000 ? text.slice(0, 12_000) + "…" : text;
 }
 
-async function extractDescription(
+export async function extractDescription(
   pageText: string,
   listing: typeof freelanceListings.$inferSelect,
   adapter: ReturnType<typeof createProviderAdapter>,
   modelId: string,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const { text } = await generateText({
     model: adapter.createModel(modelId),
+    abortSignal,
     system:
       "You are a precise data extraction assistant. Extract ONLY the job or project description from the page content provided. " +
       "Return only the actual project requirements and description the client wrote. " +
