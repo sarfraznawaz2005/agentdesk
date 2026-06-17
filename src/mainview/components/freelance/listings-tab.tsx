@@ -87,6 +87,9 @@ export function ListingsTab() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [counts, setCounts] = useState<{ new: number; approved: number; shortlisted: number; closed: number; all: number }>({ new: 0, approved: 0, shortlisted: 0, closed: 0, all: 0 });
+  // When kind filters are active on the New tab, this holds the filtered subset count.
+  // It persists across tab switches so the New badge stays correct from any tab.
+  const [filteredNewTotal, setFilteredNewTotal] = useState<number | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
   const [openModalForId, setOpenModalForId] = useState<string | null>(null);
@@ -166,6 +169,10 @@ export function ListingsTab() {
         ]);
         setListings(result.listings);
         setTotal(result.total);
+        // Track filtered New count separately so the badge stays accurate from any tab.
+        if (status === "new") {
+          setFilteredNewTotal(hiddenKindsRef.current.size > 0 ? result.total : null);
+        }
       } catch (err) {
         console.error("Failed to load freelance listings:", err);
       } finally {
@@ -464,7 +471,7 @@ export function ListingsTab() {
                 ? "bg-muted text-foreground"
                 : "bg-muted/60 text-muted-foreground"
             }`}>
-              {f.value === "new" && hiddenKinds.size > 0 ? total : counts[f.countKey]}
+              {f.value === "new" && filteredNewTotal !== null ? filteredNewTotal : counts[f.countKey]}
             </span>
           </button>
         ))}
