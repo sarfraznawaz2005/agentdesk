@@ -77,7 +77,7 @@ const typeStyles: Record<
 // Single toast item
 // ---------------------------------------------------------------------------
 
-const AUTO_DISMISS_MS = 4000;
+const AUTO_DISMISS_MS = 7000;
 
 interface ToastItemProps {
   toast: Toast;

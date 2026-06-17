@@ -16,10 +16,12 @@ import { runAutoShortlist } from "../rpc/freelance-wizard";
 // Called on every fetch run so listings blocked after they were first stored get
 // cleaned up automatically on the next poll.
 async function purgeBlockedCountryListings(): Promise<void> {
-  const blockedCountriesStr = await getAutoEarnSettings().then((s) => s.clientBlockedCountries).catch(() => null);
-  if (!blockedCountriesStr?.trim()) return;
+  const aeSettings = await getAutoEarnSettings().catch(() => null);
+  // Respect the master switch — skip purge when client filtering is disabled,
+  // even if clientBlockedCountries is still populated from a prior configuration.
+  if (!aeSettings?.clientFilterEnabled || !aeSettings.clientBlockedCountries.trim()) return;
 
-  const blocked = blockedCountriesStr.split(",").map((c) => c.trim().toLowerCase()).filter(Boolean);
+  const blocked = aeSettings.clientBlockedCountries.split(",").map((c) => c.trim().toLowerCase()).filter(Boolean);
   if (blocked.length === 0) return;
 
   // Load all non-deleted new/shortlisted listings that have country data

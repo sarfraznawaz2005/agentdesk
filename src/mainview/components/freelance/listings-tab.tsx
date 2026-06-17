@@ -299,9 +299,18 @@ export function ListingsTab() {
       setAnalyzingIds((prev) => new Set(prev).add(listing.id));
       try {
         const result = await rpc.freelanceWizardAnalyzeListing(listing.id);
-        // Backend broadcasts LISTINGS_UPDATED which triggers reload via the event handler.
-        // Set openModalForId so the card auto-opens the modal even after tab navigation.
-        setOpenModalForId(listing.id);
+        // Always show a color-coded toast matching the verdict chip palette.
+        if (result.verdict === "workable") {
+          toast("success", "Workable — agents can build this.");
+          // Also open the details modal since the listing stays visible.
+          setOpenModalForId(listing.id);
+        } else {
+          const toastType =
+            result.blockKind === "skill_gate" ? "warning"
+            : result.blockKind === "client_quality" ? "info"
+            : "error"; // non_software, analysis, or unknown
+          toast(toastType, result.reason || "This listing was marked as not workable.");
+        }
         return result;
       } finally {
         setAnalyzingIds((prev) => {
