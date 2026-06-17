@@ -748,8 +748,8 @@ export function FreelanceListingCard({
 
       {/* Actions */}
       <div className="-mx-4 px-4 pt-3 border-t border-border flex items-center gap-2">
-        {/* Analyze — visible for new listings that have no analysis yet */}
-        {isNew && !hasAnalysis && onAnalyze && (
+        {/* Analyze — visible for listings not yet AI-analyzed (pre-filters don't count) */}
+        {(isNew || isShortlisted) && !(listing.wizardVerdict === "workable" || listing.wizardBlockKind === "analysis") && onAnalyze && (
           <Button
             size="sm"
             variant="outline"
