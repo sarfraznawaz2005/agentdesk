@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.1.7",
+        "title":  "Enhanced Bid Proposal Process",
+        "changes":  [
+                        "Introduced a new function to analyze listing requirements, streamlining the bid proposal process."
+                    ]
+    },
+    {
         "version":  "2.1.6",
         "title":  "Network Availability Enhancements",
         "changes":  [
