@@ -75,7 +75,7 @@ export async function extractDescription(
       "EXCLUDE everything else: the project title, budget, price, hourly rate, project status, posted date, deadline, bid counts, platform navigation, sidebar content, skill tags, and any Freelancer.com UI text. " +
       "Format the output as clean Markdown: use bullet lists (`-`) for list items, `**bold**` for section headings or labels, preserve paragraph breaks as blank lines between sections. " +
       "Copy the client's exact words verbatim — do not paraphrase, summarize, reword, or alter any sentence. Only apply Markdown formatting structure to the existing text. " +
-      "If the description is not in English, translate it to English while preserving the original meaning and structure, and prepend a single italics line: `_Translated from [language name]._` followed by a blank line. " +
+      "IMPORTANT: Your entire output must be written in English. If the source description is not in English, you MUST translate every sentence to English — do not leave any part in the original language. After translating, prepend a single italics line: `_Translated from [language name]._` followed by a blank line, then the full English translation. " +
       "If you cannot find a clear project description, return an empty string.",
     messages: [
       {
