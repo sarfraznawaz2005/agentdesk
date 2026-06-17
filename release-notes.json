@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.2.1",
+        "title":  "Enhanced Listing Management",
+        "changes":  [
+                        "Automatic purging of listings from blocked countries",
+                        "Clarified translation requirements in description extraction logic"
+                    ]
+    },
+    {
         "version":  "2.2.0",
         "title":  "Enhanced Freelance Listing Features",
         "changes":  [
