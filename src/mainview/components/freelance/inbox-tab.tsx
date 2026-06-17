@@ -294,9 +294,14 @@ export function InboxTab() {
   // Client-side throttle for anomaly reports (the page also throttles).
   const lastAnomalyAt = useRef(0);
   const sendingIdRef = useRef<string | null>(null);
+  useEffect(() => { sendingIdRef.current = sendingId; }, [sendingId]);
+
+  // True while any outbox item is parked awaiting the user to click Place Bid.
+  // Used to block auto-navigation that would yank the webview away from the bid form.
+  const hasAwaitingReviewRef = useRef(false);
   useEffect(() => {
-    sendingIdRef.current = sendingId;
-  }, [sendingId]);
+    hasAwaitingReviewRef.current = outbox.some((i) => i.status === "awaiting_review");
+  }, [outbox]);
   const wsReloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Global timezone (General settings) used for active-hours; "" = OS local.
   const tzRef = useRef<string>("");
@@ -533,7 +538,7 @@ export function InboxTab() {
         // A socket frame hinted at new activity — refresh the inbox view so the
         // SPA re-fetches threads (and the interceptor captures them). Throttled
         // in-page; we also avoid disrupting an in-flight send.
-        if (!sendingIdRef.current && wsReloadTimer.current === null) {
+        if (!sendingIdRef.current && !hasAwaitingReviewRef.current && wsReloadTimer.current === null) {
           wsReloadTimer.current = setTimeout(() => {
             wsReloadTimer.current = null;
             wvRef.current?.loadURL?.(INBOX_URL);
@@ -683,7 +688,7 @@ export function InboxTab() {
       }
       const delay = (pollMin + Math.random() * Math.max(0, pollMax - pollMin)) * 1000;
       timer = setTimeout(() => {
-        if (!cancelled && enabled && connected && !sendingId && withinActiveHours(activeHours)) {
+        if (!cancelled && enabled && connected && !sendingId && !hasAwaitingReviewRef.current && withinActiveHours(activeHours)) {
           rpc.freelanceLogInboxSync("auto").catch(() => {});
           wvRef.current?.loadURL?.(INBOX_URL);
         }

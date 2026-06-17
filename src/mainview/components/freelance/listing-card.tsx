@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { FreelanceChatModal } from "./freelance-chat-modal";
-import type { FreelanceListingDto, FreelanceBlockKind } from "../../../shared/rpc/freelance";
+import type { FreelanceListingDto, FreelanceBlockKind, BidQuestionDto, BidAnswerDto } from "../../../shared/rpc/freelance";
+import { BidRequirementsModal } from "./bid-requirements-modal";
 import { pillLabel, pillTone, type PillTone } from "./block-kind";
 import { getCurrencySymbol } from "../../../shared/freelance-currencies";
 
@@ -422,6 +423,22 @@ export function FreelanceListingCard({
   const [isShortlisting, setIsShortlisting] = useState(false);
   const [isMarkingDone, setIsMarkingDone] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isCheckingReqs, setIsCheckingReqs] = useState(false);
+  const [requirementsQuestions, setRequirementsQuestions] = useState<BidQuestionDto[] | null>(null);
+
+  const createProposal = useCallback(async (humanAnswers?: BidAnswerDto[]) => {
+    setIsDrafting(true);
+    try {
+      await rpc.freelanceOutboxDraftBid(listing.id, undefined, humanAnswers);
+      toast("success", "Proposal created — review it in Inbox → Drafts.");
+      window.dispatchEvent(new CustomEvent("agentdesk:freelance-open-inbox"));
+    } catch (err) {
+      toast("error", `Create failed: ${String((err as Error)?.message ?? err)}`);
+    } finally {
+      setIsDrafting(false);
+      setRequirementsQuestions(null);
+    }
+  }, [listing.id]);
   const [localAnalysis, setLocalAnalysis] = useState<{
     verdict: "workable" | "not_workable";
     reason: string;
@@ -773,28 +790,45 @@ export function FreelanceListingCard({
               Bid Placed
             </Button>
           ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isDrafting}
-              onClick={async () => {
-                setIsDrafting(true);
-                try {
-                  await rpc.freelanceOutboxDraftBid(listing.id);
-                  toast("success", "Proposal created — review it in Inbox → Drafts.");
-                  window.dispatchEvent(new CustomEvent("agentdesk:freelance-open-inbox"));
-                } catch (err) {
-                  toast("error", `Create failed: ${String((err as Error)?.message ?? err)}`);
-                } finally {
-                  setIsDrafting(false);
-                }
-              }}
-              className="gap-1.5"
-              aria-label="Create Proposal for listing"
-            >
-              {isDrafting ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-              {isDrafting ? "Creating…" : "Create Proposal"}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isDrafting || isCheckingReqs}
+                onClick={async () => {
+                  setIsCheckingReqs(true);
+                  try {
+                    const result = await rpc.freelanceAnalyzeBidRequirements(listing.id);
+                    const humanNeeded = result.questions.filter((q) => !q.canAiAnswer);
+                    if (humanNeeded.length > 0) {
+                      setRequirementsQuestions(result.questions);
+                    } else {
+                      await createProposal(result.questions.length > 0
+                        ? result.questions.map((q) => ({ question: q.question, answer: q.aiAnswer ?? "" })).filter((a) => a.answer)
+                        : undefined);
+                    }
+                  } catch {
+                    await createProposal();
+                  } finally {
+                    setIsCheckingReqs(false);
+                  }
+                }}
+                className="gap-1.5"
+                aria-label="Create Proposal for listing"
+              >
+                {(isDrafting || isCheckingReqs) ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                {isDrafting ? "Creating…" : isCheckingReqs ? "Analyzing…" : "Create Proposal"}
+              </Button>
+              {requirementsQuestions && (
+                <BidRequirementsModal
+                  listingTitle={listing.title}
+                  questions={requirementsQuestions}
+                  generating={isDrafting}
+                  onGenerate={(answers) => { void createProposal(answers); }}
+                  onCancel={() => setRequirementsQuestions(null)}
+                />
+              )}
+            </>
           )
         )}
 

@@ -21,6 +21,23 @@ export type FreelanceListingKind =
   | "not_workable"
   | "unanalyzed";
 
+export interface BidAnswerDto {
+  question: string;
+  answer: string;
+}
+
+export interface BidQuestionDto {
+  id: string;
+  question: string;    // the specific ask from the client
+  canAiAnswer: boolean;
+  aiAnswer: string | null; // pre-filled if canAiAnswer; null if human must supply
+}
+
+export interface BidRequirementsDto {
+  hasRequirements: boolean;
+  questions: BidQuestionDto[];
+}
+
 export interface FreelanceChatMessageDto {
   id: string;
   role: "user" | "assistant";
@@ -299,8 +316,12 @@ export type FreelanceRequests = {
     params: { threadId: string; platform?: string };
     response: { item: FreelanceOutboxItemDto };
   };
-  "freelance.outbox.draftBid": {
+  "freelance.analyzeBidRequirements": {
     params: { listingId: string; platform?: string };
+    response: BidRequirementsDto;
+  };
+  "freelance.outbox.draftBid": {
+    params: { listingId: string; platform?: string; humanAnswers?: BidAnswerDto[] };
     response: { item: FreelanceOutboxItemDto };
   };
   "freelance.outbox.updateDraft": {

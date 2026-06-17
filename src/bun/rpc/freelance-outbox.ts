@@ -180,9 +180,14 @@ export async function draftReply(params: { threadId: string; platform?: string }
 
 // ─── draftBid ─────────────────────────────────────────────────────────────────
 // Implemented by the bidding task; declared here so the contract is complete.
-export async function draftBid(params: { listingId: string; platform?: string }): Promise<{ item: FreelanceOutboxItemDto }> {
+export async function analyzeBidRequirements(params: { listingId: string; platform?: string }) {
+	const { analyzeListingRequirements } = await import("../freelance/bid-pipeline");
+	return analyzeListingRequirements(params.platform ?? DEFAULT_PLATFORM, params.listingId);
+}
+
+export async function draftBid(params: { listingId: string; platform?: string; humanAnswers?: import("../../shared/rpc/freelance").BidAnswerDto[] }): Promise<{ item: FreelanceOutboxItemDto }> {
 	const { draftBidForListing } = await import("../freelance/bid-pipeline");
-	const item = await draftBidForListing(params.platform ?? DEFAULT_PLATFORM, params.listingId);
+	const item = await draftBidForListing(params.platform ?? DEFAULT_PLATFORM, params.listingId, params.humanAnswers);
 	notifyUpdated();
 	return { item };
 }

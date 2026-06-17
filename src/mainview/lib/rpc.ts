@@ -1549,8 +1549,10 @@ export const rpc = {
     electroviewRpc.request["freelance.outbox.list"]({ status }),
   freelanceOutboxDraftReply: (threadId: string, platform?: string) =>
     electroviewRpc.request["freelance.outbox.draftReply"]({ threadId, platform }),
-  freelanceOutboxDraftBid: (listingId: string, platform?: string) =>
-    electroviewRpc.request["freelance.outbox.draftBid"]({ listingId, platform }),
+  freelanceAnalyzeBidRequirements: (listingId: string, platform?: string) =>
+    electroviewRpc.request["freelance.analyzeBidRequirements"]({ listingId, platform }),
+  freelanceOutboxDraftBid: (listingId: string, platform?: string, humanAnswers?: import("../../shared/rpc/freelance").BidAnswerDto[]) =>
+    electroviewRpc.request["freelance.outbox.draftBid"]({ listingId, platform, humanAnswers }),
   freelanceOutboxUpdateDraft: (id: string, body: string) =>
     electroviewRpc.request["freelance.outbox.updateDraft"]({ id, body }),
   freelanceOutboxApproveSend: (id: string, userInitiated?: boolean) =>

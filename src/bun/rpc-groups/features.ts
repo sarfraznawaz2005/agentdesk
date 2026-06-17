@@ -106,6 +106,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.autoearn.saveSettings": (params) => freelanceInboxRpc.saveAutoEarn(params),
 	"freelance.outbox.list": (params) => freelanceOutboxRpc.list(params),
 	"freelance.outbox.draftReply": (params) => freelanceOutboxRpc.draftReply(params),
+	"freelance.analyzeBidRequirements": (params) => freelanceOutboxRpc.analyzeBidRequirements(params),
 	"freelance.outbox.draftBid": (params) => freelanceOutboxRpc.draftBid(params),
 	"freelance.outbox.updateDraft": (params) => freelanceOutboxRpc.updateDraft(params),
 	"freelance.outbox.approveSend": (params) => freelanceOutboxRpc.approveSend(params),

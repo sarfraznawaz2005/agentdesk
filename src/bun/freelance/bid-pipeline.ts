@@ -14,9 +14,11 @@ import { aiProviders, freelanceListings } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { ensureFullDescription } from "./description";
 import { getFreelanceSettings } from "./settings";
+import { getAutoEarnSettings } from "./auto-earn-settings";
 import { getHumanizerRules } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
 import { DRAFT_SIMILARITY_MAX, maxSimilarityAgainst, recentOutboxBodies } from "./similarity";
+import type { BidQuestionDto, BidRequirementsDto, BidAnswerDto } from "../../shared/rpc/freelance";
 import type { OutboxItem } from "./reply-pipeline";
 
 function buildProposalSystem(): string {
@@ -47,8 +49,78 @@ function getAccountAutonomy(platform: string): string {
 	return row?.autonomy_mode ?? "assisted";
 }
 
+/**
+ * Analyse a listing's application requirements.
+ * Returns structured questions the client explicitly asks for, classified as
+ * AI-answerable (pricing, timeframe, tech choices) or human-only (portfolio
+ * examples, personal past work).
+ */
+export async function analyzeListingRequirements(_platform: string, listingId: string): Promise<BidRequirementsDto> {
+	const listing = (await db.select().from(freelanceListings).where(eq(freelanceListings.id, listingId)).limit(1))[0];
+	if (!listing) throw new Error("Listing not found");
+
+	const { adapter, modelId } = await resolveProviderAndModel();
+	const fullDescription = await ensureFullDescription(listing, adapter, modelId);
+	const description = String(fullDescription || listing.description || "").slice(0, 8000);
+
+	const aeSettings = await getAutoEarnSettings();
+	const pricingContext = aeSettings.bidPricingMode === "hourly"
+		? `Hourly rate: $${aeSettings.bidHourlyRate}/hr`
+		: aeSettings.bidPricingMode === "fixed"
+			? `Fixed price range: $${aeSettings.bidMinClamp}–$${aeSettings.bidMaxClamp}`
+			: `Budget-percentile bidding (${Math.round((aeSettings.bidPercentile ?? 0.5) * 100)}th percentile), clamp $${aeSettings.bidMinClamp}–$${aeSettings.bidMaxClamp}`;
+	const deliveryContext = `Default delivery estimate: ${aeSettings.bidDeliveryDays ?? 7} days`;
+
+	const analysisPrompt = `Analyze this freelance job listing and identify any explicit application requirements.
+
+Freelancer context you can use to answer questions:
+- ${pricingContext}
+- ${deliveryContext}
+- General software development expertise
+
+Job listing:
+Title: ${listing.title}
+${description}
+
+Instructions:
+1. Look for sections like "When Applying", "Please Provide", "Requirements for Applicants", "To Apply" etc.
+2. For each item found, decide: can you answer it from the freelancer context above, or does it require personal info only the human can provide?
+3. YOU CAN answer: preferred tech stack/tools, timeframe estimates, price quotes, general methodology.
+4. YOU CANNOT answer: portfolio examples with links, specific past project URLs, personal testimonials, account history.
+5. If the listing has NO specific application requirements section, return hasRequirements=false.
+
+Respond ONLY with valid JSON in this exact shape:
+{
+  "hasRequirements": true,
+  "questions": [
+    { "id": "q1", "question": "Examples of similar websites you have built", "canAiAnswer": false, "aiAnswer": null },
+    { "id": "q2", "question": "Preferred theme/page builder", "canAiAnswer": true, "aiAnswer": "GeneratePress + Elementor — lightweight and allows easy row duplication for non-technical users." }
+  ]
+}`;
+
+	let parsed: BidRequirementsDto = { hasRequirements: false, questions: [] };
+	try {
+		const { text } = await generateText({
+			model: adapter.createModel(modelId),
+			prompt: analysisPrompt,
+			temperature: 0,
+		});
+		const jsonMatch = text.match(/\{[\s\S]*\}/);
+		if (jsonMatch) {
+			const raw = JSON.parse(jsonMatch[0]) as { hasRequirements?: boolean; questions?: BidQuestionDto[] };
+			parsed = {
+				hasRequirements: !!raw.hasRequirements,
+				questions: Array.isArray(raw.questions) ? raw.questions : [],
+			};
+		}
+	} catch {
+		// Analysis failed — fall back to no requirements (direct draft path)
+	}
+	return parsed;
+}
+
 /** Generate a proposal draft for a listing and enqueue it to the outbox. */
-export async function draftBidForListing(platform: string, listingId: string): Promise<OutboxItem> {
+export async function draftBidForListing(platform: string, listingId: string, humanAnswers?: BidAnswerDto[]): Promise<OutboxItem> {
 	const listing = (await db.select().from(freelanceListings).where(eq(freelanceListings.id, listingId)).limit(1))[0];
 	if (!listing) throw new Error("Listing not found");
 
@@ -66,7 +138,10 @@ export async function draftBidForListing(platform: string, listingId: string): P
 	// not the truncated RSS snippet — fetch + cache it if the chat hasn't already.
 	const fullDescription = await ensureFullDescription(listing, adapter, modelId);
 	const description = String(fullDescription || listing.description || "").slice(0, 8000);
-	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${description}\n\nWrite my proposal for this job.`;
+	const answersBlock = humanAnswers?.length
+		? `\nThe client specifically requested the following information in the application — include ALL of these in the proposal:\n${humanAnswers.map((a) => `- ${a.question}: ${a.answer}`).join("\n")}\n`
+		: "";
+	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${description}${answersBlock}\n\nWrite my proposal for this job.`;
 	const { text } = await generateText({
 		model: adapter.createModel(modelId),
 		system: buildProposalSystem(),
