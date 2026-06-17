@@ -3,7 +3,7 @@ import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { Bookmark, Bot, CheckCircle, CheckCircle2, ExternalLink, Filter, Globe, Loader2, MapPin, MessageSquare, ShieldCheck, Sparkles, Star, ThumbsDown, Timer, Trash2, UserX, Wrench, X } from "lucide-react";
+import { Bookmark, Bot, CheckCircle, CheckCircle2, ExternalLink, Filter, Globe, Loader2, MapPin, MessageSquare, RefreshCw, ShieldCheck, Sparkles, Star, ThumbsDown, Timer, Trash2, UserX, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -456,6 +456,8 @@ export function FreelanceListingCard({
   const [chatStreaming, setChatStreaming] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [localDescription, setLocalDescription] = useState<string | null | undefined>(listing.fullDescription);
+  const [refreshingDesc, setRefreshingDesc] = useState(false);
 
   useEffect(() => {
     const onActive = (e: Event) => {
@@ -976,13 +978,41 @@ export function FreelanceListingCard({
       <Dialog open={descriptionOpen} onOpenChange={setDescriptionOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold leading-snug pr-6">
-              {listing.title}
-            </DialogTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">Full project description</p>
+            <div className="flex items-start justify-between gap-2 pr-6">
+              <div>
+                <DialogTitle className="text-sm font-semibold leading-snug">
+                  {listing.title}
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Full project description</p>
+              </div>
+              <Tip content="Re-fetch description" side="left">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setRefreshingDesc(true);
+                    try {
+                      const result = await rpc.freelanceRefreshListingDescription(listing.id);
+                      setLocalDescription(result.description);
+                    } catch { /* ignore */ } finally {
+                      setRefreshingDesc(false);
+                    }
+                  }}
+                  disabled={refreshingDesc}
+                  className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`size-3.5 ${refreshingDesc ? "animate-spin" : ""}`} />
+                </button>
+              </Tip>
+            </div>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto min-h-0 mt-1 text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
-            {listing.fullDescription}
+          <div className="flex-1 overflow-y-auto min-h-0 mt-1 prose-sm prose-neutral dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+              components={ANALYSIS_MD_COMPONENTS as never}
+            >
+              {(localDescription ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")}
+            </ReactMarkdown>
           </div>
         </DialogContent>
       </Dialog>

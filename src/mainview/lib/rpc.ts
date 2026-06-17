@@ -1494,6 +1494,9 @@ export const rpc = {
   freelanceMarkListingDone: (listingId: string) =>
     electroviewRpc.request["freelance.markListingDone"]({ listingId }),
 
+  freelanceRefreshListingDescription: (listingId: string) =>
+    electroviewRpc.request["freelance.refreshListingDescription"]({ listingId }),
+
   /** Fetch cached USD-based currency rates (fetches from network if stale). */
   freelanceGetCurrencyRates: () =>
     electroviewRpc.request["freelance.getCurrencyRates"]({}),

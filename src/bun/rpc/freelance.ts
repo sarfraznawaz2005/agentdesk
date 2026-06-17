@@ -12,6 +12,9 @@ import { fetchAllPlatforms } from "../freelance/fetcher";
 import { getCurrencyRates } from "../freelance/currency-exchange";
 import { getOrCreateEngine, broadcastToWebview } from "../engine-manager";
 import { isFilteredVerdict, resolveBlockKind } from "./freelance-wizard";
+import { ensureFullDescription } from "../freelance/description";
+import { createProviderAdapter } from "../providers";
+import { aiProviders } from "../db/schema";
 import type { FreelanceListingDto, FreelanceListingStatus, FreelanceListingKind } from "../../shared/rpc/freelance";
 
 // Verdict-bucket → SQL predicate for the New-tab filter chips. The red
@@ -303,6 +306,27 @@ export async function deleteListings(params: { ids: string[] }): Promise<{ succe
     .where(and(eq(freelanceListings.status, "new"), eq(freelanceListings.isDeleted, 0)));
   broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: newCount });
   return { success: true, deleted: ids.length };
+}
+
+// ─── refreshListingDescription ───────────────────────────────────────────────
+// Clears the cached fullDescription for a listing and re-fetches it immediately.
+// Used by the "Re-fetch description" button in the full-description modal.
+export async function refreshListingDescription(params: { listingId: string }): Promise<{ description: string }> {
+  const listing = (await db.select().from(freelanceListings).where(eq(freelanceListings.id, params.listingId)).limit(1))[0];
+  if (!listing) throw new Error("Listing not found");
+
+  // Clear cached value so ensureFullDescription treats it as a fresh fetch
+  await db.update(freelanceListings).set({ fullDescription: null }).where(eq(freelanceListings.id, params.listingId));
+
+  const providerRow = (await db.select().from(aiProviders).where(eq(aiProviders.isDefault, 1)).limit(1))[0];
+  if (!providerRow) return { description: listing.description ?? "" };
+
+  const adapter = createProviderAdapter({
+    id: providerRow.id, name: providerRow.name, providerType: providerRow.providerType,
+    apiKey: providerRow.apiKey, baseUrl: providerRow.baseUrl ?? null, defaultModel: providerRow.defaultModel ?? null,
+  });
+  const description = await ensureFullDescription({ ...listing, fullDescription: null }, adapter, providerRow.defaultModel ?? "gpt-4o-mini");
+  return { description: description || (listing.description ?? "") };
 }
 
 // ─── triggerFetch ─────────────────────────────────────────────────────────────

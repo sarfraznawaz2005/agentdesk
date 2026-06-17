@@ -458,6 +458,10 @@ export type FreelanceRequests = {
     params: { listingId: string };
     response: { success: boolean };
   };
+  "freelance.refreshListingDescription": {
+    params: { listingId: string };
+    response: { description: string };
+  };
   "freelance.triggerFetch": {
     params: Record<string, never>;
     response: { success: boolean; skipped?: boolean; reason?: string };

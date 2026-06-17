@@ -36,10 +36,25 @@ async function fetchPageText(url: string): Promise<string> {
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const html = await response.text();
-  const root = parseHtml(html);
+  // Insert newlines for block-level elements BEFORE parsing so paragraph/list
+  // structure is preserved in the plain-text output. Without this, all newlines
+  // are collapsed into spaces and the AI returns a single unformatted blob.
+  // Paragraph/heading endings → double newline (blank line between sections).
+  // List items / table rows / divs → single newline (tight list layout).
+  const htmlWithBreaks = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|blockquote)>/gi, "\n\n")
+    .replace(/<\/(div|li|tr)>/gi, "\n");
+  const root = parseHtml(htmlWithBreaks);
   root.querySelectorAll("script, style, nav, header, footer, aside, noscript").forEach((el) => el.remove());
-  // he.decode ensures HTML entities (&amp;, &nbsp;, etc.) are fully resolved.
-  const text = he.decode(root.textContent.replace(/\s+/g, " ").trim());
+  // Collapse horizontal whitespace per line, preserve newlines, then dedupe blank lines.
+  const raw = he.decode(root.textContent);
+  const text = raw
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   // Truncate before sending to extraction AI — keeps token cost low
   return text.length > 12_000 ? text.slice(0, 12_000) + "…" : text;
 }
@@ -54,8 +69,12 @@ async function extractDescription(
     model: adapter.createModel(modelId),
     system:
       "You are a precise data extraction assistant. Extract ONLY the job or project description from the page content provided. " +
-      "Return only the actual project requirements and description the client wrote — no platform UI text, no navigation, no pricing tables, no sidebar content, no HTML. " +
-      "Plain text only. If you cannot find a clear description, return an empty string.",
+      "Return only the actual project requirements and description the client wrote. " +
+      "EXCLUDE everything else: the project title, budget, price, hourly rate, project status, posted date, deadline, bid counts, platform navigation, sidebar content, skill tags, and any Freelancer.com UI text. " +
+      "Format the output as clean Markdown: use bullet lists (`-`) for list items, `**bold**` for section headings or labels, preserve paragraph breaks as blank lines between sections. " +
+      "Copy the client's exact words verbatim — do not paraphrase, summarize, reword, or alter any sentence. Only apply Markdown formatting structure to the existing text. " +
+      "If the description is not in English, translate it to English while preserving the original meaning and structure, and prepend a single italics line: `_Translated from [language name]._` followed by a blank line. " +
+      "If you cannot find a clear project description, return an empty string.",
     messages: [
       {
         role: "user",
