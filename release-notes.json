@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.2.2",
+        "title":  "Enhanced Freelance Listings Analysis",
+        "changes":  [
+                        "Improved analysis for freelance listings to help you make better decisions.",
+                        "Updated toast display duration for notifications to enhance user experience.",
+                        "Revised help text for the blocked countries field in auto earn settings for clearer guidance."
+                    ]
+    },
+    {
         "version":  "2.2.1",
         "title":  "Enhanced Listing Management",
         "changes":  [
