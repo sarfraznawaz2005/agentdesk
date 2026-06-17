@@ -1,24 +1,18 @@
 import { useEffect } from "react";
 import { useNetworkStore } from "@/stores/network-store";
+import { rpc } from "@/lib/rpc";
 
-// Cloudflare's anycast IP — no DNS lookup, always up, lightweight HEAD.
-const PROBE_URL = "https://1.1.1.1";
-const PROBE_TIMEOUT_MS = 4_000;
 const POLL_WHEN_ONLINE_MS = 30_000;
 const POLL_WHEN_OFFLINE_MS = 10_000;
 
+// Probe via Bun backend — avoids WebView2 CORS/SSL restrictions on bare IP fetches.
 async function probe(): Promise<boolean> {
-  // Fast-path: adapter is already known offline — skip the fetch entirely.
   if (!navigator.onLine) return false;
   try {
-    const res = await fetch(PROBE_URL, {
-      method: "HEAD",
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-      cache: "no-store",
-    });
-    return res.status < 500;
+    const result = await rpc.checkInternet();
+    return result.online;
   } catch {
-    return false;
+    return navigator.onLine;
   }
 }
 
@@ -27,9 +21,8 @@ async function probe(): Promise<boolean> {
  *
  * Strategy:
  *  - Browser `offline` event → instant false (adapter disconnected, no probe needed)
- *  - Browser `online` event → probe (adapter up ≠ real internet, e.g. captive portal)
- *  - Periodic background poll (30s online / 10s offline) — catches ISP-level drops
- *    that don't fire browser events
+ *  - Browser `online` event → probe via Bun (adapter up ≠ real internet)
+ *  - Periodic background poll (30s online / 10s offline)
  */
 export function useOnlineStatus(): void {
   const setOnline = useNetworkStore((s) => s.setOnline);
@@ -54,7 +47,6 @@ export function useOnlineStatus(): void {
     };
 
     const onOnline = () => {
-      // Adapter came back — verify real internet before marking online.
       if (timer) clearTimeout(timer);
       void runProbe();
     };
@@ -62,7 +54,7 @@ export function useOnlineStatus(): void {
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
 
-    // Initial probe on mount — don't wait for first poll interval.
+    // Initial probe on mount.
     void runProbe();
 
     return () => {

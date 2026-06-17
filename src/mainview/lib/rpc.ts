@@ -494,6 +494,9 @@ export const rpc = {
   /** Return basic app metadata (version, platform, data directory). */
   getAppInfo: () => electroviewRpc.request.getAppInfo({}),
 
+  /** Probe real internet connectivity from the Bun process (no CORS restrictions). */
+  checkInternet: () => electroviewRpc.request.checkInternet({}),
+
   /**
    * Return whether this is the first time the app has been launched
    * (i.e. no providers exist in the database yet).

@@ -464,7 +464,7 @@ export function ListingsTab() {
                 ? "bg-muted text-foreground"
                 : "bg-muted/60 text-muted-foreground"
             }`}>
-              {counts[f.countKey]}
+              {f.value === "new" && hiddenKinds.size > 0 ? total : counts[f.countKey]}
             </span>
           </button>
         ))}

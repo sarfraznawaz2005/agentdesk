@@ -8,6 +8,10 @@ export type SystemRequests = {
     params: Record<string, never>;
     response: { version: string; platform: string; dataDir: string };
   };
+  checkInternet: {
+    params: Record<string, never>;
+    response: { online: boolean };
+  };
   isFirstLaunch: {
     params: Record<string, never>;
     response: boolean;

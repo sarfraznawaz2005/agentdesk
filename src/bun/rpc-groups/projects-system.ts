@@ -6,6 +6,7 @@ import { settings, projects } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { Utils } from "electrobun/bun";
 import { sendDesktopNotification } from "../notifications/desktop";
+import { isNetworkAvailable } from "../lib/network";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handlers: Record<string, (params: any) => any> = {
@@ -184,6 +185,10 @@ export const handlers: Record<string, (params: any) => any> = {
 			platform: process.platform,
 			dataDir: Utils.paths.userData,
 		};
+	},
+	checkInternet: async () => {
+		const online = await isNetworkAvailable();
+		return { online };
 	},
 	isFirstLaunch: async () => {
 		const { join } = await import("path");

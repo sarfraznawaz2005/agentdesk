@@ -19,6 +19,7 @@ import { getAutoEarnSettings } from "../freelance/auto-earn-settings";
 import { SEND_SIMILARITY_MAX, maxSimilarityAgainst } from "../freelance/similarity";
 import { escalateToHuman } from "../freelance/expert/notify";
 import { sendDesktopNotification } from "../notifications/desktop";
+import { isNetworkAvailable } from "../lib/network";
 import type { FreelanceOutboxItemDto } from "../../shared/rpc/freelance";
 
 const DEFAULT_PLATFORM = "freelancer";
@@ -424,14 +425,6 @@ const STUCK_HOURS = 1;
 const STUCK_COOLDOWN_MS = 6 * 3_600_000;
 const STUCK_KEY = "freelance_stuck_escalated_at";
 
-async function isNetworkAvailable(): Promise<boolean> {
-	try {
-		const res = await fetch("https://1.1.1.1", { method: "HEAD", signal: AbortSignal.timeout(3000) });
-		return res.status < 500;
-	} catch {
-		return false;
-	}
-}
 
 export async function checkStuckQueue(): Promise<void> {
 	// Oldest still-pending outbox item, in hours (julianday handles ISO/space formats).
