@@ -408,6 +408,7 @@ interface GateResult {
   reason: string;
   blockers: string[];
   analysisText: string;
+  isCountryBlock?: boolean;
 }
 
 function clientQualityGate(
@@ -417,6 +418,7 @@ function clientQualityGate(
   if (!settings.clientFilterEnabled) return null;
 
   const blockers: string[] = [];
+  let countryBlocked = false;
 
   // Country block — priority 1. Fail-open when clientCountry is null (data not yet fetched).
   if (settings.clientBlockedCountries.trim() && listing.clientCountry !== null) {
@@ -428,6 +430,7 @@ function clientQualityGate(
     const countryLower = listing.clientCountry.toLowerCase().trim();
     const isBlocked = blocked.some((b) => countryLower === b || countryLower.endsWith(`, ${b}`));
     if (isBlocked) {
+      countryBlocked = true;
       blockers.push(
         `Client is from ${listing.clientCountry} — this country is in your blocked list.`,
       );
@@ -464,6 +467,7 @@ function clientQualityGate(
     analysisText:
       `This client was filtered out by your Client Quality settings. ${blockers.join(" ")} ` +
       `You can adjust or disable these thresholds in Freelance → Settings → Client Quality Filters.`,
+    isCountryBlock: countryBlocked,
   };
 }
 
@@ -509,6 +513,16 @@ async function prefetchClientCountryIfNeeded(
     // fail-open: clientCountry stays null, country gate skipped
   }
   return signal?.aborted ?? false;
+}
+
+// Soft-deletes a listing from a blocked country. Only touches new/shortlisted
+// rows — approved/closed represent committed work and must not be auto-deleted.
+function softDeleteCountryBlockedListing(listingId: string, country: string): void {
+  const now = new Date().toISOString();
+  sqlite
+    .prepare("UPDATE freelance_listings SET is_deleted = 1, updated_at = ? WHERE id = ? AND status IN ('new', 'shortlisted')")
+    .run(now, listingId);
+  console.log(`[wizard] Soft-deleted listing ${listingId} — blocked country: ${country}`);
 }
 
 async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ text: string; clientData: ClientData; budgetData: BudgetData | null }> {
@@ -1107,6 +1121,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       // Client quality gate: filter out low-review / brand-new clients before AI analysis.
       const cGate = clientQualityGate(listing, aeSettings);
       if (cGate) {
+        if (cGate.isCountryBlock) softDeleteCountryBlockedListing(listing.id, listing.clientCountry ?? "");
         verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
         failedListings.push({ id: listing.id, title: listing.title, reason: cGate.reason, blockers: cGate.blockers, filtered: true, blockKind: BLOCK_KIND_CLIENT_QUALITY });
         broadcastToWebview(FREELANCE_EVENTS.WIZARD_PROGRESS, {
@@ -1322,6 +1337,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       // Client quality gate (see clientQualityGate): low-review / brand-new client ⇒ blocked.
       const cGate = clientQualityGate(listing, aeSettings);
       if (cGate) {
+        if (cGate.isCountryBlock) softDeleteCountryBlockedListing(listing.id, listing.clientCountry ?? "");
         verdictMap.set(listing.id, { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
         continue;
       }
@@ -1386,6 +1402,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         // The pre-fetch check above failed-open because clientReviewCount was null in the DB.
         const cGateRecheck = clientQualityGate(listing, aeSettings);
         if (cGateRecheck) {
+          if (cGateRecheck.isCountryBlock) softDeleteCountryBlockedListing(listing.id, listing.clientCountry ?? "");
           verdictMap.set(listing.id, { verdict: "not_workable", reason: cGateRecheck.reason, blockers: cGateRecheck.blockers, analysisText: cGateRecheck.analysisText, blockKind: BLOCK_KIND_CLIENT_QUALITY });
           continue;
         }
@@ -1583,6 +1600,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   // Client quality gate — runs after page fetch so clientReviewCount/clientMemberSince are populated.
   const cGate = clientQualityGate(listing, aeSettings);
   if (cGate) {
+    if (cGate.isCountryBlock) softDeleteCountryBlockedListing(listing.id, listing.clientCountry ?? "");
     const nowTs = new Date().toISOString();
     sqlite.prepare(
       "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",

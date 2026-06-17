@@ -1,7 +1,9 @@
-import { and, eq, lt, asc } from "drizzle-orm";
+import { and, eq, lt, asc, isNotNull, inArray } from "drizzle-orm";
 import { db } from "../db";
+import { sqlite } from "../db/connection";
 import { freelanceListings, settings as settingsTable } from "../db/schema";
 import { getFreelanceSettings } from "./settings";
+import { getAutoEarnSettings } from "./auto-earn-settings";
 import { fetchRssFeed } from "./rss-fetcher";
 import { normalizeRssItem } from "./normalizer";
 import { FREELANCE_EVENTS } from "./events";
@@ -9,6 +11,40 @@ import { broadcastToWebview } from "../engine-manager";
 import { sendDesktopNotification } from "../notifications/desktop";
 import { runAutoShortlist } from "../rpc/freelance-wizard";
 
+
+// Soft-deletes non-approved listings whose clientCountry matches the blocked list.
+// Called on every fetch run so listings blocked after they were first stored get
+// cleaned up automatically on the next poll.
+async function purgeBlockedCountryListings(): Promise<void> {
+  const blockedCountriesStr = await getAutoEarnSettings().then((s) => s.clientBlockedCountries).catch(() => null);
+  if (!blockedCountriesStr?.trim()) return;
+
+  const blocked = blockedCountriesStr.split(",").map((c) => c.trim().toLowerCase()).filter(Boolean);
+  if (blocked.length === 0) return;
+
+  // Load all non-deleted new/shortlisted listings that have country data
+  const rows = await db
+    .select({ id: freelanceListings.id, clientCountry: freelanceListings.clientCountry })
+    .from(freelanceListings)
+    .where(and(
+      eq(freelanceListings.isDeleted, 0),
+      isNotNull(freelanceListings.clientCountry),
+      inArray(freelanceListings.status, ["new", "shortlisted"]),
+    ));
+
+  const now = new Date().toISOString();
+  let purged = 0;
+  for (const row of rows) {
+    const countryLower = (row.clientCountry ?? "").toLowerCase().trim();
+    if (blocked.some((b) => countryLower === b || countryLower.endsWith(`, ${b}`))) {
+      sqlite
+        .prepare("UPDATE freelance_listings SET is_deleted = 1, updated_at = ? WHERE id = ?")
+        .run(now, row.id);
+      purged++;
+    }
+  }
+  if (purged > 0) console.log(`[freelance] Soft-deleted ${purged} listing(s) from blocked countries`);
+}
 
 async function purgeOldDeletedListings(): Promise<void> {
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -46,6 +82,9 @@ async function trimListingsToMax(maxListings: number): Promise<void> {
 export async function fetchAllPlatforms(options?: { notify?: boolean; source?: "manual" | "scheduled" | "startup" }): Promise<void> {
   await purgeOldDeletedListings().catch((err) =>
     console.error("[freelance] Purge failed:", err),
+  );
+  await purgeBlockedCountryListings().catch((err) =>
+    console.error("[freelance] Blocked-country purge failed:", err),
   );
 
   const s = await getFreelanceSettings();
