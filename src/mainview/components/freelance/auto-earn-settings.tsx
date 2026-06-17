@@ -331,7 +331,7 @@ export function AutoEarnSettings({ value: s, onChange }: Props) {
             </div>
             <Field
               label="Blocked countries"
-              help="Comma-separated list of client countries to block, e.g. India, Pakistan, Bangladesh. Case-insensitive. Leave empty to allow all countries. Fail-open: if country data can't be extracted from the listing page, the listing is not blocked."
+              help="Comma-separated list of client countries to block, e.g. India, Pakistan, Bangladesh. Case-insensitive. Leave empty to allow all countries. Matched listings are automatically removed from all tabs (New, Shortlisted, etc.). Fail-open: if country data can't be extracted from the listing page, the listing is kept."
             >
               <input
                 type="text"
