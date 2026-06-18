@@ -1,7 +1,42 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Sparkles, Loader2, Bot, User } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { BidQuestionDto, BidAnswerDto } from "../../../shared/rpc/freelance";
+
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  minRows = 2,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  className: string;
+  minRows?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      rows={minRows}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      style={{ overflowY: "hidden" }}
+    />
+  );
+}
 
 interface Props {
   listingTitle: string;
@@ -31,13 +66,13 @@ export function BidRequirementsModal({ listingTitle, questions, onGenerate, onCa
     <Dialog.Root open onOpenChange={(open) => { if (!open) onCancel(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-background border border-border rounded-xl shadow-xl p-5 focus:outline-none">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-background border border-border rounded-xl shadow-xl p-5 focus:outline-none">
           <Dialog.Title className="text-sm font-semibold mb-0.5">Application Requirements</Dialog.Title>
           <Dialog.Description className="text-xs text-muted-foreground mb-4 line-clamp-1" title={listingTitle}>
             {listingTitle}
           </Dialog.Description>
 
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1 -mx-1">
             {/* Human-required questions first */}
             {humanQuestions.length > 0 && (
               <div className="space-y-3">
@@ -48,9 +83,9 @@ export function BidRequirementsModal({ listingTitle, questions, onGenerate, onCa
                 {humanQuestions.map((q) => (
                   <div key={q.id} className="space-y-1">
                     <label className="text-xs text-foreground/80">{q.question}</label>
-                    <textarea
+                    <AutoResizeTextarea
                       className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                      rows={2}
+                      minRows={2}
                       placeholder="Your answer…"
                       value={answers[q.id] ?? ""}
                       onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
@@ -70,9 +105,9 @@ export function BidRequirementsModal({ listingTitle, questions, onGenerate, onCa
                 {aiQuestions.map((q) => (
                   <div key={q.id} className="space-y-1">
                     <label className="text-xs text-foreground/80">{q.question}</label>
-                    <textarea
+                    <AutoResizeTextarea
                       className="w-full rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                      rows={2}
+                      minRows={1}
                       value={answers[q.id] ?? ""}
                       onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                     />
