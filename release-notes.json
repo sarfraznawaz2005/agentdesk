@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.2.4",
+        "title":  "Enhanced Context Window Management",
+        "changes":  [
+                        "Updated context window management with new limits and improved compaction logic."
+                    ]
+    },
+    {
         "version":  "2.2.3",
         "title":  "New RPC Methods and UI Enhancements",
         "changes":  [
