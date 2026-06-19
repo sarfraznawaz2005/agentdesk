@@ -93,7 +93,7 @@ const AI_FORM_DEFAULTS: AiForm = {
   modelOverride: "",
   thinkingBudget: "medium",
   shellApprovalMode: "ask",
-  sessionSummarizationThreshold: "200000",
+  sessionSummarizationThreshold: "200000", // deprecated — no longer surfaced in UI or used by the engine
   contextWindowLimit: "1000000",
   agentKnowledge: "true",
   autoExecuteNextTask: "true",
@@ -945,44 +945,25 @@ function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
           <Separator />
 
           <FieldRow
-            id="ai-session-summarization-threshold"
-            label="Session Summarization Threshold"
-            description="Token count at which agent session history is summarized to keep context manageable. Lower = more frequent summarization."
-          >
-            <Input
-              id="ai-session-summarization-threshold"
-              type="number"
-              min={5000}
-              max={200000}
-              step={5000}
-              value={form.sessionSummarizationThreshold}
-              onChange={(e) => {
-                handleChange("sessionSummarizationThreshold", e.target.value);
-              }}
-              onBlur={(e) => {
-                const raw = parseInt(e.target.value, 10);
-                const clamped = Number.isNaN(raw) || raw < 5000
-                  ? 200000
-                  : Math.min(500000, raw);
-                handleChange("sessionSummarizationThreshold", String(clamped));
-              }}
-            />
-          </FieldRow>
-
-          <Separator />
-
-          <FieldRow
             id="ai-context-window-limit"
             label="Context Window Limit"
-            description="Max context window (tokens) for agents. Agents compact history when approaching this limit. Default: 1,000,000."
+            description="The one limit that governs context: the bar fills toward it, and the conversation auto-compacts on the next turn once usage reaches it. Set it to your model's context window (e.g. 200,000 for Claude/GLM; 1,000,000 for Gemini/1M models). The bar counts REAL usage including the agent's system prompt (~20k), which compaction can't shrink — so the minimum is 50,000. Default: 1,000,000."
           >
             <Input
               id="ai-context-window-limit"
               type="number"
-              min={10000}
-              step={100000}
+              min={50000}
+              step={1000}
               value={form.contextWindowLimit}
               onChange={(e) => handleChange("contextWindowLimit", e.target.value)}
+              onBlur={(e) => {
+                // Enforce the 50k floor: values below it (or invalid) make the bar/
+                // compaction useless because the agent's system prompt alone (~20k) is
+                // the irreducible base. Clamp up to 50,000.
+                const raw = parseInt(e.target.value, 10);
+                const clamped = Number.isNaN(raw) ? 1000000 : Math.max(50000, raw);
+                if (String(clamped) !== e.target.value) handleChange("contextWindowLimit", String(clamped));
+              }}
               placeholder="1000000"
             />
           </FieldRow>

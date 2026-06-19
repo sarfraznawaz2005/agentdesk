@@ -2,7 +2,10 @@ import { db } from "../db";
 import { settings } from "../db/schema";
 import { eq } from "drizzle-orm";
 
-const DEFAULT_CONTEXT_LIMIT = 1_000_000; // 1M tokens
+// Default context window in tokens (1M). Generous by default so the meter/
+// compaction don't fire prematurely; users lower it per-project (min 50k) to match
+// a smaller model's real window via the "Context Window Limit" setting.
+const DEFAULT_CONTEXT_LIMIT = 1_000_000;
 
 // Default models per provider type
 const PROVIDER_DEFAULT_MODELS: Record<string, string> = {

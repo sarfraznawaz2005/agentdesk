@@ -173,6 +173,8 @@ export interface AgentEngineCallbacks {
 	onPartUpdated?(conversationId: string, messageId: string, partId: string, updates: Partial<import("./agent-loop").MessagePart>): void;
 	onAgentInlineStart?(conversationId: string, messageId: string, agentName: string, agentDisplayName: string, task: string): void;
 	onAgentInlineComplete?(conversationId: string, messageId: string, agentName: string, status: string, summary: string, tokensUsed?: { prompt: number; completion: number; contextLimit?: number }): void;
+	/** Live context size (real prompt tokens) emitted each step by the PM or a sub-agent, so the meter climbs in real time. */
+	onContextUsage?(conversationId: string, promptTokens: number, contextLimit: number): void;
 	onConversationTitleChanged?(conversationId: string, title: string): void;
 	onConversationUpdated?(conversationId: string, updatedAt: string): void;
 	onConversationCompacted?(conversationId: string, remainingTokens?: number): void;

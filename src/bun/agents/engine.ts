@@ -11,7 +11,7 @@ import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { messages, conversations, settings, aiProviders, projects, agents, kanbanTasks } from "../db/schema";
 import { createProviderAdapter } from "../providers";
-import { getDefaultModel } from "../providers/models";
+import { getDefaultModel, getContextLimit } from "../providers/models";
 import { buildContext } from "./context";
 import { getPMSystemPrompt } from "./prompts";
 import { summarizeConversation } from "./summarizer";
@@ -54,6 +54,16 @@ export class AgentEngine {
 	/** Whether the Project Manager is currently streaming a response */
 	private pmProcessing = false;
 	private pmProcessingPromise: Promise<void> | null = null;
+
+	/**
+	 * Last real prompt-token usage reported by the provider, per conversation —
+	 * the SAME figure the UI context bar shows. Compaction triggers measure
+	 * against this (in addition to the text-only char estimate) so a tool-heavy
+	 * turn (e.g. the kanban auto-execute loop, where tool I/O dominates the real
+	 * prompt but barely touches stored message text) actually compacts instead of
+	 * sitting pinned at 100% on the bar while the char estimate stays low.
+	 */
+	private lastPromptTokens = new Map<string, number>();
 	/** Injected function to abort all running sub-agents for this project. */
 	private abortAgentsFn?: (projectId: string) => void;
 
@@ -254,31 +264,30 @@ export class AgentEngine {
 				modelId,
 			});
 
-			// 4.1. Pre-send compaction — compact if estimated tokens exceed threshold
+			// 4.1. Next-turn compaction — ONE limit (`contextWindowLimit`) governs both
+			// the context bar and compaction. We measure the REAL last-turn prompt
+			// tokens (exactly what the bar shows, tool I/O included) against that limit,
+			// falling back to the char estimate when no real figure exists yet. At/over
+			// 100% of the limit we compact HERE — at the start of this (the next) turn,
+			// before streaming — never mid-stream. Set the limit at or below your
+			// model's true window so the turn that reaches it doesn't itself overflow.
 			{
-				const threshold = await this._loadSummarizationThreshold();
-				if (context.tokenCount >= threshold) {
-					console.log(`[AgentEngine] Pre-send compaction: ~${context.tokenCount} tokens >= ${threshold} threshold`);
+				const limit = getContextLimit(modelId, this.projectId);
+				const lastReal = this.lastPromptTokens.get(conversationId) ?? 0;
+				const effectiveTokens = Math.max(context.tokenCount, lastReal);
+				if (effectiveTokens >= limit) {
+					console.log(`[AgentEngine] Compaction: ~${effectiveTokens} tokens (estimate ${context.tokenCount}, last real ${lastReal}) >= ${limit} context window limit`);
 					this.callbacks.onCompactionStarted?.(conversationId);
 					await this.triggerSummarization(conversationId, providerRow, modelId);
 					context = await buildContext({ conversationId, systemPrompt, constitution: "", modelId });
-				}
-			}
-
-			// 4.2. Guard against a completely full context window — auto-compact and retry once
-			if (context.utilizationPercent >= 100) {
-				console.warn(`[AgentEngine] Context at ${context.utilizationPercent}% — triggering compaction before retry`);
-				await this.triggerSummarization(conversationId, providerRow, modelId);
-				context = await buildContext({
-					conversationId,
-					systemPrompt,
-					constitution: "",
-					modelId,
-				});
-				if (context.utilizationPercent >= 100) {
-					throw new Error(
-						"Context window is still full after compaction. Please start a new conversation.",
-					);
+					// If the durable history STILL exceeds the window after compaction,
+					// there's nothing left to safely trim — ask for a fresh conversation.
+					const afterReal = this.lastPromptTokens.get(conversationId) ?? 0;
+					if (Math.max(context.tokenCount, afterReal) >= limit) {
+						throw new Error(
+							`Context window is full even after compacting. Your Context Window Limit (${Math.round(limit / 1000)}k tokens) is too low for this model — raise it in this project's Settings → AI → "Context Window Limit" (set it to your model's window, e.g. 1,000,000), then Retry. Or start a new conversation.`,
+						);
+					}
 				}
 			}
 
@@ -330,6 +339,10 @@ export class AgentEngine {
 						content,
 						metadata: JSON.stringify({ source: "agent" }),
 					});
+				},
+				// Live context-bar updates while a sub-agent runs (not just at completion).
+				onStepUsage: (promptTokens: number, contextLimit: number) => {
+					this.callbacks.onContextUsage?.(conversationId, promptTokens, contextLimit);
 				},
 			};
 
@@ -597,6 +610,13 @@ export class AgentEngine {
 							const resultStr = typeof trResult === "string" ? trResult : JSON.stringify(trResult);
 							const isError = toolResultIsError(tr.toolName, resultStr);
 							emitActivity("tool_result", { toolName: tr.toolName, result: trResult, isError });
+						}
+						// Live context-bar update each PM step (real last-step prompt tokens),
+						// so a multi-step PM turn climbs the bar in real time too.
+						const pmStepUsage = (stepResult as { usage?: { inputTokens?: number; promptTokens?: number } }).usage;
+						const pmStepTokens = pmStepUsage?.inputTokens ?? pmStepUsage?.promptTokens;
+						if (typeof pmStepTokens === "number" && pmStepTokens > 0) {
+							this.callbacks.onContextUsage?.(conversationId, pmStepTokens, getContextLimit(modelId, this.projectId));
 						}
 					},
 				});
@@ -915,28 +935,13 @@ export class AgentEngine {
 				metadata: metadataJson,
 			});
 
-			this._touchConversation(conversationId);
+			// Remember the real prompt-token usage (exactly what the context bar shows)
+			// so the NEXT turn's compaction check measures against ACTUAL usage. We do
+			// NOT compact here — compaction happens only at the start of the next turn
+			// (step 4.1), so it never runs mid-stream.
+			this.lastPromptTokens.set(conversationId, promptTokens);
 
-			// 10.5. Check if context needs summarization (fire-and-forget)
-			(async () => {
-				try {
-					const allMsgRows = await db
-						.select({ content: messages.content })
-						.from(messages)
-						.where(eq(messages.conversationId, conversationId));
-					const estimatedTokens = allMsgRows.reduce(
-						(sum, m) => sum + Math.ceil((m.content?.length ?? 0) / 4),
-						0,
-					);
-					const threshold = await this._loadSummarizationThreshold();
-					if (estimatedTokens >= threshold) {
-						this.callbacks.onCompactionStarted?.(conversationId);
-						this.triggerSummarization(conversationId, providerRow, modelId).catch(() => {});
-					}
-				} catch {
-					// Never let summarization errors surface to the caller
-				}
-			})();
+			this._touchConversation(conversationId);
 
 			// 11. (Auto-title is fired from sendMessage with a 1s delay — see above)
 		} catch (error: unknown) {
@@ -1128,18 +1133,6 @@ export class AgentEngine {
 		return { row, modelId };
 	}
 
-	/** Reads summarization threshold from project settings. */
-	private async _loadSummarizationThreshold(): Promise<number> {
-		const key = `project:${this.projectId}:sessionSummarizationThreshold`;
-		const rows = await db
-			.select({ value: settings.value })
-			.from(settings)
-			.where(eq(settings.key, key))
-			.limit(1);
-		const parsed = parseInt(rows[0]?.value ?? "", 10);
-		return Number.isNaN(parsed) || parsed < 5000 ? 200_000 : parsed;
-	}
-
 	/** Triggers AI summarization for a conversation in the background. */
 	private async triggerSummarization(
 		conversationId: string,
@@ -1168,6 +1161,10 @@ export class AgentEngine {
 				(sum, m) => sum + Math.ceil((m.content?.length ?? 0) / 4),
 				0,
 			);
+			// Drop the stale pre-compaction peak so the next pre-send check doesn't
+			// re-trigger on it; the next completed stream repopulates this with the
+			// real post-compaction usage. Mirrors the figure pushed to the UI bar.
+			this.lastPromptTokens.set(conversationId, remainingTokens);
 			this.callbacks.onConversationCompacted?.(conversationId, remainingTokens);
 		} catch (err) {
 			console.error(

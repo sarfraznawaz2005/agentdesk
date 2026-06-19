@@ -543,6 +543,9 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 			onAgentInlineStart: (conversationId, messageId, agentName, agentDisplayName, task) => {
 				broadcastToWebview("agentInlineStart", { conversationId, messageId, agentName, agentDisplayName, task });
 			},
+			onContextUsage: (conversationId, promptTokens, contextLimit) => {
+				broadcastToWebview("contextUsage", { conversationId, promptTokens, contextLimit });
+			},
 			onAgentInlineComplete: (conversationId, messageId, agentName, status, summary, tokensUsed) => {
 				broadcastToWebview("agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
 				// A sub-agent finished work in the main chat (skip user-cancelled runs).

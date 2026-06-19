@@ -158,6 +158,13 @@ export type WebviewSchema = RPCSchema<{
       filesModified: string[];
       tokensUsed: { prompt: number; completion: number };
     };
+    // Live context-window usage, emitted per step by the PM or a sub-agent so the
+    // context meter climbs in real time (numerator = real prompt tokens).
+    contextUsage: {
+      conversationId: string;
+      promptTokens: number;
+      contextLimit: number;
+    };
 
     // Conversation title auto-generated
     conversationTitleChanged: {

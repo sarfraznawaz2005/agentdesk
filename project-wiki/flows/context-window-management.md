@@ -2,7 +2,7 @@
 title: Context Window Management
 type: flow
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-19
 sources:
   - src/bun/agents/context.ts
   - src/bun/agents/summarizer.ts
@@ -36,25 +36,35 @@ reported by the provider.
 ## Key idea: where the limit comes from
 
 `getContextLimit()` (`src/bun/providers/models.ts:29`) does **not** look at the
-model. It returns a user-configurable number (default `1_000_000`, see
-`models.ts:5`), read from `project:<id>:contextWindowLimit` then global
-`contextWindowLimit`, cached per project in `contextLimitCache`
-(`models.ts:22`). So "context limit" here is an AgentDesk policy knob, not the
-model's true window — by default it assumes a 1M-token budget. The cache must be
-cleared via `clearContextLimitCache()` (`models.ts:63`) when settings change.
+model. It returns a user-configurable number (**default `1_000_000`**), read from
+`project:<id>:contextWindowLimit` then global `contextWindowLimit`, cached per
+project in `contextLimitCache` (`models.ts:22`). The cache must be cleared via
+`clearContextLimitCache()` (`models.ts:63`) when settings change.
+
+This is now the **single** limit that governs everything: it is the meter's
+denominator (frontend `ContextIndicator`), the PM conversation's compaction
+trigger (engine, at 100%), **and** the inline sub-agent tiers' denominator. The
+older separate `sessionSummarizationThreshold` setting is **deprecated** — no
+longer read by the engine and removed from the settings UI. The default is **1M**
+(generous, so the meter/compaction don't fire prematurely); the settings field
+enforces a **50k minimum** (clamped on blur) because the agent's system prompt
+alone (~18–20k tokens) is the irreducible base — a limit below it would pin the
+bar at 100% even after compaction. Lower it per-project to match a smaller model's
+real window. Set it at or below the model's true window so the turn
+that reaches it doesn't itself overflow.
 
 ## How it works
 
 ```mermaid
 flowchart TD
     subgraph PM["PM conversation (DB-backed)"]
-        A[user message] --> B[buildContext: load summary + recent 50 msgs]
-        B --> C{tokenCount >= threshold<br/>200k default?}
+        A[turn starts: user msg or agent report] --> B[buildContext: load summary + recent 50 msgs]
+        B --> C{max&#40;estimate, lastRealTokens&#41;<br/>>= contextWindowLimit?}
         C -- yes --> D[summarizeConversation:<br/>merge old summary + transcript,<br/>delete compacted msgs]
         C -- no --> E[stream PM reply]
         D --> E
-        E --> F{util >= 100%?}
-        F -- yes --> D
+        E --> G[store lastPromptTokens = real last-step usage]
+        G -.next turn.-> A
     end
     subgraph SUB["Inline sub-agent (in-memory)"]
         G[generateText step] --> H[onStepFinish: lastPromptTokens = step.usage.inputTokens]
@@ -79,25 +89,49 @@ prompt+completion usage which wildly overestimates content size
 (`context.ts:71-79`). It returns `tokenCount`, `contextLimit`, and a rounded
 `utilizationPercent` (`context.ts:86`).
 
-The engine drives compaction at two points around each PM turn:
+The engine compacts the PM conversation at **exactly one point — the start of
+each turn, before streaming** (`engine.ts` step 4.1). Compaction is therefore
+always "next turn", never mid-stream. (A turn starts on a user message *or* an
+agent report — including the kanban auto-execute restarts — so a tool-heavy
+sequence compacts before its next PM turn.)
 
-- **Pre-send compaction** (`engine.ts:257-266`): before streaming, if
-  `context.tokenCount >= threshold` it fires `triggerSummarization` then rebuilds
-  context. The threshold is `_loadSummarizationThreshold()`
-  (`engine.ts:1097-1107`) — `project:<id>:sessionSummarizationThreshold`,
-  defaulting to **200_000** and floored at 5000. Note this is a *raw token count*
-  check, independent of `getContextLimit`.
-- **Full-window guard** (`engine.ts:268-283`): if `utilizationPercent >= 100`,
-  compact and retry once; if still 100%, throw "start a new conversation".
+The trigger is `max(context.tokenCount, lastReal) >= getContextLimit(modelId, projectId)`:
+- `context.tokenCount` is the ~4-char/token estimate (a floor).
+- `lastReal` is the provider's **real** last-step prompt tokens from the previous
+  turn, stored per conversation in `lastPromptTokens` and updated at
+  `onStreamComplete` — the *exact* figure the UI context bar shows. This is what
+  makes "bar at 100% ⇒ compact next turn" true: the char estimate alone
+  under-counts tool-heavy turns (tool I/O lives in `message_parts`, which
+  `buildContext` never loads), so the real-token signal is needed.
+
+At/over 100% of the limit it fires `triggerSummarization`, rebuilds context, and
+if it is *still* ≥ limit afterwards throws "start a new conversation". There is no
+longer a post-stream fire-and-forget compaction (removed) and no separate absolute
+threshold (the deprecated `sessionSummarizationThreshold` is unused).
+`triggerSummarization` resets `lastPromptTokens` to the post-compaction figure so
+the stale peak doesn't re-trigger.
+
+The meter (`ContextIndicator`) reads the same `contextWindowLimit` setting as its
+denominator and the real `liveContextTokens` as its numerator, so the bar shows
+true utilization consistently for the PM, sub-agents, and after user messages.
+`liveContextTokens` is updated **live, per step** during a run via the
+`contextUsage` broadcast (`onStepUsage` in the agent loop / PM `onStepFinish` →
+`onContextUsage` → `broadcastToWebview("contextUsage")` → `agentdesk:context-usage`),
+so the bar climbs in real time rather than only jumping at completion. Because the
+PM and each sub-agent have separate context windows, the bar reflects the
+*currently active* context, not a sum across them.
 
 `triggerSummarization` (`engine.ts:1109`) just calls `summarizeConversation` and
 then recomputes remaining tokens for the UI indicator
 (`onConversationCompacted`, `engine.ts:1137`).
 
-There is also a **between-task** hook in PM tooling
-(`pm-tools.ts:649-666`): after each sub-agent finishes, if
-`utilizationPercent >= 60` it prunes that agent's tool outputs in the DB, and if
-`shouldSummarize(ctx)` (≥ 80%, `context.ts:90-92`) it summarizes.
+There is also a **between-task hygiene** hook in PM tooling (`pm-tools.ts`): after
+each sub-agent finishes, if `utilizationPercent >= 60` it prunes *that agent's*
+verbose tool outputs in the DB (`pruneAgentToolResults`). It **no longer
+summarizes** the conversation — the old `shouldSummarize` (≥80%) full-summarize
+call was removed so that durable compaction happens only at the engine's
+next-turn 100% check (otherwise the bar would drop before reaching the top). The
+prune is non-destructive context hygiene, not conversation compaction.
 
 ### `summarizeConversation` — the durable compactor
 
@@ -180,25 +214,35 @@ summary (`agent-loop.ts:1386`) rather than crashing.
 
 | File | Role |
 |---|---|
-| `src/bun/agents/context.ts` | `buildContext` (token estimate, util%), `shouldSummarize` (≥80%) |
+| `src/bun/agents/context.ts` | `buildContext` (token estimate, util%); `shouldSummarize` (≥80%) now unused |
 | `src/bun/agents/summarizer.ts` | Durable PM compaction: prune → chunk → iterative summarize → delete |
 | `src/bun/agents/agent-loop.ts` | Inline sub-agent 60/70/85/90 tiers, in-memory pruning, no iteration cap |
-| `src/bun/agents/engine.ts` | Pre-send compaction, 100% guard, `triggerSummarization`, threshold loader |
-| `src/bun/agents/tools/pm-tools.ts` | Between-task pruning (≥60%) + summarize (≥80%) after each sub-agent |
-| `src/bun/providers/models.ts` | `getContextLimit` (config knob, default 1M), per-project cache |
+| `src/bun/agents/engine.ts` | Next-turn compaction at 100% of `getContextLimit`; `lastPromptTokens` real-usage tracking; `triggerSummarization` |
+| `src/bun/agents/tools/pm-tools.ts` | Between-task tool-output pruning (≥60%) only — no longer summarizes |
+| `src/bun/providers/models.ts` | `getContextLimit` (the single config knob, default 1M), per-project cache |
+| `src/mainview/components/chat/context-indicator.tsx` | The meter: real `liveContextTokens` / `contextWindowLimit` |
 
 ## Gotchas / Constraints
 
-- **The "context limit" is not the model's window.** It is a settings value
-  defaulting to 1M (`models.ts:5`). Setting it wrong (too high) means agents can
-  silently exceed the model's true window before the 0.90 tier fires.
-- **Two different threshold systems coexist.** PM pre-send uses an absolute
-  `sessionSummarizationThreshold` (default 200k, `engine.ts:1106`); sub-agents
-  use *ratios* of `getContextLimit`; `shouldSummarize` uses a hard-coded 80%
-  (`context.ts:91`). Changing one does not change the others.
+- **The "context limit" is not auto-detected from the model.** It is the
+  `contextWindowLimit` setting (default **1M**, min **50k**). It is the user's
+  responsibility to set it to the model's true window — too high and the PM
+  compacts only after the model has already overflowed; too low and it compacts
+  more than necessary (and below ~the system-prompt base it can't help at all,
+  which surfaces the "still full after compaction" error pointing the user to the
+  setting).
+- **One limit now governs everything.** The meter denominator, the PM next-turn
+  compaction trigger, and the sub-agent tiers all use `getContextLimit`. The PM
+  compacts at 100% of it; sub-agents still use *ratios* (60/70/85/90%) because an
+  inline run has no "next turn" and must self-trim mid-run. The old
+  `sessionSummarizationThreshold` setting is deprecated/unused.
 - **PM token estimate is char-based (~4/token)** and intentionally ignores the
   stored `messages.tokenCount`. Don't "fix" it to read the DB column — the
-  comment at `context.ts:71-79` explains why.
+  comment at `context.ts:71-79` explains why. The char estimate is still the
+  primary measure, but the compaction *triggers* also consider the provider's real
+  prompt tokens (`lastPromptTokens`) via `max(estimate, real)` so tool-heavy turns
+  whose bulk lives in `message_parts` (never loaded by `buildContext`) still
+  compact — the char estimate alone would leave them pinned at 100%.
 - **Summarization is destructive.** `summarizeConversation` deletes old message
   rows (`summarizer.ts:174-179`); only the merged summary + last 10 messages
   survive. The per-conversation lock prevents double runs.
@@ -214,9 +258,9 @@ summary (`agent-loop.ts:1386`) rather than crashing.
 - [[providers]]
 
 ## Open questions
-- The pre-send threshold (200k) and the 1M default `getContextLimit` are
-  independent; whether they are meant to be kept in a fixed ratio by the
-  settings UI is not verified here.
-- `between-task` pruning in `pm-tools.ts:653` builds context with an empty
+- `getContextLimit` is a manual setting, not auto-detected from the model. A
+  per-model window table (à la OpenCode/Gemini) was considered and deferred —
+  users set `contextWindowLimit` to match their model.
+- `between-task` pruning in `pm-tools.ts` builds context with an empty
   system prompt, so its `utilizationPercent` omits system-prompt tokens — minor
   under-estimate; unclear if intentional.

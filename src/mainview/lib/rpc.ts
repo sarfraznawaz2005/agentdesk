@@ -102,6 +102,9 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       agentInlineComplete: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:agent-inline-complete", { detail: payload }));
       },
+      contextUsage: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:context-usage", { detail: payload }));
+      },
       presentPlan: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:plan-presented", { detail: payload }));
       },

@@ -128,6 +128,12 @@ export interface InlineAgentCallbacks {
 	onAgentComplete(messageId: string, agentName: string, status: string, summary: string, filesModified: string[], tokensUsed: { prompt: number; completion: number; contextLimit?: number }): void;
 	/** Notify frontend that a new agent message row was created so it appears in chat. */
 	onMessageCreated?(messageId: string, conversationId: string, agentName: string, content: string): void;
+	/**
+	 * Fired each step with the live context size (real last-step prompt tokens) and
+	 * the context window limit, so the UI meter can climb in real time while the
+	 * agent works — not just jump at completion.
+	 */
+	onStepUsage?(promptTokens: number, contextLimit: number): void;
 }
 
 export interface InlineAgentOptions {
@@ -1168,6 +1174,8 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				if (step.usage) {
 					lastPromptTokens = step.usage.inputTokens ?? step.usage.promptTokens ?? lastPromptTokens;
 					completionTokens += step.usage.outputTokens ?? step.usage.completionTokens ?? 0;
+					// Push the live context size to the UI meter each step (real usage).
+					if (lastPromptTokens > 0) callbacks.onStepUsage?.(lastPromptTokens, CONTEXT_LIMIT);
 				}
 
 				// --- Guardrail: Timeout check ---

@@ -13,7 +13,7 @@ interface ContextIndicatorProps {
   variant?: "compact" | "bar" | "inline";
 }
 
-const DEFAULT_THRESHOLD = 200_000;
+const DEFAULT_CONTEXT_LIMIT = 1_000_000;
 
 /** Estimate tokens from content length (~4 chars/token).
  * We don't use tokenCount because agent messages store API usage tokens
@@ -29,28 +29,35 @@ function formatTokens(n: number): string {
 }
 
 export function ContextIndicator({ messages, projectId, variant = "compact" }: ContextIndicatorProps) {
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
+  // The single context window the meter measures against — the project's
+  // "Context Window Limit" setting. Same denominator for the PM and every
+  // sub-agent, so the bar reflects true utilization no matter who ran last
+  // (auto-compaction fires at 100% of this on the next turn).
+  const [contextLimit, setContextLimit] = useState(DEFAULT_CONTEXT_LIMIT);
   const liveContextTokens = useChatStore((s) => s.liveContextTokens);
-  const liveContextLimit = useChatStore((s) => s.liveContextLimit);
 
-  // Load the project's summarization threshold setting
+  // Load the project's context window limit; refresh when settings change.
   useEffect(() => {
-    rpc
-      .getSetting(`project:${projectId}:sessionSummarizationThreshold`)
-      .then((val: string | null) => {
-        const parsed = parseInt(val ?? "", 10);
-        if (!Number.isNaN(parsed) && parsed >= 5000) setThreshold(parsed);
-      })
-      .catch(() => {});
+    const load = () =>
+      rpc
+        .getSetting(`project:${projectId}:contextWindowLimit`)
+        .then((val: string | null) => {
+          const parsed = parseInt(val ?? "", 10);
+          if (!Number.isNaN(parsed) && parsed >= 1000) setContextLimit(parsed);
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener("agentdesk:settings-changed", load);
+    return () => window.removeEventListener("agentdesk:settings-changed", load);
   }, [projectId]);
 
   const estimated = useMemo(() => estimateTokens(messages), [messages]);
 
-  // Prefer live context tokens from backend (reflects actual usage after compaction)
-  // Fall back to client-side estimate when no live data available
+  // Prefer the backend's real last-step token usage (the actual current context
+  // size, updated by whichever agent ran); fall back to a char estimate before
+  // any live figure exists.
   const displayTokens = liveContextTokens > 0 ? liveContextTokens : estimated;
-  const displayThreshold = liveContextLimit > 0 ? liveContextLimit : threshold;
-  const utilization = Math.min((displayTokens / displayThreshold) * 100, 100);
+  const utilization = Math.min((displayTokens / contextLimit) * 100, 100);
 
   if (messages.length === 0) return null;
 
@@ -68,7 +75,7 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
         ? "text-amber-500"
         : "text-muted-foreground";
 
-  const tooltipContent = "Conversation will auto-compact when context reaches the threshold";
+  const tooltipContent = "Conversation auto-compacts on the next turn when context reaches the Context Window Limit";
 
   // Inline variant — fits inside the model selector row
   if (variant === "inline") {

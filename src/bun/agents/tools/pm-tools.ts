@@ -22,8 +22,7 @@ import {
 } from "../../db/schema";
 import type { AgentActivityEvent } from "../types";
 import { runInlineAgent, pruneAgentToolResults, READ_ONLY_AGENTS, type InlineAgentCallbacks } from "../agent-loop";
-import { buildContext, shouldSummarize } from "../context";
-import { summarizeConversation } from "../summarizer";
+import { buildContext } from "../context";
 import type { MessageMetadata } from "../engine";
 import { createProjectHandler, getProjectsList } from "../../rpc/projects";
 import { schedulerTools } from "./scheduler";
@@ -662,7 +661,11 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							} catch { /* non-fatal */ }
 						}
 
-						// Between-task compaction
+						// Between-task hygiene: trim the just-finished sub-agent's verbose
+						// tool outputs once past ~60% so they don't bloat the PM context.
+						// This is NOT conversation compaction — full summarization is owned
+						// solely by the engine's next-turn check, which fires at 100% of the
+						// Context Window Limit (the bar reaches the top before it compacts).
 						try {
 							const { getDefaultModel } = await import("../../providers/models");
 							const modelId = deps.providerConfig.defaultModel ?? getDefaultModel(deps.providerConfig.providerType);
@@ -675,9 +678,6 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							if (ctx.utilizationPercent >= 60 && result.messageIds.length > 0) {
 								const pruneCount = await pruneAgentToolResults(result.messageIds);
 								if (pruneCount > 0) console.log(`[PM] Pruned ${pruneCount} tool outputs after ${displayName} (context at ${ctx.utilizationPercent}%)`);
-							}
-							if (shouldSummarize(ctx)) {
-								await summarizeConversation({ conversationId: deps.conversationId, providerConfig: deps.providerConfig, modelId });
 							}
 						} catch { /* non-fatal */ }
 

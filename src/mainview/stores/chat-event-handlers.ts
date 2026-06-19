@@ -624,6 +624,21 @@ function onConversationCompacted(e: Event): void {
   toast("info", "Conversation compacted — older messages summarized.");
 }
 
+// Live context-meter update: the PM or a sub-agent reports its real per-step
+// prompt-token usage as it runs, so the bar climbs in real time instead of only
+// jumping at completion. The denominator (Context Window Limit) is read by the
+// ContextIndicator from settings; here we only update the numerator.
+function onContextUsage(e: Event): void {
+  const { conversationId, promptTokens } = (e as CustomEvent<{
+    conversationId: string;
+    promptTokens: number;
+    contextLimit: number;
+  }>).detail;
+  const state = useChatStore.getState();
+  if (state.activeConversationId !== conversationId) return;
+  if (promptTokens > 0) useChatStore.setState({ liveContextTokens: promptTokens });
+}
+
 function onPmThinking(e: Event): void {
   const { conversationId, text } = (e as CustomEvent<{
     conversationId: string;
@@ -670,5 +685,6 @@ export function initChatEventHandlers(): void {
   window.addEventListener("agentdesk:new-message", onNewMessage);
   window.addEventListener("agentdesk:agent-inline-start", onAgentInlineStart);
   window.addEventListener("agentdesk:agent-inline-complete", onAgentInlineComplete);
+  window.addEventListener("agentdesk:context-usage", onContextUsage);
   window.addEventListener("agentdesk:pm-thinking", onPmThinking);
 }

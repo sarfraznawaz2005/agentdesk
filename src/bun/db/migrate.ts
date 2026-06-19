@@ -45,6 +45,7 @@ import * as v42 from "./migrations/v42_request-human-input-backfill";
 import * as v43 from "./migrations/v43_freelance-client-quality";
 import * as v44 from "./migrations/v44_freelance-wizard-block-kind";
 import * as v45 from "./migrations/v45_freelance-client-country";
+import * as v46 from "./migrations/v46_context-window-limit-1m";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -114,6 +115,7 @@ const migrations: Migration[] = [
 	{ version: 43, name: v43.name, run: v43.run },
 	{ version: 44, name: v44.name, run: v44.run },
 	{ version: 45, name: v45.name, run: v45.run },
+	{ version: 46, name: v46.name, run: v46.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
