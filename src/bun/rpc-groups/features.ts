@@ -115,6 +115,8 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.outbox.retry": (params) => freelanceOutboxRpc.retry(params),
 	"freelance.outbox.markBidPrefilled": (params) => freelanceOutboxRpc.markBidPrefilled(params),
 	"freelance.outbox.reject": (params) => freelanceOutboxRpc.reject(params),
+	"freelance.outbox.getSentBid": (params) => freelanceOutboxRpc.getSentBid(params),
+	"freelance.outbox.getSentReply": (params) => freelanceOutboxRpc.getSentReply(params),
 	"freelance.outbox.killSwitch": () => freelanceOutboxRpc.killSwitch(),
 	"freelance.governor.getState": () => freelanceOutboxRpc.governorState(),
 	"freelance.governor.pause": (params) => freelanceOutboxRpc.pauseAutonomy(params),

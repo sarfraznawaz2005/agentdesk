@@ -227,6 +227,31 @@ export async function markBidPrefilled(params: { id: string; needsAmount?: boole
 	return { success: true };
 }
 
+// ─── getSentBid / getSentReply ─────────────────────────────────────────────────
+// Return the body we actually sent — the stashed `final_body` (set in
+// approveSend), falling back to `draft_body`. Lets the UI show "what we sent"
+// for a placed bid (by listing) or a sent reply (by thread). Most recent sent
+// row of that kind wins; null body when none exists.
+function lastSentBody(column: "listing_id" | "thread_id", kind: "bid" | "reply", id: string): { body: string | null; sentAt: string | null } {
+	const row = sqlite
+		.prepare(
+			`SELECT COALESCE(final_body, draft_body) AS body, sent_at
+			 FROM freelance_outbox
+			 WHERE kind = ? AND status = 'sent' AND ${column} = ?
+			 ORDER BY updated_at DESC LIMIT 1`,
+		)
+		.get(kind, id) as { body: string | null; sent_at: string | null } | undefined;
+	return { body: row?.body ?? null, sentAt: row?.sent_at ?? null };
+}
+
+export async function getSentBid(params: { listingId: string }): Promise<{ body: string | null; sentAt: string | null }> {
+	return lastSentBody("listing_id", "bid", params.listingId);
+}
+
+export async function getSentReply(params: { threadId: string }): Promise<{ body: string | null; sentAt: string | null }> {
+	return lastSentBody("thread_id", "reply", params.threadId);
+}
+
 // ─── reject ─────────────────────────────────────────────────────────────────
 export async function reject(params: { id: string }): Promise<{ success: boolean }> {
 	sqlite

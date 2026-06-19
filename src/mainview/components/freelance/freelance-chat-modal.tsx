@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Check, Copy, Globe, Loader2, RefreshCw, Square, Trash2, X } from "lucide-react";
+import { Check, Copy, Download, Globe, Loader2, RefreshCw, Square, Trash2, X } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,6 +7,8 @@ import rehypeSanitize from "rehype-sanitize";
 import { Button } from "@/components/ui/button";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
 import { CodeBlock } from "@/components/chat/code-block";
+import { toast } from "@/components/ui/toast";
+import { buildChatMarkdown, exportChatMarkdown } from "@/lib/export-markdown";
 import { TypingRow } from "@/components/chat/message-list";
 import { ToolCallCard } from "@/components/chat/tool-call-card";
 import type { ToolCallPartData } from "@/components/chat/tool-call-card";
@@ -592,6 +594,33 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
     }
   };
 
+  // ── Export conversation as Markdown ─────────────────────────────────────────
+  // Mirrors the dashboard chat widgets: one heading per turn, listing title as
+  // the document title. Only enabled once a real exchange exists (> 1 message).
+
+  const handleExportMarkdown = useCallback(() => {
+    const ok = exportChatMarkdown({
+      title: listing.title || "Freelance Chat",
+      messages,
+      assistantLabel: "Assistant",
+    });
+    if (ok) toast("success", "Chat exported as Markdown.");
+  }, [messages, listing.title]);
+
+  const [copiedAll, setCopiedAll] = useState(false);
+  const handleCopyConversation = useCallback(() => {
+    const md = buildChatMarkdown({
+      title: listing.title || "Freelance Chat",
+      messages,
+      assistantLabel: "Assistant",
+    });
+    if (!md) return;
+    void navigator.clipboard.writeText(md).then(() => {
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 1500);
+    });
+  }, [messages, listing.title]);
+
   // ── Derived state ──────────────────────────────────────────────────────────
 
   const isEmpty = messages.length === 0 && !streamingId && !isFetching && !errorState && toolCalls.size === 0;
@@ -625,6 +654,34 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
               <p className="text-xs text-muted-foreground mt-0.5">Freelance Chat</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              {/* Copy whole conversation — enabled only once a real exchange exists */}
+              {!showClearConfirm && (
+                <Tip content={copiedAll ? "Copied!" : "Copy conversation"} side="bottom">
+                  <button
+                    type="button"
+                    onClick={handleCopyConversation}
+                    disabled={messages.length <= 1}
+                    aria-label="Copy conversation"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {copiedAll ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  </button>
+                </Tip>
+              )}
+              {/* Export as markdown — enabled only once a real exchange exists */}
+              {!showClearConfirm && (
+                <Tip content="Export as markdown" side="bottom">
+                  <button
+                    type="button"
+                    onClick={handleExportMarkdown}
+                    disabled={messages.length <= 1}
+                    aria-label="Export chat as markdown"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Download className="size-4" />
+                  </button>
+                </Tip>
+              )}
               {/* Clear button */}
               {messages.length > 0 && !showClearConfirm && (
                 <Tip content="Clear conversation" side="bottom">

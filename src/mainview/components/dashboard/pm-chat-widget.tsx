@@ -7,6 +7,7 @@ import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
+import { exportChatMarkdown } from "@/lib/export-markdown";
 import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -408,22 +409,13 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   }, [isStreaming]);
 
   const handleExportMarkdown = useCallback(() => {
-    const exportable = messages.filter((m) => !m.isError && m.content.trim());
-    if (exportable.length === 0) return;
-    const lines = ["# Project Manager Chat\n"];
-    for (const msg of exportable) {
-      lines.push(`## ${msg.role === "user" ? "User" : "Project Manager"}\n`);
-      lines.push(msg.content);
-      lines.push("");
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "project-manager-chat.md";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast("success", "Chat exported as Markdown.");
+    const ok = exportChatMarkdown({
+      title: "Project Manager Chat",
+      messages: messages.filter((m) => !m.isError),
+      assistantLabel: "Project Manager",
+      filename: "project-manager-chat",
+    });
+    if (ok) toast("success", "Chat exported as Markdown.");
   }, [messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -546,7 +538,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                 <button
                   type="button"
                   onClick={handleExportMarkdown}
-                  disabled={messages.length === 0}
+                  disabled={messages.length <= 1}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Download className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />

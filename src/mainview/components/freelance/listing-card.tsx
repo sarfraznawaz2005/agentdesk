@@ -3,13 +3,14 @@ import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { Bookmark, Bot, CheckCircle, CheckCircle2, ExternalLink, Filter, Globe, Loader2, MapPin, MessageSquare, RefreshCw, ShieldCheck, Sparkles, Star, ThumbsDown, Timer, Trash2, UserX, Wrench, X } from "lucide-react";
+import { Bookmark, Bot, Check, CheckCircle, CheckCircle2, Copy, Download, ExternalLink, Filter, Globe, Loader2, MapPin, MessageSquare, RefreshCw, ShieldCheck, Sparkles, Star, ThumbsDown, Timer, Trash2, UserX, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
+import { downloadMarkdown } from "@/lib/export-markdown";
 import { FreelanceChatModal } from "./freelance-chat-modal";
 import type { FreelanceListingDto, FreelanceBlockKind, BidQuestionDto, BidAnswerDto } from "../../../shared/rpc/freelance";
 import { BidRequirementsModal } from "./bid-requirements-modal";
@@ -249,6 +250,7 @@ const ANALYSIS_MD_COMPONENTS = {
 function AnalysisModal({
   open,
   onClose,
+  title,
   verdict,
   filtered,
   reason,
@@ -258,6 +260,7 @@ function AnalysisModal({
 }: {
   open: boolean;
   onClose: () => void;
+  title: string;
   verdict: "workable" | "not_workable" | null;
   filtered: boolean;
   reason: string | null;
@@ -265,6 +268,7 @@ function AnalysisModal({
   analysisText: string | null;
   blockKind: FreelanceBlockKind | null;
 }) {
+  const [copied, setCopied] = useState(false);
   if (!open) return null;
   const isWorkable = verdict === "workable";
   const tone = verdict ? pillTone(verdict, blockKind, filtered) : "red";
@@ -284,6 +288,37 @@ function AnalysisModal({
   const badgeClass = MODAL_BADGE_CLASSES[tone];
   const bulletClass = MODAL_BULLET_CLASSES[tone];
   const badgeLabel = verdict ? pillLabel(verdict, blockKind) : "Not Workable";
+
+  // Assemble the analysis as a standalone Markdown document: verdict line, the
+  // full AI analysis prose, then the verdict summary + blockers.
+  const buildAnalysisMarkdown = (): string => {
+    const lines = [`# ${title} — AI Analysis\n`, `**Verdict:** ${badgeLabel}\n`];
+    if (analysisText) {
+      lines.push(analysisText.replace(/\r\n/g, "\n").replace(/\r/g, "\n"), "");
+    }
+    if (reason) {
+      lines.push("## Verdict Summary\n", reason);
+      if (blockers && blockers.length > 0) {
+        lines.push("");
+        for (const b of blockers) lines.push(`- ${b}`);
+      }
+    }
+    return lines.join("\n");
+  };
+
+  const hasExportableAnalysis = Boolean(analysisText || reason);
+
+  const handleCopyAnalysis = () => {
+    void navigator.clipboard.writeText(buildAnalysisMarkdown()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const handleExportAnalysis = () => {
+    downloadMarkdown(`${title} - AI Analysis`, buildAnalysisMarkdown());
+    toast("success", "Analysis exported as Markdown.");
+  };
 
   return (
     <div
@@ -317,14 +352,40 @@ function AnalysisModal({
               {badgeLabel}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Close"
-          >
-            <X className="size-4" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {hasExportableAnalysis && (
+              <>
+                <Tip content={copied ? "Copied!" : "Copy analysis"} side="bottom">
+                  <button
+                    type="button"
+                    onClick={handleCopyAnalysis}
+                    className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Copy analysis"
+                  >
+                    {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  </button>
+                </Tip>
+                <Tip content="Export as markdown" side="bottom">
+                  <button
+                    type="button"
+                    onClick={handleExportAnalysis}
+                    className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Export analysis as markdown"
+                  >
+                    <Download className="size-4" />
+                  </button>
+                </Tip>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Close"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable body */}
@@ -458,6 +519,29 @@ export function FreelanceListingCard({
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [localDescription, setLocalDescription] = useState<string | null | undefined>(listing.fullDescription);
   const [refreshingDesc, setRefreshingDesc] = useState(false);
+
+  // Sent-proposal viewer (opened from the "Bid Placed" pill). The body we sent
+  // is persisted as the outbox row's final_body; fetched on demand.
+  const [sentBidOpen, setSentBidOpen] = useState(false);
+  const [sentBidBody, setSentBidBody] = useState<string | null>(null);
+  const [sentBidSentAt, setSentBidSentAt] = useState<string | null>(null);
+  const [sentBidLoading, setSentBidLoading] = useState(false);
+  const [sentBidCopied, setSentBidCopied] = useState(false);
+
+  const handleViewSentBid = useCallback(async () => {
+    setSentBidOpen(true);
+    setSentBidLoading(true);
+    try {
+      const res = await rpc.freelanceOutboxGetSentBid(listing.id);
+      setSentBidBody(res.body);
+      setSentBidSentAt(res.sentAt);
+    } catch {
+      setSentBidBody(null);
+      setSentBidSentAt(null);
+    } finally {
+      setSentBidLoading(false);
+    }
+  }, [listing.id]);
 
   // Sync when the parent refreshes the listing (e.g. after Analyze fetches the description)
   useEffect(() => {
@@ -786,16 +870,18 @@ export function FreelanceListingCard({
         {/* Create Proposal (bid) — Auto-Earn only, shortlisted listings only: queue an AI proposal */}
         {autoEarnEnabled && isShortlisted && !isClosed && (
           listing.hasBid ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled
-              className="gap-1.5 text-green-600 dark:text-green-400 border-green-500/40"
-              aria-label="Bid already placed"
-            >
-              <CheckCircle2 className="size-3.5" />
-              Bid Placed
-            </Button>
+            <Tip content="View the proposal you sent" side="top">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleViewSentBid()}
+                className="gap-1.5 text-green-600 dark:text-green-400 border-green-500/40 hover:bg-green-500/10 hover:text-green-700 dark:hover:text-green-300"
+                aria-label="View the proposal you sent"
+              >
+                <CheckCircle2 className="size-3.5" />
+                Bid Placed
+              </Button>
+            </Tip>
           ) : (
             <>
               <Button
@@ -970,6 +1056,7 @@ export function FreelanceListingCard({
             setAnalysisOpen(false);
             onAnalysisModalClose?.();
           }}
+          title={listing.title}
           verdict={analysisData.verdict}
           filtered={analysisData.filtered}
           reason={analysisData.reason}
@@ -1018,6 +1105,59 @@ export function FreelanceListingCard({
             >
               {(localDescription ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")}
             </ReactMarkdown>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sent-proposal modal — read-only view of the bid we actually submitted */}
+      <Dialog open={sentBidOpen} onOpenChange={setSentBidOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-2 pr-6">
+              <div>
+                <DialogTitle className="text-sm font-semibold leading-snug flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-green-600 dark:text-green-400 shrink-0" />
+                  Proposal sent
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {sentBidSentAt
+                    ? `Sent ${formatFullDate(sentBidSentAt, timezone)}`
+                    : "The proposal you submitted for this project"}
+                </p>
+              </div>
+              {sentBidBody && (
+                <Tip content={sentBidCopied ? "Copied!" : "Copy proposal"} side="left">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(sentBidBody).then(() => {
+                        setSentBidCopied(true);
+                        setTimeout(() => setSentBidCopied(false), 1500);
+                      });
+                    }}
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    aria-label="Copy proposal"
+                  >
+                    {sentBidCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  </button>
+                </Tip>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0 mt-1">
+            {sentBidLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : sentBidBody ? (
+              <div className="whitespace-pre-wrap break-words text-sm text-foreground leading-relaxed">
+                {sentBidBody}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                The sent proposal couldn't be found — it may have been cleared.
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

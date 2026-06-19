@@ -360,6 +360,14 @@ export type FreelanceRequests = {
     params: { id: string };
     response: { success: boolean };
   };
+  "freelance.outbox.getSentBid": {
+    params: { listingId: string };
+    response: { body: string | null; sentAt: string | null };
+  };
+  "freelance.outbox.getSentReply": {
+    params: { threadId: string };
+    response: { body: string | null; sentAt: string | null };
+  };
   "freelance.outbox.killSwitch": {
     params: Record<string, never>;
     response: { success: boolean; halted: number };

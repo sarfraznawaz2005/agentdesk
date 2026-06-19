@@ -14,8 +14,9 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import { Tip } from "../ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { rpc } from "../../lib/rpc";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
 import { getPlatform, endpointPaths } from "../../../shared/freelance/platforms";
@@ -285,6 +286,28 @@ export function InboxTab() {
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Sent-reply viewer (mirrors the listing card's "Bid Placed" proposal viewer):
+  // the body we actually sent is persisted as the outbox row's final_body.
+  const [sentReplyOpen, setSentReplyOpen] = useState(false);
+  const [sentReplyBody, setSentReplyBody] = useState<string | null>(null);
+  const [sentReplySentAt, setSentReplySentAt] = useState<string | null>(null);
+  const [sentReplyLoading, setSentReplyLoading] = useState(false);
+  const [sentReplyCopied, setSentReplyCopied] = useState(false);
+
+  const viewSentReply = useCallback(async (threadId: string) => {
+    setSentReplyOpen(true);
+    setSentReplyLoading(true);
+    try {
+      const res = await rpc.freelanceOutboxGetSentReply(threadId);
+      setSentReplyBody(res.body);
+      setSentReplySentAt(res.sentAt);
+    } catch {
+      setSentReplyBody(null);
+      setSentReplySentAt(null);
+    } finally {
+      setSentReplyLoading(false);
+    }
+  }, []);
   // The in-flight send awaiting its fl-send-result host-message.
   const pendingSend = useRef<{ id: string } | null>(null);
   // A send we gave up on (safety timeout) — if its result arrives late we correct
@@ -941,6 +964,16 @@ export function InboxTab() {
                   )}
                 </div>
                 </div>
+                {messages.some((m) => m.outbound) && (
+                  <Tip content="View the last reply you sent in this conversation" side="bottom">
+                    <button
+                      onClick={() => void viewSentReply(selectedThread.id)}
+                      className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent"
+                    >
+                      View sent reply
+                    </button>
+                  </Tip>
+                )}
                 <button
                   onClick={() => draftReply(selectedThread.id)}
                   disabled={drafting}
@@ -1138,6 +1171,56 @@ export function InboxTab() {
           </div>
         )}
       </div>
+
+      {/* Sent-reply viewer — read-only view of the reply we actually sent */}
+      <Dialog open={sentReplyOpen} onOpenChange={setSentReplyOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-2 pr-6">
+              <div>
+                <DialogTitle className="text-sm font-semibold leading-snug">Reply sent</DialogTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {sentReplySentAt
+                    ? `Sent ${new Date(sentReplySentAt).toLocaleString()}`
+                    : "The reply you sent in this conversation"}
+                </p>
+              </div>
+              {sentReplyBody && (
+                <Tip content={sentReplyCopied ? "Copied!" : "Copy reply"} side="left">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(sentReplyBody).then(() => {
+                        setSentReplyCopied(true);
+                        setTimeout(() => setSentReplyCopied(false), 1500);
+                      });
+                    }}
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    aria-label="Copy reply"
+                  >
+                    {sentReplyCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  </button>
+                </Tip>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="mt-1 min-h-0 flex-1 overflow-y-auto">
+            {sentReplyLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : sentReplyBody ? (
+              <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+                {sentReplyBody}
+              </div>
+            ) : (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No recorded sent reply found for this conversation.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

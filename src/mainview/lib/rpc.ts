@@ -1568,6 +1568,10 @@ export const rpc = {
     electroviewRpc.request["freelance.outbox.markBidPrefilled"]({ id, needsAmount }),
   freelanceOutboxReject: (id: string) =>
     electroviewRpc.request["freelance.outbox.reject"]({ id }),
+  freelanceOutboxGetSentBid: (listingId: string) =>
+    electroviewRpc.request["freelance.outbox.getSentBid"]({ listingId }),
+  freelanceOutboxGetSentReply: (threadId: string) =>
+    electroviewRpc.request["freelance.outbox.getSentReply"]({ threadId }),
   freelanceOutboxKillSwitch: () =>
     electroviewRpc.request["freelance.outbox.killSwitch"]({}),
   freelanceGovernorGetState: () =>

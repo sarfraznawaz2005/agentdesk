@@ -11,6 +11,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
+import { exportChatMarkdown } from "@/lib/export-markdown";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -397,23 +398,13 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   }, [isStreaming, agentName]);
 
   const handleExportMarkdown = useCallback(() => {
-    const exportable = messages.filter((m) => !m.isError && m.content.trim());
-    if (exportable.length === 0) return;
-    const title = `${displayName} Chat`;
-    const lines = [`# ${title}\n`];
-    for (const msg of exportable) {
-      lines.push(`## ${msg.role === "user" ? "User" : displayName}\n`);
-      lines.push(msg.content);
-      lines.push("");
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${displayName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "chat"}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast("success", "Chat exported as Markdown.");
+    const ok = exportChatMarkdown({
+      title: `${displayName} Chat`,
+      messages: messages.filter((m) => !m.isError),
+      assistantLabel: displayName,
+      filename: displayName,
+    });
+    if (ok) toast("success", "Chat exported as Markdown.");
   }, [messages, displayName]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -522,7 +513,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                 <button
                   type="button"
                   onClick={handleExportMarkdown}
-                  disabled={messages.length === 0}
+                  disabled={messages.length <= 1}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Download className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
