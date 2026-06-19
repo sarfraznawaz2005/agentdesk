@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.2.3",
+        "title":  "New RPC Methods and UI Enhancements",
+        "changes":  [
+                        "New getSentBid and getSentReply RPC methods added for improved functionality.",
+                        "Chat export functionality has been enhanced for better user experience.",
+                        "Auto-resizing textarea component introduced in the bid requirements modal for easier input."
+                    ]
+    },
+    {
         "version":  "2.2.2",
         "title":  "Enhanced Freelance Listings Analysis",
         "changes":  [
