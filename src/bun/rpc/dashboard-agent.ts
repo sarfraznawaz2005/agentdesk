@@ -134,8 +134,8 @@ export async function sendDashboardAgentMessage(
 				system,
 				messages:    newHistory,
 				tools:       { ...tools, remove_last_message: removeLastMsgTool },
-				stopWhen:    [stepCountIs(15)],
-				abortSignal: abortController.signal,
+				stopWhen:    [stepCountIs(100)],
+				abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
 			});
 
 			for await (const part of result.fullStream) {
@@ -172,9 +172,14 @@ export async function sendDashboardAgentMessage(
 
 			broadcastToWebview("dashboardAgentComplete", { sessionId, agentName, messageId, content: fullText });
 		} catch (err) {
+			// User-initiated stop (or a superseding message) — swallow silently.
 			if (err instanceof DOMException && err.name === "AbortError") return;
 			if (err instanceof Error     && err.name === "AbortError") return;
-			const errMsg = err instanceof Error ? err.message : String(err);
+			// 15-minute wall-clock guard fired — surface a clear message.
+			const isTimeout = err instanceof Error && err.name === "TimeoutError";
+			const errMsg = isTimeout
+				? "This request hit the 15-minute time limit and was stopped. Send a follow-up to continue."
+				: err instanceof Error ? err.message : String(err);
 			broadcastToWebview("dashboardAgentError", { sessionId, agentName, error: errMsg });
 		} finally {
 			activeAborts.delete(sessionId);
