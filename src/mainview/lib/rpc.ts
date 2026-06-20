@@ -16,6 +16,7 @@ import { Electroview } from "electrobun/view";
 import type { AgentDeskRPC } from "../../shared/rpc";
 import type { IssueFixerConfigDto } from "../../shared/rpc/issue-fixer";
 import type { RemoteSyncConfigInput } from "../../shared/rpc/remote-sync";
+import { IS_REMOTE, createRemoteRpcTransport } from "./remote-transport";
 
 // ---------------------------------------------------------------------------
 // Webview-side RPC definition
@@ -26,7 +27,7 @@ import type { RemoteSyncConfigInput } from "../../shared/rpc/remote-sync";
 //   - rpc.request.*      → calls bun-side request handlers (bun schema)
 //   - rpc.send.*         → fires fire-and-forget messages to bun (bun schema)
 
-const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
+const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
   // Agent operations can take several minutes — disable the 1 s default timeout.
   maxRequestTime: Infinity,
   handlers: {
@@ -119,6 +120,9 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       shellApprovalRequest: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-request", { detail: payload }));
+      },
+      shellApprovalExpired: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-expired", { detail: payload }));
       },
       userQuestionRequest: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:user-question-request", { detail: payload }));
@@ -334,7 +338,17 @@ const electroviewRpc = Electroview.defineRPC<AgentDeskRPC>({
 // This wires up the WebSocket connection to bun and attaches the RPC
 // transport. Everything else in the renderer communicates via `rpc` below.
 
-export const electroview = new Electroview({ rpc: electroviewRpc });
+// Transport selection (TASK-479). In a plain browser there is no Electroview
+// bridge, so we back the SAME `.request`/`.send` surface with the WS-RPC client
+// (src/shared/remote/ws-rpc-client.ts) and re-emit broadcasts as agentdesk:*
+// DOM events. In Electrobun (IS_REMOTE === false) this is byte-for-byte the
+// previous behavior: electroviewRpc === the defineRPC result, and Electroview is
+// instantiated exactly as before.
+export const electroview = IS_REMOTE ? null : new Electroview({ rpc: electrobunRpc });
+
+const electroviewRpc: typeof electrobunRpc = IS_REMOTE
+  ? (createRemoteRpcTransport() as unknown as typeof electrobunRpc)
+  : electrobunRpc;
 
 // ---------------------------------------------------------------------------
 // Typed convenience wrappers
@@ -349,6 +363,28 @@ export const rpc = {
   /** Fetch all settings, optionally filtered by category. */
   getSettings: (category?: string) =>
     electroviewRpc.request.getSettings({ category }),
+
+  // ---- Remote Access (web app) --------------------------------------------
+
+  /** Remote-access status (enabled, connected, relay configured, device count). */
+  getRemoteAccessStatus: () => electroviewRpc.request.getRemoteAccessStatus({}),
+  /** Turn remote access on/off (starts/stops the relay session). */
+  setRemoteAccessEnabled: (enabled: boolean) =>
+    electroviewRpc.request.setRemoteAccessEnabled({ enabled }),
+  /** Create a new device pairing and return the QR contents. */
+  createDevicePairing: (name?: string) =>
+    electroviewRpc.request.createDevicePairing({ name }),
+  /** List paired devices. */
+  listPairedDevices: () => electroviewRpc.request.listPairedDevices({}),
+  /** Rename a paired device. */
+  renameRemoteDevice: (id: string, name: string) =>
+    electroviewRpc.request.renameDevice({ id, name }),
+  /** Revoke a paired device. */
+  revokeRemoteDevice: (id: string) =>
+    electroviewRpc.request.revokeDevice({ id }),
+  /** Permanently remove a paired device from the list. */
+  deleteRemoteDevice: (id: string) =>
+    electroviewRpc.request.deleteDevice({ id }),
 
   /** Fetch a single setting by key. */
   getSetting: (key: string, category?: string) =>
@@ -837,9 +873,15 @@ export const rpc = {
   openTerminal: (projectId: string) =>
     electroviewRpc.request.openTerminal({ projectId }),
 
-  /** Open a URL in the system default browser. */
+  /**
+   * Open a URL in the system default browser. In web mode, open it in the
+   * user's own browser (a new tab) instead of routing to the remote desktop,
+   * which would open the link on the desktop machine the user can't see.
+   */
   openExternalUrl: (url: string) =>
-    electroviewRpc.request.openExternalUrl({ url }),
+    IS_REMOTE
+      ? Promise.resolve(void window.open(url, "_blank", "noopener,noreferrer"))
+      : electroviewRpc.request.openExternalUrl({ url }),
 
   /** Open a local folder path in the OS file explorer. */
   openInExplorer: (path: string) =>
@@ -864,6 +906,10 @@ export const rpc = {
   /** Respond to a user question from the PM agent. */
   respondUserQuestion: (requestId: string, answer: string) =>
     electroviewRpc.request.respondUserQuestion({ requestId, answer }),
+
+  /** Re-fetch still-pending approvals for a project (used after a reconnect). */
+  getPendingApprovals: (projectId: string) =>
+    electroviewRpc.request.getPendingApprovals({ projectId }),
 
   /** Clear the prompt debug log file. */
   clearPromptLog: () => electroviewRpc.request.clearPromptLog({}),

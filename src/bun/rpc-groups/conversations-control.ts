@@ -1,7 +1,7 @@
 import * as conversationsRpc from "../rpc/conversations";
 import * as dashboardRpc from "../rpc/dashboard";
 import * as dashboardAgentRpc from "../rpc/dashboard-agent";
-import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentByName, getRunningAgentCount, getRunningAgentNames, getAllRunningAgents } from "../engine-manager";
+import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentByName, getRunningAgentCount, getRunningAgentNames, getAllRunningAgents } from "../engine-manager";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { eq } from "drizzle-orm";
@@ -173,6 +173,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	respondUserQuestion: (params) => ({
 		success: resolveUserQuestion(params.requestId, params.answer),
 	}),
+	getPendingApprovals: (params) => getPendingApprovals(params.projectId),
 
 	// Dashboard PM Chat
 	sendDashboardMessage: (params) => dashboardRpc.sendDashboardMessage(params),

@@ -12,3 +12,9 @@ Thumbs.db
 artifacts/
 .aitasks/
 .claude/
+
+# Web app (Remote Access) — Cloudflare Pages build output + wrangler local cache.
+# `bun run build:web` emits dist-web/; `wrangler pages deploy` writes a .wrangler/
+# cache at the repo root. Neither belongs in git. (relay/ has its own .gitignore.)
+dist-web/
+.wrangler/

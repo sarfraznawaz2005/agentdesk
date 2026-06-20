@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { FolderOpen } from "lucide-react";
 import { rpc } from "@/lib/rpc";
+import { IS_REMOTE } from "@/lib/remote-transport";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -392,28 +393,33 @@ export function GeneralSettings() {
                 placeholder="/home/user/projects"
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  function onResult(e: Event) {
-                    const { path } = (e as CustomEvent<{ path: string | null }>).detail;
-                    window.removeEventListener("agentdesk:directory-selected", onResult);
-                    if (path) {
-                      handleApplicationChange("globalWorkspacePath", path);
+              {/* Native directory picker — desktop only. In web mode it would
+                  open a dialog on the desktop the remote user can't see, so hide
+                  it; the path can still be typed (TASK-483). */}
+              {!IS_REMOTE && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    function onResult(e: Event) {
+                      const { path } = (e as CustomEvent<{ path: string | null }>).detail;
+                      window.removeEventListener("agentdesk:directory-selected", onResult);
+                      if (path) {
+                        handleApplicationChange("globalWorkspacePath", path);
+                      }
                     }
-                  }
-                  window.addEventListener("agentdesk:directory-selected", onResult);
-                  rpc.selectDirectory().catch(() => {
-                    window.removeEventListener("agentdesk:directory-selected", onResult);
-                    toast("error", "Failed to open directory picker.");
-                  });
-                }}
-                aria-label="Browse for workspace directory"
-              >
-                <FolderOpen className="h-4 w-4" />
-              </Button>
+                    window.addEventListener("agentdesk:directory-selected", onResult);
+                    rpc.selectDirectory().catch(() => {
+                      window.removeEventListener("agentdesk:directory-selected", onResult);
+                      toast("error", "Failed to open directory picker.");
+                    });
+                  }}
+                  aria-label="Browse for workspace directory"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </FieldRow>
 

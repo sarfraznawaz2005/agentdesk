@@ -4,6 +4,11 @@ import { eq, like } from "drizzle-orm";
 import { db } from "../../db";
 import { projects } from "../../db/schema";
 import type { ToolRegistryEntry } from "./index";
+import {
+	savePendingApproval,
+	deletePendingApproval,
+	loadPlanTaskDefinitions,
+} from "../../db/pending-approvals";
 
 // ---------------------------------------------------------------------------
 // TaskDefinition type (standalone — no workflow dependency)
@@ -63,21 +68,47 @@ async function resolveProjectId(projectIdOrName: string): Promise<string | null>
 
 const pendingTaskDefinitions = new Map<string, TaskDefinition[]>();
 
+/** Persist key for a project's plan task-definitions. */
+function planTasksKey(projectId: string): string {
+	return `plan_tasks:${projectId}`;
+}
+
+/**
+ * Hydrate the in-memory buffer from the DB on a miss (TASK-478). After a desktop
+ * restart the in-memory map is empty, but the task-planner's definitions were
+ * written through to `pending_approvals`, so `create_tasks_from_plan` still works
+ * once the user approves the (DB-persisted) plan card.
+ */
+function getTaskDefinitions(projectId: string): TaskDefinition[] | undefined {
+	const inMemory = pendingTaskDefinitions.get(projectId);
+	if (inMemory) return inMemory;
+	const persisted = loadPlanTaskDefinitions<TaskDefinition[]>(projectId);
+	if (persisted && persisted.length > 0) {
+		pendingTaskDefinitions.set(projectId, persisted);
+		return persisted;
+	}
+	return undefined;
+}
+
 /** Read pending task definitions without clearing them. */
 export function peekTaskDefinitions(projectId: string): TaskDefinition[] | undefined {
-	return pendingTaskDefinitions.get(projectId);
+	return getTaskDefinitions(projectId);
 }
 
 /** Read and clear pending task definitions for a project. */
 export function drainTaskDefinitions(projectId: string): TaskDefinition[] | undefined {
-	const defs = pendingTaskDefinitions.get(projectId);
-	if (defs) pendingTaskDefinitions.delete(projectId);
+	const defs = getTaskDefinitions(projectId);
+	if (defs) {
+		pendingTaskDefinitions.delete(projectId);
+		deletePendingApproval(planTasksKey(projectId));
+	}
 	return defs;
 }
 
 /** Re-store drained task definitions (used when validation fails and we need to retry). */
 export function restoreTaskDefinitions(projectId: string, defs: TaskDefinition[]): void {
 	pendingTaskDefinitions.set(projectId, defs);
+	savePendingApproval({ id: planTasksKey(projectId), projectId, kind: "plan_tasks", payload: defs });
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +170,14 @@ export const planningTools: Record<string, ToolRegistryEntry> = {
 				// authoritative complete list for this project. Appending caused duplicates
 				// when the task-planner called define_tasks multiple times in one session.
 				pendingTaskDefinitions.set(projectKey, definitions);
+				// Write through to the DB so the plan survives a desktop restart between
+				// planning and approval (TASK-478).
+				savePendingApproval({
+					id: planTasksKey(projectKey),
+					projectId: projectKey,
+					kind: "plan_tasks",
+					payload: definitions,
+				});
 
 				const totalCount = definitions.length;
 				const contractNote = hasFrontend && hasBackend

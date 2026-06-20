@@ -43,7 +43,10 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-xl border min-h-[200px] flex-1",
+        // flex-1 distributes the 4 columns evenly on desktop; on mobile a min
+        // width forces the board (overflow-x-auto) to scroll one column at a
+        // time instead of cramming all four into ~90px each (TASK-487).
+        "flex flex-col rounded-xl border min-h-[200px] flex-1 max-md:min-w-[80vw]",
         style.bg,
         isOver && "ring-2 ring-primary/40",
       )}

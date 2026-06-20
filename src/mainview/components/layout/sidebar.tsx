@@ -28,6 +28,8 @@ import {
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
+import { IS_REMOTE } from "@/lib/remote-transport";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import { Tip } from "@/components/ui/tooltip";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { useUnreadStore, hasUnread } from "@/stores/unread-store";
@@ -46,6 +48,10 @@ interface NavItem {
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** Mobile off-canvas drawer open state (TASK-487). Ignored at desktop widths. */
+  mobileOpen?: boolean;
+  /** Called to close the mobile drawer (backdrop tap / nav click). */
+  onMobileClose?: () => void;
 }
 
 const BASE_NAV_ITEMS: NavItem[] = [
@@ -137,10 +143,15 @@ function resolveIcon(name: string): LucideIcon {
 
 type UpdateState = "idle" | "checking" | "no-update" | "available" | "downloading" | "ready" | "error";
 
-export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   // Derive active item from the router's current pathname (hash routing aware)
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isOnline = useNetworkStore((s) => s.isOnline);
+  const isMobile = useIsMobile();
+  // On mobile the sidebar is an off-canvas drawer with full labels; the desktop
+  // collapse preference doesn't apply there. Shadowing `collapsed` makes every
+  // existing reference below use the mobile-effective value (TASK-487).
+  const collapsed = isMobile ? false : collapsedProp;
 
   // Poll for unread inbox count every 30 seconds
   const [inboxUnread, setInboxUnread] = useState(0);
@@ -348,10 +359,26 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
 
   return (
     <>
+    {/* Mobile backdrop — tap to dismiss the off-canvas drawer (TASK-487). */}
+    {isMobile && mobileOpen && (
+      <div
+        className="fixed inset-0 z-30 bg-black/40 md:hidden"
+        onClick={onMobileClose}
+        aria-hidden="true"
+      />
+    )}
     <aside
       className={cn(
-        "relative flex flex-col bg-muted/50 border-r border-border transition-all duration-200 ease-in-out shrink-0",
-        collapsed ? "w-[60px]" : "w-[200px]"
+        // Opaque bg on mobile (it's an overlay drawer — bg-muted/50 would let the
+        // page bleed through); desktop keeps the original translucent bg-muted/50.
+        "flex flex-col bg-card md:bg-muted/50 border-r border-border transition-all duration-200 ease-in-out z-40",
+        // Desktop (≥ md): a static flex child that participates in layout —
+        // identical to the original behavior.
+        "md:relative md:shrink-0",
+        collapsed ? "md:w-[60px]" : "md:w-[200px]",
+        // Mobile (< md): an off-canvas drawer overlaying content (no layout width).
+        "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:w-[240px] max-md:max-w-[80vw]",
+        isMobile && !mobileOpen ? "max-md:-translate-x-full" : "max-md:translate-x-0",
       )}
       aria-label="Main navigation"
     >
@@ -373,13 +400,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         </Link>
       </div>
 
-      {/* Collapse toggle — floats on the right edge, vertically centred in the brand bar */}
+      {/* Collapse toggle — floats on the right edge, vertically centred in the
+          brand bar. Desktop-only: on mobile the drawer is opened from the topnav
+          hamburger and dismissed via backdrop, so the collapse rail is hidden. */}
       <button
         type="button"
         onClick={onToggleCollapse}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         className={cn(
-          "absolute right-0 top-7 -translate-y-1/2 translate-x-1/2 z-20",
+          "max-md:hidden absolute right-0 top-7 -translate-y-1/2 translate-x-1/2 z-20",
           "flex items-center justify-center w-5 h-5 rounded-full",
           "bg-background border border-border text-muted-foreground/60 shadow-sm",
           "hover:bg-muted hover:text-muted-foreground transition-colors",
@@ -418,6 +447,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               )}
             </div>
           </Tip>
+        ) : IS_REMOTE ? (
+          // Web mode: the native updater can't apply binary diffs to a remote
+          // browser, so show the version as a plain, non-interactive label.
+          <div className="w-full text-sm font-bold text-muted-foreground select-none text-center py-0.5">
+            v{pkg.version}
+          </div>
         ) : (
           <Tip content="Check for updates" side="top">
             <button
@@ -429,7 +464,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             </button>
           </Tip>
         )}
-        {(updateState === "available" || updateState === "ready") && (
+        {!IS_REMOTE && (updateState === "available" || updateState === "ready") && (
           <Tip content="Click version number to update" side="top">
             <button
               type="button"

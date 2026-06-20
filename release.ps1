@@ -287,10 +287,37 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# ── Deploy web app to Cloudflare Pages ───────────────────────────────────────
+# The DESKTOP app builds on GitHub Actions (triggered by the tag push above).
+# The WEB app (Remote Access, https://agentdeskweb.pages.dev) is a SEPARATE
+# Cloudflare Pages deploy and must be published from here so the hosted web
+# version tracks this release. Non-fatal: the git release already succeeded, so
+# a web build/deploy hiccup only warns (re-run the two bun commands manually).
+Write-Host ""
+$deployWeb = Read-Host "Build & deploy the web app to Cloudflare Pages? (Y/n)"
+if ($deployWeb -notmatch '^[Nn]$') {
+    Write-Host "Building web app (bun run build:web)..." -ForegroundColor Cyan
+    bun run build:web
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Web build FAILED — skipping deploy. Run 'bun run build:web; bun run deploy:web' manually." -ForegroundColor Yellow
+    } else {
+        Write-Host "Deploying web app (bun run deploy:web)..." -ForegroundColor Cyan
+        bun run deploy:web
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Web deploy FAILED (wrangler auth?). Run 'bun run deploy:web' manually." -ForegroundColor Yellow
+        } else {
+            Write-Host "  Web app live: https://agentdeskweb.pages.dev" -ForegroundColor Green
+        }
+    }
+} else {
+    Write-Host "  Skipped web deploy. Run 'bun run build:web; bun run deploy:web' later if the frontend changed." -ForegroundColor DarkGray
+}
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "Released v$newVersion!" -ForegroundColor Green
 Write-Host ""
 Write-Host "GitHub Actions build:  https://github.com/sarfraznawaz2005/agentdesk/actions" -ForegroundColor Cyan
 Write-Host "Release page:          https://github.com/sarfraznawaz2005/agentdesk/releases/tag/v$newVersion" -ForegroundColor Cyan
+Write-Host "Web app:               https://agentdeskweb.pages.dev" -ForegroundColor Cyan
 Write-Host ""

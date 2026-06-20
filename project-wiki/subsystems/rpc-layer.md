@@ -2,7 +2,7 @@
 title: RPC Layer
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-20
 sources:
   - src/shared/rpc/index.ts
   - src/bun/rpc-registration.ts
@@ -25,6 +25,14 @@ flows through Electrobun's typed RPC, whose shape is described once in
 `src/shared/rpc/*` and shared by both sides. There is no other IPC channel and
 the frontend never touches the DB directly — `CLAUDE.md` makes this contract the
 hard interface boundary.
+
+> **Second transport (remote access).** As of the web-app feature, the same
+> request-handler map is ALSO served over a **WebSocket** — directly via
+> `Bun.serve` (`src/bun/remote/rpc-ws-server.ts`) or through the blind relay
+> (`src/bun/remote/relay-session.ts`) — so the renderer's RPC works in a plain
+> browser, not just the Electrobun bridge. The renderer picks the transport at the
+> single `rpc.ts` seam (`IS_REMOTE`); handlers are transport-agnostic (one shared
+> map in `src/bun/remote/rpc-handlers.ts`). See [[remote-access]].
 
 ## Key idea: one schema type, two registration points
 

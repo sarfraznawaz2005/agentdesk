@@ -120,6 +120,8 @@ every column — read the cited line for the full definition.
 | Table | Created | Purpose |
 |---|---|---|
 | `keyboard_shortcuts` | v1, `v1_initial-schema.ts:458` | Customisable keyboard shortcut bindings (`action` unique, `is_custom` flag). Never modelled in Drizzle. |
+| `remote_identity` / `remote_devices` | v47, `v47_remote-access-devices.ts` | Web-app remote-access: the desktop's own relay pairing identity (single row) and the list of paired browser devices (pairing secret + ECDH public key, encrypted at rest). Helpers in `remote/manager.ts`. |
+| `pending_approvals` | v48, `v48_pending-approvals.ts` | Durability mirror (TASK-478) of in-memory plan/approval state: `kind` ∈ `shell`\|`question`\|`plan_tasks`, `payload` JSON, `expires_at`. Write-through from `planning.ts` (task defs) and `engine-manager.ts` (shell/question). Read/cleared via `db/pending-approvals.ts`; orphaned shell/question rows reconciled on startup. |
 
 ## Deprecated and dropped tables
 

@@ -18,6 +18,7 @@ import { Check, Copy, Loader2 } from "lucide-react";
 import { Tip } from "../ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { rpc } from "../../lib/rpc";
+import { IS_REMOTE } from "../../lib/remote-transport";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
 import { getPlatform, endpointPaths } from "../../../shared/freelance/platforms";
 import { buildSendReplyScript, buildSubmitBidScript } from "../../../shared/freelance/write-steps";
@@ -854,12 +855,14 @@ export function InboxTab() {
         <button onClick={syncNow} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent">
           Sync now
         </button>
-        <button
-          onClick={() => setSessionOpen((v) => !v)}
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
-        >
-          {sessionOpen ? "Hide live session" : "Show live session"}
-        </button>
+        {!IS_REMOTE && (
+          <button
+            onClick={() => setSessionOpen((v) => !v)}
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+          >
+            {sessionOpen ? "Hide live session" : "Show live session"}
+          </button>
+        )}
       </div>
 
       {/* Governor visibility + global pause */}
@@ -1138,7 +1141,18 @@ export function InboxTab() {
         </div>
       )}
 
-      {/* Live session (sync engine) */}
+      {/* Live session (sync engine) — desktop-only: it hosts a native
+          <electrobun-webview> that cannot exist in a plain browser. In web mode
+          we replace it with a clear note; the approval queue/inbox above remain
+          fully usable since they are RPC-driven. */}
+      {IS_REMOTE ? (
+        <div className="mt-4 rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Live session is desktop-only.</span>{" "}
+          The Freelancer login window runs on your desktop app. Open AgentDesk on
+          your computer to log in, sync, and place bids — the synced inbox and
+          approval queue above stay available here in the browser.
+        </div>
+      ) : (
       <div className="mt-4 rounded-md border border-border">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <span className="text-sm font-medium">Live session</span>
@@ -1171,6 +1185,7 @@ export function InboxTab() {
           </div>
         )}
       </div>
+      )}
 
       {/* Sent-reply viewer — read-only view of the reply we actually sent */}
       <Dialog open={sentReplyOpen} onOpenChange={setSentReplyOpen}>

@@ -46,6 +46,8 @@ import * as v43 from "./migrations/v43_freelance-client-quality";
 import * as v44 from "./migrations/v44_freelance-wizard-block-kind";
 import * as v45 from "./migrations/v45_freelance-client-country";
 import * as v46 from "./migrations/v46_context-window-limit-1m";
+import * as v47 from "./migrations/v47_remote-access-devices";
+import * as v48 from "./migrations/v48_pending-approvals";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -116,6 +118,8 @@ const migrations: Migration[] = [
 	{ version: 44, name: v44.name, run: v44.run },
 	{ version: 45, name: v45.name, run: v45.run },
 	{ version: 46, name: v46.name, run: v46.run },
+	{ version: 47, name: v47.name, run: v47.run },
+	{ version: 48, name: v48.name, run: v48.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -298,6 +302,13 @@ function ensureRuntimeSchema(): void {
 		v45.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: freelance client-country column failed:", err);
+	}
+
+	// Defensive: ensure the pending_approvals table exists (v48 is CREATE TABLE IF NOT EXISTS).
+	try {
+		v48.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: pending-approvals table failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

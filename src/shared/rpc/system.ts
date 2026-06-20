@@ -189,6 +189,14 @@ export type SystemRequests = {
     response: { success: boolean };
   };
 
+  // Re-fetch still-pending shell approvals + user questions for a project, so a
+  // reconnecting web client can re-render cards/dialogs it missed while offline
+  // (TASK-478 durability). Returns the original broadcast payloads.
+  getPendingApprovals: {
+    params: { projectId: string };
+    response: { shell: unknown[]; question: unknown[] };
+  };
+
   // Test OS notification
   testOsNotification: {
     params: Record<string, never>;

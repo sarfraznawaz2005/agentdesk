@@ -59,4 +59,23 @@ export default tseslint.config(
 			"@typescript-eslint/no-require-imports": "off",
 		},
 	},
+
+	// PWA service worker (plain JS, worker globals). Flat ESLint config has no
+	// `/* eslint-env */`, so declare the service-worker globals here instead.
+	{
+		files: ["src/mainview/public/sw.js"],
+		languageOptions: {
+			globals: {
+				self: "readonly",
+				caches: "readonly",
+				fetch: "readonly",
+				clients: "readonly",
+				registration: "readonly",
+				skipWaiting: "readonly",
+				Response: "readonly",
+				Request: "readonly",
+				URL: "readonly",
+			},
+		},
+	},
 );

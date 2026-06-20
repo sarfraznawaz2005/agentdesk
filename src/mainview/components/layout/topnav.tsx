@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { FolderOpen, HardDrive } from "lucide-react";
+import { FolderOpen, HardDrive, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
 import { rpc } from "@/lib/rpc";
+import { IS_REMOTE } from "@/lib/remote-transport";
 
 interface TopNavProps {
   title: string;
@@ -12,14 +13,16 @@ interface TopNavProps {
   phrase?: string;
   /** Rendered immediately after the title + folder buttons (e.g. the live branch badge). */
   afterTitle?: ReactNode;
+  /** Opens the off-canvas sidebar on mobile (TASK-487). Renders a hamburger when set. */
+  onMenuClick?: () => void;
   children?: ReactNode;
 }
 
-export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, children }: TopNavProps) {
+export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, onMenuClick, children }: TopNavProps) {
   return (
     <header
       className={cn(
-        "relative h-14 shrink-0 flex items-center justify-between px-6",
+        "relative h-14 shrink-0 flex items-center justify-between px-4 md:px-6",
         "border-b border-border bg-background"
       )}
     >
@@ -32,10 +35,20 @@ export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, chi
         `}</style>
       )}
       <div className="flex items-center gap-2 min-w-0">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Open navigation menu"
+            className="md:hidden shrink-0 -ml-1 mr-0.5 flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent"
+          >
+            <Menu className="w-5 h-5" aria-hidden="true" />
+          </button>
+        )}
         <h1 className="text-lg font-semibold text-foreground truncate">
           {title}
         </h1>
-        {workspacePath && (
+        {!IS_REMOTE && workspacePath && (
           <Tip content="Open Workspace in Explorer" side="bottom">
             <button
               onClick={() => rpc.openInExplorer(workspacePath).catch(() => {})}
@@ -46,7 +59,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, chi
             </button>
           </Tip>
         )}
-        {dataPath && (
+        {!IS_REMOTE && dataPath && (
           <Tip content="Open data folder in Explorer" side="bottom">
             <button
               onClick={() => rpc.openInExplorer(dataPath).catch(() => {})}
@@ -61,7 +74,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, chi
       </div>
       {phrase && (
         <span
-          className="absolute left-1/2 -translate-x-1/2 text-lg font-bold pointer-events-none select-none whitespace-nowrap"
+          className="max-md:hidden absolute left-1/2 -translate-x-1/2 text-lg font-bold pointer-events-none select-none whitespace-nowrap"
           style={{
             backgroundImage: "linear-gradient(90deg, #3b82f6 0%, #ec4899 35%, #a855f7 65%, #3b82f6 100%)",
             backgroundSize: "200% auto",

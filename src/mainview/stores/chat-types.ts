@@ -52,4 +52,7 @@ export interface ShellApprovalRequest {
   command: string;
   timestamp: string;
   decision?: "allow" | "deny" | "always";
+  /** Set when the request expired (5-min timeout or a desktop restart) so the
+   *  card shows a clean "expired — re-request" state instead of a stuck spinner. */
+  expired?: boolean;
 }

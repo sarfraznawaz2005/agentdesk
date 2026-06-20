@@ -1,0 +1,14 @@
+{
+  "name": "AgentDesk",
+  "short_name": "AgentDesk",
+  "description": "Remote control for your AgentDesk desktop — chat, approve, and monitor your agents from any browser.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

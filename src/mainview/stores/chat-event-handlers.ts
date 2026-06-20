@@ -1,6 +1,7 @@
 import type { AgentStatusValue, Message } from "./chat-types";
 import { useChatStore, sortConversations } from "./chat-store";
 import { toast } from "../components/ui/toast";
+import { rpc } from "../lib/rpc";
 
 // ---------------------------------------------------------------------------
 // Completed-stream guard
@@ -522,12 +523,70 @@ function onShellApprovalRequest(e: Event): void {
     }>
   ).detail;
 
-  // Add to shell approval requests (shown inline in chat)
+  // Add to shell approval requests (shown inline in chat). De-dup by requestId so
+  // a reconnect re-surfacing the same pending request can't double the card.
+  useChatStore.setState((prev) => {
+    if (prev.shellApprovalRequests.some((r) => r.requestId === requestId)) return prev;
+    return {
+      shellApprovalRequests: [
+        ...prev.shellApprovalRequests,
+        { requestId, agentName, command, timestamp },
+      ],
+    };
+  });
+}
+
+/**
+ * Re-fetch and re-render any still-pending shell approvals / user questions for a
+ * project (TASK-478 durability). Called when a project's chat opens and on a web
+ * reconnect, so an approval broadcast missed while disconnected (or before a page
+ * reload) is surfaced again. Re-dispatches the same DOM events the live broadcast
+ * uses; onShellApprovalRequest de-dups by requestId so this can't double a card.
+ */
+export async function resurfacePendingApprovals(projectId: string): Promise<void> {
+  if (!projectId) return;
+  try {
+    const pending = await rpc.getPendingApprovals(projectId);
+    for (const payload of pending.shell ?? []) {
+      window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-request", { detail: payload }));
+    }
+    for (const payload of pending.question ?? []) {
+      window.dispatchEvent(new CustomEvent("agentdesk:user-question-request", { detail: payload }));
+    }
+  } catch {
+    // Best-effort — a desktop that's offline simply has nothing to re-surface.
+  }
+}
+
+function onRemoteReconnected(): void {
+  // Live WS reconnect (web mode): the relay is a blind forwarder with no replay,
+  // so any broadcasts sent during the gap (stream tokens, stream-complete,
+  // approvals) were lost. Reconcile against authoritative backend state instead
+  // of trusting the now-stale in-memory view (TASK-493):
+  //   • reload the active conversation's messages — drops empty in-flight stream
+  //     placeholders, so no duplicate/stale bubbles survive the reconnect;
+  //   • re-sync running agents — fixes a streaming spinner left stuck "on";
+  //   • re-surface any approvals that arrived while we were offline.
+  const store = useChatStore.getState();
+  const { conversations, activeConversationId } = store;
+  const active = conversations.find((c) => c.id === activeConversationId);
+  if (activeConversationId) {
+    void store.loadMessages(activeConversationId).catch(() => {});
+  }
+  if (active?.projectId) {
+    void store.syncRunningAgents(active.projectId).catch(() => {});
+    void resurfacePendingApprovals(active.projectId);
+  }
+}
+
+function onShellApprovalExpired(e: Event): void {
+  const { requestId } = (e as CustomEvent<{ requestId: string; projectId: string; reason: string }>).detail;
+  // Mark the matching card expired so it stops spinning and invites a re-request,
+  // rather than silently failing (TASK-478 durability).
   useChatStore.setState((prev) => ({
-    shellApprovalRequests: [
-      ...prev.shellApprovalRequests,
-      { requestId, agentName, command, timestamp },
-    ],
+    shellApprovalRequests: prev.shellApprovalRequests.map((r) =>
+      r.requestId === requestId && !r.decision ? { ...r, expired: true } : r,
+    ),
   }));
 }
 
@@ -682,6 +741,8 @@ export function initChatEventHandlers(): void {
   window.addEventListener("agentdesk:compaction-started", onCompactionStarted);
   window.addEventListener("agentdesk:conversation-compacted", onConversationCompacted);
   window.addEventListener("agentdesk:shell-approval-request", onShellApprovalRequest);
+  window.addEventListener("agentdesk:shell-approval-expired", onShellApprovalExpired);
+  window.addEventListener("agentdesk:remote-reconnected", onRemoteReconnected);
   window.addEventListener("agentdesk:new-message", onNewMessage);
   window.addEventListener("agentdesk:agent-inline-start", onAgentInlineStart);
   window.addEventListener("agentdesk:agent-inline-complete", onAgentInlineComplete);

@@ -19,6 +19,8 @@ import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { IS_REMOTE } from "@/lib/remote-transport";
+import { useIsMobile } from "@/lib/use-is-mobile";
 // Side-effect import: attaches the Issue Fixer live-run listeners at app startup so runs
 // stream into the store regardless of which tab/page is open (matches the chat store).
 import "@/stores/issue-fixer-store";
@@ -106,6 +108,9 @@ export function AppShell() {
 function AppShellContent() {
   const [whatsNewEntries, setWhatsNewEntries] = useState<ReleaseEntry[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Mobile off-canvas nav drawer (TASK-487). Closed on every navigation below.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isMobile = useIsMobile();
   // Tracks the user's saved preference independently of transient focus-mode overrides
   const sidebarDefaultRef = useRef<"collapsed" | "expanded">("expanded");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -215,6 +220,13 @@ function AppShellContent() {
     return () => { ignore = true; };
   }, [projectId, location.pathname]);
 
+  // Close the mobile nav drawer whenever the route changes (TASK-487) — tapping
+  // a nav link navigates, which dismisses the off-canvas drawer.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
   // Redirect to onboarding if no providers exist (first launch or after reset)
   useEffect(() => {
     if (location.pathname === "/onboarding") {
@@ -262,7 +274,9 @@ function AppShellContent() {
   // Check for updates silently after the app has fully loaded.
   // Delayed 5 s so it never competes with startup work.
   // Only fires once per session (empty dep array).
+  // Skipped in web mode — the native updater can't patch a remote browser.
   useEffect(() => {
+    if (IS_REMOTE) return;
     const timer = setTimeout(() => {
       rpc.checkForUpdate().catch(() => {}); // ignore network errors — update check is best-effort
     }, 5000);
@@ -304,6 +318,8 @@ function AppShellContent() {
     <div className="relative flex h-screen bg-background text-foreground overflow-hidden">
       <Sidebar
         collapsed={sidebarCollapsed}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
         onToggleCollapse={() => {
           setSidebarCollapsed((prev) => {
             const next = !prev;
@@ -321,6 +337,7 @@ function AppShellContent() {
           dataPath={location.pathname.split("/").filter(Boolean)[0] === "settings" ? dataPath ?? undefined : undefined}
           phrase={headerPhrase ?? undefined}
           afterTitle={projectId ? <ProjectBranchBadge projectId={projectId} /> : undefined}
+          onMenuClick={() => setMobileNavOpen(true)}
         >
           {headerActions}
           {projectId && <ProjectSwitcher currentProjectId={projectId} />}
@@ -346,14 +363,18 @@ function AppShellContent() {
         />
       )}
       {/* Auto-Earn background engine — keeps the freelance Inbox sync + full-auto
-          send loop alive on every page (self-gates on the autoearn flag + switch). */}
+          send loop alive on every page (self-gates on the autoearn flag + switch).
+          Mounted in BOTH desktop and web: it also portal-renders the Auto-Earn
+          Inbox tab UI, so gating it out blanks that tab in web mode. Its native
+          <electrobun-webview> live session already no-ops in a browser
+          (runtimeAvailable=false) and the inbox shows a desktop-only note (TASK-485). */}
       <AlwaysMountedInbox />
       {/* Chat widget bar — buttons wrap into new rows (growing upward) when
           there are too many to fit. maxWidth is capped to the main content
           area width so buttons never slide over the sidebar. */}
       <div
         className="fixed bottom-6 right-6 z-50 flex flex-wrap-reverse justify-end items-end gap-3"
-        style={{ maxWidth: `calc(100vw - ${sidebarCollapsed ? 60 : 200}px - 24px)` }}
+        style={{ maxWidth: `calc(100vw - ${isMobile ? 0 : sidebarCollapsed ? 60 : 200}px - 24px)` }}
       >
         <CustomAgentChatLauncher visible={location.pathname === "/"} />
         <PmChatWidget visible={location.pathname === "/"} />

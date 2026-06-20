@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectCard } from "@/components/dashboard/project-card";
 import { NewProjectModal } from "@/components/modals/new-project-modal";
+import { IS_REMOTE } from "@/lib/remote-transport";
 import {
 	Select,
 	SelectContent,
@@ -286,12 +287,15 @@ export function DashboardPage() {
 	];
 
 	useHeaderActions(
-		() => (
-			<Button onClick={() => setModalOpen(true)}>
-				<Plus aria-hidden="true" />
-				New Project
-			</Button>
-		),
+		() =>
+			// Projects are created on the desktop (the workspace lives on the machine),
+			// so the web app doesn't offer project creation.
+			IS_REMOTE ? null : (
+				<Button onClick={() => setModalOpen(true)}>
+					<Plus aria-hidden="true" />
+					New Project
+				</Button>
+			),
 		[],
 	);
 
@@ -372,12 +376,18 @@ export function DashboardPage() {
 					<EmptyState
 						icon={<FolderOpen className="h-6 w-6" aria-hidden="true" />}
 						title="No projects yet"
-						description="Create your first project to get started."
+						description={
+							IS_REMOTE
+								? "Create projects in the desktop app — they'll appear here."
+								: "Create your first project to get started."
+						}
 						action={
-							<Button onClick={() => setModalOpen(true)}>
-								<Plus aria-hidden="true" />
-								New Project
-							</Button>
+							IS_REMOTE ? null : (
+								<Button onClick={() => setModalOpen(true)}>
+									<Plus aria-hidden="true" />
+									New Project
+								</Button>
+							)
 						}
 					/>
 				</div>

@@ -1,0 +1,39 @@
+# AgentDesk Relay — Cloudflare Worker + SQLite-backed Durable Object.
+#
+# Model A (free tier): a blind, stateless forwarder. Each user's desktop dials
+# OUT and registers under a pairing room; remote clients connect to the same
+# room and are routed ONLY to that room's desktop. Idle paired connections are
+# free thanks to the WebSocket Hibernation API.
+#
+# First `wrangler deploy` permanently registers relay.agentdesk.workers.dev.
+# The PAIRING_SIGNING_KEY secret is set out-of-band via `wrangler secret put`
+# (TASK-472) and never lives in this file or the repo.
+
+name = "relay"                       # → relay.agentdesk.workers.dev
+main = "src/index.ts"
+compatibility_date = "2026-06-01"    # >= 2024-04-03 enables the DO RPC base class
+account_id = "ee201a4779f7418e3379da30b4a60d22"
+workers_dev = true
+
+[observability]
+enabled = true
+
+# --- Durable Object bindings ------------------------------------------------
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "RelayDurableObject"
+
+[[durable_objects.bindings]]
+name = "RATELIMIT"
+class_name = "RateLimiterDurableObject"
+
+# --- Migrations: SQLite-backed DOs (FREE TIER). ----------------------------
+# MUST be `new_sqlite_classes`, never `new_classes` (the legacy KV-backed
+# variant requires the paid plan). This keeps the relay on Model A's $0 tier.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RelayDurableObject"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RateLimiterDurableObject"]

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldAlert, Check, X, Terminal } from "lucide-react";
+import { ShieldAlert, Check, X, Terminal, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
 import { persistShellApprovalDecision } from "@/stores/chat-event-handlers";
@@ -33,6 +33,20 @@ export function ShellApprovalCard({ request, onDismiss }: { request: ShellApprov
     const timer = setTimeout(() => onDismiss?.(request.requestId), 2000);
     return () => clearTimeout(timer);
   }, [responded, request.requestId, onDismiss]);
+
+  // Expired (5-min timeout or orphaned by a desktop restart): the awaiting agent
+  // run is gone, so resolving is impossible — show a clean, non-interactive note
+  // inviting the user to ask the agent to try again (TASK-478 durability).
+  if (request.expired && !responded) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border rounded-lg text-xs animate-in fade-in duration-150">
+        <Clock className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+        <span className="text-muted-foreground font-medium shrink-0">Approval expired</span>
+        <code className="text-muted-foreground truncate min-w-0 flex-1">{request.command}</code>
+        <span className="text-[10px] text-muted-foreground/60 shrink-0">ask the agent to retry</span>
+      </div>
+    );
+  }
 
   if (responded) {
     return (

@@ -144,7 +144,7 @@ Every human-approval moment is reachable (same mechanisms as the desktop, now re
 The widgets/chatbot system works as-is over WS-RPC: `getChatEnabledAgents`, `sendDashboardAgentMessage`, the PM concierge (`sendDashboardMessage`), streaming via `dashboardAgentChunk/Complete`. Each chatbot keeps its own prompt/tools/model/memory (`src/bun/rpc/dashboard-agent.ts:51`).
 
 ### 8.4 PWA niceties
-Installable to the home screen (icon, standalone window), **Web Push on Android** (and installed iOS PWAs, with caveats), **biometric via WebAuthn/passkeys** for approvals.
+Installable to the home screen (icon, standalone window), **Web Push on Android** (and installed iOS PWAs, with caveats).
 
 ### 8.5 Responsive layout
 A responsive pass so the desktop-oriented UI is usable on a phone browser (the app is desktop-first today; this is real work, not free).
@@ -175,7 +175,6 @@ The **core works fully**; a bounded set of **native-desktop-bound features** mus
 | Capability | Web app |
 |---|---|
 | Push notifications | ✅ Android (PWA); ⚠️ iOS only if installed, flaky |
-| Biometric approval | ✅ WebAuthn/passkeys |
 | **Lock-screen widget** | ❌ Impossible in a browser |
 | **Share-sheet capture** | ⚠️ Android PWA only; ❌ iOS |
 
@@ -190,7 +189,7 @@ The **core works fully**; a bounded set of **native-desktop-bound features** mus
 - **Pairing:** QR/code → per-device (per-browser) token bound to the account; required before the WS-RPC channel opens.
 - **End-to-end encryption** browser↔desktop through the relay; the relay is **blind** (no project data, low cost + low liability).
 - **Identity routing only:** the relay can never wire User A's browser to User B's desktop.
-- **Larger surface than mobile:** a remote browser session can invoke ~all backend handlers — *reading files and running agents on the user's machine.* This **must** sit behind strong auth (device token + optional WebAuthn step-up + revocation). Recommend Cloudflare Access or equivalent as an additional gate for the URL; never a bare public endpoint.
+- **Larger surface than mobile:** a remote browser session can invoke ~all backend handlers — *reading files and running agents on the user's machine.* This **must** sit behind strong auth (device token + revocation). Recommend Cloudflare Access or equivalent as an additional gate for the URL; never a bare public endpoint.
 - **Session hygiene:** short-lived tokens, re-auth on new browser, remote device revocation.
 
 ---
@@ -220,10 +219,17 @@ The **core works fully**; a bounded set of **native-desktop-bound features** mus
 ### Phase 4 — Responsive pass 📐
 - Make the desktop-first UI usable on phone/tablet browsers; (optional) deep-linkable project/settings tabs.
 
-### Phase 5 — PWA + push + biometric 📲
-- PWA manifest + service worker (installable, offline shell).
-- **Web Push** (Android/installed-iOS) for approvals + key events.
-- **WebAuthn** biometric step-up for approvals (deploys especially).
+### Phase 5 — PWA + push 📲
+- PWA manifest + service worker (installable, offline shell). ✅ shipped
+- **Notifications v1** ✅ shipped — `src/mainview/lib/web-notifications.ts` raises OS
+  notifications via the Notification API for plan/approval/question events while
+  the tab is open or backgrounded (no server, no VAPID).
+- **Full Web Push (closed-browser)** ⏳ **deferred follow-up** — VAPID-signed,
+  RFC 8291-encrypted push sent from the desktop so notifications arrive when the
+  browser is fully closed (Android/installed-iOS). Deferred because it needs a
+  from-scratch VAPID + aes128gcm stack and can only be validated end-to-end on a
+  real device against a live push service (FCM/Mozilla/Apple); v1 covers the
+  common open/backgrounded-tab case in the meantime.
 
 ### Phase 6 — Hardening & launch 🚀
 - Cloudflare Access (or equivalent) gate, token revocation, reconnection UX, cross-browser QA, performance.
@@ -238,7 +244,7 @@ The **core works fully**; a bounded set of **native-desktop-bound features** mus
 | Native features absent in browser | Explicit gating + the few documented fallbacks (§9.2) — accepted scope, not bugs |
 | iOS push/share/widget gaps | Documented non-goals; choose the **mobile route** if these are must-haves |
 | Desktop-first UI clunky on phone | Phase 4 responsive pass (real effort, budgeted) |
-| Large security surface (full backend over WS) | Device token + WebAuthn step-up + Cloudflare Access + E2E + revocation |
+| Large security surface (full backend over WS) | Device token + Cloudflare Access + E2E + revocation |
 | In-memory plan/approval state | Phase 0.6 durability hardening |
 | Relay cost | **$0** within the Cloudflare free tier; ≈$5/mo only if free limits are exceeded at scale (a ceiling, not a baseline) — monitor concurrency |
 | Existing users must update + pair | One-time, in-app; no data migration (DB/projects stay in place) |
@@ -248,7 +254,7 @@ The **core works fully**; a bounded set of **native-desktop-bound features** mus
 ## 13. Open Questions
 
 1. **Static hosting model:** serve the SPA from Cloudflare Pages (recommended, loads when desktop is off) vs from the user's own desktop through the relay (no CDN, but nothing loads when desktop is off)?
-2. **Auth depth:** is the device-token pairing enough, or require Cloudflare Access / WebAuthn step-up by default given the full-backend surface?
+2. **Auth depth:** is the device-token pairing enough, or require Cloudflare Access by default given the full-backend surface?
 3. **Deep-linkable tabs:** invest in URL-routed project/settings tabs for shareable/bookmarkable deep links?
 4. **Responsive scope:** full mobile-browser polish, or "works but desktop-optimized"?
 5. **Relay scale ceiling:** Model A (free tier) is the chosen cost model. If concurrency ever exceeds the Cloudflare free tier (~100k req/day), revisit: upgrade to Workers Paid ($5/mo) or move to per-user quick tunnels ($0 but random URL + re-pair). Not a near-term concern.

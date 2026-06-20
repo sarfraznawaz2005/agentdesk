@@ -11,6 +11,8 @@
 		"hmr": "vite --port 5173",
 		"build": "vite build && electrobun build",
 		"build:canary": "vite build && electrobun build --env=canary",
+		"build:web": "vite build --config vite.web.config.ts",
+		"deploy:web": "wrangler pages deploy dist-web --project-name agentdeskweb --branch=main --commit-dirty=true",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",

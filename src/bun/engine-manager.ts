@@ -10,6 +10,13 @@ import { sqlite } from "./db/connection";
 import { updateAgentResponse } from "./rpc/inbox";
 import { recordActivity } from "./rpc/activity";
 import { sendDesktopNotification } from "./notifications/desktop";
+import {
+	savePendingApproval,
+	deletePendingApproval,
+	loadPendingApprovalsByProject,
+	loadStaleInteractiveApprovals,
+	deleteAllInteractiveApprovals,
+} from "./db/pending-approvals";
 
 // ---------------------------------------------------------------------------
 // Engine management — one AgentEngine instance per project.
@@ -243,6 +250,19 @@ export function getMainWindowRef(): any {
 	return mainWindowRef;
 }
 
+// Remote broadcast fan-out (TASK-475). The remote layer (src/bun/remote)
+// registers a sink so webview broadcasts are ALSO forwarded to connected remote
+// clients (the web app, via the relay or a direct WS). Registration keeps
+// engine-manager decoupled from the remote module (no import cycle; the remote
+// layer depends on engine-manager, never the reverse).
+type RemoteBroadcastSink = (method: string, payload: unknown) => void;
+const remoteBroadcastSinks = new Set<RemoteBroadcastSink>();
+
+export function registerRemoteBroadcastSink(sink: RemoteBroadcastSink): () => void {
+	remoteBroadcastSinks.add(sink);
+	return () => remoteBroadcastSinks.delete(sink);
+}
+
 /**
  * Safely send a message to the webview via RPC. At runtime the rpc
  * object has `send.<method>()` helpers created by BrowserView.defineRPC,
@@ -254,6 +274,17 @@ export function broadcastToWebview(method: string, payload: unknown): void {
 		mainWindowRef?.webview?.rpc?.send?.[method]?.(payload);
 	} catch {
 		// Window may have been closed — silently ignore
+	}
+	// Additive fan-out to remote transports. Runs after the webview send and
+	// never lets a sink failure affect the in-app path.
+	if (remoteBroadcastSinks.size > 0) {
+		for (const sink of remoteBroadcastSinks) {
+			try {
+				sink(method, payload);
+			} catch {
+				// A remote sink must never break the webview broadcast.
+			}
+		}
 	}
 }
 
@@ -289,6 +320,9 @@ const pendingShellApprovals = new Map<string, {
 	timer: ReturnType<typeof setTimeout>;
 }>();
 
+/** Auto-deny a shell approval after this long with no response. */
+const SHELL_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+
 /** Cache for the active project ID — set when getOrCreateEngine is called */
 let activeProjectId: string | null = null;
 
@@ -304,6 +338,7 @@ export function resolveShellApproval(
 	if (!pending) return false;
 	clearTimeout(pending.timer);
 	pendingShellApprovals.delete(requestId);
+	deletePendingApproval(requestId);
 	pending.resolve(decision);
 	return true;
 }
@@ -339,14 +374,20 @@ function installShellApprovalHandler(): void {
 
 		// Mode is "ask" — broadcast approval request and wait
 		const requestId = crypto.randomUUID();
+		const projectId = activeProjectId;
+		const timestamp = new Date().toISOString();
+		const payload = { requestId, projectId, agentId, agentName, command, timestamp };
 
-		broadcastToWebview("shellApprovalRequest", {
-			requestId,
-			projectId: activeProjectId,
-			agentId,
-			agentName,
-			command,
-			timestamp: new Date().toISOString(),
+		broadcastToWebview("shellApprovalRequest", payload);
+
+		// Write through to the DB so a reconnecting web client can re-render this
+		// pending request, and a restart can emit a clean expiry signal (TASK-478).
+		savePendingApproval({
+			id: requestId,
+			projectId,
+			kind: "shell",
+			payload,
+			expiresAt: new Date(Date.now() + SHELL_APPROVAL_TIMEOUT_MS).toISOString(),
 		});
 
 		// Fire an OS-level desktop notification so the user is alerted even when
@@ -357,11 +398,15 @@ function installShellApprovalHandler(): void {
 		).catch(() => {});
 
 		return new Promise<"allow" | "deny" | "always">((resolve) => {
-			// Auto-deny after 5 minutes if no response
+			// Auto-deny after the timeout if no response
 			const timer = setTimeout(() => {
 				pendingShellApprovals.delete(requestId);
+				deletePendingApproval(requestId);
+				// Tell the frontend to mark the stale card as expired (clean re-request
+				// UX instead of a stuck spinner) — see AC: expired approvals signal.
+				broadcastToWebview("shellApprovalExpired", { requestId, projectId, reason: "timeout" });
 				resolve("deny");
-			}, 5 * 60 * 1000);
+			}, SHELL_APPROVAL_TIMEOUT_MS);
 
 			pendingShellApprovals.set(requestId, { resolve, timer });
 		});
@@ -393,6 +438,7 @@ export function resolveUserQuestion(
 	if (!pending) return false;
 	clearTimeout(pending.timer);
 	pendingUserQuestions.delete(requestId);
+	deletePendingApproval(requestId);
 	pending.resolve(answer);
 	return true;
 }
@@ -427,12 +473,25 @@ export function askUserQuestion(payload: {
 }): Promise<string> {
 	const requestId = crypto.randomUUID();
 	const timeoutMs = payload.timeoutMs ?? DEFAULT_USER_QUESTION_TIMEOUT_MS;
-
-	broadcastToWebview("userQuestionRequest", {
+	const projectId = payload.projectId ?? activeProjectId ?? "";
+	const requestPayload = {
 		requestId,
 		...payload,
-		projectId: payload.projectId ?? activeProjectId ?? "",
+		projectId,
 		timestamp: new Date().toISOString(),
+	};
+
+	broadcastToWebview("userQuestionRequest", requestPayload);
+
+	// Write through so a reconnecting web client can re-render the question
+	// (TASK-478). Background autonomous questions (short timeoutMs) are also
+	// persisted but reconciled away on restart like any other interactive request.
+	savePendingApproval({
+		id: requestId,
+		projectId,
+		kind: "question",
+		payload: requestPayload,
+		expiresAt: new Date(Date.now() + timeoutMs).toISOString(),
 	});
 
 	// OS-level toast so a human away from the app still learns an agent needs them.
@@ -442,6 +501,7 @@ export function askUserQuestion(payload: {
 	return new Promise<string>((resolve) => {
 		const timer = setTimeout(() => {
 			pendingUserQuestions.delete(requestId);
+			deletePendingApproval(requestId);
 			// Tell the frontend to close the stale dialog — the agent has moved on.
 			broadcastToWebview("userQuestionCancel", { requestId });
 			const mins = Math.round(timeoutMs / 60000);
@@ -454,6 +514,59 @@ export function askUserQuestion(payload: {
 
 		pendingUserQuestions.set(requestId, { resolve, timer });
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Durability: reconnect re-surfacing + startup reconciliation (TASK-478)
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the still-pending shell-approval and user-question requests for a
+ * project (desktop alive). A reconnecting web client calls this and re-renders
+ * the approval cards/dialogs that were broadcast while it was disconnected —
+ * the awaiting agent promises are still live in memory, so resolving them works.
+ * Expired rows (past `expires_at`) are filtered out.
+ */
+export function getPendingApprovals(projectId: string): {
+	shell: unknown[];
+	question: unknown[];
+} {
+	const now = Date.now();
+	const rows = loadPendingApprovalsByProject(projectId, ["shell", "question"]);
+	const live = rows.filter((r) => {
+		// Only re-surface requests whose resolver is still in memory — anything
+		// not in the live maps belongs to a dead run and must not be shown.
+		const inMemory =
+			pendingShellApprovals.has(r.id) || pendingUserQuestions.has(r.id);
+		const notExpired = !r.expiresAt || new Date(r.expiresAt).getTime() > now;
+		return inMemory && notExpired;
+	});
+	return {
+		shell: live.filter((r) => r.kind === "shell").map((r) => r.payload),
+		question: live.filter((r) => r.kind === "question").map((r) => r.payload),
+	};
+}
+
+/**
+ * On desktop startup, every persisted shell/question request is orphaned — its
+ * awaiting agent run died with the previous process. Emit a clean per-request
+ * expiry signal (so any card the web client still shows resolves to a "please
+ * re-request" state instead of a stuck spinner) and clear the rows. Plan-task
+ * definitions are intentionally left in place — they are reusable after restart.
+ */
+export function reconcilePendingApprovalsOnStartup(): void {
+	const stale = loadStaleInteractiveApprovals();
+	if (stale.length === 0) return;
+	console.log(`[durability] reconciling ${stale.length} orphaned approval(s) from previous session`);
+	for (const row of stale) {
+		const projectId = row.projectId;
+		if (row.kind === "shell") {
+			broadcastToWebview("shellApprovalExpired", { requestId: row.id, projectId, reason: "restart" });
+		} else if (row.kind === "question") {
+			broadcastToWebview("userQuestionCancel", { requestId: row.id });
+		}
+	}
+	deleteAllInteractiveApprovals();
 }
 
 export function getOrCreateEngine(projectId: string): AgentEngine {

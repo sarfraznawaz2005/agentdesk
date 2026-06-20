@@ -7,7 +7,7 @@ import type {
   Message,
   ShellApprovalRequest,
 } from "./chat-types";
-import { buffers, initChatEventHandlers } from "./chat-event-handlers";
+import { buffers, initChatEventHandlers, resurfacePendingApprovals } from "./chat-event-handlers";
 
 // Re-export types so existing consumers don't need to change their imports
 export type {
@@ -143,6 +143,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     // (Each conversation row carries its projectId so we can detect staleness.)
     if (conversations.length > 0 && conversations[0].projectId !== projectId) return;
     set({ conversations });
+    // Re-surface any approvals that arrived while disconnected / before reload
+    // (TASK-478 durability). Fire-and-forget so it never blocks the chat view.
+    void resurfacePendingApprovals(projectId);
   },
 
   setActiveConversation: (id: string | null) => {

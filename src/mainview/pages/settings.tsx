@@ -17,19 +17,20 @@ import { RecommendationsSettings } from "./settings/recommendations";
 import { AuditLogSettings } from "./settings/audit-log";
 import { DataSettings } from "./settings/data";
 import { HealthSettings } from "./settings/health";
+import { RemoteAccessSettings } from "./settings/remote-access";
 import { PluginsPage } from "./plugins";
 
 function SubTabs({ tabs }: { tabs: { value: string; label: string; content: React.ReactNode }[] }) {
   const [active, setActive] = useState(tabs[0].value);
   return (
     <div className="mt-4">
-      <div className="flex gap-1 border-b border-border mb-4">
+      <div className="flex gap-1 border-b border-border mb-4 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.value}
             type="button"
             onClick={() => setActive(t.value)}
-            className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`shrink-0 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
               active === t.value
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -46,9 +47,9 @@ function SubTabs({ tabs }: { tabs: { value: string; label: string; content: Reac
 
 export function SettingsPage() {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <Tabs defaultValue="general" className="w-full">
-        <TabsList>
+        <TabsList className="max-w-full overflow-x-auto justify-start">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="channels">Channels</TabsTrigger>
@@ -81,6 +82,7 @@ export function SettingsPage() {
             { value: "discord", label: "Discord", content: <DiscordSettings /> },
             { value: "whatsapp", label: "WhatsApp", content: <WhatsAppSettings /> },
             { value: "email", label: "Email", content: <EmailSettings /> },
+            { value: "remote", label: "Remote Access", content: <RemoteAccessSettings /> },
           ]} />
         </TabsContent>
 

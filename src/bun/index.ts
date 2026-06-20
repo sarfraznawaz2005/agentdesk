@@ -30,6 +30,9 @@ import { initMcpClients, shutdownMcpClients } from "./mcp/client";
 import { startAnnotationServer, shutdownAnnotationServer } from "./annotations/server";
 import { shutdownPreviewWindow } from "./annotations/preview-window";
 import { startPlaygroundServer, shutdownPlaygroundServer } from "./playground/server";
+import { maybeStartRemoteRpcServer, shutdownRemoteRpcServer } from "./remote";
+import { initRemoteAccess, shutdownRemoteAccess } from "./remote/manager";
+import { requestHandlers } from "./remote/rpc-handlers";
 import { shutdownPlayground } from "./playground/orchestrator";
 import { isFreelanceEnabled } from "./freelance/feature-flag";
 import { loadCustomEnvVarsIntoProcess } from "./rpc/env-vars";
@@ -215,6 +218,11 @@ setTimeout(() => {
 	import("./rpc/deploy")
 		.then(({ reconcileStuckDeploys }) => reconcileStuckDeploys())
 		.catch(() => {});
+	// Durability: clear shell/question approvals orphaned by the previous session
+	// and emit a clean expiry signal for any card a client still shows (TASK-478).
+	import("./engine-manager")
+		.then(({ reconcilePendingApprovalsOnStartup }) => reconcilePendingApprovalsOnStartup())
+		.catch((e) => console.error("[startup] approval reconcile:", e));
 	void (async () => {
 		try {
 			const { like } = await import("drizzle-orm");
@@ -283,6 +291,13 @@ mainWindow.webview.on("dom-ready", () => {
 
 			// Playground static server — serves the playground temp folder for in-app previews
 			startPlaygroundServer();
+
+			// Remote RPC server (web app) — opt-in via AGENTDESK_REMOTE_RPC_PORT; no-op otherwise.
+			maybeStartRemoteRpcServer();
+
+			// Remote access (web app over the relay) — connects only if the user has
+			// enabled it; no-op for existing users (disabled by default).
+			initRemoteAccess(requestHandlers);
 
 			// Freelance poller — deferred to after window is shown so startup is fast
 			if (FREELANCE_ENABLED) {
@@ -364,6 +379,8 @@ Electrobun.events.on("before-quit", () => {
 		shutdownAnnotationServer();
 		shutdownPlayground();
 		shutdownPlaygroundServer();
+		shutdownRemoteRpcServer();
+		shutdownRemoteAccess();
 		closeDatabase();
 	})();
 });

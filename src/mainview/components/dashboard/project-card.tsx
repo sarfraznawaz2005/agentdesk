@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
+import { IS_REMOTE } from "@/lib/remote-transport";
 import { useUnreadStore, hasAnyUnread } from "@/stores/unread-store";
 import { UnreadDot } from "@/components/ui/unread-dot";
 
@@ -158,13 +159,17 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
                         <RotateCcw className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
                         Restore Project
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => rpc.openInExplorer(project.workspacePath).catch(() => {})}
-                      >
-                        <FolderOpen aria-hidden="true" />
-                        Show in Explorer
-                      </DropdownMenuItem>
+                      {!IS_REMOTE && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => rpc.openInExplorer(project.workspacePath).catch(() => {})}
+                          >
+                            <FolderOpen aria-hidden="true" />
+                            Show in Explorer
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
@@ -194,13 +199,17 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
                           ))}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => rpc.openInExplorer(project.workspacePath).catch(() => {})}
-                      >
-                        <FolderOpen aria-hidden="true" />
-                        Show in Explorer
-                      </DropdownMenuItem>
+                      {!IS_REMOTE && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => rpc.openInExplorer(project.workspacePath).catch(() => {})}
+                          >
+                            <FolderOpen aria-hidden="true" />
+                            Show in Explorer
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"

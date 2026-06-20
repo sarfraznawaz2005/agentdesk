@@ -34,6 +34,7 @@ for the architecture narrative.
 - [[issue-fixer]] — autonomous GitHub-issue → branch/PR resolution; hidden file-only agent; orchestrator owns git and never merges.
 - [[issue-sources]] — multi-source issue integration (GitHub/Jira/Linear/GitLab/Trello/Kanboard) normalised into `external_issues`; sync, buckets, kanban link, auto-close.
 - [[remote-sync]] — per-project SFTP/FTP/FTPS sync with AES-256-GCM credentials and a local↔remote SHA manifest.
+- [[remote-access]] — web-app remote access: blind Cloudflare relay + outbound desktop session + E2E pairing; the same handler map served over WebSocket. Opt-in, zero-signup.
 - [[playground]] — Artifacts-style live-preview builder; reuses `runInlineAgent` with `priorMessages`/`persistToDb:false`/`extraTools`; static server + dev-server persistence.
 - [[scheduler-automation]] — croner cron jobs (restart-safe) + event-triggered automation rules through one `executeTask()` sink over an in-process event bus.
 - [[plugins]] — in-process plugin framework (manifest + `activate(api)`) contributing tools/prompts/UI; hosts the LSP Manager plugin.

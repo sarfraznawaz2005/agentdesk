@@ -2,7 +2,7 @@
 title: RPC Client (Frontend)
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-20
 sources:
   - src/mainview/lib/rpc.ts
   - src/shared/rpc/index.ts
@@ -20,6 +20,13 @@ hand-written typed `rpc` object that the rest of the React app uses for *every*
 backend call. No component imports `electroviewRpc` directly — they all go
 through `rpc.*`. This page covers the **frontend half** of the boundary; the
 end-to-end contract, registration, and Bun side live in [[rpc-layer]].
+
+> **Transport branch (web app).** `rpc.ts` now selects its transport at one seam
+> via `IS_REMOTE` (`src/mainview/lib/remote-transport.ts`): the Electrobun bridge
+> when running in the native webview (byte-identical to before), or a **WS-RPC
+> client over the blind relay** when running in a plain browser. The `rpc.*`
+> wrappers and the broadcast → `agentdesk:*` DOM-event re-emit are unchanged in
+> both modes. See [[remote-access]].
 
 ## The three things this module does
 

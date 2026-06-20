@@ -9,6 +9,7 @@ import * as freelanceWizardRpc from "../rpc/freelance-wizard";
 import * as freelanceInboxRpc from "../rpc/freelance-inbox";
 import * as freelanceOutboxRpc from "../rpc/freelance-outbox";
 import * as freelanceExpertRpc from "../rpc/freelance-expert";
+import * as remoteAccessRpc from "../rpc/remote-access";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handlers: Record<string, (params: any) => any> = {
@@ -133,4 +134,13 @@ export const handlers: Record<string, (params: any) => any> = {
 	// What's New
 	getWhatsNewStatus: () => whatsNewRpc.getWhatsNewStatus(),
 	markWhatsNewSeen: () => whatsNewRpc.markWhatsNewSeen(),
+
+	// Remote Access (web app)
+	getRemoteAccessStatus: () => remoteAccessRpc.getRemoteAccessStatus(),
+	setRemoteAccessEnabled: (params) => remoteAccessRpc.setRemoteAccessEnabled(params),
+	createDevicePairing: (params) => remoteAccessRpc.createDevicePairing(params),
+	listPairedDevices: () => remoteAccessRpc.listPairedDevices(),
+	renameDevice: (params) => remoteAccessRpc.renameDevice(params),
+	revokeDevice: (params) => remoteAccessRpc.revokeDevice(params),
+	deleteDevice: (params) => remoteAccessRpc.deleteDevice(params),
 };

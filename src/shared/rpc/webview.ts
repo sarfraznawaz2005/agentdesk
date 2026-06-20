@@ -93,6 +93,15 @@ export type WebviewSchema = RPCSchema<{
       timestamp: string;
     };
 
+    // A pending shell approval expired (5-min timeout, or orphaned by a desktop
+    // restart) — the frontend marks the stale card as expired so the user can
+    // re-request instead of staring at a dead spinner (TASK-478 durability).
+    shellApprovalExpired: {
+      requestId: string;
+      projectId: string;
+      reason: "timeout" | "restart";
+    };
+
     // User question request (PM asks user a question via modal dialog)
     userQuestionRequest: {
       requestId: string;

@@ -6,14 +6,10 @@ import { broadcastToWebview } from "./engine-manager";
 // Re-export onSettingChange so index.ts can still import it from here
 export { onSettingChange } from "./rpc-groups/setting-callbacks";
 
-import { handlers as settingsProviderHandlers } from "./rpc-groups/settings-providers";
-import { handlers as projectsSystemHandlers } from "./rpc-groups/projects-system";
-import { handlers as conversationsControlHandlers } from "./rpc-groups/conversations-control";
-import { handlers as agentsKanbanNotesHandlers } from "./rpc-groups/agents-kanban-notes";
-import { handlers as gitAnalyticsHandlers } from "./rpc-groups/git-analytics";
-import { handlers as channelsInboxSchedulerHandlers } from "./rpc-groups/channels-inbox-scheduler";
-import { handlers as pluginsToolsHandlers } from "./rpc-groups/plugins-tools";
-import { handlers as featuresHandlers } from "./rpc-groups/features";
+// The combined request-handler map (all 8 rpc-groups) lives in ./remote/rpc-handlers
+// so the Electrobun bridge (here) and the remote WebSocket RPC server dispatch
+// into the IDENTICAL handlers. (TASK-474)
+import { requestHandlers } from "./remote/rpc-handlers";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function withErrorToast<T extends Record<string, (p: any) => any>>(handlers: T): T {
@@ -37,16 +33,7 @@ export const rpc = BrowserView.defineRPC<AgentDeskRPC>({
 	// Agent operations can take several minutes — disable the 1 s default timeout.
 	maxRequestTime: Infinity,
 	handlers: {
-		requests: withErrorToast({
-			...settingsProviderHandlers,
-			...projectsSystemHandlers,
-			...conversationsControlHandlers,
-			...agentsKanbanNotesHandlers,
-			...gitAnalyticsHandlers,
-			...channelsInboxSchedulerHandlers,
-			...pluginsToolsHandlers,
-			...featuresHandlers,
-		}),
+		requests: withErrorToast(requestHandlers),
 		messages: {
 			log: ({ level, message }: { level: string; message: string }) => {
 				const fn = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
