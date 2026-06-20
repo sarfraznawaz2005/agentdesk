@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -320,7 +321,11 @@ function AnalysisModal({
     toast("success", "Analysis exported as Markdown.");
   };
 
-  return (
+  // Portal to <body> so the modal escapes the listing card's DOM subtree.
+  // Rendered inline, it inherited the card's `opacity-60` (closed listings),
+  // colour tints, and stacking context — making the panel translucent so the
+  // cards behind bled through. At the body root, `bg-card` renders fully opaque.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
@@ -422,7 +427,8 @@ function AnalysisModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

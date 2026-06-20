@@ -1,7 +1,7 @@
 import he from "he";
 import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
-import { eq, and, notInArray, desc, gte } from "drizzle-orm";
+import { eq, and, notInArray, desc, gte, isNull } from "drizzle-orm";
 import { parse as parseHtml } from "node-html-parser";
 import { sqlite } from "../db/connection";
 import { db } from "../db";
@@ -988,12 +988,15 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
     const profileSkills = getProfileSkills();
     const aeSettings = await getAutoEarnSettings();
 
-    // Base filter: exclude deleted, approved and closed listings.
-    // Shortlisted entries are included — they're still recent and their cached
-    // workable verdict should remain visible on re-runs.
+    // Base filter: scan ONLY fresh, never-analyzed "new" listings. Exclude
+    // deleted, approved/closed/shortlisted, and anything already analyzed
+    // (wizard_verdict set) — including gated/filtered ones (skill gate, client
+    // quality, non-software). Re-analysing those wastes work; use the per-card
+    // "Analyze" button to deliberately re-run a single listing.
     const baseWhere = and(
       eq(freelanceListings.isDeleted, 0),
-      notInArray(freelanceListings.status, ["approved", "closed"]),
+      notInArray(freelanceListings.status, ["approved", "closed", "shortlisted"]),
+      isNull(freelanceListings.wizardVerdict),
       "since" in options
         // DB stores fetched_at as 'YYYY-MM-DD HH:MM:SS' (no T, no Z).
         // toISOString() produces 'YYYY-MM-DDTHH:MM:SS.mmmZ' — space < T in ASCII
@@ -1301,9 +1304,15 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
     const aeSettings = await getAutoEarnSettings();
     const count = Math.max(1, Math.min(25, s.autoShortlistCount));
 
+    // Scan ONLY fresh, never-analyzed "new" listings — never shortlisted/
+    // approved/done, and never anything already analyzed (incl. gated/filtered:
+    // skill gate, client quality, non-software). This keeps auto-shortlist cheap
+    // and stops it re-touching listings the user has already moved or that were
+    // already judged.
     const baseWhere = and(
       eq(freelanceListings.isDeleted, 0),
       notInArray(freelanceListings.status, ["approved", "closed", "shortlisted"]),
+      isNull(freelanceListings.wizardVerdict),
     );
 
     const candidates = await db

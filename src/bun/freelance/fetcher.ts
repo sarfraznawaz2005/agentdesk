@@ -55,23 +55,38 @@ async function purgeOldDeletedListings(): Promise<void> {
     .where(and(eq(freelanceListings.isDeleted, 1), lt(freelanceListings.createdAt, cutoff)));
 }
 
-// Soft-deletes oldest "new" listings down to maxListings.
-// Only "new" listings are eligible — approved, shortlisted, and closed listings
-// are never touched. Soft-delete preserves the (platform, external_id) unique
-// row so trimmed listings are never re-imported on the next fetch.
+// Reclaims room for new RSS entries by soft-deleting old "new"-column listings
+// down to maxListings. New entries are ALWAYS inserted first (never blocked by
+// the cap) — this just trims afterward.
+//
+// Protection: only "new"-column listings are ever eligible. Shortlisted,
+// approved, and done/closed listings are NEVER touched — they represent the
+// user's decisions and committed work.
+//
+// Deletion priority within "new": already-judged non-workable / gated listings
+// first (skill-gate, client-quality, non-software, analysis-fail — all persisted
+// as wizard_verdict='not_workable'), THEN the oldest of the rest. This clears the
+// low-value "junk" first so fresh, unanalyzed RSS entries and workable-pending
+// listings survive longest. Each tier is oldest-first. Soft-delete preserves the
+// (platform, external_id) unique row so a trimmed listing is never re-imported.
 async function trimListingsToMax(maxListings: number): Promise<void> {
-  const trimmable = and(eq(freelanceListings.isDeleted, 0), eq(freelanceListings.status, "new"));
   const rows = await db
-    .select({ id: freelanceListings.id })
+    .select({ id: freelanceListings.id, verdict: freelanceListings.wizardVerdict })
     .from(freelanceListings)
-    .where(trimmable)
-    .orderBy(asc(freelanceListings.createdAt));
+    .where(and(eq(freelanceListings.isDeleted, 0), eq(freelanceListings.status, "new")))
+    .orderBy(asc(freelanceListings.createdAt)); // oldest first
 
   const excess = rows.length - maxListings;
   if (excess <= 0) return;
 
+  // Junk (non-workable/gated) oldest-first, then everything else oldest-first.
+  const ordered = [
+    ...rows.filter((r) => r.verdict === "not_workable"),
+    ...rows.filter((r) => r.verdict !== "not_workable"),
+  ];
+  const toTrim = ordered.slice(0, excess).map((r) => r.id);
+
   const now = new Date().toISOString();
-  const toTrim = rows.slice(0, excess).map((r) => r.id);
   for (const id of toTrim) {
     await db
       .update(freelanceListings)
