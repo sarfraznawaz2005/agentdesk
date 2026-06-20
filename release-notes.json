@@ -1,5 +1,15 @@
 [
     {
+        "version":  "2.3.0",
+        "title":  "New Features and Enhancements",
+        "changes":  [
+						"Added new Web channel feature accessible from Settings > Channels -> Remote Access",
+                        "Implemented PWA features for better performance on mobile devices and enhanced remote access functionality.",
+                        "Added product requirements documents for mobile and web applications to streamline development.",
+                        "Increased step count limit and improved error handling in dashboard RPCs for a smoother user experience."
+                    ]
+    },
+    {
         "version":  "2.2.4",
         "title":  "Enhanced Context Window Management",
         "changes":  [
