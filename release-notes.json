@@ -1,9 +1,17 @@
 [
     {
+        "version":  "2.3.1",
+        "title":  "Enhanced Chat Features",
+        "changes":  [
+                        "Introduced a floating action button for chat to improve accessibility.",
+                        "Improved chat layout responsiveness for better user experience across devices."
+                    ]
+    },
+    {
         "version":  "2.3.0",
         "title":  "New Features and Enhancements",
         "changes":  [
-						"Added new Web channel feature accessible from Settings > Channels -> Remote Access",
+                        "Added new Web channel feature accessible from Settings \u003e Channels -\u003e Remote Access",
                         "Implemented PWA features for better performance on mobile devices and enhanced remote access functionality.",
                         "Added product requirements documents for mobile and web applications to streamline development.",
                         "Increased step count limit and improved error handling in dashboard RPCs for a smoother user experience."
