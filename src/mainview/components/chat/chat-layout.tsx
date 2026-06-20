@@ -32,7 +32,12 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
   });
   const [sidebarOpen, setSidebarOpen] = useState(false); // always starts closed; user opens manually
   const [activityOpen, setActivityOpen] = useState(() => {
-    try { return localStorage.getItem(FOCUS_KEY) !== "true"; } catch { return true; }
+    try {
+      // Collapsed by default on mobile — as an inline column it would squeeze/clip
+      // the chat; the user opens it on demand (it overlays as a sheet there).
+      if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px)").matches) return false;
+      return localStorage.getItem(FOCUS_KEY) !== "true";
+    } catch { return true; }
   });
   const sidebarRef = useRef<HTMLDivElement>(null);
   const sidebarToggleRef = useRef<HTMLButtonElement>(null);
@@ -481,6 +486,9 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
         className={cn(
           "flex-shrink-0 border-r border-border bg-muted/50 overflow-hidden",
           "transition-all duration-200 ease-in-out",
+          // Mobile: overlay the chat (opaque, on top) instead of squeezing it.
+          // Closed by default (sidebarOpen starts false); click-outside closes it.
+          "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:bg-background max-md:shadow-xl",
           sidebarOpen ? "w-[220px]" : "w-0",
         )}
         aria-hidden={!sidebarOpen}
@@ -498,7 +506,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
 
       {/* Main Chat Area */}
       <div
-        className="flex-1 min-w-[400px] flex flex-col min-w-0 relative"
+        className="flex-1 flex flex-col min-w-0 sm:min-w-[400px] relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -515,7 +523,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
           </div>
         )}
         {/* Header bar */}
-        <div className="h-12 flex items-center px-4 border-b border-border gap-2 shrink-0">
+        <div className="h-12 flex items-center px-2 sm:px-4 border-b border-border gap-1 sm:gap-2 shrink-0">
           <Tip content={sidebarOpen ? "Hide conversations" : "Show conversations"} side="bottom">
             <button
               ref={sidebarToggleRef}
@@ -765,7 +773,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
               }
             }}
             className={cn(
-              "w-1 cursor-col-resize shrink-0",
+              "w-1 cursor-col-resize shrink-0 max-md:hidden",
               "bg-border hover:bg-indigo-400 active:bg-indigo-500",
               "transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500",
@@ -774,7 +782,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
 
           <div
             style={{ width: activityWidth }}
-            className="flex-shrink-0 overflow-hidden bg-muted/50 border-l border-border"
+            className="flex-shrink-0 overflow-hidden bg-muted/50 border-l border-border max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-40 max-md:!w-[85vw] max-md:max-w-[340px] max-md:bg-background max-md:shadow-xl"
             aria-label="Context panel"
           >
             <ContextPanel projectId={projectId} />

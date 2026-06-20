@@ -300,7 +300,7 @@ function PromptCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="group flex items-start gap-3 border rounded-lg px-4 py-3 hover:bg-muted/30 transition-colors">
+    <div className="group flex items-start gap-3 border rounded-lg px-4 py-3 hover:bg-muted/30 transition-colors min-w-0 max-w-full">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium">{prompt.name}</p>

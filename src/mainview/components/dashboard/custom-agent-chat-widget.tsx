@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { exportChatMarkdown } from "@/lib/export-markdown";
+import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -308,6 +309,32 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     };
   }, [agentName]);
 
+  // --- Mobile chat FAB integration ------------------------------------------
+  // Register this launcher (only while on the dashboard) so the FAB can list +
+  // reopen it; mirror unread + open state through the shared store.
+  const launcherId = `agent:${agentName}`;
+  useEffect(() => {
+    if (!visible) return;
+    const { register, unregister } = useDashboardLauncherStore.getState();
+    register({ id: launcherId, displayName, color, order: 1, unread });
+    return () => unregister(launcherId);
+  }, [visible, launcherId, displayName, color]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { useDashboardLauncherStore.getState().setUnread(launcherId, unread); }, [launcherId, unread]);
+  useEffect(() => {
+    const s = useDashboardLauncherStore.getState();
+    if (open) s.setActiveOpen(launcherId);
+    else s.clearActiveOpen(launcherId);
+  }, [open, launcherId]);
+  const openRequestId = useDashboardLauncherStore((s) => s.openRequestId);
+  useEffect(() => {
+    if (openRequestId === launcherId) {
+      // Responding to an external open-request signal from the FAB.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpen(true);
+      useDashboardLauncherStore.getState().clearOpenRequest();
+    }
+  }, [openRequestId, launcherId]);
+
   const retryLastMessage = useCallback(async () => {
     if (isStreaming) return;
     const lastUserMsg = [...messagesRef.current].reverse().find((m) => m.role === "user");
@@ -450,9 +477,11 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
             "text-white shadow-lg whitespace-nowrap",
             "hover:brightness-110 transition-[filter,transform] duration-150",
             "text-sm font-medium",
+            "hidden", // launcher lives in the ChatFab (all screen sizes); this pill is kept only as the panel mount-point
           )}
+          title={displayName}
         >
-          <MessageSquare className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
+          <MessageSquare className="h-4 w-4 shrink-0" strokeWidth={3.5} aria-hidden="true" />
           {displayName}
           {unread && <UnreadDot className="absolute -top-1 -right-1" />}
         </button>
@@ -466,6 +495,8 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
           className={cn(
             "fixed bottom-[19px] right-6 z-[60]",
             "flex flex-col w-[480px] h-[530px]",
+            // Mobile: span the viewport instead of a fixed 480px panel.
+            "max-md:left-3 max-md:right-3 max-md:bottom-3 max-md:w-auto max-md:h-[82dvh]",
             "bg-background border border-border rounded-xl shadow-2xl",
           )}
         >

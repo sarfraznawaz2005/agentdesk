@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { FileText, FolderOpen, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, FileText, FolderOpen, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { rpc } from "@/lib/rpc";
 import { Button } from "@/components/ui/button";
@@ -320,8 +320,12 @@ export function NotesTab({ projectId }: NotesTabProps) {
 
   return (
     <div className="flex h-full">
-      {/* Left sidebar — doc list */}
-      <div className="w-64 shrink-0 border-r flex flex-col bg-muted/30">
+      {/* Left sidebar — doc list. Mobile: full-width single pane, hidden once a
+          doc is selected/being created (the content pane takes over). */}
+      <div className={cn(
+        "w-64 shrink-0 border-r flex flex-col bg-muted/30 max-md:w-full",
+        (selectedKey || creating) && "max-md:hidden",
+      )}>
         {/* Search + New */}
         <div className="p-2 space-y-2 shrink-0 border-b">
           <SearchInput
@@ -480,23 +484,38 @@ export function NotesTab({ projectId }: NotesTabProps) {
       </div>
 
       {/* Right pane — preview / edit */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0",
+        // Mobile: only show the content pane once a doc is selected/being created.
+        !(selectedKey || creating) && "max-md:hidden",
+      )}>
         {/* Toolbar */}
         {(selectedItem || creating) && (
           <div className="flex items-center justify-between px-4 py-2 border-b shrink-0 bg-background">
-            {editing ? (
-              <Input
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Doc title"
-                className="text-base font-semibold h-8 max-w-md"
-                autoFocus={creating}
-              />
-            ) : (
-              <h2 className="text-base font-semibold text-foreground truncate">
-                {selectedTitle ? <Highlight text={selectedTitle} query={searchQuery} /> : null}
-              </h2>
-            )}
+            <div className="flex items-center gap-2 min-w-0">
+              {/* Back to the list (mobile single-pane) */}
+              <button
+                type="button"
+                onClick={() => { setSelectedKey(null); setCreating(false); setEditing(false); }}
+                className="md:hidden shrink-0 -ml-1 p-1 text-muted-foreground hover:text-foreground rounded"
+                aria-label="Back to docs list"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              {editing ? (
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Doc title"
+                  className="text-base font-semibold h-8 max-w-md"
+                  autoFocus={creating}
+                />
+              ) : (
+                <h2 className="text-base font-semibold text-foreground truncate">
+                  {selectedTitle ? <Highlight text={selectedTitle} query={searchQuery} /> : null}
+                </h2>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               {editing ? (
                 <>

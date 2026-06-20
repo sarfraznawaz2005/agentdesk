@@ -456,11 +456,11 @@ export function ListingsTab() {
       </div>
 
       {/* Toolbar — Row 2: Status filter tabs */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
       <div
         role="tablist"
         aria-label="Filter listings by status"
-        className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground"
+        className="flex flex-wrap h-auto items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground"
       >
         {FILTERS.map((f) => (
           <button

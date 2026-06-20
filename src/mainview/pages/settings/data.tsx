@@ -469,7 +469,7 @@ export function DataSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Export */}
-          <div className="flex items-end gap-3">
+          <div className="flex items-end gap-3 flex-wrap">
             <div className="space-y-1">
               <Label>Project</Label>
               <Select value={exportProjectId} onValueChange={setExportProjectId}>

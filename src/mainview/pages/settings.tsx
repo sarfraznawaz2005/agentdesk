@@ -24,7 +24,7 @@ function SubTabs({ tabs }: { tabs: { value: string; label: string; content: Reac
   const [active, setActive] = useState(tabs[0].value);
   return (
     <div className="mt-4">
-      <div className="flex gap-1 border-b border-border mb-4 overflow-x-auto">
+      <div className="flex flex-wrap gap-1 border-b border-border mb-4">
         {tabs.map((t) => (
           <button
             key={t.value}
@@ -49,7 +49,7 @@ export function SettingsPage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="max-w-full overflow-x-auto justify-start">
+        <TabsList className="h-auto flex-wrap justify-start gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="channels">Channels</TabsTrigger>

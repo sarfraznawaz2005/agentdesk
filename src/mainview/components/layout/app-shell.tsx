@@ -15,6 +15,7 @@ import { WhatsNewDialog } from "../modals/whats-new-dialog";
 import type { ReleaseEntry } from "../../../shared/rpc/whats-new";
 import { PmChatWidget } from "@/components/dashboard/pm-chat-widget";
 import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-chat-launcher";
+import { ChatFab } from "@/components/dashboard/chat-fab";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
@@ -369,9 +370,9 @@ function AppShellContent() {
           <electrobun-webview> live session already no-ops in a browser
           (runtimeAvailable=false) and the inbox shows a desktop-only note (TASK-485). */}
       <AlwaysMountedInbox />
-      {/* Chat widget bar — buttons wrap into new rows (growing upward) when
-          there are too many to fit. maxWidth is capped to the main content
-          area width so buttons never slide over the sidebar. */}
+      {/* Dashboard chat widgets — their trigger pills are hidden (the ChatFab
+          below is the launcher on all screen sizes); these stay mounted here to
+          host the chat panels, stream listeners, and FAB-registry registration. */}
       <div
         className="fixed bottom-6 right-6 z-50 flex flex-wrap-reverse justify-end items-end gap-3"
         style={{ maxWidth: `calc(100vw - ${isMobile ? 0 : sidebarCollapsed ? 60 : 200}px - 24px)` }}
@@ -379,6 +380,8 @@ function AppShellContent() {
         <CustomAgentChatLauncher visible={location.pathname === "/"} />
         <PmChatWidget visible={location.pathname === "/"} />
       </div>
+      {/* A single FAB replaces the stacked launcher pills above (all screen sizes). */}
+      <ChatFab />
     </div>
     </TooltipProvider>
   );

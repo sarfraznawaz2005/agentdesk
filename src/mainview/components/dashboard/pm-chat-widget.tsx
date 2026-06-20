@@ -12,6 +12,10 @@ import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
+import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
+
+// Stable id for the mobile chat FAB registry (mirrors bg-indigo-600 = #4f46e5).
+const PM_LAUNCHER_ID = "pm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -297,6 +301,29 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     };
   }, []);
 
+  // --- Mobile chat FAB integration ------------------------------------------
+  // Register this launcher (only while on the dashboard) so the FAB can list +
+  // reopen it; mirror unread + open state through the shared store.
+  useEffect(() => {
+    if (!visible) return;
+    const { register, unregister } = useDashboardLauncherStore.getState();
+    register({ id: PM_LAUNCHER_ID, displayName: "Chat with PM", color: "#4f46e5", order: 0, unread });
+    return () => unregister(PM_LAUNCHER_ID);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { useDashboardLauncherStore.getState().setUnread(PM_LAUNCHER_ID, unread); }, [unread]);
+  useEffect(() => {
+    const s = useDashboardLauncherStore.getState();
+    if (open) s.setActiveOpen(PM_LAUNCHER_ID);
+    else s.clearActiveOpen(PM_LAUNCHER_ID);
+  }, [open]);
+  const openRequestId = useDashboardLauncherStore((s) => s.openRequestId);
+  useEffect(() => {
+    if (openRequestId === PM_LAUNCHER_ID) {
+      setOpen(true);
+      useDashboardLauncherStore.getState().clearOpenRequest();
+    }
+  }, [openRequestId]);
+
   const sendMessage = useCallback(async () => {
     const content = input.trim();
     if (!content || isStreaming) return;
@@ -460,9 +487,11 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
             "bg-primary text-primary-foreground shadow-lg",
             "hover:bg-primary/90 transition-colors duration-150",
             "text-sm font-medium whitespace-nowrap",
+            "hidden", // launcher lives in the ChatFab (all screen sizes); this pill is kept only as the panel mount-point
           )}
+          title="Chat with PM"
         >
-          <MessageSquare className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
+          <MessageSquare className="h-4 w-4 shrink-0" strokeWidth={3.5} aria-hidden="true" />
           Chat with PM
           {unread && <UnreadDot className="absolute -top-1 -right-1" />}
         </button>
@@ -477,6 +506,8 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
           className={cn(
             "fixed bottom-[19px] right-6 z-[60]",
             "flex flex-col w-[480px] h-[530px]",
+            // Mobile: span the viewport instead of a fixed 480px panel.
+            "max-md:left-3 max-md:right-3 max-md:bottom-3 max-md:w-auto max-md:h-[82dvh]",
             "bg-background border border-border rounded-xl shadow-2xl",
           )}
         >

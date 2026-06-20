@@ -304,8 +304,8 @@ export function DashboardPage() {
 			{/* Search, filter, sort bar — only shown when there are projects */}
 			{!loading && hasProjects && (
 				<div className="flex flex-col gap-3">
-				<div className="flex flex-wrap items-center gap-3">
-					<div className="flex items-center gap-2 flex-1">
+				<div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+					<div className="flex flex-wrap items-center gap-2 sm:flex-1">
 						{statusBadges.map((badge) => {
 							const selected = statusFilter === badge.value;
 							return (
@@ -331,26 +331,29 @@ export function DashboardPage() {
 							);
 						})}
 					</div>
-					<Select
-						value={sortKey}
-						onValueChange={(v) => setSortKey(v as SortKey)}
-					>
-						<SelectTrigger className="w-44">
-							<ArrowUpDown className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-							<SelectValue placeholder="Sort by" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="updatedAt">Last updated</SelectItem>
-							<SelectItem value="createdAt">Date created</SelectItem>
-							<SelectItem value="name">Name</SelectItem>
-							<SelectItem value="status">Status</SelectItem>
-						</SelectContent>
-					</Select>
-					<Tip content={cardsCollapsed ? "Expand all cards" : "Collapse all cards"} side="bottom">
-						<Button variant="outline" size="icon" onClick={toggleCardsCollapsed} aria-label={cardsCollapsed ? "Expand all cards" : "Collapse all cards"}>
-							<ChevronsUpDown className="h-3.5 w-3.5" aria-hidden="true" />
-						</Button>
-					</Tip>
+					{/* Sort + collapse stay together on one row (their own line on mobile). */}
+					<div className="flex items-center gap-3">
+						<Select
+							value={sortKey}
+							onValueChange={(v) => setSortKey(v as SortKey)}
+						>
+							<SelectTrigger className="w-44">
+								<ArrowUpDown className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+								<SelectValue placeholder="Sort by" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="updatedAt">Last updated</SelectItem>
+								<SelectItem value="createdAt">Date created</SelectItem>
+								<SelectItem value="name">Name</SelectItem>
+								<SelectItem value="status">Status</SelectItem>
+							</SelectContent>
+						</Select>
+						<Tip content={cardsCollapsed ? "Expand all cards" : "Collapse all cards"} side="bottom">
+							<Button variant="outline" size="icon" onClick={toggleCardsCollapsed} aria-label={cardsCollapsed ? "Expand all cards" : "Collapse all cards"}>
+								<ChevronsUpDown className="h-3.5 w-3.5" aria-hidden="true" />
+							</Button>
+						</Tip>
+					</div>
 				</div>
 				<div className="border-b border-border" />
 				</div>

@@ -67,9 +67,9 @@ export function FreelancePage() {
     "rounded-none border-b-2 border-transparent px-4 pb-2 pt-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground";
 
   return (
-    <div className="p-6 mx-auto max-w-[90%]">
+    <div className="p-4 sm:p-6 mx-auto max-w-[90%]">
       <Tabs value={effectiveTab} onValueChange={onTabChange}>
-        <TabsList className="mb-5 h-auto bg-transparent p-0 border-b border-border rounded-none w-full justify-start gap-0">
+        <TabsList className="mb-5 h-auto flex-wrap bg-transparent p-0 border-b border-border rounded-none w-full justify-start gap-0">
           <TabsTrigger value="listings" className={triggerCls}>Listings</TabsTrigger>
           {autoEarnEnabled && (
             <TabsTrigger value="inbox" className={triggerCls}>Inbox</TabsTrigger>

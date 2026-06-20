@@ -597,10 +597,10 @@ export function PlaygroundPage() {
             variant="outline"
             size="sm"
             onClick={() => setConfirmNew(true)}
-            className="border-green-600 bg-green-600 text-white hover:bg-green-700 hover:text-white dark:border-green-500 dark:bg-green-600 dark:hover:bg-green-700"
+            className="border-green-600 bg-green-600 text-white hover:bg-green-700 hover:text-white dark:border-green-500 dark:bg-green-600 dark:hover:bg-green-700 max-md:px-2"
           >
-            <Plus className="h-3.5 w-3.5" />
-            New Playground
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="max-md:hidden">New Playground</span>
           </Button>
         </Tip>
         <Tip content="Save this playground as a real project in your workspace" side="bottom">
@@ -609,9 +609,10 @@ export function PlaygroundPage() {
             size="sm"
             disabled={creating || store.running || !store.hasFiles}
             onClick={() => setConfirmCreate(true)}
+            className="max-md:px-2"
           >
-            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderPlus className="h-3.5 w-3.5" />}
-            Create Project
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <FolderPlus className="h-3.5 w-3.5 shrink-0" />}
+            <span className="max-md:hidden">Create Project</span>
           </Button>
         </Tip>
       </>

@@ -149,7 +149,7 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   }, [providers, search]);
 
   return (
-    <div className="flex items-center gap-2 px-4 pb-1.5">
+    <div className="flex flex-wrap items-center gap-2 gap-y-2 px-4 pb-1.5">
       {/* Build / Plan mode toggle */}
       <Tip content={planMode ? "Plan Mode: read-only planning. Agents propose, useful for complex tasks." : "Build Mode: agents can write files and execute."} side="top">
         <button
@@ -184,8 +184,8 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
                   open && "bg-muted border-border text-foreground",
                 )}
               >
-                <Cpu className="w-3.5 h-3.5 text-muted-foreground/60" />
-                <span className="max-w-[200px] truncate">{displayLabel}</span>
+                <Cpu className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                <span className="max-w-[40vw] sm:max-w-[200px] truncate">{displayLabel}</span>
                 <ChevronDown className="w-3 h-3 text-muted-foreground/60" />
               </button>
             </TooltipTrigger>

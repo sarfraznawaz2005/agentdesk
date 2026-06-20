@@ -665,7 +665,7 @@ export function FreelanceListingCard({
       )}
     >
       {/* Header row: badges + posted time (left) | chat + analysis (right) */}
-      <div className="-mx-4 px-4 pb-3 border-b border-border flex items-start justify-between gap-3">
+      <div className="-mx-4 px-4 pb-3 border-b border-border flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           {selectable && (
             <input
@@ -748,7 +748,7 @@ export function FreelanceListingCard({
       {(() => {
         const budget = buildBudgetDisplay(listing, preferredCurrency, currencyRates);
         return (
-          <div className="flex items-stretch justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
             {/* Left: title + description stacked */}
             <div className="flex flex-col gap-4 min-w-0">
               <h3 className="text-sm font-semibold text-foreground leading-snug">
@@ -771,9 +771,10 @@ export function FreelanceListingCard({
               {/* Skills */}
               {listing.skills.length > 0 && <SkillChips skills={listing.skills} />}
             </div>
-            <div className="w-px self-stretch bg-border shrink-0" />
-            {/* Right: country + client info + budget stacked */}
-            <div className="flex flex-col items-end justify-center gap-1.5 shrink-0">
+            <div className="hidden sm:block w-px self-stretch bg-border shrink-0" />
+            {/* Right: country + client info + budget stacked. Full-width + left-
+                aligned on mobile (card body stacks), right-aligned side column on ≥sm. */}
+            <div className="flex flex-col items-start sm:items-end justify-center gap-1.5 shrink-0">
               {listing.clientCountry && (
                 <Tip content={`Client is from ${listing.clientCountry}`} side="top">
                   <span className="flex items-center gap-1 text-base font-semibold text-foreground/70 cursor-default">
@@ -842,7 +843,7 @@ export function FreelanceListingCard({
       })()}
 
       {/* Actions */}
-      <div className="-mx-4 px-4 pt-3 border-t border-border flex items-center gap-2">
+      <div className="-mx-4 px-4 pt-3 border-t border-border flex flex-wrap items-center gap-2">
         {/* Analyze — visible for listings not yet AI-analyzed (pre-filters don't count) */}
         {(isNew || isShortlisted) && !(listing.wizardVerdict === "workable" || listing.wizardBlockKind === "analysis") && onAnalyze && (
           <Button

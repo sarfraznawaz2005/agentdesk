@@ -179,7 +179,7 @@ export function ProjectPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
-      <div className="flex items-center border-b px-4 shrink-0">
+      <div className="flex flex-wrap items-center border-b px-4 shrink-0">
         <button
           onClick={() => setActiveTab("chat")}
           className={cn(

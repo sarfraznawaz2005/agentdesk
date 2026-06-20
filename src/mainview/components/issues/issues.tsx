@@ -787,7 +787,7 @@ export function Issues({ projectId }: IssuesProps) {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 shrink-0">
           {["open", "closed", "all"].map((s) => (
             <button
