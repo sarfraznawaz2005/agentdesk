@@ -1,6 +1,6 @@
 {
 	"name": "agentdesk",
-	"version": "2.3.1",
+	"version": "2.3.2",
 	"description": "AI-powered development platform with autonomous agent teams",
 	"type": "module",
 	"scripts": {
