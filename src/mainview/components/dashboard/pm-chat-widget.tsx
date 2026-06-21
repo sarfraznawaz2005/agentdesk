@@ -12,7 +12,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
-import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
+import { useDashboardLauncherStore, selectHasCustomAgents } from "@/stores/dashboard-launcher-store";
 
 // Stable id for the mobile chat FAB registry (mirrors bg-indigo-600 = #4f46e5).
 const PM_LAUNCHER_ID = "pm";
@@ -323,6 +323,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
       useDashboardLauncherStore.getState().clearOpenRequest();
     }
   }, [openRequestId]);
+  // With custom agents present the PM lives in the ChatFab; alone it shows as a
+  // direct pill (like before the FAB existed).
+  const hasCustomAgents = useDashboardLauncherStore(selectHasCustomAgents);
 
   const sendMessage = useCallback(async () => {
     const content = input.trim();
@@ -487,7 +490,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
             "bg-primary text-primary-foreground shadow-lg",
             "hover:bg-primary/90 transition-colors duration-150",
             "text-sm font-medium whitespace-nowrap",
-            "hidden", // launcher lives in the ChatFab (all screen sizes); this pill is kept only as the panel mount-point
+            // Hidden only when the ChatFab is in play (1+ custom agents); alone
+            // the PM shows as a direct pill.
+            hasCustomAgents && "hidden",
           )}
           title="Chat with PM"
         >

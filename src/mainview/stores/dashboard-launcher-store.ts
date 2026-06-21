@@ -60,3 +60,10 @@ export const useDashboardLauncherStore = create<LauncherStore>((set) => ({
   setActiveOpen:    (id) => set({ activeOpenId: id }),
   clearActiveOpen:  (id) => set((s) => (s.activeOpenId === id ? { activeOpenId: null } : {})),
 }));
+
+// True once at least one custom agent (order !== 0, i.e. not the PM) is
+// registered. The FAB only earns its place when there are multiple launchers to
+// consolidate; with PM alone the dashboard shows the PM pill directly. Returns a
+// boolean so subscribers only re-render when the condition flips.
+export const selectHasCustomAgents = (s: LauncherStore) =>
+  Object.values(s.entries).some((e) => e.order !== 0);

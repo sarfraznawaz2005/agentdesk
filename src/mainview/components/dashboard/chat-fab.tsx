@@ -30,8 +30,11 @@ export function ChatFab() {
       a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }),
   );
 
-  // Nothing to launch, or a chat panel already owns the screen → stand down.
-  if (entries.length === 0 || activeOpenId) return null;
+  // The FAB only appears once there's at least one custom agent to consolidate;
+  // with PM alone the dashboard shows the PM pill directly. Also stand down while
+  // a chat panel already owns the screen.
+  const hasCustomAgents = entries.some((e) => e.order !== 0);
+  if (!hasCustomAgents || activeOpenId) return null;
 
   const anyUnread = entries.some((e) => e.unread);
 
