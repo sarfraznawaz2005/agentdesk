@@ -1,5 +1,15 @@
 [
     {
+        "version":  "2.3.4",
+        "title":  "New Features for Enhanced User Experience",
+        "changes":  [
+                        "Automatically pair with QR deep-links for easier access.",
+                        "Manage freelance listings more efficiently with improved tools.",
+                        "Edit agents inline and refresh chat components seamlessly on changes.",
+                        "Utilize zoom controls and export options in chat widgets."
+                    ]
+    },
+    {
         "version":  "2.3.2",
         "title":  "New Features and Enhancements",
         "changes":  [
