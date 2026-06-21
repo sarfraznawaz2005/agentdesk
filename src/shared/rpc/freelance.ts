@@ -443,7 +443,7 @@ export type FreelanceRequests = {
     };
   };
   "freelance.getListings": {
-    params: { status?: FreelanceListingStatus; page?: number; search?: string; kind?: FreelanceListingKind; excludeKinds?: FreelanceListingKind[] };
+    params: { status?: FreelanceListingStatus | "bids"; page?: number; search?: string; kind?: FreelanceListingKind; excludeKinds?: FreelanceListingKind[] };
     response: {
       listings: FreelanceListingDto[];
       total: number;
@@ -452,7 +452,7 @@ export type FreelanceRequests = {
   };
   "freelance.getListingCounts": {
     params: Record<string, never>;
-    response: { new: number; approved: number; shortlisted: number; closed: number; all: number };
+    response: { new: number; approved: number; shortlisted: number; closed: number; bids: number; all: number };
   };
   "freelance.markListingDone": {
     params: { listingId: string };

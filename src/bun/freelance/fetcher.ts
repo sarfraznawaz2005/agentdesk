@@ -1,4 +1,4 @@
-import { and, eq, lt, asc, isNotNull, inArray } from "drizzle-orm";
+import { and, eq, lt, asc, isNotNull, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { freelanceListings, settings as settingsTable } from "../db/schema";
@@ -61,7 +61,9 @@ async function purgeOldDeletedListings(): Promise<void> {
 //
 // Protection: only "new"-column listings are ever eligible. Shortlisted,
 // approved, and done/closed listings are NEVER touched — they represent the
-// user's decisions and committed work.
+// user's decisions and committed work. A listing with a placed bid (the "Bids"
+// tab) is also excluded outright, so a bid is never auto-deleted regardless of
+// its underlying status.
 //
 // Deletion priority within "new": already-judged non-workable / gated listings
 // first (skill-gate, client-quality, non-software, analysis-fail — all persisted
@@ -78,7 +80,13 @@ async function trimListingsToMax(maxListings: number): Promise<void> {
   const rows = await db
     .select({ id: freelanceListings.id, verdict: freelanceListings.wizardVerdict })
     .from(freelanceListings)
-    .where(and(eq(freelanceListings.isDeleted, 0), eq(freelanceListings.status, "new")))
+    .where(and(
+      eq(freelanceListings.isDeleted, 0),
+      eq(freelanceListings.status, "new"),
+      // Never trim a listing that has a placed bid (the Bids tab), even if its
+      // status is somehow still "new".
+      sql`${freelanceListings.id} NOT IN (SELECT listing_id FROM freelance_outbox WHERE kind = 'bid' AND status = 'sent')`,
+    ))
     .orderBy(asc(freelanceListings.createdAt)); // oldest first
 
   const excess = rows.length - maxListings;

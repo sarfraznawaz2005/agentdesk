@@ -454,6 +454,8 @@ export interface FreelanceListingCardProps {
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  /** True when rendered under the "Bids" tab — hides Analyze/Shortlist + the Bid-Placed pill. */
+  inBidsTab?: boolean;
 }
 
 const DESCRIPTION_TRUNCATE_LENGTH = 200; // only used to decide whether to show "View Full Description"
@@ -484,6 +486,7 @@ export function FreelanceListingCard({
   selectable = false,
   selected = false,
   onToggleSelect,
+  inBidsTab = false,
 }: FreelanceListingCardProps) {
   const [isApproving, setIsApproving] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
@@ -844,8 +847,8 @@ export function FreelanceListingCard({
 
       {/* Actions */}
       <div className="-mx-4 px-4 pt-3 border-t border-border flex flex-wrap items-center gap-2">
-        {/* Analyze — visible for listings not yet AI-analyzed (pre-filters don't count) */}
-        {(isNew || isShortlisted) && !(listing.wizardVerdict === "workable" || listing.wizardBlockKind === "analysis") && onAnalyze && (
+        {/* Analyze — visible for listings not yet AI-analyzed (pre-filters don't count); hidden in the Bids tab */}
+        {!inBidsTab && (isNew || isShortlisted) && !(listing.wizardVerdict === "workable" || listing.wizardBlockKind === "analysis") && onAnalyze && (
           <Button
             size="sm"
             variant="outline"
@@ -859,8 +862,8 @@ export function FreelanceListingCard({
           </Button>
         )}
 
-        {/* Shortlist — visible for new listings only */}
-        {(isNew) && onShortlist && (
+        {/* Shortlist — visible for new listings only; hidden in the Bids tab */}
+        {!inBidsTab && isNew && onShortlist && (
           <Button
             size="sm"
             variant="outline"
@@ -874,8 +877,9 @@ export function FreelanceListingCard({
           </Button>
         )}
 
-        {/* Create Proposal (bid) — Auto-Earn only, shortlisted listings only: queue an AI proposal */}
-        {autoEarnEnabled && isShortlisted && !isClosed && (
+        {/* Create Proposal (bid) / Bid-Placed pill — Auto-Earn, shortlisted only. Hidden in
+            the Bids tab (the tab itself already signals a placed bid). */}
+        {!inBidsTab && autoEarnEnabled && isShortlisted && !isClosed && (
           listing.hasBid ? (
             <Tip content="View the proposal you sent" side="top">
               <Button

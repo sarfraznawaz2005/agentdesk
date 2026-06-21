@@ -21,7 +21,7 @@ import type { FreelanceListingDto, FreelanceListingKind } from "../../../shared/
 // Types
 // ---------------------------------------------------------------------------
 
-type StatusFilter = "new" | "approved" | "shortlisted" | "closed" | undefined;
+type StatusFilter = "new" | "approved" | "shortlisted" | "closed" | "bids" | undefined;
 
 // ---------------------------------------------------------------------------
 // Skeleton card for loading state
@@ -50,9 +50,10 @@ function ListingSkeleton() {
 // Filter tab bar config
 // ---------------------------------------------------------------------------
 
-const FILTERS: Array<{ label: string; value: StatusFilter; countKey: "new" | "approved" | "shortlisted" | "closed" | "all" }> = [
+const FILTERS: Array<{ label: string; value: StatusFilter; countKey: "new" | "approved" | "shortlisted" | "closed" | "bids" | "all" }> = [
   { label: "New", value: "new", countKey: "new" },
   { label: "Shortlisted", value: "shortlisted", countKey: "shortlisted" },
+  { label: "Bids", value: "bids", countKey: "bids" },
   { label: "Approved", value: "approved", countKey: "approved" },
   { label: "Done", value: "closed", countKey: "closed" },
 ];
@@ -86,7 +87,7 @@ export function ListingsTab() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [counts, setCounts] = useState<{ new: number; approved: number; shortlisted: number; closed: number; all: number }>({ new: 0, approved: 0, shortlisted: 0, closed: 0, all: 0 });
+  const [counts, setCounts] = useState<{ new: number; approved: number; shortlisted: number; closed: number; bids: number; all: number }>({ new: 0, approved: 0, shortlisted: 0, closed: 0, bids: 0, all: 0 });
   // When kind filters are active on the New tab, this holds the filtered subset count.
   // It persists across tab switches so the New badge stays correct from any tab.
   const [filteredNewTotal, setFilteredNewTotal] = useState<number | null>(null);
@@ -596,6 +597,7 @@ export function ListingsTab() {
               selectable={selectMode}
               selected={selectedIds.has(listing.id)}
               onToggleSelect={() => toggleSelect(listing.id)}
+              inBidsTab={statusFilter === "bids"}
             />
           ))}
         </div>

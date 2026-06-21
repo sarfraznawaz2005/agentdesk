@@ -555,6 +555,11 @@ async function fetchPageText(url: string, abortSignal?: AbortSignal): Promise<{ 
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  // Yield a macrotask after the (synchronous, ~1MB) HTML parsing + extraction above.
+  // A wizard run processes many listings; a COUNTRY-BLOCKED one skips the long AI
+  // await entirely, so without this yield consecutive blocked listings parse big
+  // pages back-to-back and hold the event loop — stalling UI RPCs (skeletons).
+  await new Promise((resolve) => setTimeout(resolve, 0));
   return { text: text.length > 12_000 ? text.slice(0, 12_000) + "…" : text, clientData, budgetData };
 }
 

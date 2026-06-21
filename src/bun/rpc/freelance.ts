@@ -109,7 +109,7 @@ function listingKindExcludeConditions(excludeKinds: FreelanceListingKind[] | und
 // ─── getListings ─────────────────────────────────────────────────────────────
 // Deleted listings (is_deleted = 1) are never returned regardless of filter.
 export async function getListings(params: {
-  status?: FreelanceListingStatus;
+  status?: FreelanceListingStatus | "bids";
   page?: number;
   search?: string;
   kind?: FreelanceListingKind;
@@ -128,9 +128,24 @@ export async function getListings(params: {
       )
     : undefined;
 
+  // "Bids" is a virtual tab: listings with a placed (sent) bid that are still in
+  // the active bidding stage (new/shortlisted). Those are excluded from the New /
+  // Shortlisted tabs so each listing shows in exactly one tab; Approved (won) and
+  // Done (closed) take precedence and keep their bid listings in their own tabs.
+  const hasSentBid = sql`${freelanceListings.id} IN (SELECT listing_id FROM freelance_outbox WHERE kind = 'bid' AND status = 'sent')`;
+  const noSentBid = sql`${freelanceListings.id} NOT IN (SELECT listing_id FROM freelance_outbox WHERE kind = 'bid' AND status = 'sent')`;
+  const statusCondition =
+    params.status === "bids"
+      ? and(sql`${freelanceListings.status} IN ('new', 'shortlisted')`, hasSentBid)
+      : params.status === "new" || params.status === "shortlisted"
+        ? and(eq(freelanceListings.status, params.status), noSentBid)
+        : params.status
+          ? eq(freelanceListings.status, params.status)
+          : undefined;
+
   const where = and(
     notDeleted,
-    params.status ? eq(freelanceListings.status, params.status) : undefined,
+    statusCondition,
     searchFilter,
     listingKindCondition(params.kind),
     listingKindExcludeConditions(params.excludeKinds),
@@ -217,26 +232,32 @@ export async function getListings(params: {
 }
 
 // ─── getListingCounts ─────────────────────────────────────────────────────────
-export async function getListingCounts(): Promise<{ new: number; approved: number; shortlisted: number; closed: number; all: number }> {
-  const notDeleted = eq(freelanceListings.isDeleted, 0);
-  const [newCount, approvedCount, shortlistedCount, closedCount, allCount] = await Promise.all([
-    db.select({ count: count() }).from(freelanceListings)
-      .where(and(notDeleted, eq(freelanceListings.status, "new"))),
-    db.select({ count: count() }).from(freelanceListings)
-      .where(and(notDeleted, eq(freelanceListings.status, "approved"))),
-    db.select({ count: count() }).from(freelanceListings)
-      .where(and(notDeleted, eq(freelanceListings.status, "shortlisted"))),
-    db.select({ count: count() }).from(freelanceListings)
-      .where(and(notDeleted, eq(freelanceListings.status, "closed"))),
-    db.select({ count: count() }).from(freelanceListings)
-      .where(notDeleted),
-  ]);
+export async function getListingCounts(): Promise<{ new: number; approved: number; shortlisted: number; closed: number; bids: number; all: number }> {
+  // Single pass instead of 6 separate COUNT scans. A placed (sent) bid pulls a
+  // new/shortlisted listing into the virtual "Bids" tab, so it's excluded from
+  // those two counts. The bid set is a non-correlated subquery (materialized once).
+  const bidIds = sql`SELECT listing_id FROM freelance_outbox WHERE kind = 'bid' AND status = 'sent'`;
+  const hasBid = sql`${freelanceListings.id} IN (${bidIds})`;
+  const noBid = sql`${freelanceListings.id} NOT IN (${bidIds})`;
+  const rows = await db
+    .select({
+      new: sql<number>`COALESCE(SUM(CASE WHEN ${freelanceListings.status} = 'new' AND ${noBid} THEN 1 ELSE 0 END), 0)`,
+      shortlisted: sql<number>`COALESCE(SUM(CASE WHEN ${freelanceListings.status} = 'shortlisted' AND ${noBid} THEN 1 ELSE 0 END), 0)`,
+      approved: sql<number>`COALESCE(SUM(CASE WHEN ${freelanceListings.status} = 'approved' THEN 1 ELSE 0 END), 0)`,
+      closed: sql<number>`COALESCE(SUM(CASE WHEN ${freelanceListings.status} = 'closed' THEN 1 ELSE 0 END), 0)`,
+      bids: sql<number>`COALESCE(SUM(CASE WHEN ${freelanceListings.status} IN ('new', 'shortlisted') AND ${hasBid} THEN 1 ELSE 0 END), 0)`,
+      all: sql<number>`COUNT(*)`,
+    })
+    .from(freelanceListings)
+    .where(eq(freelanceListings.isDeleted, 0));
+  const r = rows[0];
   return {
-    new: newCount[0]?.count ?? 0,
-    approved: approvedCount[0]?.count ?? 0,
-    shortlisted: shortlistedCount[0]?.count ?? 0,
-    closed: closedCount[0]?.count ?? 0,
-    all: allCount[0]?.count ?? 0,
+    new: Number(r?.new ?? 0),
+    approved: Number(r?.approved ?? 0),
+    shortlisted: Number(r?.shortlisted ?? 0),
+    closed: Number(r?.closed ?? 0),
+    bids: Number(r?.bids ?? 0),
+    all: Number(r?.all ?? 0),
   };
 }
 
