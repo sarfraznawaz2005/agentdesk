@@ -25,10 +25,17 @@ export function CustomAgentChatLauncher({ visible }: { visible: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    rpc.getChatEnabledAgents()
-      .then((rows) => { if (!cancelled) setAgents([...rows].sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }))); })
-      .catch(() => { /* if the call fails, just render nothing */ });
-    return () => { cancelled = true; };
+    const load = () => {
+      rpc.getChatEnabledAgents()
+        .then((rows) => { if (!cancelled) setAgents([...rows].sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }))); })
+        .catch(() => { /* if the call fails, just render nothing */ });
+    };
+    load();
+    // Refetch when an agent is edited from a chat widget's inline editor (rename,
+    // colour, or chat toggle) so the launcher list stays in sync without a reload.
+    const onChanged = () => load();
+    window.addEventListener("agentdesk:chat-agents-changed", onChanged);
+    return () => { cancelled = true; window.removeEventListener("agentdesk:chat-agents-changed", onChanged); };
   }, [visible]);
 
   if (agents.length === 0) return null;

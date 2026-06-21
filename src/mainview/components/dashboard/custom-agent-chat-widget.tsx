@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2, Settings } from "lucide-react";
+import { AgentSettingsDialog, type Agent, type Provider } from "@/pages/agents";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { rpc } from "@/lib/rpc";
@@ -446,6 +447,27 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     }
   };
 
+  // Edit this custom agent inline — open the same AgentSettingsDialog used on the
+  // Agents page, right here over the dashboard (no navigation). Fetch the full
+  // agent record + providers on demand, then open the dialog.
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorAgent, setEditorAgent] = useState<Agent | null>(null);
+  const [editorProviders, setEditorProviders] = useState<Provider[]>([]);
+  const editAgent = useCallback(async () => {
+    setOpen(false);
+    setExpandedOpen(false);
+    try {
+      const [agentList, providers] = await Promise.all([rpc.getAgents(), rpc.getProviders()]);
+      const match = (agentList as Agent[]).find((a) => a.name === agentName);
+      if (!match) { toast("error", "Could not find this agent to edit."); return; }
+      setEditorAgent(match);
+      setEditorProviders(providers as Provider[]);
+      setEditorOpen(true);
+    } catch {
+      toast("error", "Could not open the agent editor.");
+    }
+  }, [agentName]);
+
   const handleClear = async () => {
     if (isStreaming) {
       await rpc.abortDashboardAgentMessage(sessionId.current);
@@ -557,6 +579,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors"
                 >
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
+              <Tip content="Edit agent" side="bottom">
+                <button type="button" onClick={editAgent}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <Settings className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
               <Tip content="Close" side="bottom">
@@ -769,6 +797,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
+              <Tip content="Edit agent" side="bottom">
+                <button type="button" onClick={editAgent}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <Settings className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
               <Tip content="Collapse" side="bottom">
                 <button type="button" onClick={() => setExpandedOpen(false)}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
@@ -887,6 +921,19 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit-agent dialog — the same editor as the Agents page, opened inline
+          over the dashboard (no navigation) via the toolbar gear. */}
+      <AgentSettingsDialog
+        agent={editorAgent}
+        providers={editorProviders}
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        onSaved={() => {
+          // Tell the launcher to refetch so a rename/colour/chat-toggle reflects live.
+          window.dispatchEvent(new CustomEvent("agentdesk:chat-agents-changed"));
+        }}
+      />
     </>
   );
 }

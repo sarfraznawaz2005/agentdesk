@@ -30,7 +30,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 // Types
 // ---------------------------------------------------------------------------
 
-interface Agent {
+export interface Agent {
   id: string;
   name: string;
   displayName: string;
@@ -48,7 +48,7 @@ interface Agent {
   availableToPm: boolean;
 }
 
-interface Provider {
+export interface Provider {
   id: string;
   name: string;
   providerType: string;
@@ -316,7 +316,7 @@ interface AgentSettingsDialogProps {
   onSaved: (updated: Agent) => void;
 }
 
-function AgentSettingsDialog({
+export function AgentSettingsDialog({
   agent,
   providers,
   open,
