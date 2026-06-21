@@ -77,23 +77,33 @@ right-click context menu. Immediately after construction,
 `setMainWindowRef(mainWindow)` (`index.ts:206`) hands the window to the
 EngineManager so engine callbacks can broadcast RPC.
 
-### 3. Deferred work (the "never block the window" rule)
-Two `setTimeout`s push non-critical work off the boot path: `setTimeout(0)`
-(`index.ts:213`) runs workspace folder sync, stuck-deploy reconcile, and a
-one-off cleanup of orphaned `workflow:%` settings (legacy rows from the removed
-WorkflowEngine); `setTimeout(20_000)` (`index.ts:229`) defers the synchronous,
-expensive `maybeRunStartupMaintenance()` (PRAGMA optimize / periodic VACUUM) so a
-VACUUM never competes with the initial UI/agent load.
+### 3. DB maintenance split (the "never block the window, never flash a modal" rule)
+Maintenance is deliberately split by cost profile:
+- **Incremental optimize** (`runIncrementalMaintenance` — `PRAGMA optimize` +
+  passive WAL checkpoint) runs **synchronously BEFORE** `new BrowserWindow`,
+  every startup. It is cheap (near-instant when nothing changed, the SQLite-
+  recommended cadence), so running it pre-window keeps it **invisible** — no
+  overlay, no skeletons — at the cost of a sub-second-ish delay before the window
+  appears.
+- **Full VACUUM** (7-day gated, `maybeVacuumInBackground` → worker thread) is
+  deferred to `setTimeout(20_000)` post-window via `maybeRunStartupMaintenance()`
+  so it never competes with the initial UI/agent load. It rewrites the whole DB
+  file (duration scales with size) and holds a lock that stalls queries app-wide,
+  so it is the one startup op that shows the overlay — but only when actually due.
 
-Because those ops hold a DB lock and stall queries app-wide (the UI would
-otherwise just show skeletons everywhere), maintenance now drives a **global
-overlay**: `db/maintenance-state.ts` tracks an `{active,message}` flag and
-broadcasts `maintenance` via `broadcastToWebview`; `MaintenanceOverlay`
-(mounted in the AppShell) shows a "please wait" panel over every page and
-syncs initial state via the `getMaintenanceStatus` RPC (so a reload
-mid-maintenance still shows it). The startup path and the manual
-optimize/vacuum/prune RPCs wrap their work with the overlay (sync ops yield one
-tick first so the overlay paints before the main thread stalls).
+A `setTimeout(0)` (`index.ts`) also pushes workspace folder sync, stuck-deploy
+reconcile, and an orphaned-`workflow:%`-settings cleanup off the boot path.
+
+**Maintenance overlay.** Because VACUUM (and the manual Settings ops) hold a DB
+lock and stall queries app-wide, they drive a **global overlay** instead of bare
+skeletons: `db/maintenance-state.ts` tracks an `{active,message}` flag and
+broadcasts `maintenance` via `broadcastToWebview`; `MaintenanceOverlay` (mounted
+in the AppShell) shows a non-closeable "please wait" panel over every page
+(blocking mouse + keyboard + scroll) and syncs initial state via the
+`getMaintenanceStatus` RPC (so a reload mid-maintenance still shows it). It is
+shown ONLY by the rare 7-day VACUUM and by the **manual** optimize/vacuum/prune
+RPCs (user-clicked in Settings); the pre-window incremental optimize and the
+periodic WAL checkpoint never show it.
 
 ### 4. Background services on `dom-ready` (`index.ts:237`–`index.ts:301`)
 A `backgroundServicesInitialised` boolean guards this block so it runs once. On

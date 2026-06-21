@@ -48,43 +48,34 @@ export function checkpointWal(): void {
 }
 
 /**
- * Auto-run at startup:
- *  1. Lightweight incremental maintenance (sync, fast, safe).
- *  2. If it's been >7 days since the last full vacuum, reclaim disk space via a
- *     background Bun worker thread (its own connection, off the main thread) so the
- *     UI/backend are never blocked. Fire-and-forget; failures are logged, not fatal.
- * Never throws. The main-thread `runFullVacuum` remains available for manual use.
+ * Auto-run AFTER the window is up. The lightweight incremental optimize now runs
+ * synchronously BEFORE the window appears (see `index.ts`), so it's invisible —
+ * no overlay, no skeletons. The only thing left here is the rare 7-day full
+ * VACUUM, which runs in a background worker and shows the maintenance overlay
+ * while it holds the DB lock. On a normal (non-vacuum) launch this is a no-op and
+ * nothing is shown. Never throws.
  */
 export function maybeRunStartupMaintenance(): void {
-	// Show the global "maintenance underway" overlay so the user isn't left staring
-	// at skeleton loaders while queries stall. Defer the blocking PRAGMA optimize one
-	// tick so the overlay actually paints before the main thread stalls; then run the
-	// (possibly long) background vacuum. The overlay is always cleared at the end.
-	setMaintenance(true, "Tuning up the local database — this will finish momentarily.");
-	setTimeout(() => {
-		void (async () => {
-			try {
-				runIncrementalMaintenance();
-				await maybeVacuumInBackground();
-			} finally {
-				setMaintenance(false);
-			}
-		})();
-	}, 80);
+	void maybeVacuumInBackground();
 }
 
-/** Run a full vacuum in a worker thread if the 7-day cadence is due. Never throws. */
+/**
+ * Run a full vacuum in a worker thread if the 7-day cadence is due. Self-contained:
+ * it shows the maintenance overlay (the vacuum holds a DB lock that stalls queries
+ * app-wide) only when a vacuum actually runs, and always clears it afterwards. On a
+ * non-vacuum launch it returns immediately without showing anything. Never throws.
+ */
 export async function maybeVacuumInBackground(): Promise<void> {
+	const last = getLastVacuumTimestamp();
+	const daysSince = last ? (Date.now() - last) / 86_400_000 : Infinity;
+	if (daysSince <= VACUUM_INTERVAL_DAYS) return; // not due — nothing to show or do
+	setMaintenance(true, "Reclaiming database space — this can take a minute. Please keep the app open.");
 	try {
-		const last = getLastVacuumTimestamp();
-		const daysSince = last ? (Date.now() - last) / 86_400_000 : Infinity;
-		if (daysSince <= VACUUM_INTERVAL_DAYS) return;
-		// Vacuum holds a DB lock; keep the overlay up with a vacuum-specific message
-		// (the caller owns clearing it).
-		setMaintenance(true, "Reclaiming database space — this can take a minute. Please keep the app open.");
 		await runVacuumInWorker();
 	} catch (e) {
 		console.error("[maintenance] background vacuum failed:", e);
+	} finally {
+		setMaintenance(false);
 	}
 }
 

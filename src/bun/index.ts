@@ -19,7 +19,7 @@ import { DiscordAdapter } from "./channels/discord-adapter";
 import { WhatsAppAdapter } from "./channels/whatsapp-adapter";
 import { EmailAdapter } from "./channels/email-adapter";
 
-import { maybeRunStartupMaintenance } from "./db/maintenance";
+import { maybeRunStartupMaintenance, runIncrementalMaintenance } from "./db/maintenance";
 import { registerWindowsUninstaller } from "./windows-registry";
 import { getOrCreateEngine, setMainWindowRef } from "./engine-manager";
 import { rpc, onSettingChange } from "./rpc-registration";
@@ -147,6 +147,13 @@ await seedDatabase();
 await loadCustomEnvVarsIntoProcess();
 await encryptExistingSecrets();
 
+// Lightweight DB optimize (PRAGMA optimize + passive WAL checkpoint) runs here —
+// synchronously, BEFORE the window appears — so it is invisible (no overlay, no
+// skeletons). It is cheap (near-instant when nothing changed) and is the SQLite-
+// recommended "run every startup" call. The rare, slow full VACUUM stays deferred
+// to after the window, where it shows the maintenance overlay (see below).
+runIncrementalMaintenance();
+
 export const FREELANCE_ENABLED = isFreelanceEnabled();
 if (FREELANCE_ENABLED) {
 	console.log("[startup] Freelance feature enabled");
@@ -155,9 +162,10 @@ if (FREELANCE_ENABLED) {
 // Register Windows uninstaller entry (no-op on non-Windows / dev builds)
 registerWindowsUninstaller().catch(() => {});
 
-// Periodic WAL checkpoint timer — cheap to schedule. Heavier one-shot DB maintenance
-// (PRAGMA optimize / full VACUUM), workspace sync, and one-off cleanups are deferred to
-// the background block (post dom-ready) so they never block the window from appearing.
+// Periodic WAL checkpoint timer — cheap to schedule. The one-shot incremental optimize
+// already ran above (pre-window); the rare full VACUUM, workspace sync, and one-off
+// cleanups are deferred to the background block (post dom-ready) so they never block
+// the window from appearing.
 startWalCheckpointTimer();
 
 // Initialise truncation directory for tool output overflow + cleanup old files
@@ -210,9 +218,9 @@ setMainWindowRef(mainWindow);
 
 // Deferred startup jobs — scheduled AFTER the window is created so they never block it
 // from appearing (moved off the synchronous critical path): workspace folder sync,
-// stuck-deploy reconcile, and orphaned-settings cleanup run on the next tick; the heavier
-// DB maintenance (PRAGMA optimize / periodic full VACUUM, which is synchronous) is pushed
-// out ~20s so a VACUUM never competes with the initial UI/agent load.
+// stuck-deploy reconcile, and orphaned-settings cleanup run on the next tick; the rare
+// 7-day full VACUUM (which holds a DB lock) is pushed out ~20s so it never competes with
+// the initial UI/agent load — it shows the maintenance overlay for its duration.
 setTimeout(() => {
 	syncWorkspaceFolders().catch((e) => console.error("[startup] workspace sync:", e));
 	import("./rpc/deploy")
