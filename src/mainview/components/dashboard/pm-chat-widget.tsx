@@ -565,7 +565,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                 <button
                   type="button"
                   onClick={() => setExpandedOpen(true)}
-                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors"
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors max-md:hidden"
                 >
                   <Maximize2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>

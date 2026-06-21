@@ -3,7 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { initClientErrorHandler } from "./lib/global-error-handler";
-import { IS_REMOTE, isPaired } from "./lib/remote-transport";
+import { IS_REMOTE, isPaired, REPAIR_REASON_KEY } from "./lib/remote-transport";
+import { completeAndStorePairing, clearStoredPairing } from "../shared/remote/web-pairing";
 import { PairingScreen } from "./components/remote/pairing-screen";
 import { RemoteStatusBanner } from "./components/remote/remote-status-banner";
 import { initWebNotifications } from "./lib/web-notifications";
@@ -41,24 +42,57 @@ new MutationObserver((mutations) => {
 	}
 }).observe(document.body, { childList: true, subtree: true });
 
-// Web bootstrap (TASK-482): in a plain browser, show the pairing screen until
-// this device is paired to a desktop. In Electrobun (IS_REMOTE === false) this
-// is always the normal app.
-const needsPairing = IS_REMOTE && !isPaired();
-
-// Web notifications for approval events when the tab is backgrounded (TASK-490).
-if (IS_REMOTE && !needsPairing) initWebNotifications();
-
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-createRoot(document.getElementById("root")!).render(
-	<StrictMode>
-		{needsPairing ? (
-			<PairingScreen />
-		) : (
-			<>
-				<RemoteStatusBanner />
-				<App />
-			</>
-		)}
-	</StrictMode>,
-);
+const root = createRoot(document.getElementById("root")!);
+
+// "Pair via QR" deep-link: a scanned QR opens the app at `?pair=<code>`. Auto-pair
+// this device, then reload onto a clean URL — which both drops the secret from the
+// address bar/history and re-boots with a live relay transport (the transport is
+// created at module load, so it must see the stored pairing on a fresh load).
+const pairCode = IS_REMOTE ? new URLSearchParams(window.location.search).get("pair") : null;
+
+if (pairCode) {
+	root.render(
+		<StrictMode>
+			<div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+				<p className="text-sm text-muted-foreground">Pairing this device…</p>
+			</div>
+		</StrictMode>,
+	);
+	void (async () => {
+		const cleanUrl = window.location.origin + window.location.pathname;
+		try {
+			// On success this overwrites any prior pairing with the new one.
+			await completeAndStorePairing(pairCode.trim());
+		} catch {
+			// The new pairing failed (e.g. a corrupt/expired code). Clear any prior
+			// pairing so the reload lands on the PairingScreen with an explanation,
+			// instead of silently reconnecting to a stale device and hanging on
+			// "Connecting… device may have been removed".
+			try { clearStoredPairing(); } catch { /* ignore */ }
+			try { sessionStorage.setItem(REPAIR_REASON_KEY, "Couldn't pair from that QR — scan again, or paste the code from your desktop."); } catch { /* ignore */ }
+		}
+		window.location.replace(cleanUrl);
+	})();
+} else {
+	// Web bootstrap (TASK-482): in a plain browser, show the pairing screen until
+	// this device is paired to a desktop. In Electrobun (IS_REMOTE === false) this
+	// is always the normal app.
+	const needsPairing = IS_REMOTE && !isPaired();
+
+	// Web notifications for approval events when the tab is backgrounded (TASK-490).
+	if (IS_REMOTE && !needsPairing) initWebNotifications();
+
+	root.render(
+		<StrictMode>
+			{needsPairing ? (
+				<PairingScreen />
+			) : (
+				<>
+					<RemoteStatusBanner />
+					<App />
+				</>
+			)}
+		</StrictMode>,
+	);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { toDataURL } from "qrcode";
-import { ExternalLink, QrCode, Copy, Check } from "lucide-react";
+import { ExternalLink, QrCode, Copy, Check, Smartphone } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -21,6 +21,7 @@ export function RemoteAccessSettings() {
   const [copied, setCopied] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [pairQr, setPairQr] = useState<{ dataUrl: string; url: string } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -58,6 +59,27 @@ export function RemoteAccessSettings() {
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create pairing");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pairViaQr() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await rpc.createDevicePairing();
+      // Embed the one-time pairing code in the web URL so a single scan both opens
+      // the app AND auto-pairs this device (the web bootstrap reads ?pair=).
+      const u = new URL(r.pairing.webUrl);
+      u.searchParams.set("pair", r.pairing.qr);
+      const url = u.toString();
+      // errorCorrectionLevel "L" maximizes data capacity (the URL carries the payload).
+      const dataUrl = await toDataURL(url, { width: 260, margin: 1, errorCorrectionLevel: "L" });
+      setPairQr({ dataUrl, url });
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create pairing QR");
     } finally {
       setBusy(false);
     }
@@ -223,18 +245,55 @@ export function RemoteAccessSettings() {
         </DialogContent>
       </Dialog>
 
+      {/* Pair-via-QR modal — scanning pairs the phone AND opens the app */}
+      <Dialog open={pairQr !== null} onOpenChange={(open) => { if (!open) setPairQr(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Pair a phone via QR</DialogTitle>
+            <DialogDescription>
+              Scan this with your phone camera — it opens AgentDesk and pairs the device automatically. No code to type.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3 pb-2">
+            {pairQr && (
+              <img
+                src={pairQr.dataUrl}
+                alt="Device pairing QR code"
+                width={260}
+                height={260}
+                className="rounded-md bg-white p-2"
+              />
+            )}
+            <p className="text-center text-xs text-muted-foreground">
+              Pairs one device · valid for 30 minutes · keep it private (anyone who scans it can reach this desktop).
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Devices */}
       <div className="rounded-lg border border-border">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="text-sm font-medium">Paired devices</div>
-          <button
-            type="button"
-            onClick={addDevice}
-            disabled={busy}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:brightness-110 disabled:opacity-50"
-          >
-            Add device
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={pairViaQr}
+              disabled={busy || !status?.enabled}
+              title={status?.enabled ? "Show a QR a phone can scan to pair + open the app" : "Enable remote access first"}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
+            >
+              <Smartphone className="h-3.5 w-3.5" /> Pair via QR
+            </button>
+            <button
+              type="button"
+              onClick={addDevice}
+              disabled={busy}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:brightness-110 disabled:opacity-50"
+            >
+              Add device
+            </button>
+          </div>
         </div>
 
         {pairingCode && (

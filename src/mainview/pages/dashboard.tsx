@@ -415,7 +415,7 @@ export function DashboardPage() {
 					aria-label="Projects"
 				>
 					{filteredProjects.map((project) => (
-						<li key={project.id} className="flex">
+						<li key={project.id} className="flex min-w-0">
 							<ProjectCard project={project} onDelete={handleDeleteProject} onRestore={handleRestoreProject} onPermanentDelete={handlePermanentDeleteProject} onStatusChange={handleStatusChange} activeAgentCount={activeProjectAgents[project.id] ?? 0} taskStats={taskStats[project.id]} collapsed={cardsCollapsed} workspaceOffline={project.workspaceOffline} />
 						</li>
 					))}

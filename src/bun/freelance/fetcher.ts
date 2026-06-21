@@ -69,6 +69,11 @@ async function purgeOldDeletedListings(): Promise<void> {
 // low-value "junk" first so fresh, unanalyzed RSS entries and workable-pending
 // listings survive longest. Each tier is oldest-first. Soft-delete preserves the
 // (platform, external_id) unique row so a trimmed listing is never re-imported.
+// Yield a macrotask so a burst of synchronous bun:sqlite writes interleaves with
+// pending UI RPCs (which arrive as I/O) instead of holding the event loop for the
+// whole batch. Called every few writes during insert/trim.
+const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
 async function trimListingsToMax(maxListings: number): Promise<void> {
   const rows = await db
     .select({ id: freelanceListings.id, verdict: freelanceListings.wizardVerdict })
@@ -87,11 +92,13 @@ async function trimListingsToMax(maxListings: number): Promise<void> {
   const toTrim = ordered.slice(0, excess).map((r) => r.id);
 
   const now = new Date().toISOString();
+  let n = 0;
   for (const id of toTrim) {
     await db
       .update(freelanceListings)
       .set({ isDeleted: 1, updatedAt: now })
       .where(eq(freelanceListings.id, id));
+    if (++n % 5 === 0) await yieldToLoop();
   }
   console.log(`[freelance] Soft-deleted ${toTrim.length} old listing(s) to stay within maxListings=${maxListings}`);
 }
@@ -130,6 +137,7 @@ export async function fetchAllPlatforms(options?: { notify?: boolean; source?: "
         }
       }
       let insertedCount = 0;
+      let writeBatch = 0;
 
       for (const listing of listings) {
         try {
@@ -155,6 +163,9 @@ export async function fetchAllPlatforms(options?: { notify?: boolean; source?: "
         } catch (err) {
           console.error(`[freelance] Failed to insert listing ${listing.externalId}:`, err);
         }
+        // Yield to the event loop every few inserts so this synchronous write burst
+        // doesn't stall UI RPCs (bun:sqlite writes are synchronous).
+        if (++writeBatch % 5 === 0) await yieldToLoop();
       }
 
       console.log(
@@ -214,6 +225,22 @@ export async function fetchAllPlatforms(options?: { notify?: boolean; source?: "
 
 let pollerTimeout: ReturnType<typeof setTimeout> | null = null;
 
+// Hold the startup fetch out of the app's launch / early-navigation window. Its
+// network call resolves into synchronous listing processing + DB writes
+// (insert/soft-delete), and since bun:sqlite is synchronous that batch briefly
+// stalls the event loop — if it lands while a page is loading its data, that page
+// flashes a loading state (e.g. "Loading settings…"). 30s clears the window where
+// the user is navigating around right after open; the recurring poll is unaffected.
+const STARTUP_FETCH_DELAY_MS = 30_000;
+
+function deferStartupFetch(): void {
+  setTimeout(() => {
+    fetchAllPlatforms({ source: "startup" }).catch((err) =>
+      console.error("[freelance] Initial fetch failed:", err),
+    );
+  }, STARTUP_FETCH_DELAY_MS);
+}
+
 export function startFreelancePoller(): void {
   getFreelanceSettings()
     .then((s) => {
@@ -221,15 +248,13 @@ export function startFreelancePoller(): void {
         console.log("[freelance] Polling disabled — skipping startup fetch");
         return;
       }
-      fetchAllPlatforms({ source: "startup" }).catch((err) =>
-        console.error("[freelance] Initial fetch failed:", err),
-      );
+      deferStartupFetch();
       scheduleNextPoll();
     })
     .catch((err) => {
       console.error("[freelance] Failed to read settings on startup:", err);
       // Fall back to normal start if settings unreadable
-      fetchAllPlatforms({ source: "startup" }).catch(console.error);
+      deferStartupFetch();
       scheduleNextPoll();
     });
 }

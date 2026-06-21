@@ -262,6 +262,14 @@ mainWindow.webview.on("dom-ready", () => {
 	if (!backgroundServicesInitialised) {
 		backgroundServicesInitialised = true;
 		(async () => {
+			// Give the renderer's first data load (dashboard projects/task-stats, etc.)
+			// a head start on an UNBLOCKED event loop before the synchronous parts of
+			// background init run — plugin activation, the sync skill-file reads, and
+			// channel/baileys crypto otherwise briefly stall the first getProjects RPC,
+			// flashing a "Loading projects" skeleton once on every launch. Nothing here
+			// is needed in the first second (no agent runs, channels are background).
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
 			// Plugins (LSP manager, DB viewer, etc.)
 			await initPlugins();
 

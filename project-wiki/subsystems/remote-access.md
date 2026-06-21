@@ -81,13 +81,22 @@ registered in `rpc-groups/features.ts`.
 - `src/mainview/lib/rpc.ts` — branches at the single seam: Electrobun
   (`IS_REMOTE===false`, byte-identical to before) vs the WS-backed transport.
 - `src/mainview/main.tsx` — web bootstrap: unpaired → `PairingScreen`, else `App`.
+  **QR deep-link auto-pair:** if the URL carries `?pair=<code>` (from a scanned
+  "Pair via QR"), it shows a "Pairing…" loader, runs `completeAndStorePairing`, then
+  `location.replace`s to a clean URL — dropping the secret from history and re-booting
+  with a live transport (the transport is created at module load, so a fresh load must
+  see the stored pairing). On failure it stashes a reason in `sessionStorage`
+  (`REPAIR_REASON_KEY`) and falls back to the `PairingScreen`.
 - `src/mainview/components/remote/pairing-screen.tsx` — paste-the-code pairing.
 - `src/mainview/pages/settings/remote-access.tsx` — desktop **Settings → Channels →
   Remote Access** (enable, add device → QR/code, list/revoke). When enabled it also
   surfaces a **Web address** card — the `WEB_URL` (now on `RemoteAccessStatusDto`) with
   **Open** (`openExternalUrl`), **Copy**, and a **QR** button that opens a modal dialog
   (`qrcode.toDataURL`) so the user can open it on a desktop or scan it on a phone before
-  pairing. Wrappers in `rpc.ts`.
+  pairing. **Pair via QR** button: builds `${WEB_URL}/?pair=<pairing code>` and renders it
+  as a QR (errorCorrectionLevel `L` for the long payload) — one phone scan opens the app
+  AND auto-pairs (consumed by `main.tsx` above). The classic **Add device** still shows
+  the paste-able code for desktops. Wrappers in `rpc.ts`.
   (Lives under **Channels** because it is another way to reach the desk, alongside
   Discord/WhatsApp/Email — wired in `src/mainview/pages/settings.tsx`.)
 

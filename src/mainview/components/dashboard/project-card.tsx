@@ -101,7 +101,7 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
     <>
       <div
         className={cn(
-          "group relative flex w-full flex-1 flex-col rounded-xl border-2 bg-card transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "group relative flex w-full min-w-0 flex-1 flex-col rounded-xl border-2 bg-card transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           isDeleted
             ? "opacity-50 cursor-default"
             : workspaceOffline
