@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.3.5",
+        "title":  "Enhanced Freelance Listings Management",
+        "changes":  [
+                        "Improved management of freelance listings with new bid handling features and updated user interface."
+                    ]
+    },
+    {
         "version":  "2.3.4",
         "title":  "New Features for Enhanced User Experience",
         "changes":  [
