@@ -264,6 +264,13 @@ export type WebviewSchema = RPCSchema<{
       progress?: number;
     };
 
+    // DB maintenance underway — drives a global "please wait" overlay so the user
+    // isn't left staring at skeleton loaders while queries stall app-wide.
+    maintenance: {
+      active: boolean;
+      message: string;
+    };
+
     // Freelance wizard (Find Workable Projects)
     "freelance.wizard.progress": {
       current: number;

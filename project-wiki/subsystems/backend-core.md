@@ -2,10 +2,12 @@
 title: Backend Core & Entry
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-21
 sources:
   - src/bun/index.ts
   - src/bun/engine-manager.ts
+  - src/bun/db/maintenance.ts
+  - src/bun/db/maintenance-state.ts
   - src/bun/lib/git-runner.ts
   - src/bun/lib/install-mode.ts
   - src/bun/lib/secret-crypto.ts
@@ -82,6 +84,16 @@ one-off cleanup of orphaned `workflow:%` settings (legacy rows from the removed
 WorkflowEngine); `setTimeout(20_000)` (`index.ts:229`) defers the synchronous,
 expensive `maybeRunStartupMaintenance()` (PRAGMA optimize / periodic VACUUM) so a
 VACUUM never competes with the initial UI/agent load.
+
+Because those ops hold a DB lock and stall queries app-wide (the UI would
+otherwise just show skeletons everywhere), maintenance now drives a **global
+overlay**: `db/maintenance-state.ts` tracks an `{active,message}` flag and
+broadcasts `maintenance` via `broadcastToWebview`; `MaintenanceOverlay`
+(mounted in the AppShell) shows a "please wait" panel over every page and
+syncs initial state via the `getMaintenanceStatus` RPC (so a reload
+mid-maintenance still shows it). The startup path and the manual
+optimize/vacuum/prune RPCs wrap their work with the overlay (sync ops yield one
+tick first so the overlay paints before the main thread stalls).
 
 ### 4. Background services on `dom-ready` (`index.ts:237`–`index.ts:301`)
 A `backgroundServicesInitialised` boolean guards this block so it runs once. On

@@ -57,6 +57,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   navigateTo: "agentdesk:navigate",
   showToast: "agentdesk:show-toast",
   settingsChanged: "agentdesk:settings-changed",
+  maintenance: "agentdesk:maintenance",
   streamToken: "agentdesk:stream-token",
   streamReset: "agentdesk:stream-reset",
   streamComplete: "agentdesk:stream-complete",

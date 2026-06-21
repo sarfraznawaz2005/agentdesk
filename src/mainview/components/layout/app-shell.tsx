@@ -16,6 +16,7 @@ import type { ReleaseEntry } from "../../../shared/rpc/whats-new";
 import { PmChatWidget } from "@/components/dashboard/pm-chat-widget";
 import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-chat-launcher";
 import { ChatFab } from "@/components/dashboard/chat-fab";
+import { MaintenanceOverlay } from "@/components/layout/maintenance-overlay";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
@@ -382,6 +383,8 @@ function AppShellContent() {
       </div>
       {/* A single FAB replaces the stacked launcher pills above (all screen sizes). */}
       <ChatFab />
+      {/* Global "maintenance underway" overlay — sits above every page. */}
+      <MaintenanceOverlay />
     </div>
     </TooltipProvider>
   );

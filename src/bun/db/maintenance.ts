@@ -8,6 +8,7 @@ import { sqlite, dbFilePath } from "./connection";
 import { writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { pathToFileURL } from "url";
+import { setMaintenance } from "./maintenance-state";
 
 const LAST_VACUUM_KEY = "_agentdesk_last_vacuum";
 const VACUUM_INTERVAL_DAYS = 7;
@@ -55,8 +56,21 @@ export function checkpointWal(): void {
  * Never throws. The main-thread `runFullVacuum` remains available for manual use.
  */
 export function maybeRunStartupMaintenance(): void {
-	runIncrementalMaintenance();
-	void maybeVacuumInBackground();
+	// Show the global "maintenance underway" overlay so the user isn't left staring
+	// at skeleton loaders while queries stall. Defer the blocking PRAGMA optimize one
+	// tick so the overlay actually paints before the main thread stalls; then run the
+	// (possibly long) background vacuum. The overlay is always cleared at the end.
+	setMaintenance(true, "Tuning up the local database — this will finish momentarily.");
+	setTimeout(() => {
+		void (async () => {
+			try {
+				runIncrementalMaintenance();
+				await maybeVacuumInBackground();
+			} finally {
+				setMaintenance(false);
+			}
+		})();
+	}, 80);
 }
 
 /** Run a full vacuum in a worker thread if the 7-day cadence is due. Never throws. */
@@ -65,6 +79,9 @@ export async function maybeVacuumInBackground(): Promise<void> {
 		const last = getLastVacuumTimestamp();
 		const daysSince = last ? (Date.now() - last) / 86_400_000 : Infinity;
 		if (daysSince <= VACUUM_INTERVAL_DAYS) return;
+		// Vacuum holds a DB lock; keep the overlay up with a vacuum-specific message
+		// (the caller owns clearing it).
+		setMaintenance(true, "Reclaiming database space — this can take a minute. Please keep the app open.");
 		await runVacuumInWorker();
 	} catch (e) {
 		console.error("[maintenance] background vacuum failed:", e);

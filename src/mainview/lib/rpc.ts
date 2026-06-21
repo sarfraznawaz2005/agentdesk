@@ -262,6 +262,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       updateStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:update-status", { detail: payload }));
       },
+      maintenance: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:maintenance", { detail: payload }));
+      },
       "freelance.fetchStarted": (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:freelance-fetch-started", { detail: payload }));
       },
@@ -1172,6 +1175,7 @@ export const rpc = {
   optimizeDatabase: () => electroviewRpc.request.optimizeDatabase({}),
   vacuumDatabase: () => electroviewRpc.request.vacuumDatabase({}),
   pruneDatabase: (days?: number) => electroviewRpc.request.pruneDatabase({ days }),
+  getMaintenanceStatus: () => electroviewRpc.request.getMaintenanceStatus({}),
 
   // ── Conversation Archive ──
   archiveConversation: (id: string) => electroviewRpc.request.archiveConversation({ id }),

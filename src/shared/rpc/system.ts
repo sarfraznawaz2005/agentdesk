@@ -64,6 +64,11 @@ export type SystemRequests = {
     params: { days?: number };
     response: { success: boolean; pruned: Record<string, number> };
   };
+  /** Current maintenance overlay state (so a freshly-loaded view can sync up). */
+  getMaintenanceStatus: {
+    params: Record<string, never>;
+    response: { active: boolean; message: string };
+  };
 
   // Backup / restore
   createBackup: {

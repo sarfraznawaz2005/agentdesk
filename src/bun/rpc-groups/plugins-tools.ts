@@ -51,6 +51,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	optimizeDatabase: () => maintenanceRpc.optimizeDatabase(),
 	vacuumDatabase: () => maintenanceRpc.vacuumDatabase(),
 	pruneDatabase: (params) => maintenanceRpc.pruneDatabase(params.days),
+	getMaintenanceStatus: () => maintenanceRpc.getMaintenanceStatus(),
 
 	// Search
 	globalSearch: (params) => searchRpc.globalSearch(params.query),
