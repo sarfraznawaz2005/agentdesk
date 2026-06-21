@@ -231,6 +231,7 @@ export function getRemoteAccessStatus(): RemoteAccessStatusDto {
     connected: session?.status() === "online",
     relayConfigured: RELAY_CONFIGURED,
     deviceCount: count?.n ?? 0,
+    webUrl: WEB_URL,
   };
 }
 

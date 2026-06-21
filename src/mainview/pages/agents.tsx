@@ -92,6 +92,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   communication: "Communication",
   skills: "Skills",
   plugin: "Plugins",
+  memory: "Memory",
 };
 
 // ---------------------------------------------------------------------------

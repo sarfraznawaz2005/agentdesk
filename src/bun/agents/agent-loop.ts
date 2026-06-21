@@ -236,6 +236,7 @@ const WRITE_TOOLS = new Set([
 	"git_commit", "git_push", "git_branch", "git_stash", "git_reset",
 	"git_cherry_pick",
 	"create_task", "move_task", "update_task", "delete_task",
+	"save_memory", "delete_memory",
 ]);
 
 /**
@@ -887,6 +888,17 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	// auto-approved run_shell + its preview/reject tools). The workspace-cwd wrapper below
 	// still applies to an overridden run_shell, keeping shell scoped to the workspace.
 	let tools: Record<string, Tool> = { ...baseTools, ...trackedFileTools, ...pluginTools, ...mcpTools, ...decisionsToolMap, ...(opts.extraTools ?? {}) };
+
+	// Memory tools — overlay the per-(agent+project) bound versions over the
+	// registry stubs, but ONLY for the names the agent is actually allowed (i.e.
+	// already present in `tools` after allowlist filtering) and ONLY when there's
+	// a project to scope memory to. Mirrors the decisions-tool binding above.
+	if (projectId && agentName) {
+		const { createMemoryTools } = await import("./tools/memory");
+		for (const [name, entry] of Object.entries(createMemoryTools(agentName, projectId))) {
+			if (tools[name]) tools[name] = entry.tool;
+		}
+	}
 
 	// Inject workspace path as default for directory/path tools so agents don't need to guess it
 	if (workspacePath) {

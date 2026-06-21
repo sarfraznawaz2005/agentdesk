@@ -23,6 +23,8 @@ export interface RemoteAccessStatusDto {
   relayConfigured: boolean;
   /** Number of paired, non-revoked devices. */
   deviceCount: number;
+  /** The web app URL to open/scan to reach this desktop (Cloudflare Pages). */
+  webUrl: string;
 }
 
 export interface DevicePairingDto {

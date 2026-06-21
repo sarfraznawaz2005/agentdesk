@@ -134,6 +134,11 @@ const DEFAULT_CUSTOM_AGENT_TOOLS = [
 	"find_skills",
 	// Lets a new custom agent ask the user a question via the modal dialog by default.
 	"request_human_input",
+	// Memory: new custom agents can remember per-project learnings and user
+	// "remember this" requests out of the box.
+	"save_memory",
+	"recall_memory",
+	"delete_memory",
 ];
 
 /**

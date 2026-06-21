@@ -48,6 +48,7 @@ import * as v45 from "./migrations/v45_freelance-client-country";
 import * as v46 from "./migrations/v46_context-window-limit-1m";
 import * as v47 from "./migrations/v47_remote-access-devices";
 import * as v48 from "./migrations/v48_pending-approvals";
+import * as v49 from "./migrations/v49_agent-memories";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -120,6 +121,7 @@ const migrations: Migration[] = [
 	{ version: 46, name: v46.name, run: v46.run },
 	{ version: 47, name: v47.name, run: v47.run },
 	{ version: 48, name: v48.name, run: v48.run },
+	{ version: 49, name: v49.name, run: v49.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;

@@ -2,7 +2,7 @@
 title: Database Tables Reference
 type: reference
 status: verified
-verified_at: 2026-06-15
+verified_at: 2026-06-21
 sources:
   - src/bun/db/schema.ts
   - src/bun/db/migrate.ts
@@ -10,6 +10,7 @@ sources:
   - src/bun/db/migrations/v3_agent-sessions.ts
   - src/bun/db/migrations/v4_inline-agents.ts
   - src/bun/db/migrations/v33_external-issues.ts
+  - src/bun/db/migrations/v49_agent-memories.ts
 tags: [database]
 ---
 
@@ -33,7 +34,7 @@ into existence, and the distinction matters when you change schema:
 The runner in `src/bun/db/migrate.ts:117` tracks applied migrations via
 `PRAGMA user_version`, applies the pending `migrations[]` array
 (`migrate.ts:69`) inside a transaction each, auto-backing-up first on an existing
-DB. The latest version is **v43** (`migrate.ts:112`).
+DB. The latest version is **v49** (`migrate.ts`).
 
 Two consequences for anyone editing the DB:
 
@@ -64,6 +65,7 @@ every column — read the cited line for the full definition.
 | `message_parts` | `:653` | Decomposed message content for inline sub-agent rendering (text / tool_call / tool_result / reasoning / agent_start / agent_end). Cascade-deletes with its message. Originally raw-SQL (v4); now Drizzle-managed. | `messageId` (FK, cascade), `type`, `toolName`/`toolInput`/`toolOutput`/`toolState`, `sortOrder` |
 | `conversation_summaries` | `:166` | Auto-compaction summaries; `messagesUpToId` marks the watermark. | `conversationId` (FK), `summaryText`, `messagesUpToId` |
 | `notes` | `:178` | Agent/user docs within a project (the Docs page). | `projectId` (FK), `title`, `content`, `authorAgentId` |
+| `agent_memories` | `:196` (v49) | Per-(agent + project) durable memory for the `save_memory`/`recall_memory`/`delete_memory` tools. Index (title+description) auto-injected into the agent's system prompt every run; full `content` recalled on demand. Distinct from `notes`/DECISIONS.md. Bounded by caps in `agents/tools/memory.ts` (2 KB content, soft 50/hard 100 with LRU evict). `UNIQUE(project_id, agent_name, title)` = dedup key (re-save updates in place). | `projectId` (FK), `agentName`, `title`, `description`, `content`, `recallCount`, `lastRecalledAt` |
 | `kanban_tasks` | `:200` | Kanban board tasks. Flow `backlog→working→review→done`. | `column`, `priority`, `acceptanceCriteria` (JSON), `reviewRounds`, `blockedBy` (JSON), `verificationStatus` |
 | `kanban_task_activity` | `:238` | Per-task audit log (moves/edits/comments). | `taskId` (FK), `type`, `actorId`, `data` (JSON) |
 | `plugins` | `:259` | Installed plugins; optional `prompt` snippet injected into agent prompts. | `name` (unique), `enabled`, `settings` (JSON), `prompt` |

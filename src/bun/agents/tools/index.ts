@@ -15,11 +15,12 @@ import { processTools } from "./process";
 import { screenshotTools } from "./screenshot";
 import { lspTools } from "./lsp";
 import { skillTools } from "./skills";
+import { memoryTools } from "./memory";
 // ---------------------------------------------------------------------------
 // Tool category metadata
 // ---------------------------------------------------------------------------
 
-export type ToolCategory = "file" | "shell" | "communication" | "notes" | "kanban" | "git" | "web" | "system" | "process" | "plugin" | "skills";
+export type ToolCategory = "file" | "shell" | "communication" | "notes" | "kanban" | "git" | "web" | "system" | "process" | "plugin" | "skills" | "memory";
 
 export interface ToolDefinition {
 	name: string;
@@ -50,6 +51,7 @@ const toolRegistry: Record<string, ToolRegistryEntry> = {
 	...screenshotTools,
 	...lspTools,
 	...skillTools,
+	...memoryTools,
 };
 
 /**

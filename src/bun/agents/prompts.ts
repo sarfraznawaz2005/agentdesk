@@ -6,6 +6,7 @@ import { db } from "../db";
 import { settings, agents, notes, plugins } from "../db/schema";
 import { skillRegistry } from "../skills/registry";
 import { isFreelanceEnabled } from "../freelance/feature-flag";
+import { buildMemoryIndexSection } from "./tools/memory";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1184,7 +1185,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	}
 
 	// Load constitution + user profile + agent knowledge listing + update setting + plugin prompts + project context
-	const [constitution, userProfile, knowledgeSection, knowledgeUpdateEnabled, pluginPrompts, projectContext, featureBranchEnabled] = await Promise.all([
+	const [constitution, userProfile, knowledgeSection, knowledgeUpdateEnabled, pluginPrompts, projectContext, featureBranchEnabled, memorySection] = await Promise.all([
 		loadConstitution(),
 		loadUserProfile(),
 		loadAgentKnowledgeListing(projectId),
@@ -1192,6 +1193,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		loadPluginPrompts(),
 		buildProjectContext(projectId, workspacePath),
 		isFeatureBranchWorkflowEnabled(projectId),
+		buildMemoryIndexSection(agentName, projectId),
 	]);
 	const userSection = buildUserSection(userProfile);
 
@@ -1219,6 +1221,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		filteredConstitution ? `## Constitution\n\n${filteredConstitution}` : "",
 		userSection,
 		knowledgeSection,
+		memorySection,
 		pluginPrompts,
 		protocol,
 		skillsSection,

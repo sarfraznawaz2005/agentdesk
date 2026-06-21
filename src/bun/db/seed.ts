@@ -1343,6 +1343,7 @@ const PLANNING = ["define_tasks"] as const;
 const COMMUNICATION = ["request_human_input"] as const;
 const SCREENSHOT = ["take_screenshot", "read_image"] as const;
 const SKILLS = ["read_skill", "read_skill_file", "find_skills", "validate_skill"] as const;
+const MEMORY = ["save_memory", "recall_memory", "delete_memory"] as const;
 
 /**
  * Default tool assignments per agent. Keys are agent `name` values.
@@ -1400,6 +1401,20 @@ for (const key of Object.keys(defaultAgentTools)) {
 	if (NO_HUMAN_INPUT_AGENTS.has(key)) continue;
 	if (!defaultAgentTools[key].includes("request_human_input")) {
 		defaultAgentTools[key] = [...defaultAgentTools[key], ...COMMUNICATION];
+	}
+}
+
+// Every interactive agent gets the memory tools (save/recall/delete) by default
+// so it can remember per-project learnings and user "remember this" requests.
+// Existing installs pick these up via seedAgentTools()'s "add missing default
+// tools" pass. EXCEPT the Playground agent — it runs in an isolated, project-less
+// sandbox where memory has nothing to scope to.
+const NO_MEMORY_AGENTS = new Set(["playground-agent"]);
+for (const key of Object.keys(defaultAgentTools)) {
+	if (NO_MEMORY_AGENTS.has(key)) continue;
+	const missing = MEMORY.filter((t) => !defaultAgentTools[key].includes(t));
+	if (missing.length > 0) {
+		defaultAgentTools[key] = [...defaultAgentTools[key], ...missing];
 	}
 }
 

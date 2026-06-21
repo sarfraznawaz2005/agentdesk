@@ -2,7 +2,7 @@
 title: Remote Access (Web App)
 type: subsystem
 status: verified
-verified_at: 2026-06-20
+verified_at: 2026-06-21
 sources:
   - relay/src/index.ts
   - src/bun/remote/
@@ -83,7 +83,11 @@ registered in `rpc-groups/features.ts`.
 - `src/mainview/main.tsx` — web bootstrap: unpaired → `PairingScreen`, else `App`.
 - `src/mainview/components/remote/pairing-screen.tsx` — paste-the-code pairing.
 - `src/mainview/pages/settings/remote-access.tsx` — desktop **Settings → Channels →
-  Remote Access** (enable, add device → QR/code, list/revoke). Wrappers in `rpc.ts`.
+  Remote Access** (enable, add device → QR/code, list/revoke). When enabled it also
+  surfaces a **Web address** card — the `WEB_URL` (now on `RemoteAccessStatusDto`) with
+  **Open** (`openExternalUrl`), **Copy**, and a **QR** button that opens a modal dialog
+  (`qrcode.toDataURL`) so the user can open it on a desktop or scan it on a phone before
+  pairing. Wrappers in `rpc.ts`.
   (Lives under **Channels** because it is another way to reach the desk, alongside
   Discord/WhatsApp/Email — wired in `src/mainview/pages/settings.tsx`.)
 

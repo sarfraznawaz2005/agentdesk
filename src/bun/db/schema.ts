@@ -194,6 +194,41 @@ export const notes = sqliteTable("notes", {
 });
 
 // ---------------------------------------------------------------------------
+// agent_memories
+// ---------------------------------------------------------------------------
+// Per-(agent + project) durable memory. Distinct from `notes` (project docs) and
+// DECISIONS.md (architectural decisions): these are an agent's own learnings and
+// things the USER asked it to remember. A compact index (title + description) is
+// auto-injected into the agent's system prompt every run; full `content` is
+// pulled on demand via the recall_memory tool. Size is bounded by caps in
+// agents/tools/memory.ts (content length, soft/hard count caps with LRU evict).
+// Indexes (incl. the UNIQUE(project_id, agent_name, title) dedup key) are
+// created in migration v49 — matching the codebase convention of defining
+// indexes in raw-SQL migrations rather than inline in the Drizzle schema.
+export const agentMemories = sqliteTable("agent_memories", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	projectId: text("project_id")
+		.notNull()
+		.references(() => projects.id),
+	agentName: text("agent_name").notNull(),
+	title: text("title").notNull(),
+	// One-line relevance hook shown in the always-on index (drives recall).
+	description: text("description").notNull().default(""),
+	content: text("content").notNull(),
+	// LRU bookkeeping for eviction at the hard cap.
+	recallCount: integer("recall_count").notNull().default(0),
+	lastRecalledAt: text("last_recalled_at"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
 // kanban_tasks
 // ---------------------------------------------------------------------------
 // Kanban board tasks within a project, managed by agents and humans.

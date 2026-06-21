@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
+import { toDataURL } from "qrcode";
+import { ExternalLink, QrCode, Copy, Check } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { RemoteAccessStatusDto, RemoteDeviceDto } from "../../../shared/rpc/remote-access";
 
 /**
@@ -16,6 +19,8 @@ export function RemoteAccessSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -86,6 +91,31 @@ export function RemoteAccessSettings() {
     });
   }
 
+  const webUrl = status?.webUrl ?? "";
+
+  function openUrl() {
+    if (webUrl) void rpc.openExternalUrl(webUrl);
+  }
+
+  function copyUrl() {
+    if (!webUrl) return;
+    void navigator.clipboard.writeText(webUrl).then(() => {
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 1500);
+    });
+  }
+
+  async function openQr() {
+    if (!webUrl) return;
+    try {
+      // Encodes the plain web URL so a phone camera opens the app directly.
+      const dataUrl = await toDataURL(webUrl, { width: 240, margin: 1 });
+      setQrDataUrl(dataUrl); // non-null → opens the QR dialog
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate QR code");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -115,6 +145,83 @@ export function RemoteAccessSettings() {
           aria-label="Enable remote access"
         />
       </div>
+
+      {/* Web address — where to open the app on another device */}
+      {status?.enabled && webUrl && (
+        <div className="rounded-lg border border-border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Web address</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Open this on another device (or scan the QR on a phone), then pair it below.
+              </div>
+              <a
+                href={webUrl}
+                onClick={(e) => { e.preventDefault(); openUrl(); }}
+                className="mt-1.5 block max-w-full truncate font-mono text-sm text-primary hover:underline"
+                title={webUrl}
+              >
+                {webUrl}
+              </a>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={openUrl}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:brightness-110"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Open
+              </button>
+              <button
+                type="button"
+                onClick={copyUrl}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
+              >
+                {urlCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {urlCopied ? "Copied" : "Copy"}
+              </button>
+              <button
+                type="button"
+                onClick={openQr}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
+              >
+                <QrCode className="h-3.5 w-3.5" /> QR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR modal — scan to open the web app on a phone */}
+      <Dialog open={qrDataUrl !== null} onOpenChange={(open) => { if (!open) setQrDataUrl(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Scan to open on your phone</DialogTitle>
+            <DialogDescription>
+              Point your phone camera at this code to open the app, then pair the device.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3 pb-2">
+            {qrDataUrl && (
+              <img
+                src={qrDataUrl}
+                alt={`QR code for ${webUrl}`}
+                width={240}
+                height={240}
+                className="rounded-md bg-white p-2"
+              />
+            )}
+            <a
+              href={webUrl}
+              onClick={(e) => { e.preventDefault(); openUrl(); }}
+              className="max-w-full truncate font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
+              title={webUrl}
+            >
+              {webUrl}
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Devices */}
       <div className="rounded-lg border border-border">

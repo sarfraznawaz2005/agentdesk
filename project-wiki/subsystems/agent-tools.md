@@ -2,9 +2,10 @@
 title: Agent Tools
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-21
 sources:
   - src/bun/agents/tools/index.ts
+  - src/bun/agents/tools/memory.ts
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/tools/file-ops.ts
   - src/bun/agents/tools/file-tracker.ts
@@ -139,6 +140,7 @@ is on (`agent-loop.ts:940-945`) since the [[review-cycle]] commits automatically
 | `web.ts:371` | `web_search`, `web_fetch`, `http_request`, `enhanced_web_search` | `web` |
 | `lsp.ts:275` | `lsp_diagnostics/hover/definition/references/document_symbols` | `file` |
 | `skills.ts:38` | `read_skill`, `find_skills` | `skills` |
+| `memory.ts` (stubs `:memoryTools`; bound `createMemoryTools`) | `save_memory`, `recall_memory`, `delete_memory` | `memory` |
 | `process.ts:439` | `run_background`, `check_process`, `kill_process`, `list_background_jobs` | `process` |
 | `scheduler.ts:42` | `create_cron_job` (+ schedule mgmt) | — |
 | `screenshot.ts:294` | `take_screenshot`, `read_image` | `web`/`file` |
@@ -181,11 +183,31 @@ Promise.all parallel-dispatch race (`pm-tools.ts:241,346-358`), Plan-Mode
 read-only enforcement (`pm-tools.ts:361`), and a block on dispatch while a task is
 in `review` (`pm-tools.ts:392-404`). See [[agent-engine]] for the full PM loop.
 
+**Agent memory (`memory.ts`).** `save_memory`/`recall_memory`/`delete_memory` give
+each agent a durable per-(agent + project) store (table `agent_memories`),
+separate from `log_decision` (project-wide architectural decisions) and `notes`
+(docs). They follow the **stub-in-registry + per-run overlay** pattern (like
+kanban/communication): the registry holds inert stubs (so they appear in tool
+listings + the `agent_tools` allowlist + the defaults), and the agent-loop
+overlays the identity/project-bound versions from `createMemoryTools(agentName,
+projectId)` over them — *only for names already present after allowlist
+filtering, and only when a `projectId` exists* (`agent-loop.ts`, next to the
+decisions binding). `save_memory`/`delete_memory` are in `WRITE_TOOLS`, so
+read-only agents keep only `recall_memory`. A bounded **index** (title +
+description of the ~30 most-recent memories) is injected into the system prompt
+every run by `buildMemoryIndexSection()` (`prompts.ts`), so a stateless agent
+knows what it saved; full bodies are pulled on demand by `recall_memory`. Size is
+guarded in `memory.ts` (2 KB content cap, dedup-by-title upsert, soft cap 50 /
+hard cap 100 with cold-memory LRU eviction). Defaults wired in `seed.ts`
+(`MEMORY` appended to every interactive agent; backfilled to existing installs by
+`seedAgentTools`) and `rpc/agents.ts` (`DEFAULT_CUSTOM_AGENT_TOOLS`).
+
 ## Key files
 
 | File | Role |
 |---|---|
 | `src/bun/agents/tools/index.ts` | Static registry assembly + `getToolsForAgent` role filter + tool cache |
+| `src/bun/agents/tools/memory.ts` | Agent memory: store + caps + `save/recall/delete_memory` (stubs + `createMemoryTools` overlay) + `buildMemoryIndexSection` |
 | `src/bun/agents/agent-loop.ts` | Per-run overlay, workspace injection, read-only/exclude filtering, hook wrap |
 | `src/bun/agents/tools/file-ops.ts` | File tools; `validatePath` boundary + `createTrackedFileTools` factory |
 | `src/bun/agents/tools/file-tracker.ts` | Per-run mtime freshness tracking + modified-file list |
