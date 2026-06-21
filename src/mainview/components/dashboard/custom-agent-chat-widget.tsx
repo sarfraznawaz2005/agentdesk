@@ -735,10 +735,47 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
               <span className="text-sm font-semibold text-white">{displayName}</span>
               {isStreaming && <Loader2 className="h-3.5 w-3.5 text-white/70 animate-spin" strokeWidth={3.5} aria-hidden="true" />}
             </div>
-            <button type="button" onClick={() => setExpandedOpen(false)}
-              className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
-              <X className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Zoom controls */}
+              <div className="relative flex items-center">
+                <div className={cn(
+                  "absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-foreground text-background shadow-md pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50",
+                  showZoomHint ? "opacity-100" : "opacity-0",
+                )}>
+                  {fontSizePercent}%
+                </div>
+                <Tip content="Decrease font size" side="bottom">
+                  <button type="button" onClick={() => { zoomOut(); triggerZoomHint(); }} disabled={zoomAtMin}
+                    className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ZoomOut className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                  </button>
+                </Tip>
+                <Tip content="Increase font size" side="bottom">
+                  <button type="button" onClick={() => { zoomIn(); triggerZoomHint(); }} disabled={zoomAtMax}
+                    className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    <ZoomIn className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                  </button>
+                </Tip>
+              </div>
+              <Tip content="Export as markdown" side="bottom">
+                <button type="button" onClick={handleExportMarkdown} disabled={messages.length <= 1}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Download className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
+              <Tip content="Clear conversation" side="bottom">
+                <button type="button" onClick={handleClear}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
+              <Tip content="Collapse" side="bottom">
+                <button type="button" onClick={() => setExpandedOpen(false)}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <X className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
+            </div>
           </div>
           {/* Messages */}
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 gap-3"
