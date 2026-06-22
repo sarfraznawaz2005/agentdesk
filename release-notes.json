@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.3.6",
+        "title":  "Enhanced Freelance Auto-Earn",
+        "changes":  [
+                        "Improved freelance auto-earn functionality for better earnings management",
+                        "Enhanced asynchronous processing for faster performance"
+                    ]
+    },
+    {
         "version":  "2.3.5",
         "title":  "Enhanced Freelance Listings Management",
         "changes":  [
