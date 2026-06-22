@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.3.7",
+        "title":  "Enhanced Indexing Features",
+        "changes":  [
+                        "You can now create case-insensitive unique indexes for agent and project names, improving data management and retrieval."
+                    ]
+    },
+    {
         "version":  "2.3.6",
         "title":  "Enhanced Freelance Auto-Earn",
         "changes":  [
