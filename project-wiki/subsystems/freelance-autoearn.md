@@ -2,7 +2,7 @@
 title: Freelance Auto-Earn
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-22
 sources:
   - src/bun/freelance/session/governor.ts
   - src/bun/freelance/session/ingest.ts
@@ -217,6 +217,15 @@ filter depends on that cache.
 
 - **Sync intentionally bypasses the governor.** Only sends are gated; the inbox
   must stay current even while paused / breaker-tripped (`governor.ts:113`).
+- **`ingestCaptures` is async + chunked, not one monolithic transaction.** Parsing
+  happens outside the lock and the upserts run in PHASE transactions
+  (self→users→threads→messages→last-msg refresh→correlation), chunked at 150 with a
+  macrotask yield between chunks (`session/ingest.ts:50`). A large capture batch
+  (interceptor cap ~800 records) therefore can't hold the single Bun thread — and
+  all other RPC replies — for its full duration. Each `await` falls BETWEEN committed
+  transactions, never inside an open write lock, so a concurrent writer can't hit
+  SQLITE_BUSY. Per-phase commits mean a mid-batch crash leaves earlier phases
+  persisted — safe, because every upsert is idempotent and the next sync re-runs.
 - **`maxSendsPerHour` is the REPLY cap, not a global cap.** Bids derive their own
   (½ + a daily budget). A flat global cap would make the freelancer look
   unresponsive to active clients while doing nothing about bid-spam velocity

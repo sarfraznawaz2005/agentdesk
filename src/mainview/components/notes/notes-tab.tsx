@@ -5,6 +5,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { ArrowLeft, FileText, FolderOpen, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { rpc } from "@/lib/rpc";
+import { createCoalescer } from "@/lib/coalesce";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -225,14 +226,17 @@ export function NotesTab({ projectId }: NotesTabProps) {
     }
   }, [allItems, selectedKey]);
 
-  // Refresh when agents finish or PM stream completes
+  // Refresh when agents finish or PM stream completes. A PM run fires many of
+  // these (one per sub-agent + the final stream-complete); coalesce them into a
+  // single trailing reload instead of refetching all notes + plans N times.
   useEffect(() => {
-    const refresh = () => loadDocs();
+    const refresh = createCoalescer(() => loadDocs());
     window.addEventListener("agentdesk:agent-inline-complete", refresh);
     window.addEventListener("agentdesk:stream-complete", refresh);
     return () => {
       window.removeEventListener("agentdesk:agent-inline-complete", refresh);
       window.removeEventListener("agentdesk:stream-complete", refresh);
+      refresh.cancel();
     };
   }, [loadDocs]);
 

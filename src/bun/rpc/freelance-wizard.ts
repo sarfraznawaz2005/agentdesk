@@ -8,6 +8,7 @@ import { db } from "../db";
 import { freelanceListings, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { broadcastToWebview } from "../engine-manager";
+import { coalesceBroadcast } from "../lib/coalesce-broadcast";
 import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
 import { buildSkillsDescriptionSection } from "../agents/prompts";
@@ -1231,7 +1232,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       }
       broadcastToWebview(FREELANCE_EVENTS.WIZARD_COMPLETE, { workableListings, failedListings });
       // Trigger a listings reload so cards immediately show the Analysis badges.
-      broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+      coalesceBroadcast(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
     }
   } catch (err) {
     if (isAbortError(err)) {
@@ -1517,7 +1518,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       // shows both. Crucially it fires even when zero workable were found — exactly the case
       // the old workable-gated broadcast missed, leaving the page stale until manual navigation.
       if (verdictMap.size > 0 || workableListings.length > 0) {
-        broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+        coalesceBroadcast(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
       }
 
       // Update last run metadata
@@ -1557,7 +1558,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
     sqlite.prepare(
       "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
     ).run("not_workable", nowTs, gate.reason, JSON.stringify(gate.blockers), gate.analysisText, BLOCK_KIND_SKILL_GATE, listing.id);
-    broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+    coalesceBroadcast(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
     return { verdict: "not_workable", reason: gate.reason, blockers: gate.blockers, analysisText: gate.analysisText, filtered: true, blockKind: BLOCK_KIND_SKILL_GATE };
   }
 
@@ -1619,7 +1620,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
     sqlite.prepare(
       "UPDATE freelance_listings SET wizard_verdict = ?, wizard_analyzed_at = ?, wizard_reason = ?, wizard_blockers = ?, wizard_analysis_text = ?, wizard_block_kind = ? WHERE id = ?",
     ).run("not_workable", nowTs, cGate.reason, JSON.stringify(cGate.blockers), cGate.analysisText, BLOCK_KIND_CLIENT_QUALITY, listing.id);
-    broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+    coalesceBroadcast(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
     return { verdict: "not_workable", reason: cGate.reason, blockers: cGate.blockers, analysisText: cGate.analysisText, filtered: true, blockKind: BLOCK_KIND_CLIENT_QUALITY };
   }
 
@@ -1653,7 +1654,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       blockKind: verdict.workable ? null : (BLOCK_KIND_ANALYSIS as FreelanceBlockKind),
     };
 
-    broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+    coalesceBroadcast(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
     return result;
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err));
@@ -1673,6 +1674,6 @@ export async function shortlistListings(params: { listingIds: string[] }): Promi
       .set({ status: "shortlisted", updatedAt: now })
       .where(eq(freelanceListings.id, id));
   }
-  broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+  coalesceBroadcast(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
   return { success: true };
 }

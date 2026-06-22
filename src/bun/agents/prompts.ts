@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { eq, and, ne } from "drizzle-orm";
-import { spawnSync } from "child_process";
+import { spawnAsync } from "../lib/spawn-async";
 import { db } from "../db";
 import { settings, agents, notes, plugins } from "../db/schema";
 import { skillRegistry } from "../skills/registry";
@@ -508,22 +508,20 @@ function loadDecisionsFile(workspacePath?: string): string {
  * Returns empty string if not a git repo or git is unavailable.
  * Not cached — always reflects current workspace state.
  */
-function buildGitContext(workspacePath?: string): string {
+async function buildGitContext(workspacePath?: string): Promise<string> {
 	if (!workspacePath || !existsSync(join(workspacePath, ".git"))) return "";
 	try {
-		const statusResult = spawnSync("git", ["status", "--short"], {
-			cwd: workspacePath,
-			encoding: "utf-8",
-			timeout: 5000,
-		});
-		const diffResult = spawnSync("git", ["diff", "--stat", "HEAD"], {
-			cwd: workspacePath,
-			encoding: "utf-8",
-			timeout: 5000,
-		});
+		// Run both git commands concurrently and OFF the event-loop-blocking path:
+		// spawnAsync awaits the child instead of freezing the single Bun thread (and
+		// every queued RPC reply) for the duration of git — which is seconds on a
+		// large or cold repo, paid on every sub-agent prompt build.
+		const [statusResult, diffResult] = await Promise.all([
+			spawnAsync(["git", "status", "--short"], { cwd: workspacePath, timeoutMs: 5000 }),
+			spawnAsync(["git", "diff", "--stat", "HEAD"], { cwd: workspacePath, timeoutMs: 5000 }),
+		]);
 
-		const statusLines = (statusResult.stdout ?? "").trim();
-		const diffStat = (diffResult.stdout ?? "").trim();
+		const statusLines = statusResult.stdout.trim();
+		const diffStat = diffResult.stdout.trim();
 
 		if (!statusLines && !diffStat) return "";
 
@@ -885,7 +883,7 @@ export async function getPMSystemPrompt(
 	const userSection = buildUserSection(userProfile);
 	const workspaceInstructions = loadWorkspaceInstructions(project.workspacePath);
 	const decisionsContent = loadDecisionsFile(project.workspacePath);
-	const gitContext = buildGitContext(project.workspacePath);
+	const gitContext = await buildGitContext(project.workspacePath);
 	const directToolsSection = buildDirectToolsSection(directTools);
 	const projectContextSection = buildProjectContextSection(project);
 
@@ -1204,7 +1202,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 
 	const workspaceInstructions = loadWorkspaceInstructions(workspacePath);
 	const decisionsContent = loadDecisionsFile(workspacePath);
-	const gitContext = buildGitContext(workspacePath);
+	const gitContext = await buildGitContext(workspacePath);
 
 	const skillsSection = buildSkillsDescriptionSection();
 

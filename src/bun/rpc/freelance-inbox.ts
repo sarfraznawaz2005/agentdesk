@@ -62,7 +62,7 @@ export async function ingest(params: {
 	const records = Array.isArray(params.records) ? params.records : [];
 	if (records.length === 0) return { threads: 0, messages: 0, users: 0 };
 
-	const result = ingestCaptures(platform, records);
+	const result = await ingestCaptures(platform, records);
 	if (result.changed) {
 		broadcastToWebview(FREELANCE_EVENTS.INBOX_UPDATED, {
 			threads: result.threads,

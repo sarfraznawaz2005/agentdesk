@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { rpc } from "../lib/rpc";
+import { createCoalescer } from "../lib/coalesce";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,6 +170,17 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 // DOM event subscription — real-time sync from backend
 // ---------------------------------------------------------------------------
 
+// A single orchestration run moves many tasks (PM + reviewers), firing a burst of
+// kanban-task-updated events. moveTask/updateTask already apply optimistic in-place
+// updates, so the authoritative full reload here only needs to reconcile ONCE after
+// the burst settles — coalesce it instead of refetching + re-rendering the whole
+// board per event. (maxWaitMs still flushes periodically during a long run.)
+let pendingReloadProjectId: string | null = null;
+const coalescedReloadTasks = createCoalescer(() => {
+  const pid = pendingReloadProjectId;
+  if (pid) void useKanbanStore.getState().loadTasks(pid);
+});
+
 window.addEventListener("agentdesk:kanban-task-updated", (e: Event) => {
   const { projectId } = (e as CustomEvent<{
     projectId: string;
@@ -179,6 +191,7 @@ window.addEventListener("agentdesk:kanban-task-updated", (e: Event) => {
   const state = useKanbanStore.getState();
   // Only reload if the update is for the active project
   if (state.activeProjectId === projectId) {
-    state.loadTasks(projectId);
+    pendingReloadProjectId = projectId;
+    coalescedReloadTasks();
   }
 });

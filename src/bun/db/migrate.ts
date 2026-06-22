@@ -49,6 +49,7 @@ import * as v46 from "./migrations/v46_context-window-limit-1m";
 import * as v47 from "./migrations/v47_remote-access-devices";
 import * as v48 from "./migrations/v48_pending-approvals";
 import * as v49 from "./migrations/v49_agent-memories";
+import * as v50 from "./migrations/v50_freelance-listings-indexes";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -122,6 +123,7 @@ const migrations: Migration[] = [
 	{ version: 47, name: v47.name, run: v47.run },
 	{ version: 48, name: v48.name, run: v48.run },
 	{ version: 49, name: v49.name, run: v49.run },
+	{ version: 50, name: v50.name, run: v50.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -311,6 +313,14 @@ function ensureRuntimeSchema(): void {
 		v48.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: pending-approvals table failed:", err);
+	}
+
+	// Defensive: ensure the freelance hot-path indexes exist (v50 is all
+	// CREATE INDEX IF NOT EXISTS — idempotent and cheap).
+	try {
+		v50.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: freelance listings indexes failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

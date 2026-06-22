@@ -160,14 +160,23 @@ export function ListingsTab() {
     }
   }, []);
 
+  // Monotonic load id: a slow silent refresh (background push) must never clobber
+  // the result of a newer user-initiated load (tab switch / page / search).
+  const loadSeqRef = useRef(0);
+
   const loadListings = useCallback(
-    async (p: number, status: StatusFilter, q: string) => {
-      setLoading(true);
+    async (p: number, status: StatusFilter, q: string, opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false;
+      const seq = ++loadSeqRef.current;
+      // Silent refreshes swap the cards in place without flashing the skeletons —
+      // only an explicit / user-initiated load shows them.
+      if (!silent) setLoading(true);
       try {
         const [result] = await Promise.all([
           rpc.freelanceGetListings({ status, page: p, search: q || undefined, excludeKinds: status === "new" && hiddenKindsRef.current.size > 0 ? [...hiddenKindsRef.current] : undefined }),
           loadCounts(),
         ]);
+        if (seq !== loadSeqRef.current) return; // superseded by a newer load
         setListings(result.listings);
         setTotal(result.total);
         // Track filtered New count separately so the badge stays accurate from any tab.
@@ -177,7 +186,7 @@ export function ListingsTab() {
       } catch (err) {
         console.error("Failed to load freelance listings:", err);
       } finally {
-        setLoading(false);
+        if (!silent && seq === loadSeqRef.current) setLoading(false);
       }
     },
     [loadCounts],
@@ -226,14 +235,21 @@ export function ListingsTab() {
             // Only show "No new listings" when there were no source errors — errors already showed their own toasts
             toast("info", "No new listings found.");
           }
+          // Manual fetch is user-initiated — jump to page 1 so the new listings are
+          // visible, and show the load (the user asked for it and expects feedback).
+          setPage(1);
+          void loadListings(1, statusFilter, debouncedSearch);
+        } else {
+          // Scheduled / startup background fetch — refresh in place WITHOUT a skeleton
+          // flash or yanking the user off the page they're reading. New listings surface
+          // on page 1 (the default) and every tab count updates live.
+          void loadListings(page, statusFilter, debouncedSearch, { silent: true });
         }
-        // A fetch brings in new listings — jump to page 1 so they're visible.
-        setPage(1);
-        void loadListings(1, statusFilter, debouncedSearch);
       } else {
-        // Verdict/label updates (Find Workable, background auto-shortlist, single Analyze)
-        // change cards in place — refresh the current page so the user isn't yanked to page 1.
-        void loadListings(page, statusFilter, debouncedSearch);
+        // Verdict/label/status updates (Find Workable, background auto-shortlist, single
+        // Analyze, approve/shortlist) change cards in place — silent refresh of the
+        // current page so the user is never yanked to page 1 or shown skeletons.
+        void loadListings(page, statusFilter, debouncedSearch, { silent: true });
       }
     };
     window.addEventListener("agentdesk:freelance-listings-updated", handler);

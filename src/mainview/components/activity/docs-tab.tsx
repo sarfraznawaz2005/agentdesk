@@ -6,6 +6,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { cn } from "@/lib/utils";
 import { rpc } from "../../lib/rpc";
+import { createCoalescer } from "@/lib/coalesce";
 import {
   Dialog,
   DialogContent,
@@ -77,12 +78,14 @@ export const DocsTab = forwardRef<DocsTabHandle, DocsTabProps>(function DocsTab(
   // Expose refresh() to parent via ref so the context-panel toolbar can trigger it
   useImperativeHandle(ref, () => ({ refresh: loadDocs }), [loadDocs]);
 
-  // Refresh docs when agents finish, PM stream completes, or a kanban task moves columns
+  // Refresh docs when agents finish, PM stream completes, or a kanban task moves
+  // columns. These fire in bursts during a PM run; coalesce them into one trailing
+  // reload instead of refetching on every event.
   useEffect(() => {
-    const refresh = () => loadDocs();
+    const refresh = createCoalescer(() => loadDocs());
     const onKanbanMove = (e: Event) => {
       const { action } = (e as CustomEvent<{ action: string }>).detail ?? {};
-      if (action === "moved") loadDocs();
+      if (action === "moved") refresh();
     };
     window.addEventListener("agentdesk:agent-inline-complete", refresh);
     window.addEventListener("agentdesk:stream-complete", refresh);
@@ -91,6 +94,7 @@ export const DocsTab = forwardRef<DocsTabHandle, DocsTabProps>(function DocsTab(
       window.removeEventListener("agentdesk:agent-inline-complete", refresh);
       window.removeEventListener("agentdesk:stream-complete", refresh);
       window.removeEventListener("agentdesk:kanban-task-updated", onKanbanMove);
+      refresh.cancel();
     };
   }, [loadDocs]);
 

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { rpc } from "@/lib/rpc";
+import { createCoalescer } from "@/lib/coalesce";
 
 // Per-project unread agent-activity, persisted server-side in the project_activity
 // table. Entries are flat keys `${projectId}::${location}` — e.g.
@@ -73,10 +74,13 @@ let attached = false;
 function initUnreadListeners(): void {
 	if (attached || typeof window === "undefined") return;
 	attached = true;
-	// Any record/mark on the backend re-broadcasts; just reload the (small) set.
-	window.addEventListener("agentdesk:activity-updated", () => {
-		void useUnreadStore.getState().load();
-	});
+	// Any record/mark on the backend re-broadcasts activity-updated — including the
+	// echo from our OWN optimistic markSeen. Coalesce a burst (that echo plus any
+	// concurrent agent activity) into a single trailing reload, so the optimistic
+	// local update isn't immediately re-fetched once per event. Live updates still
+	// arrive (~250ms trailing).
+	const reload = createCoalescer(() => void useUnreadStore.getState().load(), { windowMs: 250 });
+	window.addEventListener("agentdesk:activity-updated", reload);
 	void useUnreadStore.getState().load();
 }
 

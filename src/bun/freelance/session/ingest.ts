@@ -47,7 +47,7 @@ function getSelfUserId(platform: string): string | null {
  * Ingest a batch of intercepted capture records for a platform.
  * Returns counts and whether anything inbox-relevant changed.
  */
-export function ingestCaptures(platform: string, records: CaptureRecord[]): IngestResult {
+export async function ingestCaptures(platform: string, records: CaptureRecord[]): Promise<IngestResult> {
 	const now = new Date().toISOString();
 	let nThreads = 0;
 	let nMessages = 0;
@@ -114,13 +114,35 @@ export function ingestCaptures(platform: string, records: CaptureRecord[]): Inge
 		 WHERE id = ?`,
 	);
 
-	sqlite.exec("BEGIN");
-	try {
-		// Self first so the account's self_user_id is available for client resolution.
-		for (const rec of records) {
-			if (classifyEndpoint(platform, rec.url) !== "self") continue;
-			const self = parseSelf(rec.body);
-			if (self) {
+	// The capture batch is processed in PHASE transactions rather than one giant
+	// BEGIN…COMMIT, so a large batch (the interceptor caps at ~800 records) can't
+	// hold the single Bun thread — and therefore every other RPC reply — for its
+	// full duration. Parsing happens OUTSIDE the lock; each phase commits before we
+	// yield, so an `await` never holds an open write transaction (which would risk
+	// SQLITE_BUSY for any concurrent writer). Ordering is preserved:
+	// self → users → threads → messages → last-message refresh → correlation.
+	const CHUNK = 150;
+	const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+	const runTx = (fn: () => void): void => {
+		sqlite.exec("BEGIN");
+		try {
+			fn();
+			sqlite.exec("COMMIT");
+		} catch (err) {
+			sqlite.exec("ROLLBACK");
+			throw err;
+		}
+	};
+
+	// ── Phase 1: self first, so the account's self_user_id is available for client
+	// resolution in the threads/messages phases. (parse outside the lock) ──
+	const selfs = records
+		.filter((rec) => classifyEndpoint(platform, rec.url) === "self")
+		.map((rec) => parseSelf(rec.body))
+		.filter((s): s is NonNullable<ReturnType<typeof parseSelf>> => !!s);
+	if (selfs.length > 0) {
+		runTx(() => {
+			for (const self of selfs) {
 				sqlite
 					.prepare(
 						`UPDATE freelance_accounts SET self_user_id = ?, display_name = COALESCE(?, display_name), updated_at = ? WHERE platform = ?`,
@@ -137,23 +159,34 @@ export function ingestCaptures(platform: string, records: CaptureRecord[]): Inge
 						.run(JSON.stringify(self.skills), now, platform);
 				}
 			}
-		}
+		});
+	}
 
-		// Users (identity cache).
-		for (const rec of records) {
-			if (classifyEndpoint(platform, rec.url) !== "users") continue;
-			for (const u of parseUsers(rec.body)) {
+	// ── Phase 2: users (identity cache). ──
+	const users = records
+		.filter((rec) => classifyEndpoint(platform, rec.url) === "users")
+		.flatMap((rec) => parseUsers(rec.body));
+	for (let i = 0; i < users.length; i += CHUNK) {
+		const slice = users.slice(i, i + CHUNK);
+		runTx(() => {
+			for (const u of slice) {
 				upsertUser.run(u.id, platform, u.username, u.displayName, u.role, u.country, u.avatar, now);
 				nUsers++;
 			}
-		}
+		});
+		if (i + CHUNK < users.length) await yieldToLoop();
+	}
 
-		const selfUserId = getSelfUserId(platform);
+	const selfUserId = getSelfUserId(platform);
 
-		// Threads.
-		for (const rec of records) {
-			if (classifyEndpoint(platform, rec.url) !== "threads") continue;
-			for (const t of parseThreads(rec.body)) {
+	// ── Phase 3: threads. ──
+	const threads = records
+		.filter((rec) => classifyEndpoint(platform, rec.url) === "threads")
+		.flatMap((rec) => parseThreads(rec.body));
+	for (let i = 0; i < threads.length; i += CHUNK) {
+		const slice = threads.slice(i, i + CHUNK);
+		runTx(() => {
+			for (const t of slice) {
 				const clientUserId =
 					selfUserId != null ? t.memberIds.find((m) => m !== selfUserId) ?? null : null;
 				upsertThread.run(
@@ -175,17 +208,23 @@ export function ingestCaptures(platform: string, records: CaptureRecord[]): Inge
 				);
 				nThreads++;
 			}
-		}
+		});
+		if (i + CHUNK < threads.length) await yieldToLoop();
+	}
 
-		// Messages. Track genuinely NEW, RECENT, INBOUND (client) messages so the
-		// caller can notify — without spamming on the initial backfill of history.
-		const touchedThreads = new Set<string>();
-		const msgExists = sqlite.prepare(`SELECT 1 FROM freelance_inbox_messages WHERE id = ?`);
-		const nowSec = Math.floor(Date.now() / 1000);
-		const RECENT_WINDOW = 30 * 60; // 30 minutes
-		for (const rec of records) {
-			if (classifyEndpoint(platform, rec.url) !== "messages") continue;
-			for (const m of parseMessages(rec.body)) {
+	// ── Phase 4: messages. Track genuinely NEW, RECENT, INBOUND (client) messages
+	// so the caller can notify — without spamming on the initial backfill. ──
+	const touchedThreads = new Set<string>();
+	const msgExists = sqlite.prepare(`SELECT 1 FROM freelance_inbox_messages WHERE id = ?`);
+	const nowSec = Math.floor(Date.now() / 1000);
+	const RECENT_WINDOW = 30 * 60; // 30 minutes
+	const messages = records
+		.filter((rec) => classifyEndpoint(platform, rec.url) === "messages")
+		.flatMap((rec) => parseMessages(rec.body));
+	for (let i = 0; i < messages.length; i += CHUNK) {
+		const slice = messages.slice(i, i + CHUNK);
+		runTx(() => {
+			for (const m of slice) {
 				const existed = !!msgExists.get(m.id);
 				upsertMessage.run(m.id, m.threadId, m.fromUser, m.body, m.sentAt);
 				touchedThreads.add(m.threadId);
@@ -196,18 +235,31 @@ export function ingestCaptures(platform: string, records: CaptureRecord[]): Inge
 					newInbound.push({ threadId: m.threadId, fromUser: m.fromUser, body: m.body });
 				}
 			}
-		}
-		for (const threadId of touchedThreads) {
-			refreshThreadLast.run(threadId, threadId, threadId, now, threadId);
-		}
+		});
+		if (i + CHUNK < messages.length) await yieldToLoop();
+	}
 
-		// Projects → cache titles + correlate threads to listings (section 4a cascade).
-		const projectTitles = new Map<string, string | null>();
-		for (const rec of records) {
-			if (classifyEndpoint(platform, rec.url) !== "projects") continue;
-			for (const p of parseProjects(rec.body)) projectTitles.set(p.id, p.title);
-		}
-		if (nThreads > 0 || projectTitles.size > 0) {
+	// ── Phase 5: refresh each touched thread's last-message snapshot. ──
+	const touchedArr = [...touchedThreads];
+	for (let i = 0; i < touchedArr.length; i += CHUNK) {
+		const slice = touchedArr.slice(i, i + CHUNK);
+		runTx(() => {
+			for (const threadId of slice) {
+				refreshThreadLast.run(threadId, threadId, threadId, now, threadId);
+			}
+		});
+		if (i + CHUNK < touchedArr.length) await yieldToLoop();
+	}
+
+	// ── Phase 6: projects → cache titles + correlate threads to listings (§4a
+	// cascade). Bounded by the thread count, so a single transaction is fine. ──
+	const projectTitles = new Map<string, string | null>();
+	for (const rec of records) {
+		if (classifyEndpoint(platform, rec.url) !== "projects") continue;
+		for (const p of parseProjects(rec.body)) projectTitles.set(p.id, p.title);
+	}
+	if (nThreads > 0 || projectTitles.size > 0) {
+		runTx(() => {
 			const corrThreads = sqlite
 				.prepare(
 					`SELECT id, context_id FROM freelance_inbox_threads WHERE platform = ? AND context_id IS NOT NULL`,
@@ -245,12 +297,7 @@ export function ingestCaptures(platform: string, records: CaptureRecord[]): Inge
 				}
 				updateCorr.run(ctxId, title, listingId, confidence, now, t.id);
 			}
-		}
-
-		sqlite.exec("COMMIT");
-	} catch (err) {
-		sqlite.exec("ROLLBACK");
-		throw err;
+		});
 	}
 
 	return {

@@ -13,7 +13,7 @@ import { generateText, type Tool, type ModelMessage } from "ai";
 import { eq, inArray } from "drizzle-orm";
 import { Utils } from "electrobun/bun";
 import { appendFileSync, existsSync, mkdirSync } from "fs";
-import { spawnSync } from "child_process";
+import { spawnAsync } from "../lib/spawn-async";
 import { join, isAbsolute } from "path";
 import { db } from "../db";
 import { messages, messageParts, agents as agentsTable, aiProviders, conversations } from "../db/schema";
@@ -707,9 +707,9 @@ function wrapToolsWithHooks(
 				// --- PreToolUse hook ---
 				if (preHook) {
 					try {
-						const result = spawnSync(preHook, { shell: true, encoding: "utf-8", env, cwd, timeout: 10_000 });
-						if (result.status === 2) {
-							const denial = (result.stdout ?? "").trim() || `Tool "${name}" blocked by PreToolUse hook`;
+						const result = await spawnAsync([preHook], { shell: true, env, cwd, timeoutMs: 10_000 });
+						if (result.exitCode === 2) {
+							const denial = result.stdout.trim() || `Tool "${name}" blocked by PreToolUse hook`;
 							return denial;
 						}
 					} catch { /* non-fatal — allow tool to run */ }
@@ -734,7 +734,7 @@ function wrapToolsWithHooks(
 								HOOK_TOOL_OUTPUT: outStr.slice(0, 4096),
 								HOOK_TOOL_IS_ERROR: isError ? "1" : "0",
 							};
-							spawnSync(postHook, { shell: true, encoding: "utf-8", env: postEnv, cwd, timeout: 10_000 });
+							await spawnAsync([postHook], { shell: true, env: postEnv, cwd, timeoutMs: 10_000 });
 						} catch { /* non-fatal */ }
 					}
 				}
