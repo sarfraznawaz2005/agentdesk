@@ -56,6 +56,9 @@ export const aiProviders = sqliteTable("ai_providers", {
 // ---------------------------------------------------------------------------
 // A project maps to a local workspace directory and optionally a GitHub repo.
 // status: "active" | "idle" | "paused" | "completed" | "archived"
+// A case-insensitive UNIQUE index on `name` (idx_projects_name_nocase, COLLATE
+// NOCASE) is created in migration v51 — not expressible via Drizzle `.unique()`,
+// which would be case-sensitive. v51 skips it if pre-existing dupes are present.
 export const projects = sqliteTable("projects", {
 	id: text("id")
 		.primaryKey()
@@ -80,6 +83,9 @@ export const projects = sqliteTable("projects", {
 // ---------------------------------------------------------------------------
 // Defines the built-in and user-created AI agents available in the app.
 // isBuiltin = 1 for agents shipped with the application, 0 for custom ones.
+// Case-insensitive UNIQUE indexes on `name` and `display_name`
+// (idx_agents_name_nocase / idx_agents_display_name_nocase, COLLATE NOCASE) are
+// created in migration v51 (skipped if pre-existing dupes are present).
 export const agents = sqliteTable("agents", {
 	id: text("id")
 		.primaryKey()

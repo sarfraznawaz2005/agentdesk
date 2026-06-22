@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { customEnvVars } from "../db/schema";
+import { isUniqueViolation } from "../db/errors";
 import { and, eq, ne } from "drizzle-orm";
 import type { CustomEnvVar } from "../../shared/rpc/env-vars";
 
@@ -168,10 +169,19 @@ export async function createCustomEnvVar(params: { name: string; value: string }
 	const existing = db.select().from(customEnvVars).where(eq(customEnvVars.name, trimmedName)).get();
 	if (existing) throw new Error(`A variable named "${trimmedName}" already exists.`);
 
+	// The check above is a fast, friendly path — but it is not atomic with the
+	// insert, so a rapid retry / double-submit can pass the check twice and let
+	// the UNIQUE(name) constraint throw an unfriendly SQLiteError to the error
+	// log. `onConflictDoNothing` makes the constraint the single source of truth:
+	// a losing race inserts nothing, `returning()` comes back empty, and we
+	// translate that into the same friendly message instead of crashing.
 	const [row] = await db
 		.insert(customEnvVars)
 		.values({ name: trimmedName, value: params.value })
+		.onConflictDoNothing({ target: customEnvVars.name })
 		.returning();
+
+	if (!row) throw new Error(`A variable named "${trimmedName}" already exists.`);
 
 	await setOsEnvVar(trimmedName, params.value);
 	return toDto(row);
@@ -202,11 +212,23 @@ export async function updateCustomEnvVar(params: { id: string; name?: string; va
 		updates.value = newValue;
 	}
 
-	const [row] = await db
-		.update(customEnvVars)
-		.set(updates)
-		.where(eq(customEnvVars.id, params.id))
-		.returning();
+	let row: typeof customEnvVars.$inferSelect | undefined;
+	try {
+		[row] = await db
+			.update(customEnvVars)
+			.set(updates)
+			.where(eq(customEnvVars.id, params.id))
+			.returning();
+	} catch (err) {
+		// Mirror createCustomEnvVar: the conflict pre-check is not atomic with the
+		// UPDATE, so a concurrent rename can still trip UNIQUE(name). Translate that
+		// into the same friendly message rather than leaking a raw SQLiteError.
+		if (isUniqueViolation(err)) {
+			throw new Error(`A variable named "${newName}" already exists.`, { cause: err });
+		}
+		throw err;
+	}
+	if (!row) throw new Error("Environment variable not found.");
 
 	// If name changed: remove old key from process.env and OS, set new one
 	if (params.name !== undefined && newName !== existing.name) {

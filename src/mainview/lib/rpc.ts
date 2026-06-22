@@ -1320,8 +1320,9 @@ export const rpc = {
   /** Abort the in-flight playground run. */
   playgroundStop: () => electroviewRpc.request.playgroundStop({}),
 
-  /** Wipe the playground (delete temp files + stop dev servers). */
-  newPlayground: () => electroviewRpc.request.newPlayground({}),
+  /** Wipe the playground (delete temp files + stop dev servers). Pass `force` to
+   *  first kill running dev servers that may be holding file locks. */
+  newPlayground: (force?: boolean) => electroviewRpc.request.newPlayground({ force }),
 
   /** Get the current playground state (running / hasFiles / preview) for restore. */
   getPlaygroundState: () => electroviewRpc.request.getPlaygroundState({}),

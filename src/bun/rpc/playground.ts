@@ -42,9 +42,21 @@ export function playgroundStop(): { ok: boolean } {
 	return { ok: true };
 }
 
-export function newPlayground(): { ok: boolean } {
-	newPlaygroundImpl();
-	return { ok: true };
+export function newPlayground(params?: { force?: boolean }): { ok: boolean; error?: string } {
+	// `force` recovery path: a wipe fails when a playground dev server still holds
+	// a file (common on Windows). Kill every running job rooted in the playground
+	// to release those locks, then wipe — turning a dead-end into a one-click retry.
+	if (params?.force) {
+		for (const job of getRunningJobsUnderPath(PLAYGROUND_ROOT)) {
+			killJobById(job.id);
+		}
+	}
+	try {
+		newPlaygroundImpl();
+		return { ok: true };
+	} catch (err) {
+		return { ok: false, error: err instanceof Error ? err.message : String(err) };
+	}
 }
 
 export function getPlaygroundState() {

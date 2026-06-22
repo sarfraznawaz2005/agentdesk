@@ -2,7 +2,7 @@
 title: Database Tables Reference
 type: reference
 status: verified
-verified_at: 2026-06-21
+verified_at: 2026-06-22
 sources:
   - src/bun/db/schema.ts
   - src/bun/db/migrate.ts
@@ -57,8 +57,8 @@ every column — read the cited line for the full definition.
 |---|---|---|---|
 | `settings` | `:9` | Generic JSON key/value config store. Feature-branch name lives here under `currentFeatureBranch:<projectId>`; per-source issue config under category `issue_sources`. | `key` (unique), `value` (JSON), `category` |
 | `ai_providers` | `:29` | Configured AI provider creds + prefs. **apiKey stored plaintext** (encryption deferred). | `providerType`, `apiKey`, `isDefault` (only one =1) |
-| `projects` | `:59` | A project = local workspace dir + optional GitHub repo. | `workspacePath`, `githubUrl`, `workingBranch`, `status` |
-| `agents` | `:83` | Built-in + custom agent definitions. `isBuiltin=1` for shipped agents. | `name`, `systemPrompt`, `useSystemPromptOnly`, `availableToPm`, `thinkingBudget` |
+| `projects` | `:59` | A project = local workspace dir + optional GitHub repo. Case-insensitive UNIQUE(`name`) via `idx_projects_name_nocase` (COLLATE NOCASE) added in v51 (skipped if pre-existing dupes). | `workspacePath`, `githubUrl`, `workingBranch`, `status` |
+| `agents` | `:83` | Built-in + custom agent definitions. `isBuiltin=1` for shipped agents. Case-insensitive UNIQUE(`name`) + UNIQUE(`display_name`) via `idx_agents_name_nocase` / `idx_agents_display_name_nocase` (COLLATE NOCASE) added in v51 (skipped if pre-existing dupes). | `name`, `systemPrompt`, `useSystemPromptOnly`, `availableToPm`, `thinkingBudget` |
 | `agent_tools` | `:126` | Tool allow-list per agent. **Zero rows = agent gets the full tool registry** (how Playground/Issue-Fixer agents get everything). | `agentId` (FK), `toolName`, `isEnabled` |
 | `conversations` | `:141` | Chat threads per project. | `projectId` (FK), `isPinned`, `isArchived` |
 | `messages` | `:152` | Chat messages. `hasParts=1` means rich content lives in `message_parts`. | `role`, `agentId`/`agentName`, `metadata` (JSON), `tokenCount`, `hasParts` |

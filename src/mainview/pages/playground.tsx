@@ -510,14 +510,38 @@ export function PlaygroundPage() {
     if (msg) runPrompt(msg);
   }, [runPrompt]);
 
-  const doNewPlayground = useCallback(async () => {
-    setConfirmNew(false);
-    await rpc.newPlayground();
+  // Wipe the playground + reset the page. `force` first kills any dev servers
+  // still holding file locks (the wipe legitimately fails otherwise on Windows).
+  // Failure is surfaced as a toast — never an unlogged unhandled rejection — and
+  // the UI is only reset when the wipe actually succeeded.
+  const resetPlayground = useCallback(async (force: boolean) => {
+    const res = await rpc.newPlayground(force).catch((err) => ({
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Could not clear the playground.",
+    }));
+    if (!res.ok) {
+      // First (non-forced) failure offers one-click escalation: stop the locking
+      // dev servers and retry. A forced attempt that still fails just reports —
+      // no infinite retry loop.
+      toast(
+        "error",
+        res.error || "Could not clear the playground.",
+        force
+          ? undefined
+          : { label: "Stop servers & retry", onClick: () => void resetPlayground(true) },
+      );
+      return;
+    }
     usePlaygroundStore.getState().reset();
     setPreviewDevice("desktop");
     setDevServers([]);
     toast("success", "Started a fresh playground");
   }, []);
+
+  const doNewPlayground = useCallback(() => {
+    setConfirmNew(false);
+    void resetPlayground(false);
+  }, [resetPlayground]);
 
   const doCreateProject = useCallback(async () => {
     setConfirmCreate(false);
@@ -639,6 +663,11 @@ export function PlaygroundPage() {
       devServers.find((s) => s.status === "stopped");
     return { command: stopped?.command ?? null };
   })();
+
+  // Running dev servers are what hold the file locks that can make a wipe fail —
+  // surface the count in the New Playground confirm so the user can stop them
+  // proactively instead of discovering the lock only after the wipe errors.
+  const runningDevServerCount = devServers.filter((s) => s.status === "running").length;
 
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
@@ -1018,6 +1047,13 @@ export function PlaygroundPage() {
               This deletes all files from the current playground and stops any running preview servers. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          {runningDevServerCount > 0 && (
+            <div className="rounded-md border border-amber-400/40 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              {runningDevServerCount} dev server{runningDevServerCount === 1 ? "" : "s"} still running — {runningDevServerCount === 1 ? "it" : "they"}&rsquo;ll be stopped automatically.
+              On Windows a held file can occasionally block the wipe; if that happens, use the{" "}
+              <span className="font-medium">&ldquo;Stop servers &amp; retry&rdquo;</span> action on the error.
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmNew(false)}>
               Cancel

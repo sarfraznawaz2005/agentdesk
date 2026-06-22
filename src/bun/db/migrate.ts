@@ -50,6 +50,7 @@ import * as v47 from "./migrations/v47_remote-access-devices";
 import * as v48 from "./migrations/v48_pending-approvals";
 import * as v49 from "./migrations/v49_agent-memories";
 import * as v50 from "./migrations/v50_freelance-listings-indexes";
+import * as v51 from "./migrations/v51_unique-name-indexes";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -124,6 +125,7 @@ const migrations: Migration[] = [
 	{ version: 48, name: v48.name, run: v48.run },
 	{ version: 49, name: v49.name, run: v49.run },
 	{ version: 50, name: v50.name, run: v50.run },
+	{ version: 51, name: v51.name, run: v51.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -321,6 +323,17 @@ function ensureRuntimeSchema(): void {
 		v50.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: freelance listings indexes failed:", err);
+	}
+
+	// Defensive + self-healing: (re)attempt the case-insensitive UNIQUE name
+	// indexes. v51.run() pre-checks for existing duplicates and skips rather than
+	// throwing, and uses CREATE UNIQUE INDEX IF NOT EXISTS — idempotent and cheap.
+	// Running it every startup lets the index appear automatically once a user
+	// clears a pre-existing duplicate that blocked it during the versioned run.
+	try {
+		v51.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: unique name indexes failed:", err);
 	}
 
 	const agentCols = sqlite.prepare("PRAGMA table_info(agents)").all() as Array<{ name: string }>;

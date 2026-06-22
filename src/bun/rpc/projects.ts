@@ -6,6 +6,7 @@ import { isPathAccessible } from "../lib/path-utils";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { projects, settings } from "../db/schema";
+import { isUniqueViolation } from "../db/errors";
 import { logAudit } from "../db/audit";
 import { clearContextLimitCache } from "../providers/models";
 import { runGit } from "../lib/git-runner";
@@ -227,14 +228,22 @@ export async function createProjectHandler(
 		}
 	}
 
-	await db.insert(projects).values({
-		id,
-		name: params.name,
-		description: params.description ?? null,
-		workspacePath,
-		githubUrl: params.githubUrl ?? null,
-		workingBranch: params.workingBranch ?? null,
-	});
+	try {
+		await db.insert(projects).values({
+			id,
+			name: params.name,
+			description: params.description ?? null,
+			workspacePath,
+			githubUrl: params.githubUrl ?? null,
+			workingBranch: params.workingBranch ?? null,
+		});
+	} catch (err) {
+		// Atomic backstop for the name pre-check race (v51 case-insensitive index).
+		if (isUniqueViolation(err)) {
+			return { success: false, id: "", error: `A project named "${params.name.trim()}" already exists. Please choose a different name.` };
+		}
+		throw err;
+	}
 
 	// Seed default project settings so the backend always has values to read
 	// without waiting for the user to open and save the settings UI.
@@ -513,7 +522,15 @@ export async function updateProject(params: {
 	if (params.workspacePath !== undefined) updates.workspacePath = params.workspacePath;
 	if (params.githubUrl !== undefined) updates.githubUrl = params.githubUrl;
 	if (params.workingBranch !== undefined) updates.workingBranch = params.workingBranch;
-	await db.update(projects).set(updates).where(eq(projects.id, params.id));
+	try {
+		await db.update(projects).set(updates).where(eq(projects.id, params.id));
+	} catch (err) {
+		// Atomic backstop for the rename pre-check race (v51 case-insensitive index).
+		if (isUniqueViolation(err) && params.name !== undefined) {
+			return { success: false, error: `A project named "${params.name.trim()}" already exists. Please choose a different name.` };
+		}
+		throw err;
+	}
 	logAudit({ action: "project.update", entityType: "project", entityId: params.id });
 	return { success: true };
 }

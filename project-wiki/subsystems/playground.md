@@ -2,7 +2,7 @@
 title: Playground
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-22
 sources:
   - src/bun/playground/orchestrator.ts
   - src/bun/playground/server.ts
@@ -115,7 +115,14 @@ metadata that is **never** copied into a created project —
 `conversation.json`, `preview.json`, `deploy.json`, and `servers.json`. There is
 a **single active playground** (no per-session subfolders); "New Playground"
 wipes the whole root and recreates the empty structure (`wipePlayground`,
-`paths.ts:41`, with Windows `EBUSY`/`EPERM` retries).
+`paths.ts:41`, with Windows `EBUSY`/`EPERM` retries). When even the retries lose
+to a dev server still holding a file, the `newPlayground` RPC returns
+`{ ok:false, error }` (rather than throwing) and the page shows a **"Stop servers
+& retry"** toast action that re-calls `newPlayground({ force:true })` — which
+kills every running job under the playground root (`getRunningJobsUnderPath` +
+`killJobById`) to release the locks before wiping (`rpc/playground.ts:45`). The
+New Playground confirm dialog also surfaces the running dev-server count up front,
+so the user knows what will be stopped before the wipe runs.
 
 ## Static preview server + console capture
 

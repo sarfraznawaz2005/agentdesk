@@ -51,8 +51,10 @@ export type PlaygroundRequests = {
   };
   /** Wipe the playground temp folder + stop its dev servers. */
   newPlayground: {
-    params: Record<string, never>;
-    response: { ok: boolean };
+    /** `force`: kill any running playground dev servers first, to release file
+     *  locks that would otherwise make the wipe fail (Windows). */
+    params: { force?: boolean };
+    response: { ok: boolean; error?: string };
   };
   /** Snapshot of the current playground (for restoring the page on mount). */
   getPlaygroundState: {

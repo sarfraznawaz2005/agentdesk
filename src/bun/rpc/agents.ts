@@ -1,6 +1,7 @@
 import { eq, and, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { agents, agentTools } from "../db/schema";
+import { isUniqueViolation } from "../db/errors";
 import { logAudit } from "../db/audit";
 import { getToolDefinitions, clearToolCache } from "../agents/tools/index";
 
@@ -90,7 +91,15 @@ export async function updateAgent(params: {
 		if (key === "id" || value === undefined) continue;
 		updates[key] = BOOL_TO_INT.has(key) ? (value ? 1 : 0) : value;
 	}
-	await db.update(agents).set(updates).where(eq(agents.id, params.id));
+	try {
+		await db.update(agents).set(updates).where(eq(agents.id, params.id));
+	} catch (err) {
+		// Atomic backstop for the display-name pre-check race (v51 unique index).
+		if (isUniqueViolation(err) && params.displayName !== undefined) {
+			return { success: false, error: `Another agent already uses the display name "${params.displayName.trim()}". Please choose a different one.` };
+		}
+		throw err;
+	}
 	logAudit({ action: "agent.update", entityType: "agent", entityId: params.id });
 	return { success: true };
 }
@@ -177,21 +186,34 @@ export async function createAgent(params: {
 	}
 
 	const id = crypto.randomUUID();
-	await db.insert(agents).values({
-		id,
-		name: params.name,
-		displayName: params.displayName,
-		color: params.color,
-		systemPrompt: params.systemPrompt,
-		isBuiltin: 0,
-		providerId: params.providerId ?? null,
-		modelId: params.modelId ?? null,
-		useSystemPromptOnly: params.useSystemPromptOnly ? 1 : 0,
-		chatEnabled: params.chatEnabled ? 1 : 0,
-		// Default true when omitted — matches historical "always visible" behavior
-		// and saves users from having to flip it on for every newly created agent.
-		availableToPm: params.availableToPm === false ? 0 : 1,
-	});
+	try {
+		await db.insert(agents).values({
+			id,
+			name: params.name,
+			displayName: params.displayName,
+			color: params.color,
+			systemPrompt: params.systemPrompt,
+			isBuiltin: 0,
+			providerId: params.providerId ?? null,
+			modelId: params.modelId ?? null,
+			useSystemPromptOnly: params.useSystemPromptOnly ? 1 : 0,
+			chatEnabled: params.chatEnabled ? 1 : 0,
+			// Default true when omitted — matches historical "always visible" behavior
+			// and saves users from having to flip it on for every newly created agent.
+			availableToPm: params.availableToPm === false ? 0 : 1,
+		});
+	} catch (err) {
+		// The pre-checks above aren't atomic with this insert; a concurrent create
+		// can still trip the case-insensitive UNIQUE index (v51). Translate it into
+		// the same friendly message — the index names the offending column.
+		if (isUniqueViolation(err)) {
+			const msg = err instanceof Error ? err.message : "";
+			return /display_name/i.test(msg)
+				? { success: false, error: `An agent with the display name "${trimmedDisplay}" already exists. Please choose a different Display Name.` }
+				: { success: false, error: `An agent with the name "${trimmedName}" already exists. Please choose a different Name (slug).` };
+		}
+		throw err;
+	}
 
 	// Seed the default tool set. If the caller (UI's "Copy Tools From" flow)
 	// later issues setAgentTools, it will replace these rows wholesale.

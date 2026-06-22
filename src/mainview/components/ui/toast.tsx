@@ -8,10 +8,17 @@ import { cn } from "@/lib/utils";
 // Store
 // ---------------------------------------------------------------------------
 
+/** Optional inline button rendered inside a toast — e.g. a one-click recovery action. */
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: string;
   type: "success" | "error" | "warning" | "info";
   message: string;
+  action?: ToastAction;
 }
 
 interface ToastStore {
@@ -35,8 +42,8 @@ export const useToastStore = create<ToastStore>((set) => ({
 // Convenience function
 // ---------------------------------------------------------------------------
 
-export function toast(type: Toast["type"], message: string) {
-  useToastStore.getState().addToast({ type, message });
+export function toast(type: Toast["type"], message: string, action?: ToastAction) {
+  useToastStore.getState().addToast({ type, message, action });
 }
 
 // ---------------------------------------------------------------------------
@@ -104,9 +111,12 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   }, [clearTimer, dismiss]);
 
   useEffect(() => {
+    // Toasts carrying an action are sticky — auto-dismiss would steal the
+    // recovery option before the user can click it. They close on click/dismiss.
+    if (toast.action) return clearTimer;
     startTimer();
     return clearTimer;
-  }, [toast.id, startTimer, clearTimer]);
+  }, [toast.id, toast.action, startTimer, clearTimer]);
 
   return (
     <div
@@ -127,9 +137,23 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       )}
     >
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", icon)} aria-hidden="true" />
-      <p className="flex-1 text-[15px] break-words line-clamp-5">
-        {toast.message.length > 300 ? `${toast.message.slice(0, 300)}…` : toast.message}
-      </p>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] break-words line-clamp-5">
+          {toast.message.length > 300 ? `${toast.message.slice(0, 300)}…` : toast.message}
+        </p>
+        {toast.action && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toast.action?.onClick();
+              dismiss();
+            }}
+            className="mt-2 rounded-md bg-white/20 hover:bg-white/30 px-2.5 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-1"
+          >
+            {toast.action.label}
+          </button>
+        )}
+      </div>
       <button
         onClick={dismiss}
         aria-label="Dismiss notification"
