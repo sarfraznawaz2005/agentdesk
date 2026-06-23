@@ -1,5 +1,18 @@
 [
     {
+        "version":  "2.4.0",
+        "title":  "New Features and Enhancements",
+        "changes":  [
+                        "Improved tool execution timing and enhanced sleep tool input handling.",
+                        "Added background music generation rules and documentation.",
+                        "Introduced a comprehensive remotion-video skill with extensive rules and assets.",
+                        "Added app background presets and synchronized theme settings on load.",
+                        "Enhanced project card and dashboard layout with improved styling and avatar integration.",
+                        "Improved expert dashboard with loading states and metric icons.",
+                        "Implemented provider change notifications and updated settings handling."
+                    ]
+    },
+    {
         "version":  "2.3.8",
         "title":  "Enhanced Parameter Injection",
         "changes":  [
