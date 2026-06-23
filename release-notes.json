@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.3.8",
+        "title":  "Enhanced Parameter Injection",
+        "changes":  [
+                        "Added support for conditional injection of non-standard thinking parameters."
+                    ]
+    },
+    {
         "version":  "2.3.7",
         "title":  "Enhanced Indexing Features",
         "changes":  [
