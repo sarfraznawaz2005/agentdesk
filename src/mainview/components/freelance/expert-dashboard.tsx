@@ -6,6 +6,17 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  Send,
+  Trophy,
+  PackageCheck,
+  Wallet,
+  Bell,
+  Target,
+  TrendingUp,
+  Timer,
+  type LucideIcon,
+} from "lucide-react";
 import { rpc } from "../../lib/rpc";
 import { getCurrencySymbol } from "../../../shared/freelance-currencies";
 import type {
@@ -22,9 +33,11 @@ export function ExpertDashboard() {
   const [timeline, setTimeline] = useState<Array<{ action: string; detail: string | null; outcome: string; createdAt: string }>>([]);
   // Show earnings in the user's preferred currency (Freelance → Settings).
   const [currencySym, setCurrencySym] = useState("$");
+  // Drives the metric-card skeleton until the first earnings fetch settles.
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(() => {
-    rpc.freelanceGetEarnings().then(setEarnings).catch(() => {});
+    rpc.freelanceGetEarnings().then(setEarnings).catch(() => {}).finally(() => setLoading(false));
     rpc.freelanceGetEscalations("open").then((r) => setEscalations(r.items)).catch(() => {});
     rpc.freelanceGetJobs().then((r) => setJobs(r.jobs)).catch(() => {});
     rpc.freelanceGetSettings().then((s) => setCurrencySym(getCurrencySymbol(s.preferredCurrency || "USD"))).catch(() => {});
@@ -66,17 +79,29 @@ export function ExpertDashboard() {
     <div className="flex flex-col gap-5">
       {/* Earnings + performance metrics — 4 per row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Bids sent" value={earnings?.bidsSent ?? 0} />
-        <Metric label="Jobs won" value={earnings?.jobsWon ?? 0} />
-        <Metric label="Delivered" value={earnings?.delivered ?? 0} />
-        <Metric label="Earned" value={earnings?.earned ?? 0} prefix={currencySym} />
-        <Metric label="Open alerts" value={earnings?.openEscalations ?? 0} highlight={(earnings?.openEscalations ?? 0) > 0} />
-        <Metric label="Win rate" value={earnings?.conversionPct ?? 0} suffix="%" />
-        <Metric label="Bids → won" value={`${earnings?.jobsWon ?? 0}/${earnings?.bidsSent ?? 0}`} />
-        <Metric
-          label="Avg response"
-          value={earnings?.avgResponseMinutes ? formatMinutes(earnings.avgResponseMinutes) : "—"}
-        />
+        {loading ? (
+          Array.from({ length: 8 }).map((_, i) => <MetricSkeleton key={i} />)
+        ) : (
+          <>
+            {/* Outcome first */}
+            <Metric label="Earned" value={earnings?.earned ?? 0} prefix={currencySym} icon={Wallet} accent="emerald" hero />
+            {/* Volume funnel: bids → won → delivered */}
+            <Metric label="Bids sent" value={earnings?.bidsSent ?? 0} icon={Send} accent="sky" />
+            <Metric label="Jobs won" value={earnings?.jobsWon ?? 0} icon={Trophy} accent="violet" />
+            <Metric label="Delivered" value={earnings?.delivered ?? 0} icon={PackageCheck} accent="indigo" />
+            {/* Performance ratios */}
+            <Metric label="Win rate" value={earnings?.conversionPct ?? 0} suffix="%" icon={Target} accent="cyan" />
+            <Metric label="Bids → won" value={`${earnings?.jobsWon ?? 0}/${earnings?.bidsSent ?? 0}`} icon={TrendingUp} accent="fuchsia" />
+            <Metric
+              label="Avg response"
+              value={earnings?.avgResponseMinutes ? formatMinutes(earnings.avgResponseMinutes) : "—"}
+              icon={Timer}
+              accent="rose"
+            />
+            {/* Operational alert last */}
+            <Metric label="Open alerts" value={earnings?.openEscalations ?? 0} icon={Bell} accent="amber" highlight={(earnings?.openEscalations ?? 0) > 0} />
+          </>
+        )}
       </div>
 
       {/* Escalations / needs-attention */}
@@ -168,23 +193,97 @@ export function ExpertDashboard() {
   );
 }
 
+// Accent palettes — full static class strings so Tailwind doesn't purge them.
+type Accent = "sky" | "violet" | "indigo" | "emerald" | "amber" | "cyan" | "fuchsia" | "rose";
+
+const ACCENTS: Record<Accent, string> = {
+  sky: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  indigo: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  cyan: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  fuchsia: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
+  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+};
+
 function Metric({
   label,
   value,
   prefix,
   suffix,
+  icon: Icon,
+  accent,
   highlight,
+  hero,
 }: {
   label: string;
   value: number | string;
   prefix?: string;
   suffix?: string;
+  icon: LucideIcon;
+  accent: Accent;
   highlight?: boolean;
+  hero?: boolean;
 }) {
+  // Hero card (headline metric): emerald gradient fill, inverted text/icon.
+  if (hero) {
+    return (
+      <div className="group relative overflow-hidden rounded-xl border border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/20 text-white transition-transform group-hover:scale-105">
+            <Icon className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-2xl font-bold leading-tight tracking-tight tabular-nums">
+              {prefix}
+              {value}
+              {suffix}
+            </div>
+            <div className="truncate text-xs font-medium text-white/80">{label}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`rounded-md border p-3 ${highlight ? "border-amber-500/50 bg-amber-500/10" : "border-border"}`}>
-      <div className="text-xl font-semibold">{prefix}{value}{suffix}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+    <div
+      className={`group relative overflow-hidden rounded-xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+        highlight ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-105 ${ACCENTS[accent]}`}
+        >
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-2xl font-bold leading-tight tracking-tight tabular-nums">
+            {prefix}
+            {value}
+            {suffix}
+          </div>
+          <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Placeholder shown while the first earnings fetch is in flight — mirrors the
+// Metric card shape so the grid doesn't jump when real data arrives.
+function MetricSkeleton() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-muted" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="h-6 w-12 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
     </div>
   );
 }
