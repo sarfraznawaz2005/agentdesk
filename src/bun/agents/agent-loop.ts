@@ -91,7 +91,7 @@ export function toolResultIsError(toolName: string, resultStr: string): boolean 
 				if (o.valid === false) return true;
 				// run_shell: a null exitCode means the command never ran
 				// (blocked, denied, or spawn failure) — that is a failure.
-				if ("exitCode" in o && o.exitCode === null) return true;
+				if (toolName === "run_shell" && "exitCode" in o && o.exitCode === null) return true;
 				return false; // parsed cleanly as a non-error envelope — trust it
 			}
 		} catch { /* partial/truncated JSON — fall through to the heuristic below */ }
@@ -953,6 +953,14 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		);
 	}
 
+	// verify_implementation is the kanban "self-check → move to review" gate; it
+	// only makes sense when this run is tied to a kanban task. Without a task id it
+	// would look up a non-existent task and error (and the prompt's MANDATORY-verify
+	// wording can still nudge the model to call it). Strip it for non-kanban runs.
+	if (!opts.kanbanTaskId) {
+		delete tools.verify_implementation;
+	}
+
 	// When auto-commit is enabled, remove git_commit from agent tools — the
 	// review cycle commits on task completion automatically.
 	try {
@@ -969,6 +977,28 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	]);
 	if (preHook || postHook) {
 		tools = wrapToolsWithHooks(tools, preHook, postHook, workspacePath);
+	}
+
+	// Record REAL tool execution timing — start when execute() is entered, end when
+	// it returns — keyed by toolCallId. onStepFinish runs AFTER execute, so without
+	// this its timeStart/timeEnd are stamped post-hoc and every tool shows ~0-2ms.
+	// Reading from this map lets the UI display actual durations (e.g. a 10s sleep).
+	const toolTimings = new Map<string, { start: number; end: number }>();
+	for (const [name, t] of Object.entries(tools)) {
+		const orig = (t as Tool & { execute?: (a: unknown, o: unknown) => Promise<unknown> }).execute;
+		if (typeof orig !== "function") continue;
+		tools[name] = {
+			...t,
+			execute: async (args: unknown, execOpts: { toolCallId?: string }) => {
+				const id = execOpts?.toolCallId;
+				const start = Date.now();
+				try {
+					return await orig(args, execOpts);
+				} finally {
+					if (id) toolTimings.set(id, { start, end: Date.now() });
+				}
+			},
+		} as Tool;
 	}
 
 	// --- 4. Insert agent_start message ---
@@ -1257,6 +1287,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				// Emit tool calls + results
 				for (const tc of step.toolCalls ?? []) {
 					const tcArgs = tc.input ?? tc.args;
+						const timing = toolTimings.get(tc.toolCallId);
 					const toolCallPart: MessagePart = {
 						id: crypto.randomUUID(),
 						messageId: startMsgId,
@@ -1266,7 +1297,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						toolInput: JSON.stringify(tcArgs),
 						toolState: "running",
 						sortOrder: sortOrder++,
-						timeStart: new Date().toISOString(),
+						timeStart: (timing ? new Date(timing.start) : new Date()).toISOString(),
 					};
 					if (persist) db.insert(messageParts).values({
 						id: toolCallPart.id, messageId: toolCallPart.messageId,
@@ -1281,7 +1312,8 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 					const tr = (step.toolResults ?? []).find(
 						(r: { toolCallId?: string }) => r.toolCallId === tc.toolCallId,
 					);
-					const endTime = new Date().toISOString();
+					const endTime = (timing ? new Date(timing.end) : new Date()).toISOString();
+					if (timing) toolTimings.delete(tc.toolCallId);
 					if (tr) {
 						const trAny = tr as Record<string, unknown>;
 						// v6: tool errors have type='tool-error' with error field instead of output

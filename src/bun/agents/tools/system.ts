@@ -139,18 +139,28 @@ const MAX_SLEEP_MS = 30_000; // 30 seconds cap
 
 const sleepTool = tool({
 	description:
-		"Pause execution for the specified number of milliseconds. " +
+		"Pause execution for a fixed duration. Pass EITHER `seconds` OR `ms`. " +
 		"Use this to wait for a dev server to start, a background process to complete, " +
-		"or a rate-limited API to reset. Maximum sleep is 30 seconds.",
+		"or a rate-limited API to reset. Maximum sleep is 30 seconds — for longer waits, " +
+		"sleep then poll (e.g. check_process) in a loop.",
 	inputSchema: z.object({
+		seconds: z
+			.number()
+			.min(0.1)
+			.optional()
+			.describe("Duration to sleep in seconds (capped at 30). Preferred — e.g. seconds: 10."),
 		ms: z
 			.number()
 			.int()
-			.min(100)
-			.describe("Duration to sleep in milliseconds (capped at 30000)"),
+			.min(1)
+			.optional()
+			.describe("Duration to sleep in milliseconds (capped at 30000). Alternative to `seconds`."),
 	}),
-	execute: async ({ ms }, { abortSignal }): Promise<string> => {
-		const duration = Math.min(ms, MAX_SLEEP_MS);
+	execute: async ({ seconds, ms }, { abortSignal }): Promise<string> => {
+		// Accept seconds or ms; if neither is given, default to a short 1s wait
+		// rather than silently not sleeping (the old behaviour when ms was missing).
+		const requestedMs = ms != null ? ms : seconds != null ? Math.round(seconds * 1000) : 1000;
+		const duration = Math.min(Math.max(requestedMs, 0), MAX_SLEEP_MS);
 
 		await new Promise<void>((resolve) => {
 			const timer = setTimeout(resolve, duration);
@@ -165,8 +175,8 @@ const sleepTool = tool({
 		const wokenEarly = abortSignal?.aborted ?? false;
 		return JSON.stringify({
 			slept: wokenEarly ? 0 : duration,
-			requestedMs: ms,
-			cappedAt: ms > MAX_SLEEP_MS ? MAX_SLEEP_MS : null,
+			requestedMs,
+			cappedAt: requestedMs > MAX_SLEEP_MS ? MAX_SLEEP_MS : null,
 			wokenEarly,
 		});
 	},

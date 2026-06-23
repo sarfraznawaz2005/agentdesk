@@ -130,7 +130,13 @@ const TOOL_META: Record<string, { Icon: React.ElementType; summary: (input: Reco
 
 	// System
 	environment_info: { Icon: Cpu, summary: () => "environment_info" },
-	sleep: { Icon: Cpu, summary: (a) => `sleep ${a.seconds ?? a.ms ?? ""}s` },
+	sleep: { Icon: Cpu, summary: (a) => {
+		// `ms` is milliseconds; `seconds` is seconds. Always display real seconds.
+		const secs = a.seconds != null ? Number(a.seconds)
+			: a.ms != null ? Number(a.ms) / 1000
+			: null;
+		return secs != null ? `sleep ${Number.isInteger(secs) ? secs : secs.toFixed(1)}s` : "sleep";
+	} },
 	run_background: { Icon: Play, summary: (a) => `run_background ${truncate(String(a.command ?? ""), 50)}` },
 	check_process: { Icon: Play, summary: (a) => `check_process ${a.pid ?? ""}`.trimEnd() },
 	kill_process: { Icon: Play, summary: (a) => `kill_process ${a.pid ?? ""}`.trimEnd() },

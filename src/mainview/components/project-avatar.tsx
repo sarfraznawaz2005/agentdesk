@@ -14,7 +14,7 @@ const CARD_GRADIENTS = [
 ];
 
 /** Pick a stable gradient for a project from a seed (prefer the immutable id). */
-export function projectGradient(seed: string): string {
+function projectGradient(seed: string): string {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
   return CARD_GRADIENTS[Math.abs(hash) % CARD_GRADIENTS.length];
