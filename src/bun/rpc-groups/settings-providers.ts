@@ -26,7 +26,11 @@ export const handlers: Record<string, (params: any) => any> = {
 
 	// AI Providers
 	getProviders: () => providersRpc.getProvidersList(),
-	saveProvider: (params) => providersRpc.saveProviderHandler(params),
+	saveProvider: async (params) => {
+		const result = await providersRpc.saveProviderHandler(params);
+		if (result.success) broadcastToWebview("providersChanged", { reason: "saved" });
+		return result;
+	},
 	testProvider: (params) => {
 		// Fire-and-forget: run the test async (can exceed 10 s RPC timeout)
 		// and push the result back via a webview message.
@@ -45,7 +49,11 @@ export const handlers: Record<string, (params: any) => any> = {
 	listProviderModelsById: (params) => providersRpc.listProviderModelsByIdHandler(params.providerId),
 	getProviderApiKey: (params) => providersRpc.getProviderApiKeyHandler(params.id),
 	testProviderWithCredentials: (params) => providersRpc.testProviderWithCredentialsHandler(params),
-	deleteProvider: (params) => providersRpc.deleteProviderHandler(params.id),
+	deleteProvider: async (params) => {
+		const result = await providersRpc.deleteProviderHandler(params.id);
+		if (result.success) broadcastToWebview("providersChanged", { reason: "deleted" });
+		return result;
+	},
 	getConnectedProviderModels: () => providersRpc.getConnectedProviderModelsHandler(),
 	checkModelToolSupport: (params) => providersRpc.checkModelToolSupportHandler(params),
 	getClaudeSubscriptionEnabled: () => providersRpc.getClaudeSubscriptionEnabledHandler(),

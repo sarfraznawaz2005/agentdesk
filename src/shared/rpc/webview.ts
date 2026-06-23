@@ -52,6 +52,12 @@ export type WebviewSchema = RPCSchema<{
       error?: string;
     };
 
+    // Provider list mutated (created/updated/deleted) — lets any open view
+    // refresh its provider list/count, including across windows.
+    providersChanged: {
+      reason: "saved" | "deleted";
+    };
+
     // Directory selected from native picker (fire-and-forget)
     directorySelected: {
       path: string | null;

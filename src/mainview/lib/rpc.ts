@@ -115,6 +115,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       providerTestResult: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:provider-test-result", { detail: payload }));
       },
+      providersChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:providers-changed", { detail: payload }));
+      },
       directorySelected: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:directory-selected", { detail: payload }));
       },

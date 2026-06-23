@@ -779,6 +779,17 @@ export function ProvidersSettings() {
     loadProviders();
   }, []);
 
+  // Keep the list/count truthful when providers change elsewhere
+  // (another window, the onboarding flow, the freelance wizard, …).
+  useEffect(() => {
+    function onProvidersChanged() {
+      loadProviders();
+    }
+    window.addEventListener("agentdesk:providers-changed", onProvidersChanged);
+    return () =>
+      window.removeEventListener("agentdesk:providers-changed", onProvidersChanged);
+  }, []);
+
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
@@ -861,7 +872,14 @@ export function ProvidersSettings() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold">AI Providers</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold">AI Providers</h2>
+            {!loading && providers.length > 0 && (
+              <Badge variant="secondary" className="pointer-events-none">
+                {providers.length}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             Manage the AI providers AgentDesk uses to run agents.
           </p>

@@ -70,6 +70,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   presentPlan: "agentdesk:plan-presented",
   kanbanTaskUpdated: "agentdesk:kanban-task-updated",
   providerTestResult: "agentdesk:provider-test-result",
+  providersChanged: "agentdesk:providers-changed",
   directorySelected: "agentdesk:directory-selected",
   shellApprovalRequest: "agentdesk:shell-approval-request",
   shellApprovalExpired: "agentdesk:shell-approval-expired",
