@@ -386,7 +386,7 @@ export function DashboardPage() {
 						}
 						action={
 							IS_REMOTE ? null : (
-								<Button onClick={() => setModalOpen(true)}>
+								<Button onClick={() => setModalOpen(true)} className="btn-gradient-slide border-0 text-white">
 									<Plus aria-hidden="true" />
 									New Project
 								</Button>

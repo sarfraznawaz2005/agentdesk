@@ -22,6 +22,7 @@ import { rpc } from "@/lib/rpc";
 import { IS_REMOTE } from "@/lib/remote-transport";
 import { useUnreadStore, hasAnyUnread } from "@/stores/unread-store";
 import { UnreadDot } from "@/components/ui/unread-dot";
+import { ProjectAvatar } from "@/components/project-avatar";
 
 interface Project {
   id: string;
@@ -54,14 +55,6 @@ const STATUS_OPTIONS: { value: BadgeStatus; label: string; color: string }[] = [
   { value: "completed", label: "Completed", color: "text-blue-500" },
   { value: "archived", label: "Archived", color: "text-muted-foreground" },
 ];
-
-const STATUS_DOT_COLOR: Record<string, string> = {
-  active: "bg-green-500",
-  paused: "bg-yellow-500",
-  completed: "bg-blue-500",
-  deleted: "bg-red-500",
-  archived: "bg-muted-foreground",
-};
 
 type BadgeStatus = "active" | "paused" | "completed" | "archived" | "deleted";
 
@@ -101,12 +94,14 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
     <>
       <div
         className={cn(
-          "group relative flex w-full min-w-0 flex-1 flex-col rounded-xl border-2 bg-card transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "group relative flex w-full min-w-0 flex-1 flex-col overflow-hidden rounded-xl border-2 bg-card shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           isDeleted
             ? "opacity-50 cursor-default"
             : workspaceOffline
-              ? "cursor-pointer border-amber-400/60 hover:border-amber-400"
-              : "cursor-pointer hover:border-primary/40",
+              ? "cursor-pointer border-amber-400/60 hover:border-amber-400 hover:shadow-md"
+              : "cursor-pointer hover:border-primary/40 hover:shadow-lg",
+          // Animated multi-color border while agents are actively working.
+          !isDeleted && activeAgentCount > 0 && "card-agent-working border-transparent hover:border-transparent",
         )}
         role="article"
         tabIndex={0}
@@ -122,11 +117,13 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
         {/* Card body */}
         <div className={cn("flex flex-1 flex-col gap-3 px-4", collapsed ? "pt-2.5 pb-1.5" : "pt-2.5 pb-4")}>
           {/* Top row: status + name + menu */}
-          <div className="flex items-start gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1 pt-0.5">
-              {collapsed && (
-                <span className={cn("shrink-0 w-2 h-2 rounded-full", STATUS_DOT_COLOR[project.status] ?? "bg-muted-foreground")} aria-hidden="true" />
-              )}
+          <div className={cn("flex gap-2.5", collapsed ? "items-center" : "items-start")}>
+            <ProjectAvatar
+              id={project.id}
+              name={project.name}
+              className={cn(collapsed && "h-5 w-5 text-[10px]")}
+            />
+            <div className={cn("flex items-center gap-2 min-w-0 flex-1", !collapsed && "pt-0.5")}>
               <h3 className="text-sm font-semibold leading-snug line-clamp-1 min-w-0">
                 {project.name}{collapsed && hasTasks && ` (${taskPct}%)`}
               </h3>

@@ -229,9 +229,9 @@ function Metric({
   // Hero card (headline metric): emerald gradient fill, inverted text/icon.
   if (hero) {
     return (
-      <div className="group relative overflow-hidden rounded-xl border border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg">
+      <div className="relative overflow-hidden rounded-xl border border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-md">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/20 text-white transition-transform group-hover:scale-105">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/20 text-white">
             <Icon className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -249,13 +249,13 @@ function Metric({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+      className={`relative overflow-hidden rounded-xl border p-4 shadow-sm ${
         highlight ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
       }`}
     >
       <div className="flex items-center gap-3">
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-105 ${ACCENTS[accent]}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ACCENTS[accent]}`}
         >
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>

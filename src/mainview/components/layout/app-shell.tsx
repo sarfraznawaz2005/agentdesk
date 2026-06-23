@@ -19,6 +19,7 @@ import { ChatFab } from "@/components/dashboard/chat-fab";
 import { MaintenanceOverlay } from "@/components/layout/maintenance-overlay";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
+import { ProjectAvatar } from "@/components/project-avatar";
 import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { IS_REMOTE } from "@/lib/remote-transport";
@@ -338,6 +339,7 @@ function AppShellContent() {
           workspacePath={projectWorkspacePath ?? undefined}
           dataPath={location.pathname.split("/").filter(Boolean)[0] === "settings" ? dataPath ?? undefined : undefined}
           phrase={headerPhrase ?? undefined}
+          beforeTitle={projectId ? <ProjectAvatar id={projectId} name={pageTitle} className="h-7 w-7 text-xs" /> : undefined}
           afterTitle={projectId ? <ProjectBranchBadge projectId={projectId} /> : undefined}
           onMenuClick={() => setMobileNavOpen(true)}
         >

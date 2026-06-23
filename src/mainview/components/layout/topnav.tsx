@@ -11,6 +11,8 @@ interface TopNavProps {
   /** When set, shows a button that opens the app's data directory in the file explorer. */
   dataPath?: string;
   phrase?: string;
+  /** Rendered immediately before the title (e.g. the project avatar). */
+  beforeTitle?: ReactNode;
   /** Rendered immediately after the title + folder buttons (e.g. the live branch badge). */
   afterTitle?: ReactNode;
   /** Opens the off-canvas sidebar on mobile (TASK-487). Renders a hamburger when set. */
@@ -18,7 +20,7 @@ interface TopNavProps {
   children?: ReactNode;
 }
 
-export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, onMenuClick, children }: TopNavProps) {
+export function TopNav({ title, workspacePath, dataPath, phrase, beforeTitle, afterTitle, onMenuClick, children }: TopNavProps) {
   return (
     <header
       className={cn(
@@ -45,6 +47,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, afterTitle, onM
             <Menu className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
+        {beforeTitle}
         <h1 className="text-lg font-semibold text-foreground truncate">
           {title}
         </h1>

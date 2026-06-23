@@ -62,6 +62,18 @@
   100% { background-position: -200% center; }
 }
 
+/* Two-color gradient that slides continuously left → right. */
+@keyframes gradient-slide {
+  from { background-position: 200% center; }
+  to   { background-position: 0% center; }
+}
+
+/* Multi-color gradient that travels across the card border while an agent works. */
+@keyframes border-gradient-move {
+  from { background-position: 0% center; }
+  to   { background-position: 200% center; }
+}
+
 @layer utilities {
   .text-shimmer-fire {
     background: linear-gradient(
@@ -79,6 +91,41 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     animation: shimmer-fire 5s linear infinite;
+  }
+
+  .btn-gradient-slide {
+    background-image: linear-gradient(90deg, #2563eb 0%, #9333ea 50%, #2563eb 100%);
+    background-size: 200% auto;
+    animation: gradient-slide 3s linear infinite;
+  }
+
+  /* Animated multi-color gradient border — applied while agents are working a
+     project. Uses the mask trick so the gradient shows only as the border ring
+     (respects the card's rounded corners). */
+  .card-agent-working::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(
+      90deg,
+      #3b82f6,
+      #8b5cf6,
+      #ec4899,
+      #f59e0b,
+      #10b981,
+      #3b82f6
+    );
+    background-size: 200% auto;
+    animation: border-gradient-move 2.5s linear infinite;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
   }
 }
 
