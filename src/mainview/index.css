@@ -132,6 +132,225 @@
 /* Restore pointer cursor on anchors after href stripping */
 a { cursor: pointer; }
 
+/* ===========================================================================
+   App background presets
+   ---------------------------------------------------------------------------
+   The app canvas (.app-background, on the app-shell root) and the settings
+   preview swatches (.app-bg-swatch) both consume these CSS variables. A preset
+   is a `.appbg-<id>` class — applied to <html> for the live canvas, or to a
+   swatch wrapper for previews. Each preset defines a light value plus a dark
+   override (matched whether `.dark` is on the same element as the preset class,
+   i.e. <html>, or an ancestor, i.e. the swatch case).
+   Defaults fall back to the theme background with no image → identical to the
+   original look when no preset is chosen.
+   =========================================================================== */
+.app-background {
+  background-color: var(--app-bg-color, hsl(var(--background)));
+  background-image: var(--app-bg-image, none);
+  background-size: var(--app-bg-size, auto);
+  background-position: center;
+  background-attachment: fixed;
+}
+/* Full-scope presets (colors + gradients) also paint the app-shell root so the
+   canvas extends behind the translucent sidebar. Line/mark patterns omit the
+   `appbg-full` marker, so the root stays solid and they never bleed through. */
+.appbg-full .app-background-root {
+  background-color: var(--app-bg-color, hsl(var(--background)));
+  background-image: var(--app-bg-image, none);
+  background-size: var(--app-bg-size, auto);
+  background-position: center;
+  background-attachment: fixed;
+}
+/* Swatches live inside the app where <html> already carries the active preset's
+   vars, so reset all three here; preset classes (defined later, same specificity)
+   override only what they set — preventing the active background from leaking in. */
+.app-bg-swatch {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image: none;
+  --app-bg-size: auto;
+  background-color: var(--app-bg-color);
+  background-image: var(--app-bg-image);
+  background-size: var(--app-bg-size);
+  background-position: center;
+}
+
+/* --- Solid color tints --- */
+.appbg-slate { --app-bg-color: #f1f5f9; }
+.dark .appbg-slate, .dark.appbg-slate { --app-bg-color: #0f172a; }
+
+.appbg-sand { --app-bg-color: #faf6ef; }
+.dark .appbg-sand, .dark.appbg-sand { --app-bg-color: #1c1917; }
+
+.appbg-mint { --app-bg-color: #f0fbf6; }
+.dark .appbg-mint, .dark.appbg-mint { --app-bg-color: #0c1a14; }
+
+.appbg-lavender { --app-bg-color: #f6f4fe; }
+.dark .appbg-lavender, .dark.appbg-lavender { --app-bg-color: #16121f; }
+
+.appbg-sky { --app-bg-color: #eff6ff; }
+.dark .appbg-sky, .dark.appbg-sky { --app-bg-color: #0c1623; }
+
+.appbg-rose { --app-bg-color: #fef1f6; }
+.dark .appbg-rose, .dark.appbg-rose { --app-bg-color: #1d0f16; }
+
+.appbg-amber { --app-bg-color: #fdf6e9; }
+.dark .appbg-amber, .dark.appbg-amber { --app-bg-color: #1f1708; }
+
+.appbg-teal { --app-bg-color: #ecfdfa; }
+.dark .appbg-teal, .dark.appbg-teal { --app-bg-color: #062a26; }
+
+.appbg-graphite { --app-bg-color: #d9dde2; }
+.dark .appbg-graphite, .dark.appbg-graphite { --app-bg-color: #15171c; }
+
+/* --- Patterns (subtle, theme-aware) --- */
+.appbg-dots {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image: radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1.5px);
+  --app-bg-size: 18px 18px;
+}
+.dark .appbg-dots, .dark.appbg-dots {
+  --app-bg-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px);
+}
+
+.appbg-grid {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image:
+    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  --app-bg-size: 22px 22px;
+}
+.dark .appbg-grid, .dark.appbg-grid {
+  --app-bg-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+}
+
+.appbg-iso {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image:
+    repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(60deg, rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(120deg, rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 20px);
+}
+.dark .appbg-iso, .dark.appbg-iso {
+  --app-bg-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(60deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 20px);
+}
+
+.appbg-diagonal {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image: repeating-linear-gradient(
+    45deg,
+    rgba(15, 23, 42, 0.04) 0,
+    rgba(15, 23, 42, 0.04) 1px,
+    transparent 0,
+    transparent 10px
+  );
+}
+.dark .appbg-diagonal, .dark.appbg-diagonal {
+  --app-bg-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.05) 0,
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 0,
+    transparent 10px
+  );
+}
+
+.appbg-checks {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image: repeating-conic-gradient(rgba(15, 23, 42, 0.045) 0% 25%, transparent 0% 50%);
+  --app-bg-size: 28px 28px;
+}
+.dark .appbg-checks, .dark.appbg-checks {
+  --app-bg-image: repeating-conic-gradient(rgba(255, 255, 255, 0.05) 0% 25%, transparent 0% 50%);
+}
+
+.appbg-lines {
+  --app-bg-color: hsl(var(--background));
+  --app-bg-image: repeating-linear-gradient(rgba(15, 23, 42, 0.05) 0 1px, transparent 1px 14px);
+}
+.dark .appbg-lines, .dark.appbg-lines {
+  --app-bg-image: repeating-linear-gradient(rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 14px);
+}
+
+.appbg-mesh {
+  --app-bg-color: #f8fafc;
+  --app-bg-image:
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.18) 0px, transparent 50%);
+  --app-bg-size: cover;
+}
+.dark .appbg-mesh, .dark.appbg-mesh {
+  --app-bg-color: #0b1020;
+  --app-bg-image:
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.25) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.20) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.18) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.22) 0px, transparent 50%);
+}
+
+.appbg-aurora {
+  --app-bg-color: #f5f7fb;
+  --app-bg-image:
+    radial-gradient(at 20% 20%, rgba(56, 189, 248, 0.20) 0px, transparent 45%),
+    radial-gradient(at 80% 30%, rgba(168, 85, 247, 0.18) 0px, transparent 45%),
+    radial-gradient(at 50% 80%, rgba(244, 114, 182, 0.16) 0px, transparent 45%);
+  --app-bg-size: cover;
+}
+.dark .appbg-aurora, .dark.appbg-aurora {
+  --app-bg-color: #0a0f1d;
+  --app-bg-image:
+    radial-gradient(at 20% 20%, rgba(56, 189, 248, 0.22) 0px, transparent 45%),
+    radial-gradient(at 80% 30%, rgba(168, 85, 247, 0.22) 0px, transparent 45%),
+    radial-gradient(at 50% 80%, rgba(244, 114, 182, 0.18) 0px, transparent 45%);
+}
+
+/* Linear gradients — distinct from the radial mesh/aurora. */
+.appbg-sunset {
+  --app-bg-color: #fff7f0;
+  --app-bg-image: linear-gradient(
+    135deg,
+    rgba(251, 146, 60, 0.22),
+    rgba(244, 114, 182, 0.20) 45%,
+    rgba(168, 85, 247, 0.20)
+  );
+  --app-bg-size: cover;
+}
+.dark .appbg-sunset, .dark.appbg-sunset {
+  --app-bg-color: #160d12;
+  --app-bg-image: linear-gradient(
+    135deg,
+    rgba(251, 146, 60, 0.25),
+    rgba(244, 114, 182, 0.22) 45%,
+    rgba(168, 85, 247, 0.22)
+  );
+}
+
+.appbg-ocean {
+  --app-bg-color: #eef9ff;
+  --app-bg-image: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.22),
+    rgba(45, 212, 191, 0.20) 50%,
+    rgba(59, 130, 246, 0.20)
+  );
+  --app-bg-size: cover;
+}
+.dark .appbg-ocean, .dark.appbg-ocean {
+  --app-bg-color: #08131c;
+  --app-bg-image: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.20),
+    rgba(45, 212, 191, 0.18) 50%,
+    rgba(59, 130, 246, 0.20)
+  );
+}
+
 @layer base {
   :root {
     color-scheme: light;

@@ -318,7 +318,7 @@ function AppShellContent() {
 
   return (
     <TooltipProvider>
-    <div className="relative flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="app-background-root relative flex h-screen bg-background text-foreground overflow-hidden">
       <Sidebar
         collapsed={sidebarCollapsed}
         mobileOpen={mobileNavOpen}
@@ -332,7 +332,7 @@ function AppShellContent() {
           });
         }}
       />
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="app-background flex-1 flex flex-col min-w-0">
         <ConnectionStatus />
         <TopNav
           title={pageTitle}

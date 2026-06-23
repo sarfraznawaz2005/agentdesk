@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Check } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,18 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { getStoredTheme, setTheme, type Theme } from "@/lib/theme";
+import {
+  APP_BACKGROUNDS,
+  getStoredBackground,
+  setBackground,
+} from "@/lib/app-background";
 import { cn } from "@/lib/utils";
 
 type SidebarDefault = "expanded" | "collapsed";
 
 export function AppearanceSettings() {
   const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+  const [background, setBackgroundState] = useState<string>(getStoredBackground);
   const [sidebarDefault, setSidebarDefault] = useState<SidebarDefault>("expanded");
   const [dashboardQuotes, setDashboardQuotes] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -58,6 +64,12 @@ export function AppearanceSettings() {
   async function handleThemeSelect(selected: Theme) {
     setThemeState(selected);
     await setTheme(selected);
+  }
+
+  // Background applies immediately (like theme) so users can try presets live.
+  async function handleBackgroundSelect(id: string) {
+    setBackgroundState(id);
+    await setBackground(id);
   }
 
   const handleSave = useCallback(async () => {
@@ -138,6 +150,62 @@ export function AppearanceSettings() {
               </button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Background card */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Background</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Pick a color or pattern for the app canvas. Applies instantly and
+            adapts to your current {theme} theme.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {(["color", "pattern"] as const).map((category) => (
+            <div key={category} className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                {category === "color" ? "Colors" : "Patterns"}
+              </Label>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {APP_BACKGROUNDS.filter((p) => p.category === category).map((preset) => {
+                  const selected = background === preset.id;
+                  return (
+                    <button
+                      key={preset.id || "default"}
+                      type="button"
+                      onClick={() => handleBackgroundSelect(preset.id)}
+                      aria-pressed={selected}
+                      className={cn(
+                        "group flex flex-col gap-1.5 rounded-lg border p-1.5 text-left transition-colors",
+                        selected
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "app-bg-swatch relative h-14 w-full overflow-hidden rounded-md border border-border/60",
+                          preset.id && `appbg-${preset.id}`,
+                        )}
+                      >
+                        {/* Mock cards to show how content floats over the canvas */}
+                        <div className="absolute left-2 top-2 h-3.5 w-9 rounded-sm border border-border/60 bg-card shadow-sm" />
+                        <div className="absolute left-2 top-7 h-3 w-12 rounded-sm border border-border/40 bg-card/80" />
+                        {selected && (
+                          <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                            <Check className="h-3 w-3" aria-hidden="true" />
+                          </span>
+                        )}
+                      </div>
+                      <span className="px-0.5 text-xs font-medium">{preset.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 

@@ -39,10 +39,11 @@ DOM events that any component can subscribe to.
    bar that pops up on link hover. TanStack navigates via `onClick`, so the
    `href` is dead weight anyway.
 2. It mounts `<App />` inside `<StrictMode>` (`main.tsx:33`).
-3. `src/mainview/App.tsx:6` calls `initTheme()` **synchronously at module load**
-   (before first paint) so the dark/light class is on `<html>` with no flash;
-   `syncThemeFromDB()` then runs in an effect to reconcile localStorage with the
-   persisted DB value (`App.tsx:9-11`). See [[#Theming]].
+3. `src/mainview/App.tsx` calls `initTheme()` **and** `initBackground()`
+   **synchronously at module load** (before first paint) so the dark/light class
+   and the `appbg-<id>` background-preset class are on `<html>` with no flash;
+   `syncThemeFromDB()` + `syncBackgroundFromDB()` then run in an effect to
+   reconcile localStorage with the persisted DB values. See [[#Theming]].
 4. `App` renders `<RouterProvider router={router} />` — that is the entire app.
 
 ## Routing
@@ -174,6 +175,21 @@ the DB (`appearance/theme_mode`) as the durable store. `initTheme()` runs
 synchronously pre-render (`theme.ts:15-17`); `setTheme()` writes both stores and
 fires `agentdesk:theme-changed` (`theme.ts:19-24`). Only `light`/`dark` are
 supported.
+
+**App background presets** (`lib/app-background.ts`) follow the same dual-store
+pattern: localStorage (`agentdesk_app_bg`) + DB (`appearance/app_background`),
+with `initBackground()` pre-render. A preset is a `.appbg-<id>` class applied to
+`<html>`; the app-shell `<main>` carries `.app-background`, which paints the
+content-area canvas from `--app-bg-color`/`--app-bg-image`/`--app-bg-size` (all
+defined per-preset in `index.css`, with light values + a `.dark` override so each
+preset adapts to the active theme). Each preset has a **scope**: `full` (solid
+colors + gradients — no lines) also adds an `appbg-full` marker so the app-shell
+root (`.app-background-root`) paints too, extending the canvas behind the
+translucent sidebar; `content` (line/mark patterns) omits the marker so the root
+stays solid `bg-background` and patterns never bleed through the sidebar. Cards/nav
+keep their solid `bg-card`/`bg-background` and float over the canvas. The Appearance settings tab previews presets via `.app-bg-swatch`
+(which resets the vars locally so the active background doesn't leak into the
+preview). `APP_BACKGROUNDS` is the registry; the empty id = default theme bg.
 
 ## Key files
 

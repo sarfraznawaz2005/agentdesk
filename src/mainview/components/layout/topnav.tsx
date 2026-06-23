@@ -25,7 +25,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, beforeTitle, af
     <header
       className={cn(
         "relative h-14 shrink-0 flex items-center justify-between px-4 md:px-6",
-        "border-b border-border bg-background"
+        "border-b border-border bg-background/60 backdrop-blur-sm"
       )}
     >
       {phrase && (
