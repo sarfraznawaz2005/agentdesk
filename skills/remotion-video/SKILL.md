@@ -273,6 +273,10 @@ When needing to visualize audio (spectrum bars, waveforms, bass-reactive effects
 
 When needing to use sound effects, load the [./rules/sfx.md](./rules/sfx.md) file for more information.
 
+## Background music
+
+When the user wants background music for a video but has not supplied an audio file, generate an original royalty-free track procedurally — no API key, no model download. Load [./rules/background-music.md](./rules/background-music.md) for how to pick a mood, generate `public/music/bg.wav` with a dependency-free script, and play it under the video with fades.
+
 ## Visual and pixel effects
 
 When creating a visual effect, prefer: 1. normal Remotion/HTML/CSS/SVG/filter/blend/mask animation, 2. a listed effect via [rules/effects.md](rules/effects.md), including on HTML rendered through `<HtmlInCanvas>`, 3. a custom `createEffect()` via [rules/effects.md](rules/effects.md) when the user asks for a reusable/project-specific effect, 4. custom `<HtmlInCanvas onPaint>` via [rules/html-in-canvas.md](rules/html-in-canvas.md) only if no effect fits.
