@@ -7,6 +7,16 @@ import { getDefaultModel } from "./models";
 import { PROVIDER_HEADERS } from "./headers";
 
 /**
+ * Endpoints (keyed by normalized base URL) that have rejected the non-standard
+ * `enable_thinking` / `thinking_budget` body params. Populated at runtime the
+ * first time a backend 4xx-rejects them (e.g. Mistral answers 422
+ * `extra_forbidden`), so every subsequent request to that endpoint skips the
+ * injection entirely. In-memory for the process lifetime — it resets on restart
+ * and is cheap to re-learn (one transparent retry).
+ */
+const THINKING_PARAMS_UNSUPPORTED = new Set<string>();
+
+/**
  * Normalize a base URL by stripping endpoint suffixes and trailing slashes.
  */
 function normalizeBaseUrl(url: string): string {
@@ -55,20 +65,43 @@ export class OpenAIAdapter implements ProviderAdapter {
 		// This avoids the v6 issue where @ai-sdk/openai defaults to the Responses API
 		// which third-party providers (Z.AI, LM Studio, etc.) don't support.
 		if (this.isCustom) {
-			if (thinkingBudgetTokens) {
-				// For thinking budget injection, intercept fetch to add enable_thinking
-				const budget = thinkingBudgetTokens;
+			const baseUrlKey = this.normalizedBaseUrl ?? "";
+			// `enable_thinking` / `thinking_budget` is a non-standard convention
+			// (Qwen / vLLM / SGLang / DashScope). Only inject it when a budget is
+			// set AND this endpoint hasn't already rejected it — strict backends
+			// (e.g. Mistral) 422 on unknown body fields.
+			const wantsThinking = !!thinkingBudgetTokens && !THINKING_PARAMS_UNSUPPORTED.has(baseUrlKey);
+
+			if (wantsThinking) {
+				const budget = thinkingBudgetTokens as number;
 				const interceptFetch = async (
 					url: Parameters<typeof fetch>[0],
 					init: Parameters<typeof fetch>[1],
 				): ReturnType<typeof fetch> => {
-					if (budget && init?.body && typeof init.body === "string") {
+					let injectedBody: string | null = null;
+					if (init?.body && typeof init.body === "string") {
 						const body = JSON.parse(init.body) as Record<string, unknown>;
 						body.enable_thinking = true;
 						body.thinking_budget = budget;
-						init = { ...init, body: JSON.stringify(body) };
+						injectedBody = JSON.stringify(body);
+						init = { ...init, body: injectedBody };
 					}
-					return globalThis.fetch(url, init);
+					const response = await globalThis.fetch(url, init);
+
+					// Self-heal: if the endpoint rejected our injected params, remember
+					// the endpoint and transparently retry once without them so the
+					// caller never sees the failure. Subsequent requests skip injection.
+					if (injectedBody && !response.ok && (response.status === 422 || response.status === 400)) {
+						const errText = await response.clone().text().catch(() => "");
+						if (/enable_thinking|thinking_budget/.test(errText)) {
+							THINKING_PARAMS_UNSUPPORTED.add(baseUrlKey);
+							const body = JSON.parse(injectedBody) as Record<string, unknown>;
+							delete body.enable_thinking;
+							delete body.thinking_budget;
+							return globalThis.fetch(url, { ...init, body: JSON.stringify(body) });
+						}
+					}
+					return response;
 				};
 				const provider = createOpenAICompatible({
 					name: "custom",
