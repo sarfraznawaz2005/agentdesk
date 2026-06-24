@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ProvidersSettings } from "./settings/providers";
+import { ModelsSettings } from "./settings/models";
 import { GeneralSettings } from "./settings/general";
 import { ConstitutionSettings } from "./settings/constitution";
 import { GithubSettings } from "./settings/github";
@@ -68,7 +69,8 @@ export function SettingsPage() {
 
         <TabsContent value="ai">
           <SubTabs tabs={[
-            { value: "providers", label: "AI Providers", content: <ProvidersSettings /> },
+            { value: "providers", label: "Providers", content: <ProvidersSettings /> },
+            { value: "models", label: "Models", content: <ModelsSettings /> },
             { value: "mcp", label: "MCP Servers", content: <McpSettings /> },
             { value: "constitution", label: "Constitution", content: <ConstitutionSettings /> },
             { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },

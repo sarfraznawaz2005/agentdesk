@@ -2,7 +2,7 @@
 title: Database Tables Reference
 type: reference
 status: verified
-verified_at: 2026-06-22
+verified_at: 2026-06-25
 sources:
   - src/bun/db/schema.ts
   - src/bun/db/migrate.ts
@@ -11,6 +11,7 @@ sources:
   - src/bun/db/migrations/v4_inline-agents.ts
   - src/bun/db/migrations/v33_external-issues.ts
   - src/bun/db/migrations/v49_agent-memories.ts
+  - src/bun/db/migrations/v52_model-preferences.ts
 tags: [database]
 ---
 
@@ -34,7 +35,7 @@ into existence, and the distinction matters when you change schema:
 The runner in `src/bun/db/migrate.ts:117` tracks applied migrations via
 `PRAGMA user_version`, applies the pending `migrations[]` array
 (`migrate.ts:69`) inside a transaction each, auto-backing-up first on an existing
-DB. The latest version is **v49** (`migrate.ts`).
+DB. The latest version is **v52** (`migrate.ts`).
 
 Two consequences for anyone editing the DB:
 
@@ -57,6 +58,7 @@ every column — read the cited line for the full definition.
 |---|---|---|---|
 | `settings` | `:9` | Generic JSON key/value config store. Feature-branch name lives here under `currentFeatureBranch:<projectId>`; per-source issue config under category `issue_sources`. | `key` (unique), `value` (JSON), `category` |
 | `ai_providers` | `:29` | Configured AI provider creds + prefs. **apiKey stored plaintext** (encryption deferred). | `providerType`, `apiKey`, `isDefault` (only one =1) |
+| `model_preferences` | `:1046` (v52) | Global, app-wide per-model state for the chat model picker + Settings → AI → Models. **Sparse** — a row exists only when a model deviates from defaults, so existing users (zero rows) get "all enabled, no favourites, no recents" for free. `last_used_at` stamped on the PM turn (`engine.ts` → `recordModelUsageHandler`) powers the "Latest" section; `is_favorite` powers "Favorites"; `is_enabled=0` hides a model from chat **and** is enforced at run time — `engine.ts:getDefaultProviderRow` (via `isModelDisabled`) falls a disabled-but-selected model back to the provider default so a disabled model can never run; the picker mirrors this fallback in the UI. Mutations broadcast `modelPreferencesChanged` (→ `agentdesk:model-preferences-changed`) so the picker + Models page live-sync across views/windows. `UNIQUE(provider_id, model_id)` upsert key; FK cascade-deletes with its provider. | `providerId` (FK, cascade), `modelId`, `isEnabled`, `isFavorite`, `lastUsedAt` |
 | `projects` | `:59` | A project = local workspace dir + optional GitHub repo. Case-insensitive UNIQUE(`name`) via `idx_projects_name_nocase` (COLLATE NOCASE) added in v51 (skipped if pre-existing dupes). | `workspacePath`, `githubUrl`, `workingBranch`, `status` |
 | `agents` | `:83` | Built-in + custom agent definitions. `isBuiltin=1` for shipped agents. Case-insensitive UNIQUE(`name`) + UNIQUE(`display_name`) via `idx_agents_name_nocase` / `idx_agents_display_name_nocase` (COLLATE NOCASE) added in v51 (skipped if pre-existing dupes). | `name`, `systemPrompt`, `useSystemPromptOnly`, `availableToPm`, `thinkingBudget` |
 | `agent_tools` | `:126` | Tool allow-list per agent. **Zero rows = agent gets the full tool registry** (how Playground/Issue-Fixer agents get everything). | `agentId` (FK), `toolName`, `isEnabled` |

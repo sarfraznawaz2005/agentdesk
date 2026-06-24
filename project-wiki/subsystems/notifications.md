@@ -2,7 +2,7 @@
 title: Notifications
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-25
 sources:
   - src/bun/notifications/desktop.ts
   - src/bun/notifications/native.ts
@@ -93,6 +93,11 @@ Because `sendDesktopNotification` is ungated, several features add their own
   **not** focused (`engine-manager.ts:507-525`). The idle check is wrapped in a
   `setTimeout(0)` so the engine's `finally` clears `pmProcessing` first
   (`engine-manager.ts:508-511`).
+- **Agent error**: gated by the `error_notification` setting (default on) and,
+  like session-complete, only fired when the app is **not** focused. Fires from
+  the `onStreamError` callback (`engine-manager.ts`, the same callback that
+  broadcasts `streamError`) so the red in-chat error and the toast share a
+  trigger point.
 - **Shell approval required**: always fired so the user can approve while away
   (`engine-manager.ts:354-357`).
 - **Agent needs input**: `request_human_input` (`engine-manager.ts:440`).

@@ -58,6 +58,25 @@ export const handlers: Record<string, (params: any) => any> = {
 	checkModelToolSupport: (params) => providersRpc.checkModelToolSupportHandler(params),
 	getClaudeSubscriptionEnabled: () => providersRpc.getClaudeSubscriptionEnabledHandler(),
 
+	// Per-model preferences (enabled/favourite/last-used)
+	getModelPreferences: () => providersRpc.getModelPreferencesHandler(),
+	setModelEnabled: async (params) => {
+		const result = await providersRpc.setModelEnabledHandler(params);
+		broadcastToWebview("modelPreferencesChanged", { reason: "enabled" });
+		return result;
+	},
+	setModelsEnabled: async (params) => {
+		const result = await providersRpc.setModelsEnabledHandler(params);
+		broadcastToWebview("modelPreferencesChanged", { reason: "enabled" });
+		return result;
+	},
+	setModelFavorite: async (params) => {
+		const result = await providersRpc.setModelFavoriteHandler(params);
+		broadcastToWebview("modelPreferencesChanged", { reason: "favorite" });
+		return result;
+	},
+	recordModelUsage: (params) => providersRpc.recordModelUsageHandler(params),
+
 	// Prompt Debug Log
 	clearPromptLog: () => clearPromptLog(),
 	openPromptLog: () => openPromptLog(),

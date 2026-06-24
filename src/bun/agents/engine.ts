@@ -6,11 +6,12 @@ import { streamText, stepCountIs } from "ai";
 function getPreviewPrompt(_projectId: string): string {
 	return `The user ran /preview. Call the \`preview_project\` tool immediately — it handles project detection, server startup, browser navigation, screenshot, and annotation toolbar injection automatically. No sub-agents needed. After the tool returns, summarise in one short sentence (project type + URL) and tell the user the annotation toolbar is active and will persist across refresh and navigation.`;
 }
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
-import { messages, conversations, settings, aiProviders, projects, agents, kanbanTasks } from "../db/schema";
+import { messages, conversations, settings, aiProviders, projects, agents, kanbanTasks, modelPreferences } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { recordModelUsageHandler } from "../rpc/providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
 import { buildContext } from "./context";
 import { getPMSystemPrompt } from "./prompts";
@@ -254,6 +255,10 @@ export class AgentEngine {
 				planMode,
 			);
 			const { row: providerRow, modelId } = await this.getDefaultProviderRow();
+
+			// Record this model as just-used so it surfaces in the chat picker's
+			// "Latest" section. Fire-and-forget — never block the PM turn on it.
+			recordModelUsageHandler({ providerId: providerRow.id, modelId }).catch(() => {});
 
 			// 4. Build context once — reuse tokenCount for compaction threshold check
 			//    (previously loaded messages separately for estimation, causing a double query)
@@ -1104,7 +1109,9 @@ export class AgentEngine {
 				.where(eq(aiProviders.id, chatProviderId)).limit(1);
 			if (overrideRows.length > 0) {
 				const row = overrideRows[0];
-				const modelId = chatModelId ?? row.defaultModel ?? getDefaultModel(row.providerType);
+				// A disabled model must never run — fall back to the provider default.
+				const enabledChatModel = chatModelId && !(await this.isModelDisabled(row.id, chatModelId)) ? chatModelId : null;
+				const modelId = enabledChatModel ?? row.defaultModel ?? getDefaultModel(row.providerType);
 				return { row, modelId };
 			}
 		}
@@ -1127,10 +1134,21 @@ export class AgentEngine {
 		}
 
 		const row = rows[0];
+		// A disabled model must never run — fall back to the provider default.
+		const enabledChatModel = chatModelId && !(await this.isModelDisabled(row.id, chatModelId)) ? chatModelId : null;
 		const modelId =
-			chatModelId ?? row.defaultModel ?? getDefaultModel(row.providerType);
+			enabledChatModel ?? row.defaultModel ?? getDefaultModel(row.providerType);
 
 		return { row, modelId };
+	}
+
+	/** True iff the model has an explicit `is_enabled = 0` row in model_preferences. */
+	private async isModelDisabled(providerId: string, modelId: string): Promise<boolean> {
+		const rows = await db.select({ isEnabled: modelPreferences.isEnabled })
+			.from(modelPreferences)
+			.where(and(eq(modelPreferences.providerId, providerId), eq(modelPreferences.modelId, modelId)))
+			.limit(1);
+		return rows.length > 0 && rows[0].isEnabled === 0;
 	}
 
 	/** Triggers AI summarization for a conversation in the background. */

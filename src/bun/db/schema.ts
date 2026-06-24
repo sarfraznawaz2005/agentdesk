@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -1034,3 +1034,37 @@ export const remoteSyncRuns = sqliteTable("remote_sync_runs", {
 	startedAt:   text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 	finishedAt:  text("finished_at"),
 });
+
+// ---------------------------------------------------------------------------
+// model_preferences — global, app-wide per-model state (v52)
+// ---------------------------------------------------------------------------
+// Enabled/disabled, favourite, and last-used timestamp per model. Sparse by
+// design — a row exists only when a model deviates from the defaults (enabled,
+// not favourite, never used). Existing users with no rows transparently get
+// "all models enabled, no favourites, no recents". Drives the chat model
+// picker's Latest/Favorites sections and the Settings → AI → Models page.
+export const modelPreferences = sqliteTable(
+	"model_preferences",
+	{
+		id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+		providerId: text("provider_id")
+			.notNull()
+			.references(() => aiProviders.id, { onDelete: "cascade" }),
+		modelId: text("model_id").notNull(),
+		// Boolean stored as 0/1 — absence of a row implies enabled (1)
+		isEnabled: integer("is_enabled").notNull().default(1),
+		// Boolean stored as 0/1
+		isFavorite: integer("is_favorite").notNull().default(0),
+		// ISO timestamp of the most recent chat turn that actually ran on this
+		// model; NULL = never used. Powers the "Latest" section (sorted desc).
+		lastUsedAt: text("last_used_at"),
+		createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	},
+	(t) => ({
+		uniqProviderModel: uniqueIndex("idx_model_prefs_provider_model").on(
+			t.providerId,
+			t.modelId,
+		),
+	}),
+);

@@ -74,3 +74,12 @@ export function clearContextLimitCache(): void {
 export function getDefaultModel(providerType: string): string {
 	return PROVIDER_DEFAULT_MODELS[providerType] ?? "gpt-4o";
 }
+
+/**
+ * Removes duplicate model IDs while preserving first-occurrence order.
+ * Some provider model endpoints (e.g. Mistral) list the same id more than once;
+ * dedupe centrally so no model-listing surface ever renders duplicates.
+ */
+export function dedupeModels(models: string[]): string[] {
+	return [...new Set(models)];
+}

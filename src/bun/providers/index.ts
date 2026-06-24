@@ -12,7 +12,7 @@ import { ClaudeSubscriptionAdapter } from "./claude-subscription";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 
 export type { ProviderAdapter, ProviderConfig };
-export { getContextLimit, getDefaultModel } from "./models";
+export { getContextLimit, getDefaultModel, dedupeModels } from "./models";
 
 const SUPPORTED_TYPES = ["anthropic", "openai", "google", "deepseek", "groq", "xai", "openrouter", "ollama", "zai", "opencode", "custom", "claude-subscription"] as const;
 

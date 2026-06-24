@@ -64,4 +64,30 @@ export type ProvidersRequests = {
     params: Record<string, never>;
     response: { enabled: boolean };
   };
+  getModelPreferences: {
+    params: Record<string, never>;
+    response: Array<{
+      providerId: string;
+      modelId: string;
+      isEnabled: boolean;
+      isFavorite: boolean;
+      lastUsedAt: string | null;
+    }>;
+  };
+  setModelEnabled: {
+    params: { providerId: string; modelId: string; enabled: boolean };
+    response: { success: boolean };
+  };
+  setModelsEnabled: {
+    params: { providerId: string; modelIds: string[]; enabled: boolean };
+    response: { success: boolean };
+  };
+  setModelFavorite: {
+    params: { providerId: string; modelId: string; favorite: boolean };
+    response: { success: boolean };
+  };
+  recordModelUsage: {
+    params: { providerId: string; modelId: string };
+    response: { success: boolean };
+  };
 };

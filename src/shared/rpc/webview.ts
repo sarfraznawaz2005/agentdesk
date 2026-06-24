@@ -58,6 +58,12 @@ export type WebviewSchema = RPCSchema<{
       reason: "saved" | "deleted";
     };
 
+    // Per-model preferences mutated (enabled/favourite) — lets any open view
+    // refresh the chat model picker / Models settings page.
+    modelPreferencesChanged: {
+      reason: "enabled" | "favorite";
+    };
+
     // Directory selected from native picker (fire-and-forget)
     directorySelected: {
       path: string | null;

@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
-import { aiProviders } from "../db/schema";
-import { createProviderAdapter, type ProviderConfig } from "../providers";
+import { aiProviders, modelPreferences } from "../db/schema";
+import { createProviderAdapter, dedupeModels, type ProviderConfig } from "../providers";
 import { logAudit } from "../db/audit";
 import { isClaudeSubscriptionEnabled } from "../claude/feature-flag";
 
@@ -282,7 +282,7 @@ export async function getConnectedProviderModelsHandler(): Promise<
 			providerId: row.id,
 			providerName: row.name,
 			providerType: row.providerType,
-			models,
+			models: dedupeModels(models),
 		});
 	}
 
@@ -310,7 +310,7 @@ export async function listProviderModelsHandler(params: {
 		};
 		const adapter = createProviderAdapter(config);
 		const models = await adapter.listModels();
-		return { success: true, models };
+		return { success: true, models: dedupeModels(models) };
 	} catch (err) {
 		const error = err instanceof Error ? err.message : String(err);
 		return { success: false, models: [], error };
@@ -390,9 +390,96 @@ export async function listProviderModelsByIdHandler(providerId: string): Promise
 			defaultModel: row.defaultModel,
 		});
 		const models = await adapter.listModels();
-		return { success: true, models };
+		return { success: true, models: dedupeModels(models) };
 	} catch (err) {
 		const error = err instanceof Error ? err.message : String(err);
 		return { success: false, models: [], error };
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Per-model preferences (global, app-wide): enabled/disabled, favourite,
+// last-used. Backs the chat model picker's Latest/Favorites sections and the
+// Settings → AI → Models page. Rows are sparse — absence implies the defaults
+// (enabled, not favourite, never used), so existing users need no backfill.
+// ---------------------------------------------------------------------------
+
+/** Return every stored model preference row. */
+export async function getModelPreferencesHandler(): Promise<
+	Array<{ providerId: string; modelId: string; isEnabled: boolean; isFavorite: boolean; lastUsedAt: string | null }>
+> {
+	const rows = await db.select().from(modelPreferences);
+	return rows.map((r) => ({
+		providerId: r.providerId,
+		modelId: r.modelId,
+		isEnabled: r.isEnabled === 1,
+		isFavorite: r.isFavorite === 1,
+		lastUsedAt: r.lastUsedAt,
+	}));
+}
+
+/** Upsert one or more columns of a model's preference row, keyed on (providerId, modelId). */
+async function upsertModelPreference(
+	providerId: string,
+	modelId: string,
+	patch: Partial<{ isEnabled: number; isFavorite: number; lastUsedAt: string }>,
+): Promise<void> {
+	const now = new Date().toISOString();
+	await db
+		.insert(modelPreferences)
+		.values({ providerId, modelId, ...patch, updatedAt: now })
+		.onConflictDoUpdate({
+			target: [modelPreferences.providerId, modelPreferences.modelId],
+			set: { ...patch, updatedAt: now },
+		});
+}
+
+/** Enable or disable a model in the picker. Disabled models are hidden from chat. */
+export async function setModelEnabledHandler(params: {
+	providerId: string;
+	modelId: string;
+	enabled: boolean;
+}): Promise<{ success: boolean }> {
+	await upsertModelPreference(params.providerId, params.modelId, {
+		isEnabled: params.enabled ? 1 : 0,
+	});
+	return { success: true };
+}
+
+/** Enable or disable every given model of a provider at once (bulk master toggle). */
+export async function setModelsEnabledHandler(params: {
+	providerId: string;
+	modelIds: string[];
+	enabled: boolean;
+}): Promise<{ success: boolean }> {
+	for (const modelId of params.modelIds) {
+		await upsertModelPreference(params.providerId, modelId, {
+			isEnabled: params.enabled ? 1 : 0,
+		});
+	}
+	return { success: true };
+}
+
+/** Mark or unmark a model as a favourite (surfaces it in the Favorites section). */
+export async function setModelFavoriteHandler(params: {
+	providerId: string;
+	modelId: string;
+	favorite: boolean;
+}): Promise<{ success: boolean }> {
+	await upsertModelPreference(params.providerId, params.modelId, {
+		isFavorite: params.favorite ? 1 : 0,
+	});
+	return { success: true };
+}
+
+/** Stamp a model as just-used so it floats to the top of the Latest section. */
+export async function recordModelUsageHandler(params: {
+	providerId: string;
+	modelId: string;
+}): Promise<{ success: boolean }> {
+	if (!params.providerId || !params.modelId) return { success: false };
+	await upsertModelPreference(params.providerId, params.modelId, {
+		lastUsedAt: new Date().toISOString(),
+	});
+	return { success: true };
 }

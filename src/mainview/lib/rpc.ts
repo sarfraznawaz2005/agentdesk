@@ -118,6 +118,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       providersChanged: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:providers-changed", { detail: payload }));
       },
+      modelPreferencesChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:model-preferences-changed", { detail: payload }));
+      },
       directorySelected: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:directory-selected", { detail: payload }));
       },
@@ -454,6 +457,25 @@ export const rpc = {
   /** Check whether a model supports the tool_choice parameter (OpenRouter only). */
   checkModelToolSupport: (params: { providerType: string; apiKey?: string; providerId?: string; modelId: string }) =>
     electroviewRpc.request.checkModelToolSupport(params),
+
+  /** Fetch all per-model preferences (enabled/favourite/last-used), global app-wide. */
+  getModelPreferences: () => electroviewRpc.request.getModelPreferences({}),
+
+  /** Enable or disable a model in the chat picker. */
+  setModelEnabled: (providerId: string, modelId: string, enabled: boolean) =>
+    electroviewRpc.request.setModelEnabled({ providerId, modelId, enabled }),
+
+  /** Enable or disable every given model of a provider at once. */
+  setModelsEnabled: (providerId: string, modelIds: string[], enabled: boolean) =>
+    electroviewRpc.request.setModelsEnabled({ providerId, modelIds, enabled }),
+
+  /** Mark or unmark a model as a favourite. */
+  setModelFavorite: (providerId: string, modelId: string, favorite: boolean) =>
+    electroviewRpc.request.setModelFavorite({ providerId, modelId, favorite }),
+
+  /** Stamp a model as just-used (floats it to the top of Latest). */
+  recordModelUsage: (providerId: string, modelId: string) =>
+    electroviewRpc.request.recordModelUsage({ providerId, modelId }),
 
   // ---- Projects ------------------------------------------------------------
 

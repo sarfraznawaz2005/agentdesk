@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { ChevronDown, Search, Brain, Cpu, Check, ShieldCheck, Hammer, Eye } from "lucide-react";
+import { ChevronDown, Search, Brain, Cpu, Check, ShieldCheck, Hammer, Eye, Star, Clock, X } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tip, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,42 @@ interface ProviderModels {
   providerName: string;
   providerType: string;
   models: string[];
+}
+
+/** Per-model state, keyed by `${providerId}|${modelId}`. */
+type ModelPrefMap = Record<string, { isEnabled: boolean; isFavorite: boolean; lastUsedAt: string | null }>;
+
+/** A flattened, renderable model entry inside a section. */
+interface ModelEntry {
+  providerId: string;
+  providerName: string;
+  providerType: string;
+  model: string;
+}
+
+/** A titled group of model entries rendered in the picker. */
+interface ModelSection {
+  key: string;
+  label: string;
+  icon: "latest" | "favorites" | null;
+  entries: ModelEntry[];
+}
+
+const prefKey = (providerId: string, model: string) => `${providerId}|${model}`;
+
+/** Build the keyed preference map from the raw RPC rows. */
+function buildPrefMap(
+  rows: Array<{ providerId: string; modelId: string; isEnabled: boolean; isFavorite: boolean; lastUsedAt: string | null }>,
+): ModelPrefMap {
+  const map: ModelPrefMap = {};
+  for (const r of rows) {
+    map[prefKey(r.providerId, r.modelId)] = {
+      isEnabled: r.isEnabled,
+      isFavorite: r.isFavorite,
+      lastUsedAt: r.lastUsedAt,
+    };
+  }
+  return map;
 }
 
 const THINKING_LEVELS = [
@@ -30,6 +66,10 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [providers, setProviders] = useState<ProviderModels[]>([]);
+  const [prefs, setPrefs] = useState<ModelPrefMap>({});
+  // providerId → that provider's default model, used to fall back when the
+  // currently selected model gets disabled.
+  const [defaultsByProvider, setDefaultsByProvider] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
@@ -41,12 +81,13 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   const searchRef = useRef<HTMLInputElement>(null);
   const hasFetched = useRef(false);
 
-  // Load saved selection from project settings + resolve default model name
+  // Load saved selection from project settings + provider defaults + prefs.
   useEffect(() => {
     Promise.all([
       rpc.getProjectSettings(projectId),
       rpc.getProviders(),
-    ]).then(([settings, providersList]) => {
+      rpc.getModelPreferences(),
+    ]).then(([settings, providersList, prefRows]) => {
       const s = settings as Record<string, string>;
       const pid = s.chatProviderId ?? "";
       const mid = s.chatModelId ?? "";
@@ -58,16 +99,63 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
       const defaultProv = providersList.find((p) => p.isDefault) ?? providersList[0];
       const defaultModel = defaultProv?.defaultModel ?? defaultProv?.providerType ?? "";
 
-      // If user hasn't made a selection, use the default provider/model
-      setSelectedProviderId(pid || defaultProv?.id || "");
-      setSelectedModelId(mid || defaultModel);
+      // Map each provider to its default model for disabled-selection fallback.
+      const defaults: Record<string, string> = {};
+      for (const p of providersList) if (p.defaultModel) defaults[p.id] = p.defaultModel;
+      setDefaultsByProvider(defaults);
+      const map = buildPrefMap(prefRows);
+      setPrefs(map);
+
+      // Resolve the effective selection. If user hasn't chosen, use the default
+      // provider/model; if the chosen model is now disabled, fall back to the
+      // provider default and persist the correction.
+      const selProvider = pid || defaultProv?.id || "";
+      let selModel = mid || defaultModel;
+      const selPref = map[prefKey(selProvider, selModel)];
+      if (selPref && !selPref.isEnabled && defaults[selProvider] && defaults[selProvider] !== selModel) {
+        selModel = defaults[selProvider];
+        rpc.saveProjectSetting(projectId, "chatModelId", selModel).catch(() => {});
+      }
+      setSelectedProviderId(selProvider);
+      setSelectedModelId(selModel);
       setSelectedThinking(tl);
       setDefaultModelName(defaultModel);
     }).catch(() => {});
   }, [projectId]);
 
-  // Fetch models when popover opens for the first time
+  // Load per-model preferences (enabled/favourite/last-used). Cheap, so refresh
+  // every time the popover opens and whenever they change in another view.
+  // If the currently selected model has since been disabled, fall back to the
+  // provider's default — done here (a callback, not a reactive effect) so the
+  // correction rides along with the data load.
+  const fetchPrefs = useCallback(async () => {
+    try {
+      const map = buildPrefMap(await rpc.getModelPreferences());
+      setPrefs(map);
+      if (selectedProviderId && selectedModelId) {
+        const pref = map[prefKey(selectedProviderId, selectedModelId)];
+        const fallback = defaultsByProvider[selectedProviderId];
+        if (pref && !pref.isEnabled && fallback && fallback !== selectedModelId) {
+          setSelectedModelId(fallback);
+          rpc.saveProjectSetting(projectId, "chatModelId", fallback).catch(() => {});
+        }
+      }
+    } catch {
+      // Failed to fetch prefs — fall back to defaults (all enabled, none favourite)
+    }
+  }, [projectId, selectedProviderId, selectedModelId, defaultsByProvider]);
+
+  // Cross-view live sync: refresh prefs when they change anywhere (e.g. the
+  // Settings → Models page toggles enabled/favourite), including across windows.
+  useEffect(() => {
+    const onChanged = () => { fetchPrefs(); };
+    window.addEventListener("agentdesk:model-preferences-changed", onChanged);
+    return () => window.removeEventListener("agentdesk:model-preferences-changed", onChanged);
+  }, [fetchPrefs]);
+
+  // Fetch models (once) and preferences (every open) when the popover opens.
   const fetchModels = useCallback(async () => {
+    fetchPrefs();
     if (hasFetched.current) return;
     setLoading(true);
     try {
@@ -78,7 +166,22 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
       // Failed to fetch — show empty
     }
     setLoading(false);
-  }, []);
+  }, [fetchPrefs]);
+
+  // Toggle a model's favourite state, optimistically updating local prefs.
+  const toggleFavorite = useCallback(async (providerId: string, model: string) => {
+    const key = prefKey(providerId, model);
+    const next = !(prefs[key]?.isFavorite ?? false);
+    setPrefs((prev) => ({
+      ...prev,
+      [key]: {
+        isEnabled: prev[key]?.isEnabled ?? true,
+        isFavorite: next,
+        lastUsedAt: prev[key]?.lastUsedAt ?? null,
+      },
+    }));
+    await rpc.setModelFavorite(providerId, model, next).catch(() => {});
+  }, [prefs]);
 
   const handleOpenChange = useCallback((isOpen: boolean) => {
     setOpen(isOpen);
@@ -136,17 +239,54 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
     return THINKING_LEVELS.find((t) => t.value === selectedThinking)?.label ?? "Default";
   }, [selectedThinking]);
 
-  // Filter providers/models by search
-  const filtered = useMemo(() => {
+  // Build the rendered sections: Latest (top) → Favorites → provider groups.
+  // Disabled models are hidden everywhere; search filters across all sections.
+  const sections = useMemo<ModelSection[]>(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return providers;
-    return providers
-      .map((p) => ({
-        ...p,
-        models: p.models.filter((m) => m.toLowerCase().includes(q) || p.providerName.toLowerCase().includes(q)),
-      }))
-      .filter((p) => p.models.length > 0 || p.providerName.toLowerCase().includes(q));
-  }, [providers, search]);
+    const matches = (providerName: string, model: string) =>
+      !q || model.toLowerCase().includes(q) || providerName.toLowerCase().includes(q);
+
+    const providerSections: ModelSection[] = [];
+    const allEnabled: ModelEntry[] = [];
+    for (const p of providers) {
+      const entries: ModelEntry[] = [];
+      for (const model of p.models) {
+        const pref = prefs[prefKey(p.providerId, model)];
+        if (pref && !pref.isEnabled) continue; // disabled — hidden from chat
+        if (!matches(p.providerName, model)) continue;
+        const entry: ModelEntry = {
+          providerId: p.providerId,
+          providerName: p.providerName,
+          providerType: p.providerType,
+          model,
+        };
+        entries.push(entry);
+        allEnabled.push(entry);
+      }
+      if (entries.length > 0) {
+        providerSections.push({ key: `prov-${p.providerId}`, label: p.providerName, icon: null, entries });
+      }
+    }
+
+    const top: ModelSection[] = [];
+
+    // Latest — enabled models with a last-used timestamp, most recent first, cap 10.
+    const latest = allEnabled
+      .filter((e) => prefs[prefKey(e.providerId, e.model)]?.lastUsedAt)
+      .sort((a, b) => {
+        const ta = prefs[prefKey(a.providerId, a.model)]?.lastUsedAt ?? "";
+        const tb = prefs[prefKey(b.providerId, b.model)]?.lastUsedAt ?? "";
+        return tb.localeCompare(ta);
+      })
+      .slice(0, 10);
+    if (latest.length > 0) top.push({ key: "latest", label: "Latest", icon: "latest", entries: latest });
+
+    // Favorites — enabled, favourited models.
+    const favorites = allEnabled.filter((e) => prefs[prefKey(e.providerId, e.model)]?.isFavorite);
+    if (favorites.length > 0) top.push({ key: "favorites", label: "Favorites", icon: "favorites", entries: favorites });
+
+    return [...top, ...providerSections];
+  }, [providers, prefs, search]);
 
   return (
     <div className="flex flex-wrap items-center gap-2 gap-y-2 px-4 pb-1.5">
@@ -209,6 +349,16 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
               placeholder="Search models..."
               className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/60"
             />
+            {search && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setSearch("")}
+                className="shrink-0 p-0.5 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Model list */}
@@ -218,41 +368,53 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
                 Loading models...
               </div>
             )}
-            {!loading && filtered.length === 0 && (
+            {!loading && sections.length === 0 && (
               <div className="px-3 py-4 text-xs text-muted-foreground/60 text-center">
-                No providers configured
+                {providers.length === 0 ? "No providers configured" : "No models found"}
               </div>
             )}
-            {!loading && filtered.map((provider, idx) => (
-              <div key={provider.providerId}>
-                {/* Provider separator + header */}
+            {!loading && sections.map((section, idx) => (
+              <div key={section.key}>
+                {/* Section separator + header */}
                 {idx > 0 && <hr className="border-t border-border my-1" />}
-                <div className="px-3 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                  {provider.providerName}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                  {section.icon === "latest" && <Clock className="w-3 h-3" />}
+                  {section.icon === "favorites" && <Star className="w-3 h-3 fill-current" />}
+                  <span>{section.label}</span>
                 </div>
-                {provider.models.length === 0 ? (
-                  <div className="px-3 py-1.5 text-xs text-muted-foreground/60 italic">
-                    No Models Found
-                  </div>
-                ) : (
-                  provider.models.map((model) => {
-                    const isSelected = selectedModelId === model;
-                    return (
+                {section.entries.map((entry) => {
+                  const isSelected = selectedProviderId === entry.providerId && selectedModelId === entry.model;
+                  const isFavorite = prefs[prefKey(entry.providerId, entry.model)]?.isFavorite ?? false;
+                  return (
+                    <div
+                      key={`${section.key}-${entry.providerId}-${entry.model}`}
+                      className={cn(
+                        "group/row w-full flex items-center gap-1 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors cursor-pointer",
+                        isSelected && "bg-indigo-50 text-indigo-700 font-medium",
+                      )}
+                      onClick={() => selectModel(entry.providerId, entry.model)}
+                    >
+                      <span className="flex-1 truncate text-left">{entry.model}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" />}
                       <button
-                        key={`${provider.providerId}-${model}`}
                         type="button"
-                        onClick={() => selectModel(provider.providerId, model)}
+                        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(entry.providerId, entry.model);
+                        }}
                         className={cn(
-                          "w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors",
-                          isSelected && "bg-indigo-50 text-indigo-700 font-medium",
+                          "shrink-0 p-0.5 rounded hover:bg-muted transition-opacity",
+                          isFavorite
+                            ? "text-amber-500 opacity-100"
+                            : "text-muted-foreground/50 opacity-0 group-hover/row:opacity-100",
                         )}
                       >
-                        <span>{model}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" />}
+                        <Star className={cn("w-3.5 h-3.5", isFavorite && "fill-current")} />
                       </button>
-                    );
-                  })
-                )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>

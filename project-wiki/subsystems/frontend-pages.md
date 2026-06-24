@@ -2,7 +2,7 @@
 title: Frontend Pages & Routing
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-25
 sources:
   - src/mainview/router.tsx
   - src/mainview/components/layout/app-shell.tsx
@@ -73,7 +73,7 @@ flowchart TD
 
 **`ProjectPage`** (`project.tsx:31`) is the heart of the app. It is a tab host (chat, kanban, docs, git, issue-tracker, remote, deploy, settings, plus plugin tabs) where `activeTab` is local state (`project.tsx:33`), and each tab lazily renders a heavy component (`project.tsx:352-367`). Its hard part is *data lifecycle on project switch*: a project-scoped `conversationsLoadedForProject` marker (not a boolean) guards a chained pair of effects so a late-resolving `loadConversations` from the previous project can't auto-select the wrong conversation (`project.tsx:99-162`). It coordinates the chat store and kanban store, resets both on unmount, and defers kanban load to idle time so chat is the critical path (`project.tsx:116-120`). It also bridges `agentdesk:switch-tab` window events from child components into tab changes (`project.tsx:76-83`) and manages per-tab unread dots via the unread store (`project.tsx:37-96`).
 
-**`SettingsPage`** (`settings.tsx:47`) is a two-level tab hub: top-level Radix `Tabs` (General / AI / Channels / Integrations / Notifications / System / Plugins) each containing a hand-rolled `SubTabs` component (`settings.tsx:22-45`) that fans out to the leaf editors under `pages/settings/*`. The Plugins top-level tab simply embeds the `PluginsPage` component (`settings.tsx:106-108`). All of this is local state — no settings sub-page has its own route.
+**`SettingsPage`** (`settings.tsx:47`) is a two-level tab hub: top-level Radix `Tabs` (General / AI / Channels / Integrations / Notifications / System / Plugins) each containing a hand-rolled `SubTabs` component (`settings.tsx:22-45`) that fans out to the leaf editors under `pages/settings/*`. The Plugins top-level tab simply embeds the `PluginsPage` component (`settings.tsx:106-108`). All of this is local state — no settings sub-page has its own route. The **AI** tab's sub-tabs are `Providers` (credentials/connection) and `Models` (`pages/settings/models.tsx`) — the latter manages global per-model enable/disable + favourite via the `model_preferences` table; favourites and disabled state are mirrored by the chat model picker (`components/chat/model-selector.tsx`, which adds top-pinned `Latest` + `Favorites` sections). See [[database-tables]].
 
 **`OnboardingPage`** (`onboarding.tsx`) is a six-step provider wizard (`onboarding.tsx:30,52`) that the shell force-routes to on first launch; on completion the user navigates back to `/`.
 

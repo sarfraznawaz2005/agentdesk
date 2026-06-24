@@ -642,6 +642,21 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					conversationId: cid,
 					error,
 				});
+
+				// Desktop notification on agent error (errors shown in red in chat).
+				// Mirrors the session-complete gate: only when the app is not focused
+				// and the "error_notification" setting is enabled (default: on).
+				if (appFocused) return;
+				const settingRow = db.select({ value: settings.value }).from(settings)
+					.where(eq(settings.key, "error_notification")).get();
+				const enabled = settingRow ? settingRow.value !== "\"false\"" && settingRow.value !== "false" : true;
+				if (!enabled) return;
+				const row = db.select({ name: projects.name }).from(projects).where(eq(projects.id, projectId)).get();
+				const name = row?.name ?? "Project";
+				sendDesktopNotification(
+					`${name} — Error`,
+					(error || "An error occurred while the agent was working.").slice(0, 200),
+				).catch(() => {});
 			},
 			onNewMessage: (params) => {
 				broadcastToWebview("newMessage", params);

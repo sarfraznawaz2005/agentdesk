@@ -2,11 +2,12 @@
 title: AI Providers
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-25
 sources:
   - src/bun/providers/index.ts
   - src/bun/providers/types.ts
   - src/bun/providers/models.ts
+  - src/bun/rpc/providers.ts
   - src/bun/providers/headers.ts
   - src/bun/providers/anthropic.ts
   - src/bun/providers/openai.ts
@@ -81,6 +82,13 @@ and never branches on vendor, except for the few SDK-shaped knobs noted below.
    non-chat models (embed/whisper/tts/dall-e/etc.) before sorting
    (`src/bun/providers/openai.ts:107-120`). OpenRouter skips the network call and
    just returns its curated list (`src/bun/providers/openrouter.ts:43-45`).
+   **Adapters may return duplicate ids** (some vendor endpoints, e.g. Mistral,
+   list a model twice), so the RPC handlers that feed the UI
+   (`getConnectedProviderModelsHandler`, `listProviderModelsHandler`,
+   `listProviderModelsByIdHandler` in `src/bun/rpc/providers.ts`) run every list
+   through `dedupeModels()` (`models.ts`) — order-preserving `Set` dedup — so no
+   model-listing surface (Models settings tab, chat picker, provider dialog)
+   renders duplicates.
 
 6. **Defaults and context limits** live in `src/bun/providers/models.ts`:
    - `getDefaultModel(providerType)` looks up `PROVIDER_DEFAULT_MODELS`

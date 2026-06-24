@@ -281,13 +281,15 @@ export function NotificationSettings() {
   const [saving, setSaving] = useState(false);
   const [sessionCompleteNotif, setSessionCompleteNotif] = useState(true);
   const [sessionCompleteNotifDirty, setSessionCompleteNotifDirty] = useState(false);
+  const [errorNotif, setErrorNotif] = useState(true);
+  const [errorNotifDirty, setErrorNotifDirty] = useState(false);
   const [taskDoneChannelNotify, setTaskDoneChannelNotify] = useState(true);
   const [taskDoneChannelNotifyDirty, setTaskDoneChannelNotifyDirty] = useState(false);
   const [freelanceEnabled, setFreelanceEnabled] = useState(false);
   const [freelanceNewListingsNotif, setFreelanceNewListingsNotif] = useState(true);
   const [freelanceNewListingsNotifDirty, setFreelanceNewListingsNotifDirty] = useState(false);
 
-  const anyDirty = Object.values(dirty).some(Boolean) || sessionCompleteNotifDirty || taskDoneChannelNotifyDirty || freelanceNewListingsNotifDirty;
+  const anyDirty = Object.values(dirty).some(Boolean) || sessionCompleteNotifDirty || errorNotifDirty || taskDoneChannelNotifyDirty || freelanceNewListingsNotifDirty;
 
   // ---- Load on mount -------------------------------------------------------
 
@@ -320,6 +322,9 @@ export function NotificationSettings() {
 
         const stored = await rpc.getSetting("session_complete_notification", "notifications");
         setSessionCompleteNotif(stored === null ? true : String(stored) !== "false");
+
+        const errorStored = await rpc.getSetting("error_notification", "notifications");
+        setErrorNotif(errorStored === null ? true : String(errorStored) !== "false");
 
         const taskDoneStored = await rpc.getSetting("task_done_channel_notify", "notifications");
         setTaskDoneChannelNotify(taskDoneStored === null ? true : String(taskDoneStored) !== "false");
@@ -400,6 +405,9 @@ export function NotificationSettings() {
         ...(sessionCompleteNotifDirty
           ? [rpc.saveSetting("session_complete_notification", String(sessionCompleteNotif), "notifications")]
           : []),
+        ...(errorNotifDirty
+          ? [rpc.saveSetting("error_notification", String(errorNotif), "notifications")]
+          : []),
         ...(taskDoneChannelNotifyDirty
           ? [rpc.saveSetting("task_done_channel_notify", String(taskDoneChannelNotify), "notifications")]
           : []),
@@ -425,6 +433,7 @@ export function NotificationSettings() {
 
       setDirty(buildDefaultDirty());
       setSessionCompleteNotifDirty(false);
+      setErrorNotifDirty(false);
       setTaskDoneChannelNotifyDirty(false);
       setFreelanceNewListingsNotifDirty(false);
       toast("success", "Notification preferences saved.");
@@ -433,7 +442,7 @@ export function NotificationSettings() {
     } finally {
       setSaving(false);
     }
-  }, [prefs, dirty, sessionCompleteNotif, sessionCompleteNotifDirty, taskDoneChannelNotify, taskDoneChannelNotifyDirty, freelanceNewListingsNotif, freelanceNewListingsNotifDirty]);
+  }, [prefs, dirty, sessionCompleteNotif, sessionCompleteNotifDirty, errorNotif, errorNotifDirty, taskDoneChannelNotify, taskDoneChannelNotifyDirty, freelanceNewListingsNotif, freelanceNewListingsNotifDirty]);
 
   // ---- Loading skeleton -----------------------------------------------------
 
@@ -479,6 +488,17 @@ export function NotificationSettings() {
               onToggle={() => {
                 setSessionCompleteNotif((v) => !v);
                 setSessionCompleteNotifDirty(true);
+              }}
+            />
+            <Separator />
+            <ToggleRow
+              id="error-notif"
+              label="Error notification"
+              description="Show a desktop notification when an agent hits an error in the project chat — only fires when the app is not in focus"
+              value={errorNotif}
+              onToggle={() => {
+                setErrorNotif((v) => !v);
+                setErrorNotifDirty(true);
               }}
             />
             {freelanceEnabled && (
