@@ -9,6 +9,7 @@ import { Utils } from "electrobun/bun";
 import { existsSync, mkdirSync, appendFileSync, statSync, renameSync, unlinkSync } from "fs";
 import { join } from "path";
 import { logAudit } from "./audit";
+import type { LogWarningsFunction, Warning } from "ai";
 
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_OLD_FILES = 2;
@@ -112,6 +113,66 @@ export function logError(
 	if (type !== "uncaughtException") {
 		logErrorToAudit(source, type, message);
 	}
+}
+
+/**
+ * Format a Vercel AI SDK warning into the same human-readable string the SDK's
+ * default logger produces (mirrors `formatWarning` in `ai/src/logger/log-warnings.ts`),
+ * so console output and log files read identically across SDK versions.
+ */
+function formatAiSdkWarning(
+	warning: Warning,
+	provider: string,
+	model: string,
+): string {
+	const prefix = `AI SDK Warning (${provider} / ${model}):`;
+	switch (warning.type) {
+		case "unsupported":
+			return `${prefix} The feature "${warning.feature}" is not supported.${
+				warning.details ? ` ${warning.details}` : ""
+			}`;
+		case "compatibility":
+			return `${prefix} The feature "${warning.feature}" is used in a compatibility mode.${
+				warning.details ? ` ${warning.details}` : ""
+			}`;
+		case "other":
+			return `${prefix} ${warning.message}`;
+		default:
+			return `${prefix} ${JSON.stringify(warning)}`;
+	}
+}
+
+/**
+ * Route Vercel AI SDK warnings via the `AI_SDK_LOG_WARNINGS` global seam
+ * (see `ai/src/logger/log-warnings.ts`). Installing our own function also
+ * suppresses the SDK's one-time "To turn off warning logging…" info banner.
+ *
+ * - **Dev** (`dev` channel): print to the backend console so they surface in
+ *   the `run.ps1` terminal during development.
+ * - **Production / canary**: append to `error.log` with a `[WARNING]` prefix
+ *   (non-fatal — recorded like a soft error, not crashed on).
+ *
+ * Call once, early in startup, before the first AI inference.
+ */
+export function installAiSdkWarningHandler(isDevMode: boolean): void {
+	const handler: LogWarningsFunction = ({ warnings, provider, model }) => {
+		if (warnings.length === 0) return;
+		for (const warning of warnings) {
+			const message = formatAiSdkWarning(warning, provider, model);
+			if (isDevMode) {
+				console.warn(message);
+			} else {
+				logError("bun", "ai-sdk-warning", `[WARNING] ${message}`);
+			}
+		}
+	};
+
+	globalThis.AI_SDK_LOG_WARNINGS = handler;
+	console.log(
+		`[error-logger] AI SDK warning handler installed (${
+			isDevMode ? "console" : "error.log [WARNING]"
+		} mode).`,
+	);
 }
 
 /**

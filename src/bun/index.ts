@@ -3,7 +3,7 @@ import { BrowserWindow, Updater, Utils, Screen, ApplicationMenu } from "electrob
 import { existsSync, mkdirSync } from "fs";
 import { join, dirname, resolve } from "path";
 import { dlopen, FFIType, ptr } from "bun:ffi";
-import { initGlobalErrorHandlers } from "./db/error-logger";
+import { initGlobalErrorHandlers, installAiSdkWarningHandler } from "./db/error-logger";
 import { runMigrations } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
 import { closeDatabase } from "./db";
@@ -138,6 +138,11 @@ async function getMainViewUrl(): Promise<string> {
 // Global error handlers — install before anything else can throw
 // ---------------------------------------------------------------------------
 initGlobalErrorHandlers();
+
+// Route Vercel AI SDK warnings: console in dev (visible in the run.ps1 terminal),
+// error.log with a [WARNING] prefix in production/canary builds. Installed before
+// any AI inference so no warning slips through with the SDK's default logger.
+installAiSdkWarningHandler((await Updater.localInfo.channel()) === "dev");
 
 // ---------------------------------------------------------------------------
 // Database initialisation — run migrations then seed default data

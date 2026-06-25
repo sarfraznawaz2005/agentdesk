@@ -2,7 +2,7 @@
 title: Backend Core & Entry
 type: subsystem
 status: verified
-verified_at: 2026-06-21
+verified_at: 2026-06-26
 sources:
   - src/bun/index.ts
   - src/bun/engine-manager.ts
@@ -39,7 +39,8 @@ fast and nothing slow can block it.
 
 ```mermaid
 flowchart TD
-  EH[initGlobalErrorHandlers] --> MIG[runMigrations]
+  EH[initGlobalErrorHandlers] --> AISDK[installAiSdkWarningHandler]
+  AISDK --> MIG[runMigrations]
   MIG --> SEED[seedDatabase]
   SEED --> ENV[loadCustomEnvVarsIntoProcess]
   ENV --> ENC[encryptExistingSecrets]
@@ -56,7 +57,11 @@ flowchart TD
 
 ### 1. Synchronous critical path (`index.ts:137`–`index.ts:182`)
 Global error handlers install first (`index.ts:137`) so nothing later throws
-unlogged. Then the DB pipeline runs in strict order: `runMigrations()` →
+unlogged. Immediately after, `installAiSdkWarningHandler()` (`db/error-logger.ts`)
+claims the Vercel AI SDK's `globalThis.AI_SDK_LOG_WARNINGS` seam — routing every
+SDK warning to the console in the `dev` channel and to `error.log` with a
+`[WARNING]` prefix in production/canary — before any inference can fire with the
+SDK's default logger. Then the DB pipeline runs in strict order: `runMigrations()` →
 `await seedDatabase()` → `loadCustomEnvVarsIntoProcess()` → `encryptExistingSecrets()`
 (`index.ts:142`–`index.ts:145`). The secret-encryption pass must run *after* seed
 but *before* anything reads credentials. After that the cheap, fire-on-time
@@ -265,11 +270,21 @@ replacement for chrome-devtools MCP previews.
 - [[providers]]
 - [[github-auth]]
 
+## Global error & AI-SDK-warning logging (`db/error-logger.ts`)
+`logError()` appends structured entries to `<userData>/logs/error.log`
+(auto-rotated at 5 MB, 2 old files kept) and mirrors non-fatal errors into the
+audit log for in-app visibility. `initGlobalErrorHandlers()` binds
+`uncaughtException` (logs + `process.exit(1)`) and `unhandledRejection` (logs,
+does not exit; suppresses the benign "Controller is already closed" abort race).
+`installAiSdkWarningHandler(isDevMode)` sets `globalThis.AI_SDK_LOG_WARNINGS` to a
+custom logger so AI SDK warnings are formatted identically to the SDK default
+(`AI SDK Warning (provider / model): …`) but routed by channel: **dev → console**,
+**prod/canary → `error.log` as `[WARNING] …`**. Installing our own function also
+suppresses the SDK's one-time "To turn off warning logging…" banner.
+
 ## Open questions
-- `initGlobalErrorHandlers` (`db/error-logger.ts`) and `db/maintenance.ts`
-  (`maybeRunStartupMaintenance`) are invoked here but their internals weren't
-  opened — document where the global crash log is written and what maintenance
-  actually runs.
+- `db/maintenance.ts` (`maybeRunStartupMaintenance`) is invoked here but its
+  internals weren't opened — document what maintenance actually runs.
 - `windows-registry.ts` (`registerWindowsUninstaller`) is called at startup but
   not studied; pairs with `install-mode.ts` and deserves a short note on the
   uninstaller entry it writes.
