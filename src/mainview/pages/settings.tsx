@@ -75,7 +75,6 @@ export function SettingsPage() {
             { value: "constitution", label: "Constitution", content: <ConstitutionSettings /> },
             { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },
             { value: "debug", label: "Debug", content: <AiDebugSettings /> },
-            { value: "recommendations", label: "Recommendations", content: <RecommendationsSettings /> },
           ]} />
         </TabsContent>
 
@@ -104,6 +103,7 @@ export function SettingsPage() {
             { value: "data", label: "Data", content: <DataSettings /> },
             { value: "audit", label: "Audit Log", content: <AuditLogSettings /> },
             { value: "health", label: "Health", content: <HealthSettings /> },
+            { value: "recommendations", label: "Recommendations", content: <RecommendationsSettings /> },
           ]} />
         </TabsContent>
 

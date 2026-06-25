@@ -137,6 +137,22 @@ export function ModelsSettings() {
       .filter((p) => p.models.length > 0);
   }, [providers, search]);
 
+  // Enabled/total counts from the FULL (unfiltered) provider lists, so the
+  // headline + per-provider tallies stay stable while searching. A model counts
+  // as enabled unless it has an explicit is_enabled=0 row.
+  const { globalEnabled, globalTotal, providerCounts } = useMemo(() => {
+    let ge = 0;
+    let gt = 0;
+    const pc: Record<string, { enabled: number; total: number; models: string[] }> = {};
+    for (const p of providers) {
+      const enabled = p.models.filter((m) => prefs[prefKey(p.providerId, m)]?.isEnabled !== false).length;
+      pc[p.providerId] = { enabled, total: p.models.length, models: p.models };
+      ge += enabled;
+      gt += p.models.length;
+    }
+    return { globalEnabled: ge, globalTotal: gt, providerCounts: pc };
+  }, [providers, prefs]);
+
   // ---- Render --------------------------------------------------------------
 
   if (loading) {
@@ -151,7 +167,14 @@ export function ModelsSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-foreground">Models</h3>
+        <h3 className="text-lg font-semibold text-foreground">
+          Models
+          {globalTotal > 0 && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({globalEnabled} enabled out of {globalTotal})
+            </span>
+          )}
+        </h3>
         <p className="text-sm text-muted-foreground mt-1">
           Enable or disable individual models and mark favourites. Disabled
           models are hidden from the chat model picker; favourites appear in its
@@ -193,19 +216,22 @@ export function ModelsSettings() {
       )}
 
       {filtered.map((provider) => {
-        const allEnabled = provider.models.every(
-          (m) => prefs[prefKey(provider.providerId, m)]?.isEnabled ?? true,
-        );
+        const counts = providerCounts[provider.providerId] ?? {
+          enabled: 0,
+          total: provider.models.length,
+          models: provider.models,
+        };
+        const allEnabled = counts.total > 0 && counts.enabled === counts.total;
         return (
         <div key={provider.providerId}>
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-semibold text-foreground">
               {provider.providerName}
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {provider.models.length} {provider.models.length === 1 ? "model" : "models"}
+                ({counts.enabled} enabled out of {counts.total})
               </span>
             </h4>
-            {provider.models.length > 0 && (
+            {counts.total > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
                   {allEnabled ? "All enabled" : "Enable all"}
@@ -213,7 +239,7 @@ export function ModelsSettings() {
                 <Switch
                   checked={allEnabled}
                   aria-label={allEnabled ? "Disable all models" : "Enable all models"}
-                  onCheckedChange={(v) => setProviderEnabled(provider.providerId, provider.models, v)}
+                  onCheckedChange={(v) => setProviderEnabled(provider.providerId, counts.models, v)}
                 />
               </div>
             )}
