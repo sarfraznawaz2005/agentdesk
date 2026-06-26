@@ -433,7 +433,7 @@ plugins/                 # External plugins
 
 **LSP Tools**: diagnostics, hover, completion, references, rename
 
-**Web Tools**: web_search, web_fetch, http_request, enhanced_web_search
+**Web Tools**: web_search (Tavily→DuckDuckGo), web_fetch, http_request
 
 **Shell Tools**: run_shell (with safety guards + approval gate)
 

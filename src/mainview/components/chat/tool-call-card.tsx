@@ -105,7 +105,6 @@ const TOOL_META: Record<string, { Icon: React.ElementType; summary: (input: Reco
 
 	// Web
 	web_search: { Icon: Globe, summary: (a) => `web_search ${truncate(String(a.query ?? ""), 60)}` },
-	enhanced_web_search: { Icon: Globe, summary: (a) => `enhanced_web_search ${truncate(String(a.query ?? ""), 60)}` },
 	web_fetch: { Icon: Globe, summary: (a) => `web_fetch ${truncate(String(a.url ?? ""), 60)}` },
 	http_request: { Icon: Globe, summary: (a) => `http_request ${a.method ?? "GET"} ${truncate(String(a.url ?? ""), 50)}` },
 

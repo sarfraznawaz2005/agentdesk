@@ -2,7 +2,7 @@
 title: Agent Tools
 type: subsystem
 status: verified
-verified_at: 2026-06-21
+verified_at: 2026-06-26
 sources:
   - src/bun/agents/tools/index.ts
   - src/bun/agents/tools/memory.ts
@@ -137,7 +137,7 @@ is on (`agent-loop.ts:940-945`) since the [[review-cycle]] commits automatically
 | `pm-tools.ts:247` (factory) | `run_agent`, `run_agents_parallel`, `create_project`, doc/conversation/inbox read tools, `verify_project` | mixed |
 | `planning.ts:87` | `define_tasks` (pre-approval definitions) | `kanban` |
 | `notes.ts:42` | `create_note`, `update_note`, `delete_note` (+ run-scoped decisions tool) | `notes` |
-| `web.ts:371` | `web_search`, `web_fetch`, `http_request`, `enhanced_web_search` | `web` |
+| `web.ts:330` | `web_search` (Tavily key → Tavily, else DuckDuckGo), `web_fetch`, `http_request` | `web` |
 | `lsp.ts:275` | `lsp_diagnostics/hover/definition/references/document_symbols` | `file` |
 | `skills.ts:38` | `read_skill`, `find_skills` | `skills` |
 | `memory.ts` (stubs `:memoryTools`; bound `createMemoryTools`) | `save_memory`, `recall_memory`, `delete_memory` | `memory` |

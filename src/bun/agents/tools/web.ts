@@ -34,7 +34,7 @@ function stripHtml(html: string): string {
 // Search helpers
 // ---------------------------------------------------------------------------
 
-async function ddgSearch(
+export async function ddgSearch(
 	query: string,
 	maxResults: number,
 	abortSignal?: AbortSignal,
@@ -83,7 +83,7 @@ async function ddgSearch(
 	return JSON.stringify({ query, results });
 }
 
-async function tavilySearch(
+export async function tavilySearch(
 	query: string,
 	apiKey: string,
 	maxResults: number,
@@ -96,7 +96,10 @@ async function tavilySearch(
 			api_key: apiKey,
 			query,
 			search_depth: "advanced",
-			max_results: Math.min(maxResults, 10),
+			// Tavily's API accepts up to 20 results; clamp to its ceiling so we
+			// honour the caller's request across the tool's 1–25 range without
+			// sending an out-of-range value.
+			max_results: Math.min(maxResults, 20),
 			include_answer: true,
 			include_raw_content: false,
 		}),
@@ -141,8 +144,9 @@ async function tavilySearch(
 
 const webSearchTool = tool({
 	description:
-		"Search the web. Uses Tavily API if configured in Settings → Integrations (higher quality, structured results). " +
-		"Falls back to DuckDuckGo when no Tavily key is set (no API key required). " +
+		"Search the web. Routes through the Tavily API when a key is configured in " +
+		"Settings → Integrations (higher-quality, structured results plus a synthesised answer), " +
+		"and automatically falls back to DuckDuckGo when no key is set (no API key required). " +
 		"Use this to research errors, find packages, or look up documentation.",
 	inputSchema: z.object({
 		query: z.string().describe("The search query"),
@@ -152,7 +156,10 @@ const webSearchTool = tool({
 			.min(1)
 			.max(25)
 			.optional()
-			.describe("Maximum number of results to return (default: 10)"),
+			.describe(
+				"Maximum number of results to return (default: 10). " +
+				"Note: the Tavily backend caps this at 20; the DuckDuckGo fallback honours the full range.",
+			),
 	}),
 	execute: async ({ query, maxResults = 10 }, { abortSignal }): Promise<string> => {
 		try {
@@ -324,47 +331,6 @@ const httpRequestTool = tool({
 });
 
 // ---------------------------------------------------------------------------
-// enhanced_web_search — Tavily API (requires API key in settings)
-// ---------------------------------------------------------------------------
-
-const enhancedWebSearchTool = tool({
-	description:
-		"Perform a high-quality web search using the Tavily API with advanced search depth. " +
-		"Returns titles, URLs, content snippets, relevance scores, and a synthesised answer. " +
-		"Much more accurate than basic DuckDuckGo search for research-heavy tasks. " +
-		"Requires a Tavily API key configured in Settings → Integrations → Tavily.",
-	inputSchema: z.object({
-		query: z.string().describe("The search query"),
-		maxResults: z
-			.number()
-			.int()
-			.min(1)
-			.max(10)
-			.optional()
-			.describe("Maximum number of results to return (default: 5)"),
-	}),
-	execute: async ({ query, maxResults = 5 }, { abortSignal }): Promise<string> => {
-		const apiKey = await getIntegrationKey("tavily_api_key");
-
-		if (!apiKey) {
-			return JSON.stringify({
-				error:
-					"Tavily API key not configured. " +
-					"Go to Settings → Integrations → Tavily and add your API key. " +
-					"You can get a free key at tavily.com (1,000 searches/month free). " +
-					"Alternatively, use the web_search tool which falls back to DuckDuckGo.",
-			});
-		}
-
-		try {
-			return tavilySearch(query, apiKey, maxResults, abortSignal);
-		} catch (err) {
-			return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
-		}
-	},
-});
-
-// ---------------------------------------------------------------------------
 // Exported tool registry
 // ---------------------------------------------------------------------------
 
@@ -372,5 +338,4 @@ export const webTools: Record<string, ToolRegistryEntry> = {
 	web_search: { tool: webSearchTool, category: "web" },
 	web_fetch: { tool: webFetchTool, category: "web" },
 	http_request: { tool: httpRequestTool, category: "web" },
-	enhanced_web_search: { tool: enhancedWebSearchTool, category: "web" },
 };

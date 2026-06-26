@@ -572,6 +572,12 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   <Download className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
+              <Tip content="Edit agent" side="bottom">
+                <button type="button" onClick={editAgent}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <Settings className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
               <Tip content="Clear conversation" side="bottom">
                 <button
                   type="button"
@@ -579,12 +585,6 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors"
                 >
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
-                </button>
-              </Tip>
-              <Tip content="Edit agent" side="bottom">
-                <button type="button" onClick={editAgent}
-                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
-                  <Settings className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
               <Tip content="Close" side="bottom">
@@ -791,16 +791,16 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   <Download className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
-              <Tip content="Clear conversation" side="bottom">
-                <button type="button" onClick={handleClear}
-                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
-                  <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
-                </button>
-              </Tip>
               <Tip content="Edit agent" side="bottom">
                 <button type="button" onClick={editAgent}
                   className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
                   <Settings className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
+                </button>
+              </Tip>
+              <Tip content="Clear conversation" side="bottom">
+                <button type="button" onClick={handleClear}
+                  className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={3.5} aria-hidden="true" />
                 </button>
               </Tip>
               <Tip content="Collapse" side="bottom">

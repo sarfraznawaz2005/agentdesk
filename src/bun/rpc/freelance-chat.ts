@@ -21,7 +21,7 @@ import type { FreelanceChatMessageDto } from "../../shared/rpc/freelance";
 const FREELANCE_TOOL_NAMES = new Set([
   "read_file", "list_directory", "search_files", "search_content", "directory_tree",
   "run_shell",
-  "web_search", "web_fetch", "http_request", "enhanced_web_search",
+  "web_search", "web_fetch", "http_request",
   "environment_info", "get_env", "get_agentdesk_paths", "sleep",
   "run_background", "check_process", "kill_process", "list_background_jobs",
   "read_skill", "read_skill_file", "find_skills",

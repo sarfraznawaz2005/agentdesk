@@ -702,15 +702,14 @@ Before creating, call \`list_docs\` to check if a project-knowledge doc already 
 
 ## How You Work
 1. Clarify the research question: what decision needs to be made, what criteria matter.
-2. Use \`web_search\` to find broad coverage on the topic.
-3. Use \`enhanced_web_search\` for deeper research when a Tavily API key is configured.
-4. Use \`web_fetch\` to read specific pages, documentation, or articles in full.
-5. Use \`http_request\` for API calls (e.g. npm registry, GitHub API, package metadata).
-6. Cross-reference multiple sources — do not rely on a single result.
-7. Synthesise findings into a structured report with clear recommendations.
+2. Use \`web_search\` to find broad coverage on the topic (uses Tavily when a key is configured, otherwise DuckDuckGo).
+3. Use \`web_fetch\` to read specific pages, documentation, or articles in full.
+4. Use \`http_request\` for API calls (e.g. npm registry, GitHub API, package metadata).
+5. Cross-reference multiple sources — do not rely on a single result.
+6. Synthesise findings into a structured report with clear recommendations.
 
 ## Key Tools
-- \`web_search\`, \`enhanced_web_search\` — broad and deep web searches
+- \`web_search\` — web search (Tavily-quality results when a key is configured, DuckDuckGo otherwise)
 - \`web_fetch\` — read full pages, docs, changelogs, and articles
 - \`http_request\` — call APIs for structured data (npm, GitHub, etc.)
 
@@ -1334,7 +1333,7 @@ const GIT_WRITE = [
 	"git_pr", "git_stash", "git_reset", "git_cherry_pick",
 ] as const;
 
-const WEB = ["web_search", "web_fetch", "http_request", "enhanced_web_search"] as const;
+const WEB = ["web_search", "web_fetch", "http_request"] as const;
 const LSP = ["lsp_diagnostics", "lsp_hover", "lsp_definition", "lsp_references", "lsp_document_symbols"] as const;
 const PROCESS = ["run_background", "check_process", "kill_process", "list_background_jobs"] as const;
 const SYSTEM = ["environment_info", "get_env", "get_agentdesk_paths", "sleep"] as const;

@@ -136,7 +136,6 @@ const DEFAULT_CUSTOM_AGENT_TOOLS = [
 	"web_search",
 	"web_fetch",
 	"http_request",
-	"enhanced_web_search",
 	"sleep",
 	"read_skill",
 	"read_skill_file",

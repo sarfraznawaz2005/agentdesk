@@ -244,7 +244,6 @@ function createDashboardTools() {
 
 		// Additional web tools
 		http_request: webTools.http_request.tool,
-		enhanced_web_search: webTools.enhanced_web_search.tool,
 
 		// System tools
 		environment_info: systemTools.environment_info.tool,

@@ -98,9 +98,9 @@ export function TavilySettings() {
       <div>
         <h3 className="text-lg font-semibold">Tavily Search</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Enable the <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">enhanced_web_search</code> agent
-          tool powered by Tavily's advanced search API. The key is stored locally and never
-          sent to any third-party service other than Tavily.
+          Upgrade the <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">web_search</code> agent
+          tool to Tavily's advanced search API for higher-quality, structured results. The key is stored
+          locally and never sent to any third-party service other than Tavily.
         </p>
       </div>
 
@@ -185,12 +185,12 @@ export function TavilySettings() {
         </CardHeader>
         <CardContent className="text-xs text-muted-foreground space-y-1">
           <p>
-            When configured, agents can call <code className="font-mono bg-muted px-1 rounded">enhanced_web_search</code> to
-            get deep research results with a synthesised answer and relevance-scored sources.
+            When configured, <code className="font-mono bg-muted px-1 rounded">web_search</code> routes through Tavily,
+            returning deep research results with a synthesised answer and relevance-scored sources.
           </p>
           <p>
-            If the key is not set, the tool returns a clear error message directing the agent to
-            use <code className="font-mono bg-muted px-1 rounded">web_search</code> (DuckDuckGo, no key required) instead.
+            If the key is not set, <code className="font-mono bg-muted px-1 rounded">web_search</code> automatically
+            falls back to DuckDuckGo (no key required), so agents can always search the web.
           </p>
         </CardContent>
       </Card>

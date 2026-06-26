@@ -291,8 +291,7 @@ function pruneToolResult(toolName: string | null, toolInput: string | null, outp
       const url = args?.url ?? "";
       return `Fetched ${truncate(url, 80)} (${output.length} chars)`;
     }
-    case "web_search":
-    case "enhanced_web_search": {
+    case "web_search": {
       const query = args?.query ?? "";
       return `Searched: "${truncate(query, 50)}" (${lineCount} lines of results)`;
     }
