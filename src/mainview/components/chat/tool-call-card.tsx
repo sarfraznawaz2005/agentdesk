@@ -1,5 +1,6 @@
-import { useState, memo, lazy, Suspense, useRef, useCallback } from "react";
+import { useState, memo, useRef, useCallback } from "react";
 import { ImageLightbox } from "./image-lightbox";
+import { CodeBlock } from "./code-block";
 import {
 	ChevronRight,
 	ChevronDown,
@@ -22,8 +23,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UnifiedDiffCard } from "@/components/ui/unified-diff";
-
-const LazyCodeBlock = lazy(() => import("./code-block").then((m) => ({ default: m.CodeBlock })));
 
 // ---------------------------------------------------------------------------
 // Inline image with click-to-lightbox
@@ -276,9 +275,7 @@ function ToolInputDisplay({ toolName, rawInput }: { toolName: string; rawInput: 
 						{JSON.stringify(rest, null, 2)}
 					</pre>
 				)}
-				<Suspense fallback={<pre className="text-[11px] bg-gray-900 text-gray-300 rounded px-2 py-1.5 max-h-48 overflow-y-auto">{truncate(parsed.content as string, 3000)}</pre>}>
-					<LazyCodeBlock language={lang} code={truncate(parsed.content as string, 5000)} maxHeight={240} lineCount={lineCount} />
-				</Suspense>
+				<CodeBlock language={lang} code={truncate(parsed.content as string, 5000)} maxHeight={240} lineCount={lineCount} />
 			</div>
 		);
 	}
@@ -350,9 +347,7 @@ function ToolOutputDisplay({ toolName, rawOutput, rawInput, isError }: { toolNam
 		const lang = extToLang(filePath);
 		const lineCount = display.split("\n").length;
 		return (
-			<Suspense fallback={<pre className="text-[11px] bg-gray-900 text-gray-300 rounded px-2 py-1.5 max-h-64 overflow-y-auto">{display.slice(0, 3000)}</pre>}>
-				<LazyCodeBlock language={lang} code={display} maxHeight={256} lineCount={lineCount} />
-			</Suspense>
+			<CodeBlock language={lang} code={display} maxHeight={256} lineCount={lineCount} />
 		);
 	}
 
