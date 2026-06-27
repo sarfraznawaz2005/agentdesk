@@ -1458,18 +1458,34 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
         })();
       }
 
-      // Auto-shortlist workable listings
+      // Auto-shortlist workable listings — but ONLY rows that are still "new".
+      // The analysis phase above is slow (per-listing page fetch + AI calls), so a
+      // candidate selected as "new" at the top of the run may have been manually
+      // moved to approved/closed (or already shortlisted) by the user mid-run. The
+      // `status = 'new'` guard makes the promote a no-op for any such row, so a
+      // committed/closed listing is never silently reverted to shortlisted (TOCTOU
+      // fix — mirrors the guard in softDeleteCountryBlockedListing). `.returning()`
+      // tells us which rows actually moved, so the notification / auto-bid / last-run
+      // count all reflect the real shortlist set rather than the optimistic candidates.
+      const movedListings: WizardWorkableListing[] = [];
       if (workableListings.length > 0) {
         const nowTs = new Date().toISOString();
         for (const listing of workableListings) {
-          await db.update(freelanceListings)
+          const moved = await db.update(freelanceListings)
             .set({ status: "shortlisted", updatedAt: nowTs })
-            .where(eq(freelanceListings.id, listing.id));
+            .where(and(
+              eq(freelanceListings.id, listing.id),
+              eq(freelanceListings.status, "new"),
+            ))
+            .returning({ id: freelanceListings.id });
+          if (moved.length > 0) movedListings.push(listing);
         }
+      }
 
-        const body = workableListings.length === 1
-          ? `"${workableListings[0].title}" has been auto-shortlisted.`
-          : `${workableListings.length} listings have been auto-shortlisted.`;
+      if (movedListings.length > 0) {
+        const body = movedListings.length === 1
+          ? `"${movedListings[0].title}" has been auto-shortlisted.`
+          : `${movedListings.length} listings have been auto-shortlisted.`;
         sendDesktopNotification("Auto Shortlist", body).catch(() => {});
 
         // Auto-bid (opt-in): draft a proposal for each newly shortlisted listing so
@@ -1482,7 +1498,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             let drafted = 0;
             let failed = 0;
             let firstErr = "";
-            for (const listing of workableListings) {
+            for (const listing of movedListings) {
               if (drafted >= 5) break;
               const dup = sqlite
                 .prepare(`SELECT 1 FROM freelance_outbox WHERE listing_id = ? AND kind = 'bid' AND status != 'rejected' LIMIT 1`)
@@ -1524,7 +1540,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       // Update last run metadata
       const runTs = new Date().toISOString();
       await saveFreelanceSetting("autoShortlistLastRun", runTs);
-      await saveFreelanceSetting("autoShortlistLastCount", workableListings.length);
+      await saveFreelanceSetting("autoShortlistLastCount", movedListings.length);
     }
   } catch (err) {
     if (!isAbortError(err)) {

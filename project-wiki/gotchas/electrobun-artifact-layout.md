@@ -2,7 +2,7 @@
 title: Electrobun Artifact Folder Layout
 type: gotcha
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - .github/workflows/release.yml
   - node_modules/electrobun/src/cli/index.ts
@@ -108,7 +108,7 @@ is universal in Electrobun, but AgentDesk only *needs* to honor it on Linux.
 | `node_modules/electrobun/src/cli/index.ts:4222` | renames `artifactsToUpload` into `artifacts/` with platform prefix |
 | `.github/workflows/release.yml:237` | Linux job pins `artifacts/stable-linux-x64-AgentDesk.tar.zst` as source of truth |
 | `.github/workflows/release.yml:253` | Linux portable fix — unpack runtime bundle, repack as `tar.gz` |
-| `electrobun.config.ts` | `build.buildFolder: "build"`, `linux.bundleCEF: true` |
+| `electrobun.config.ts` | `linux.bundleCEF: true` (`build/` is Electrobun's default build folder; the config does not override it) |
 
 ## Gotchas / Constraints
 

@@ -2,7 +2,7 @@
 title: AgentDesk — Architecture Overview
 type: overview
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - CLAUDE.md
   - docs/workflow.md
@@ -114,7 +114,7 @@ Human request
   → PM runs task-planner inline (run_agent)
   → task-planner: create_note (Docs plan) + define_tasks (structured, pre-approval)
   → PM: request_plan_approval → plan card in chat / chunked to channels → PM turn ends
-  → Human: "approve"  (soft keyword gate, LLM fallback)
+  → Human: "approve"  (PM LLM interprets approval intent; no pre-LLM keyword gate)
   → PM: create_tasks_from_plan → kanban tasks created in "backlog" (deterministic, no LLM)
   → PM: run_agent(worker, task) → agent works → move_task(..., "review")
   → review-cycle auto-spawns code-reviewer → submit_review(approved) → task "done"

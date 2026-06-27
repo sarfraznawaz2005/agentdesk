@@ -2,7 +2,7 @@
 title: Frontend Architecture
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/mainview/main.tsx
   - src/mainview/App.tsx
@@ -33,12 +33,14 @@ DOM events that any component can subscribe to.
 
 ## Boot sequence
 
-1. `src/mainview/main.tsx:8` installs global error handlers, then strips `href`
+1. `src/mainview/main.tsx:13` installs global error handlers, then strips `href`
    from every `<a>` (and observes new ones via `MutationObserver`,
-   `main.tsx:13-30`) — this is a deliberate hack to suppress the WebView2 status
+   `main.tsx:26-43`) — this is a deliberate hack to suppress the WebView2 status
    bar that pops up on link hover. TanStack navigates via `onClick`, so the
    `href` is dead weight anyway.
-2. It mounts `<App />` inside `<StrictMode>` (`main.tsx:33`).
+2. It mounts `<App />` inside `<StrictMode>` (`main.tsx:86-97`). (In web mode
+   the same `root.render` may instead show the `PairingScreen` — see
+   [[remote-access]].)
 3. `src/mainview/App.tsx` calls `initTheme()` **and** `initBackground()`
    **synchronously at module load** (before first paint) so the dark/light class
    and the `appbg-<id>` background-preset class are on `<html>` with no flash;
@@ -74,32 +76,32 @@ flowchart TD
 
 ## The AppShell — persistent chrome
 
-`AppShellContent` (`app-shell.tsx:105`) is the heart of the layout. It is
-wrapped by `HeaderProvider` (`app-shell.tsx:97-103`) and `TooltipProvider`
-(`app-shell.tsx:301`), and lays out a flex row of `<Sidebar>` + a `<main>`
+`AppShellContent` (`app-shell.tsx:111`) is the heart of the layout. It is
+wrapped by `HeaderProvider` (`app-shell.tsx:105-107`) and `TooltipProvider`
+(`app-shell.tsx:320`), and lays out a flex row of `<Sidebar>` + a `<main>`
 column containing `<TopNav>` and a scrollable `<Outlet>` wrapped in an
-`ErrorBoundary` (`app-shell.tsx:300-331`).
+`ErrorBoundary` (`app-shell.tsx:319-352`).
 
 What the shell owns (and why it lives here, above the router outlet):
 
 - **Page title / workspace path resolution** — an effect keyed on
   `projectId` + `location.pathname` maps the route to a human title via
-  `PAGE_TITLES` (`app-shell.tsx:81-95`), or fetches the project name for
-  `/project/$projectId` (`app-shell.tsx:206-211`). Uses an `ignore` flag to
+  `PAGE_TITLES` (`app-shell.tsx:87-103`), or fetches the project name for
+  `/project/$projectId` (`app-shell.tsx:216-221`). Uses an `ignore` flag to
   discard stale async results when the user navigates away mid-fetch.
 - **First-launch gate** — redirects to `/onboarding` when no providers exist
-  (`app-shell.tsx:217-231`); the onboarding route renders bare, without chrome
-  (`app-shell.tsx:283-290`).
+  (`app-shell.tsx:234-248`); the onboarding route renders bare, without chrome
+  (`app-shell.tsx:302-308`).
 - **Sidebar collapse state**, including a `sidebarDefaultRef` that preserves the
   user's saved preference while "focus mode" transiently collapses it
-  (`app-shell.tsx:107-152`). Toggling persists `sidebar_default` back to settings.
+  (`app-shell.tsx:118-152`). Toggling persists `sidebar_default` back to settings.
 - **Session-wide effects**: toast relay (`agentdesk:show-toast`), What's New
   dialog, silent update check, and window focus → `setAppFocused` so the backend
   can suppress desktop notifications while the app is focused
-  (`app-shell.tsx:233-280`).
+  (`app-shell.tsx:250-299`).
 - **Always-mounted singletons** that must outlive page changes: the Auto-Earn
-  background engine `<AlwaysMountedInbox>` (`app-shell.tsx:348`), the floating
-  PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:352-358`),
+  background engine `<AlwaysMountedInbox>` (`app-shell.tsx:375`), the floating
+  PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:383-384`),
   and side-effect store imports for the issue-fixer and unread stores
   (`app-shell.tsx:21-26`).
 
@@ -109,26 +111,26 @@ Pages need to inject buttons into the shared top bar without prop-drilling.
 `header-context.tsx` solves this: `useHeaderActions(factory, deps)` stores the
 JSX factory in a ref (so handlers never go stale) and registers/clears it on
 mount/unmount (`header-context.tsx:65-77`). The shell reads `headerActions` from
-context and renders them inside `<TopNav>` (`app-shell.tsx:116`, `:323`). The
+context and renders them inside `<TopNav>` (`app-shell.tsx:125`, `:346`). The
 documented rule: only put **primitive** values in `deps` — passing a fresh
 function reference causes an infinite update loop through the context
 (`header-context.tsx:52-63`).
 
-`TopNav` itself is presentational (`topnav.tsx:18`): title + optional
+`TopNav` itself is presentational (`topnav.tsx:23`): title + optional
 "open workspace/data folder in explorer" buttons, an animated dashboard phrase,
 and a children slot for the header actions + `ProjectSwitcher`.
 
 ## Sidebar
 
-`Sidebar` (`sidebar.tsx:138`) derives the active item from the router pathname
-(`useRouterState`, `sidebar.tsx:140`) rather than tracking it in state. The nav
-list is assembled dynamically (`sidebar.tsx:328-344`):
-`BASE_NAV_ITEMS` (`sidebar.tsx:49-60`) + plugin-contributed items + a
+`Sidebar` (`sidebar.tsx:146`) derives the active item from the router pathname
+(`useRouterState`, `sidebar.tsx:148`) rather than tracking it in state. The nav
+list is assembled dynamically (`sidebar.tsx:342-347`):
+`BASE_NAV_ITEMS` (`sidebar.tsx:57-67`) + plugin-contributed items + a
 conditional Freelance entry, with **Settings always pinned last**. Badges and a
 red "needs attention" dot are layered on per-item (inbox unread, freelance new
 listings/escalations). It also hosts the entire **auto-update UI** (version
-button → check → download → restart, `sidebar.tsx:279-326`), driven by relayed
-`agentdesk:update-status` events (`sidebar.tsx:239-265`).
+button → check → download → restart, `sidebar.tsx:438-560`), driven by relayed
+`agentdesk:update-status` events (`sidebar.tsx:252-278`).
 
 ## State management — three layers
 
@@ -156,7 +158,7 @@ All frontend → backend traffic goes through one typed client,
 with `maxRequestTime: Infinity` because agent runs take minutes
 (`rpc.ts:29-31`), exposes incoming `requests`/`messages` handlers (e.g.
 `getViewState`, `navigateTo`), and re-exports a thin typed `rpc` object so
-callers never touch raw primitives (`rpc.ts:340`). Full detail lives in
+callers never touch raw primitives (`rpc.ts:369`). Full detail lives in
 [[rpc-layer]].
 
 ## Styling & primitives
@@ -210,7 +212,7 @@ preview). `APP_BACKGROUNDS` is the registry; the empty id = default theme bg.
 
 ## Gotchas / Constraints
 
-- **`href` is stripped from all anchors** (`main.tsx:13-30`) to kill the WebView2
+- **`href` is stripped from all anchors** (`main.tsx:26-43`) to kill the WebView2
   hover status bar. Never rely on `<a href>` for navigation — use TanStack `Link`
   / `navigate`.
 - **`useHeaderActions` deps must be primitives only** — a function reference in
@@ -224,8 +226,8 @@ preview). `APP_BACKGROUNDS` is the registry; the empty id = default theme bg.
   (hence the side-effect store imports in the shell), or a page that isn't
   mounted yet will miss live events.
 - **Async-in-effect staleness**: title/project effects use an `ignore` flag to
-  discard results from a navigation the user already left (`app-shell.tsx:156`,
-  `:206-211`). Copy this pattern for any project-keyed fetch.
+  discard results from a navigation the user already left (`app-shell.tsx:166`,
+  `:216-221`). Copy this pattern for any project-keyed fetch.
 - **Singletons must be mounted in `AppShell`, not a page** — anything that must
   survive navigation (Auto-Earn engine, dialogs, event listeners) goes in the
   shell; mounting it in a page kills it on route change.
@@ -240,10 +242,10 @@ preview). `APP_BACKGROUNDS` is the registry; the empty id = default theme bg.
 
 ## Open questions
 - The plugin sidebar-extension contract (`getPluginExtensions` →
-  `sidebarItems`, `sidebar.tsx:194-203`) is consumed here but its producer side
+  `sidebarItems`, `sidebar.tsx:209-211`) is consumed here but its producer side
   (plugin manifest → extension registration) is not documented in this page; a
   dedicated `[[plugins]]` page should own it.
 - `command-palette.tsx` (Cmd/Ctrl-K) is mounted in the shell
-  (`app-shell.tsx:333`) but `paletteOpen` is never set to `true` in
+  (`app-shell.tsx:356`) but `paletteOpen` is never set to `true` in
   `app-shell.tsx` — the open trigger (keyboard shortcut handler) was not located
   during this pass and should be verified.

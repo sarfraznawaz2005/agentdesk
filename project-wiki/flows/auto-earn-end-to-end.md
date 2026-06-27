@@ -2,7 +2,7 @@
 title: Auto-Earn End-to-End
 type: flow
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/mainview/components/freelance/inbox-tab.tsx
   - src/bun/rpc/freelance-inbox.ts
@@ -72,9 +72,9 @@ flowchart TD
 ## 1. READ — interceptor to DB (passive, ungated)
 
 The interceptor is injected into the persistent session webview as a JS string
-(`inbox-tab.tsx:501`, `INTERCEPTOR_SRC`). It wraps the page's own `fetch`/XHR and
+(`inbox-tab.tsx:532`, `INTERCEPTOR_SRC`). It wraps the page's own `fetch`/XHR and
 tees the messaging JSON to the host via `__electrobunSendToHost`. The React side
-buffers these captures and flushes a debounced batch (`inbox-tab.tsx:467`) to
+buffers these captures and flushes a debounced batch (`inbox-tab.tsx:498`) to
 `freelance.inbox.ingest` — **Bun itself never issues a network request to the
 platform**, which is the entire point (`rpc/freelance-inbox.ts:5`).
 
@@ -109,13 +109,13 @@ human opens the draft themselves.
 
 Both draft entry points produce a `freelance_outbox` row at `status='draft'`:
 `draftReplyForThread` (`reply-pipeline.ts:121`) and `draftBidForListing`
-(`bid-pipeline.ts:51`). Each calls `generateText` with a freelancer-strategist
+(`bid-pipeline.ts:123`). Each calls `generateText` with a freelancer-strategist
 system prompt + injected humanizer rules, then `qaRevise`. Bids first pull the
-*full* page description via `ensureFullDescription` (`bid-pipeline.ts:67`) so the
+*full* page description via `ensureFullDescription` (`bid-pipeline.ts:139`) so the
 proposal is written from the real listing, not the truncated RSS snippet.
 
 The **draft-time similarity guard** runs here (`reply-pipeline.ts:142`,
-`bid-pipeline.ts:83`): if the draft is too similar (trigram Dice ≥
+`bid-pipeline.ts:157`): if the draft is too similar (trigram Dice ≥
 `DRAFT_SIMILARITY_MAX`, `similarity.ts`) to recent outbox bodies, it regenerates
 *once* at higher temperature with an explicit "vary the structure" instruction
 and keeps whichever version is less similar. This is a soft guard; the send-time
@@ -125,31 +125,31 @@ check is the hard backstop.
 
 Whether the human clicks Approve & Send (assisted) or the always-mounted engine
 loops (full-auto), the path converges on `approveSend`
-(`rpc/freelance-outbox.ts:236`). The distinction is one boolean: the frontend
-passes `userInitiated = !autonomous` (`inbox-tab.tsx:402`). `approveSend` refuses
+(`rpc/freelance-outbox.ts:267`). The distinction is one boolean: the frontend
+passes `userInitiated = !autonomous` (`inbox-tab.tsx:433`). `approveSend` refuses
 to proceed unless, in order:
 
 1. **logged in** — `isConnectedPlatform` checks only the *presence* of auth-ish
-   cookie names, never values (`freelance-outbox.ts:295`, `freelance-inbox.ts:45`);
+   cookie names, never values (`freelance-outbox.ts:326`, `freelance-inbox.ts:45`);
 2. **not a near-duplicate** of a recent *sent* body — trigram similarity ≥
-   `SEND_SIMILARITY_MAX` (0.9) hard-blocks (`freelance-outbox.ts:312`);
+   `SEND_SIMILARITY_MAX` (0.9) hard-blocks (`freelance-outbox.ts:343`);
 3. **reply-latency floor** (autonomous replies only) — the inbound message must
    have aged past a per-draft 2–5 min floor, derived from a hash of the outbox id
-   so retries converge instead of re-rolling (`freelance-outbox.ts:327`).
+   so retries converge instead of re-rolling (`freelance-outbox.ts:358`).
    User-initiated sends skip this — the human is acting now;
-4. **Behavior Governor** allows it — `gateSend` (`freelance-outbox.ts:354`).
+4. **Behavior Governor** allows it — `gateSend` (`freelance-outbox.ts:385`).
 
 Only then does it flip the row to `status='sending'`, stash `final_body`, and
-return the body to the frontend (`freelance-outbox.ts:359`). For bids it also
+return the body to the frontend (`freelance-outbox.ts:390`). For bids it also
 resolves the **canonical platform URL + a computed bid amount/days**
-(`freelance-outbox.ts:264`) — and crucially **`autoPlace` is hard-coded `false`**
-(`freelance-outbox.ts:292`): even in full-auto a bid is only *prefilled*; the
+(`freelance-outbox.ts:295`) — and crucially **`autoPlace` is hard-coded `false`**
+(`freelance-outbox.ts:323`): even in full-auto a bid is only *prefilled*; the
 human clicks Place Bid because it moves real money.
 
 ### The Governor (`gateSend`)
 `gateSend` → `evaluateSend` (`governor.ts:245`) enforces, per action stream:
 global pause, active-hours (skipped for user-initiated sends,
-`freelance-outbox.ts:354` → `governor.ts:264`), an in-flight-send guard, min-gap,
+`freelance-outbox.ts:385` → `governor.ts:264`), an in-flight-send guard, min-gap,
 hourly cap, and (bids) a daily budget. Replies and bids are **separate streams**
 (`governor.ts:175`) — bids get ×3 the gap and ½ the hourly cap because cold-bid
 velocity is the loudest spam signal, while an active client's replies must not be
@@ -160,8 +160,8 @@ writes to in step 6, closing the loop.
 ## 5. WRITE — human-paced typing in the real session
 
 The frontend navigates the webview to the thread (or listing for bids), builds
-the appropriate write-steps script (`inbox-tab.tsx:431`), and runs it via
-`wv.executeJavascript` (`inbox-tab.tsx:441`). The script
+the appropriate write-steps script (`inbox-tab.tsx:462`), and runs it via
+`wv.executeJavascript` (`inbox-tab.tsx:472`). The script
 (`shared/freelance/write-steps.ts:48`) focuses the real composer, types
 character-by-character with `Math.random` jitter and a randomly-placed "thinking"
 pause, dispatches genuine `input` events, then clicks the real Send button. A
@@ -174,21 +174,21 @@ After clicking, the script **verifies** the send actually happened — it polls
 until the composer is cleared / re-rendered away (bid form: the textarea is gone),
 and only then reports `ok=true` (`write-steps.ts:89`). A click the platform
 silently rejected reports `ok=false`. The result returns as an `fl-send-result`
-host message (`inbox-tab.tsx:552`), which calls `markResult`
-(`freelance-outbox.ts:368`): on success the row becomes `sent` and an authoritative
+host message (`inbox-tab.tsx:583`), which calls `markResult`
+(`freelance-outbox.ts:399`): on success the row becomes `sent` and an authoritative
 `recordAction(..., 'ok', ...)` row lands in `freelance_action_log`
-(`freelance-outbox.ts:377`); on failure the row becomes `failed` (retryable).
+(`freelance-outbox.ts:408`); on failure the row becomes `failed` (retryable).
 
 This verified-send rule is load-bearing: if a silently-rejected send were recorded
 as `'ok'`, both the Governor's rate counters *and* the similarity history would be
-poisoned. A frontend safety timeout (`inbox-tab.tsx:452`) marks the row failed if
+poisoned. A frontend safety timeout (`inbox-tab.tsx:484`) marks the row failed if
 no result ever arrives, and reconciles if a slow `ok` lands afterward
-(`inbox-tab.tsx:564`).
+(`inbox-tab.tsx:595`).
 
 ## Backstops that wrap the flow
 
 - **Anomaly breaker**: the interceptor reporting 429/403/captcha posts
-  `fl-anomaly` (`inbox-tab.tsx:542`) → `freelanceReportAnomaly`, pausing all
+  `fl-anomaly` (`inbox-tab.tsx:573`) → `freelanceReportAnomaly`, pausing all
   autonomy (sync continues).
 - **Watchdog**: a Bun-side timer recovers `sending` rows stranded by a renderer
   crash and checks the full-auto engine heartbeat — see [[freelance-autoearn]].
@@ -214,7 +214,7 @@ no result ever arrives, and reconciles if a slow `ok` lands afterward
   by the `userInitiated` flag — there is no separate auto-send path that bypasses
   the guards.
 - **Bids are never auto-submitted** (`autoPlace` hard-`false`,
-  `freelance-outbox.ts:292`); the user always clicks Place Bid.
+  `freelance-outbox.ts:323`); the user always clicks Place Bid.
 - **The send result is verified, not assumed** (`write-steps.ts:89`) — otherwise a
   rejected send would corrupt the rate counters and similarity history that the
   same flow later reads.
@@ -224,13 +224,12 @@ no result ever arrives, and reconciles if a slow `ok` lands afterward
 ## Related
 - [[freelance-autoearn]] — the subsystem reference for each file in this flow
 - [[freelance-discovery]] — the discover layer that produces the listings bids draft from
-- [[freelance-expert-agent]] — the full-auto orchestrator invoked at step 2
-- [[session-webview-host]] — the persistent webview the interceptor and composer live in
+- [[electrobun-webview-overlay]] — the persistent webview the interceptor and composer live in
 - [[notifications]] — where the new-inbound notification lands
 
 ## Open questions
 - The interceptor source (`INTERCEPTOR_SRC`) and the full-auto loop cadence in the
   always-mounted engine were confirmed only at their injection/approve call sites
-  (`inbox-tab.tsx:501`, `:725`), not read line-by-line.
+  (`inbox-tab.tsx:532`, `:756`), not read line-by-line.
 - `src/bun/freelance/expert/*` (the orchestrator that decides reply vs. bid vs.
   escalate at step 2) is referenced here but documented elsewhere.

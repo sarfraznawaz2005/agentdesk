@@ -2,7 +2,7 @@
 title: PM is the Sole Orchestrator
 type: decision
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/tools/pm-tools.ts
@@ -21,7 +21,7 @@ that a traditional workflow engine would encode (which step runs next, what to d
 when an agent finishes, when a task is blocked) is instead expressed two ways: as
 **English rules in the PM system prompt** (`src/bun/agents/prompts.ts:270`) and as
 **deterministic `[Next Action]` hints computed in code** and fed back to the PM
-(`src/bun/agents/engine.ts:390`). The engine is a thin host for the PM's stream;
+(`src/bun/agents/engine.ts:408`). The engine is a thin host for the PM's stream;
 it owns no orchestration logic of its own.
 
 ## Key idea: the loop, not a graph
@@ -34,7 +34,7 @@ the PM after every event with a strong hint about what to do.
 The cycle is:
 
 1. User message → `AgentEngine.sendMessage` persists it and streams the PM
-   (`src/bun/agents/engine.ts:86`, `:173`).
+   (`src/bun/agents/engine.ts:97`, `:184`).
 2. The PM calls a tool — `run_agent`, `request_plan_approval`,
    `create_tasks_from_plan`, etc. (`src/bun/agents/tools/pm-tools.ts:255`).
 3. `run_agent` dispatches the sub-agent **fire-and-forget** and immediately tells
@@ -42,7 +42,7 @@ The cycle is:
    it does *not* await the agent.
 4. When the sub-agent finishes, the `onAgentDone` callback computes the next action
    and **re-invokes the PM** with a synthetic `[Agent Report]` message
-   (`engine.ts:390`, `:480`).
+   (`engine.ts:408`, `:498`).
 5. Back to step 2. The loop continues until `[Next Action] ALL DONE` or the PM
    answers the user directly.
 
@@ -86,7 +86,7 @@ transition logic is split deliberately:
 - **Next-step routing → `onAgentDone`.** After each agent, the engine reads the
   live kanban state and emits exactly one directive — `WAIT`, `MOVE TO REVIEW`,
   `DISPATCH`, `ALL DONE`, `BLOCKED`, or `INVESTIGATE` (on failure) —
-  (`engine.ts:405`–`:452`). This is the closest thing to a state-transition
+  (`engine.ts:423`–`:470`). This is the closest thing to a state-transition
   function, but it is a *hint computed fresh from the DB each time*, not a
   persisted FSM. The PM still chooses whether to obey, with prompt rules telling it
   to (`prompts.ts:300` Agent Report Handling).
@@ -106,7 +106,7 @@ to save tokens/retries; the guard guarantees correctness when the LLM ignores it
   conversation*, streaming their tool calls as visible message parts
   (`run_agent` description, `pm-tools.ts:256`). A coordinator graph that ran agents
   in isolated sessions would break this "everything visible in one chat" UX. The
-  fire-and-forget + re-invoke pattern (`pm-tools.ts:578`, `engine.ts:480`) keeps
+  fire-and-forget + re-invoke pattern (`pm-tools.ts:578`, `engine.ts:498`) keeps
   one linear transcript the user can read.
 
 - **Concurrency is structurally simple.** Write work is strictly sequential
@@ -130,14 +130,14 @@ to save tokens/retries; the guard guarantees correctness when the LLM ignores it
 | Flexibility | High — PM handles novel/ambiguous requests | Low — only encoded paths |
 | Determinism | Lower — relies on LLM obeying prompt | Higher — code-driven |
 | Failure modes | LLM hallucinates a step / skips a tool | Stuck/unhandled state |
-| Mitigations needed | Hallucination guard (`engine.ts:710`), text-retraction (`engine.ts:651`), code guards in tools | None for transitions; needs recovery code for stuck states |
+| Mitigations needed | Hallucination guard (`engine.ts:753`), text-retraction (`engine.ts:681`), code guards in tools | None for transitions; needs recovery code for stuck states |
 | Cost | Re-invokes PM (extra LLM calls) per event | Cheap transitions, LLM only inside steps |
 
 The chief cost paid for flexibility is **LLM unreliability around tool-calling**,
 which the engine actively compensates for: it detects when the PM wrote prose
 instead of calling `run_agent` and re-prompts in-memory up to twice
-(`engine.ts:710`), and it retracts premature narration emitted in the same step as
-a dispatch (`engine.ts:651`). These exist *only because* there is no FSM forcing
+(`engine.ts:753`), and it retracts premature narration emitted in the same step as
+a dispatch (`engine.ts:681`). These exist *only because* there is no FSM forcing
 the transition — they are the price of the trade.
 
 ## Key files
@@ -155,13 +155,13 @@ the transition — they are the price of the trade.
   tool guards + `onAgentDone` hints.
 - **`run_agent` is fire-and-forget.** It returns `"dispatched"` immediately
   (`pm-tools.ts:795`); the PM never awaits the agent. The next turn is driven by
-  the `onAgentDone` re-invocation (`engine.ts:480`), not by a tool return value.
+  the `onAgentDone` re-invocation (`engine.ts:498`), not by a tool return value.
 - **Same constraint may appear twice** (prompt + code). When changing a rule, check
   both — e.g. "one write agent at a time" is in `prompts.ts:328` AND enforced at
   `pm-tools.ts:369`.
 - **`[Next Action]` strings are load-bearing.** The PM's behavior keys off literal
-  substrings like `"[Next Action] DISPATCH"` (`engine.ts:522`) and `"WAIT"`
-  (`engine.ts:458`). Changing the wording in `onAgentDone` without updating the
+  substrings like `"[Next Action] DISPATCH"` (`engine.ts:540`) and `"WAIT"`
+  (`engine.ts:476`). Changing the wording in `onAgentDone` without updating the
   matchers will silently break routing.
 - The PM has **no file-write tools** by design (`prompts.ts:298`) — every mutation
   goes through a dispatched sub-agent, which is what keeps the PM purely an

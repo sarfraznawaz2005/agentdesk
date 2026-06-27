@@ -2,7 +2,7 @@
 title: Frontend Components Map
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/mainview/components/layout/app-shell.tsx
   - src/mainview/components/layout/sidebar.tsx
@@ -35,19 +35,19 @@ state layer described in [[frontend-architecture]].
 
 The mount chain is `AppShell → <Outlet /> → page → feature-tab → components`:
 
-1. **App chrome.** `app-shell.tsx:300-360` renders `Sidebar` + `TopNav` +
+1. **App chrome.** `app-shell.tsx:320-391` renders `Sidebar` + `TopNav` +
    `ErrorBoundary` around the router `<Outlet />`, plus app-lifetime singletons
    that live *outside* the page tree: `CommandPalette`, `StartupHealthDialog`,
    `UserQuestionDialog`, `WhatsNewDialog`, the `Toaster`, and two
    dashboard-only floating widgets (`PmChatWidget`, `CustomAgentChatLauncher`,
-   `app-shell.tsx:352-358`). `AlwaysMountedInbox` (`app-shell.tsx:348`) is the
+   `app-shell.tsx:383-384`). `AlwaysMountedInbox` (`app-shell.tsx:375`) is the
    freelance Auto-Earn background engine — mounted here so it survives every
    navigation (see [[freelance-autoearn]]).
-2. **Sidebar nav** (`layout/sidebar.tsx:49-60`) is a static `BASE_NAV_ITEMS`
+2. **Sidebar nav** (`layout/sidebar.tsx:57-67`) is a static `BASE_NAV_ITEMS`
    list; `Freelance` is conditionally appended only when the feature flag is on
-   (`sidebar.tsx:331`), and plugin-contributed items are spliced in before
-   Settings (`sidebar.tsx:328-333`). Active state is derived from the router
-   pathname, not stored (`sidebar.tsx:335-337`).
+   (`sidebar.tsx:345`), and plugin-contributed items are spliced in before
+   Settings (`sidebar.tsx:342-346`). Active state is derived from the router
+   pathname, not stored (`sidebar.tsx:349-351`).
 3. **Project chrome.** `pages/project.tsx` is the hub for all per-project
    feature folders. `activeTab` is plain local state (`project.tsx:33`), the tab
    bar is a hand-rolled row of buttons (`project.tsx:182-297`), and the content
@@ -61,7 +61,7 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
 
 | Folder | Root component (entry) | What it is |
 |---|---|---|
-| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:321`) |
+| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:343`) |
 | `chat/` | `chat-layout.tsx` | The Chat tab: 3-pane layout (conv sidebar + message area + activity pane). See "Chat subtree" below. |
 | `activity/` | `context-panel.tsx` | The right-hand activity pane inside Chat. Two inner tabs `files`/`docs` (`context-panel.tsx:8,21-24`) → `files-tab.tsx`, `docs-tab.tsx`. |
 | `kanban/` | `kanban-board.tsx` | Kanban tab: `kanban-column.tsx`, `kanban-card.tsx`, `kanban-filters.tsx`, `kanban-stats-bar.tsx`. `task-detail-modal.tsx` is mounted at the page level (`project.tsx:385`), not inside the board. |
@@ -79,7 +79,7 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
 | `inbox/` | `inbox-rules-editor.tsx` | Inbox-rules editor for the Inbox route. |
 | `modals/` | — | App-level dialogs mounted by `app-shell.tsx`: `startup-health-dialog`, `user-question-dialog`, `whats-new-dialog`, `new-project-modal`. |
 | `ui/` | — | ~40 design-system primitives. See "The `ui/` primitive layer". |
-| `command-palette.tsx` | (root file) | The Ctrl/Cmd-K palette, mounted once in `app-shell.tsx:333`. |
+| `command-palette.tsx` | (root file) | The Ctrl/Cmd-K palette, mounted once in `app-shell.tsx:356`. |
 
 ## Chat subtree (the densest folder)
 
@@ -132,7 +132,7 @@ for a `ui/` primitive before hand-rolling chrome; the chat header buttons in
   `CommandPalette`, and the app-level modals are children of `app-shell.tsx`, so
   they persist across navigation and are unaffected by the page `<Outlet />`.
 - **Sidebar nav order is partly dynamic.** Plugin items and the conditional
-  Freelance entry are spliced in at render time (`sidebar.tsx:328-333`); the
+  Freelance entry are spliced in at render time (`sidebar.tsx:342-346`); the
   static `BASE_NAV_ITEMS` list is not the final order.
 - **Folders ≠ a barrel.** There is no `ui/index.ts`; components are imported by
   explicit path (`@/components/ui/button`). Don't assume a re-export barrel.

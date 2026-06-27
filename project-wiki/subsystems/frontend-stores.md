@@ -2,7 +2,7 @@
 title: Frontend State Stores
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/mainview/stores/chat-store.ts
   - src/mainview/stores/chat-types.ts
@@ -31,13 +31,13 @@ The backend has no handle on React state. The bridge is one-directional fan-out:
 1. Bun calls a webview-side RPC *message* handler (fire-and-forget). These are
    registered in `src/mainview/lib/rpc.ts:46` under `handlers.messages`.
 2. Each handler does nothing but re-emit a `CustomEvent` on `window`, e.g.
-   `streamToken` → `agentdesk:stream-token` (`src/mainview/lib/rpc.ts:81`),
+   `streamToken` → `agentdesk:stream-token` (`src/mainview/lib/rpc.ts:82`),
    `kanbanTaskUpdated` → `agentdesk:kanban-task-updated`
-   (`src/mainview/lib/rpc.ts:109`).
+   (`src/mainview/lib/rpc.ts:112`).
 3. Stores register listeners *once at module-load time* and call `setState`
    inside them — `chat-store.ts` calls `initChatEventHandlers()` at the bottom
-   (`src/mainview/stores/chat-store.ts:431`); the kanban store registers its
-   single listener inline (`src/mainview/stores/kanban-store.ts:172`).
+   (`src/mainview/stores/chat-store.ts:434`); the kanban store registers its
+   single listener inline (`src/mainview/stores/kanban-store.ts:184`).
 
 ```mermaid
 flowchart LR
@@ -51,7 +51,7 @@ flowchart LR
 
 The reverse path (UI → backend) is plain: store **actions** call typed wrappers
 in `rpc.ts` (e.g. `sendMessage` → `rpc.sendMessage`,
-`src/mainview/stores/chat-store.ts:330`) and then optimistically update local
+`src/mainview/stores/chat-store.ts:333`) and then optimistically update local
 state.
 
 ## Chat store
@@ -70,8 +70,8 @@ action methods:
 
 - **Tokens are buffered, not applied per-token.** `onStreamToken` appends to a
   shared `buffers.tokenBuffer` and schedules a flush every ~32 ms (≈30 fps,
-  `TOKEN_FLUSH_INTERVAL`) — see `src/mainview/stores/chat-event-handlers.ts:83`.
-  `flushTokenBuffer` (`:46`) lazily inserts an empty assistant placeholder
+  `TOKEN_FLUSH_INTERVAL`) — see `src/mainview/stores/chat-event-handlers.ts:102`.
+  `flushTokenBuffer` (`:47`) lazily inserts an empty assistant placeholder
   message on the first flush so `onStreamComplete` can later update it in place.
 - **A completed-stream guard** drops late tokens. `completedStreamIds` is a
   capped (50-entry) `Set`; `onStreamToken` early-returns for any id already in
@@ -85,7 +85,7 @@ action methods:
 - **`createdAt` is the ordering lever.** On completion the PM message's
   `createdAt` is bumped to its finish time so it sorts *below* the sub-agents it
   spawned (which carry earlier timestamps) — see the comment at
-  `src/mainview/stores/chat-event-handlers.ts:253`. The message list mirrors
+  `src/mainview/stores/chat-event-handlers.ts:247`. The message list mirrors
   this: it sorts by the DB `seq` (rowid) when present and falls back to
   `createdAt` for live/optimistic rows (`src/mainview/components/chat/message-list.tsx:115`).
 
@@ -93,29 +93,29 @@ action methods:
 
 Almost every handler early-returns unless the event's `conversationId` matches
 `activeConversationId` (e.g. `onStreamToken` `:95`, `onNewMessage`
-`chat-event-handlers.ts:464`). This keeps background activity in other
+`chat-event-handlers.ts:452`). This keeps background activity in other
 conversations from polluting the visible message list — when the user navigates
 back, `loadMessages` re-fetches from the DB the backend already updated
 (`onStreamComplete` returns early if the conversation isn't loaded, `:226`).
 
 ### Inline-agent & busy-state tracking
 
-`onAgentInlineStart`/`onAgentInlineComplete` (`:534`/`:554`) maintain
+`onAgentInlineStart`/`onAgentInlineComplete` (`:593`/`:613`) maintain
 `runningAgentCount` and the `activeInlineAgent` badge. `pmPending` bridges the
 gap between an agent finishing and the PM restarting its stream so the stop
 button stays live; a **safety-net `setTimeout(…, 8000)`** clears `pmPending` if
-the PM's first token never arrives (crash/early-return), `:589`.
-`syncRunningAgents` (`chat-store.ts:377`) rebuilds all of this from the backend
+the PM's first token never arrives (crash/early-return), `:649`.
+`syncRunningAgents` (`chat-store.ts:380`) rebuilds all of this from the backend
 after navigation, using a synthetic `sync-*` messageId so the
 count-drops-to-zero clear path works.
 
 ### Optimistic IDs
 
 `sendMessage` inserts a `temp-…` user message, then swaps its id for the real DB
-id once `rpc.sendMessage` returns (`chat-store.ts:334`) so later delete/branch
+id once `rpc.sendMessage` returns (`chat-store.ts:341`) so later delete/branch
 operations target the persisted row. `reset()` also clears the module-level
 token buffers/timers to stop stale tokens leaking into the next conversation
-(`chat-store.ts:417`).
+(`chat-store.ts:420`).
 
 ## Kanban store
 
@@ -124,7 +124,7 @@ holds the active project's `tasks` plus derived getters (`getTasksByColumn`,
 `getColumnCount`). Mutations are **optimistic** — `moveTask` and `updateTask`
 patch local state *before* awaiting the RPC (`:139`, `:127`). Real-time sync is
 coarse-grained: a single `agentdesk:kanban-task-updated` listener
-(`:172`) just calls `loadTasks(projectId)` to refetch the whole board — but only
+(`:184`) just calls `loadTasks(projectId)` to refetch the whole board — but only
 when the event's `projectId` matches `activeProjectId`. This is the channel by
 which agent-driven kanban moves (PM/review-cycle) appear live in the UI.
 
@@ -143,7 +143,7 @@ which agent-driven kanban moves (PM/review-cycle) appear live in the UI.
 
 - **Listeners are registered at module load, not in React.** `chat-store.ts`
   imports trigger `initChatEventHandlers()`; a `handlersInitialized` guard
-  (`chat-event-handlers.ts:648`) makes it idempotent so HMR re-evaluation
+  (`chat-event-handlers.ts:722`) makes it idempotent so HMR re-evaluation
   doesn't double-register. The kanban listener has **no such guard** —
   acceptable because it only refetches, but HMR can leave duplicate listeners.
 - **Token buffers are module-level singletons** (`buffers`,

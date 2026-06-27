@@ -2,7 +2,7 @@
 title: Remote Sync
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/remote-sync/engine.ts
   - src/bun/remote-sync/client.ts
@@ -134,7 +134,7 @@ uploads only files that still exist locally (`engine.ts:804`). Each upload
 remote mtime (we don't re-stat after upload).
 
 ### The manifest is the diff baseline
-`remote_sync_items` (`schema.ts:950`) stores one row per synced file: remote
+`remote_sync_items` (`schema.ts:993`) stores one row per synced file: remote
 size/mtime and the **local content SHA-256 at last sync**. This is what makes
 diffing cheap and offline-capable:
 - **Push diff** (`engine.ts:511`): a local file with no manifest row = `new`;
@@ -175,7 +175,7 @@ phantom in-progress sync after a crash.
 | `src/bun/remote-sync/crypto.ts` | Thin re-export shim → `lib/secret-crypto` (kept for import stability) |
 | `src/bun/lib/secret-crypto.ts` | App-wide AES-256-GCM secret encryption; `remote-sync.key` master key under userData |
 | `src/bun/rpc/remote-sync.ts` | RPC handlers; evicts browse cache on save; `revealRemoteSyncSecret` round-trips the decrypted password to the UI |
-| `src/bun/db/schema.ts` | `remote_sync_config` (`:912`), `remote_sync_items` manifest (`:950`), `remote_sync_runs` (`:978`) |
+| `src/bun/db/schema.ts` | `remote_sync_config` (`:955`), `remote_sync_items` manifest (`:993`), `remote_sync_runs` (`:1021`) |
 
 ## Gotchas / Constraints
 - **The master key file (`remote-sync.key`) is not in the DB and not in a backup
@@ -201,10 +201,9 @@ phantom in-progress sync after a crash.
   worth knowing the plaintext crosses the RPC boundary on demand.
 
 ## Related
-- [[secret-encryption]] — the shared AES-256-GCM scheme this reuses
-- [[database-schema]] — `remote_sync_*` tables
-- [[rpc-layer]] — how the Remote tab calls into the engine
-- [[github-auth]] — another consumer of `lib/secret-crypto`
+- [[database-tables]]
+- [[rpc-layer]]
+- [[github-token-auth]]
 
 ## Open questions
 - Pull/push run a single connection sequentially (no parallelism) — adequate for

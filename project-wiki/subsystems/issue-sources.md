@@ -183,8 +183,8 @@ locally instead (`linear.ts:33`, `kanboard.ts:66`).
 
 ## Related
 - [[issue-fixer]] — autonomous GitHub-issue → branch/PR resolution (different subsystem; reads issues directly via its own GitHub client, not this engine)
-- [[kanban]] — the done-transition that triggers `closeExternalIssueForTask`
-- [[rpc]] — RPC contract/handler/registration pattern
+- [[kanban-review-cycle]] — the done-transition that triggers `closeExternalIssueForTask`
+- [[rpc-layer]] — RPC contract/handler/registration pattern
 
 ## Open questions
 - The Jira/Linear/GitLab adapters do not paginate beyond the first 100 results; for

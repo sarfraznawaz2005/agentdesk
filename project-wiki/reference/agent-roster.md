@@ -2,7 +2,7 @@
 title: Agent Roster Reference
 type: reference
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/db/seed.ts
   - src/bun/agents/agent-loop.ts
@@ -27,8 +27,8 @@ those mechanisms.
 ## How an agent is defined
 
 Each entry in `defaultAgentDefs` (`seed.ts:158`) is `{ name, displayName, color,
-systemPrompt }`. On launch, `seedDatabase()` (`seed.ts:1424`) inserts all of them
-on first run, or — guarded by a FNV-1a hash of the defs (`seed.ts:1554`,
+systemPrompt }`. On launch, `seedDatabase()` (`seed.ts:1439`) inserts all of them
+on first run, or — guarded by a FNV-1a hash of the defs (`seed.ts:1569`,
 `BUILTIN_PROMPTS_HASH_KEY`) — re-upserts `systemPrompt`/`color`/`displayName` only
 when the bundled defs actually changed (an app upgrade). This avoids ~22 DB writes
 on every unchanged launch while still delivering improved prompts to existing
@@ -36,7 +36,7 @@ users. System prompts are the **single source of truth** and must be edited in
 `seed.ts`, never inline in engine code.
 
 A built-in agent's **tool set** comes from `defaultAgentTools` (`seed.ts:1350`),
-seeded into the `agent_tools` table by `seedAgentTools()` (`seed.ts:1662`). The
+seeded into the `agent_tools` table by `seedAgentTools()` (`seed.ts:1677`). The
 critical rule lives in `getToolsForAgent()` (`tools/index.ts:100`): if an agent
 has **zero** `agent_tools` rows, it receives the **entire** registry
 (`getAllTools()`, `tools/index.ts:169`); otherwise only its explicitly-enabled
@@ -153,7 +153,7 @@ flowchart TD
 After seeding, `seedDatabase()` *normalizes* the three page-exclusive agents'
 flags — `isBuiltin:1, useSystemPromptOnly:0, chatEnabled:0, availableToPm:0` —
 because the prompt upsert only touches `systemPrompt`/`color`/`displayName`
-(`seed.ts:1606`, `:1613`, `:1621`).
+(`seed.ts:1623`, `:1630`, `:1638`).
 
 ## Legacy: `general-agent`
 
@@ -191,7 +191,7 @@ installs.
 - **Playground tool set drift** — docs say "full registry", code says ~37 tools.
   Trust `seed.ts:1386`.
 - **Prompt edits need a hash change to propagate.** Because of the FNV-1a guard
-  (`seed.ts:1554`), editing a `displayName`/`color`/`systemPrompt` is what changes
+  (`seed.ts:1569`), editing a `displayName`/`color`/`systemPrompt` is what changes
   the hash; existing users only re-upsert on that change.
 
 ## Related

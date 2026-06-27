@@ -41,7 +41,7 @@ The interface is deliberately minimal (`src/bun/providers/types.ts:12-24`):
 - `testConnection()` → a 5-token "Hi" probe used by the settings UI.
 
 Because callers only ever see a `LanguageModel`, the rest of the codebase
-(`[[agent-engine]]`, `[[summarizer]]`, scheduler, freelance pipelines) is fully
+(`[[agent-engine]]`, `[[context-window-management|summarizer]]`, scheduler, freelance pipelines) is fully
 provider-agnostic — it calls `streamText`/`generateText` from the `ai` package
 and never branches on vendor, except for the few SDK-shaped knobs noted below.
 
@@ -202,9 +202,8 @@ surface the error.
 
 ## Related
 - [[agent-engine]]
-- [[summarizer]]
-- [[context-management]]
-- [[tech-stack]]
+- [[context-window-management]]
+- [[tech-stack-build-release]]
 
 ## Open questions
 - The DeepSeek/Groq/xAI/Z.AI/OpenCode adapters were confirmed present and follow

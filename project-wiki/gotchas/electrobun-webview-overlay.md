@@ -2,7 +2,7 @@
 title: Electrobun Webview-Tag Overlay Cleanup
 type: gotcha
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/mainview/components/freelance/session-webview-host.ts
   - src/mainview/components/freelance/inbox-tab.tsx
@@ -65,13 +65,13 @@ flowchart TD
 
 1. **Runtime guard.** `runtimeAvailable()` checks the `electrobun-webview` custom
    element is registered (`session-webview-host.ts:35`). The Inbox renders a red
-   "runtime unavailable" notice otherwise (`inbox-tab.tsx:1115`).
+   "runtime unavailable" notice otherwise (`inbox-tab.tsx:1184`).
 2. **Placeholder, not child.** The Inbox renders an empty `<div ref={holderRef}>`
    whose height toggles between `80vh` and `0` — the native view is positioned
-   *over* it, never parented *into* it (`inbox-tab.tsx:1110`, comment at `:1107`).
+   *over* it, never parented *into* it (`inbox-tab.tsx:1177`, comment at `:1174`).
 3. **Attach on mount.** A `useEffect` calls `attachSessionWebview(holderRef)`,
    then wires the fetch/XHR/WS interceptor and `dom-ready`/`did-navigate`/
-   `host-message` listeners (`inbox-tab.tsx:480-601`).
+   `host-message` listeners (`inbox-tab.tsx:510-640`).
 4. **rect-sync loop.** `startSync()` runs a `requestAnimationFrame` loop calling
    `syncRect()` (`session-webview-host.ts:67-89`). If the holder is collapsed or
    off-screen (`width<2 || height<2`) the view is parked off-screen instead of
@@ -79,10 +79,10 @@ flowchart TD
    visually clean.
 5. **Hide vs. detach.** Two separate visibility controls:
    - `detachSessionWebview()` — full teardown on unmount: hide + stop tracking,
-     element survives (`inbox-tab.tsx:607`).
+     element survives (`inbox-tab.tsx:638`).
    - `setSessionWebviewVisible()` — show/hide without detaching, used when the
      live-session panel is collapsed or the tab is backgrounded
-     (`session-webview-host.ts:126`, driven by `inbox-tab.tsx:617-619`).
+     (`session-webview-host.ts:126`, driven by `inbox-tab.tsx:647-649`).
 
 ## Why two "never remount" layers
 
@@ -99,7 +99,7 @@ The bridge between them is `freelance-engine-store`'s `slot` field
 (`freelance-engine-store.ts:19`): the visible Inbox tab publishes its DOM node as
 `slot`; `AlwaysMountedInbox` re-parents `hostEl` into it, and `InboxTab` reads
 `slot != null` as its **foreground** signal to decide native visibility
-(`inbox-tab.tsx:616-619`). Background ⇒ `slot` is null ⇒ the native view is hidden
+(`inbox-tab.tsx:647-649`). Background ⇒ `slot` is null ⇒ the native view is hidden
 so it can never flash over another page.
 
 ## Key files

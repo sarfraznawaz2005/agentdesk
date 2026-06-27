@@ -2,7 +2,7 @@
 title: Message Streaming & Broadcasts
 type: flow
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/agents/engine.ts
   - src/bun/engine-manager.ts
@@ -41,7 +41,7 @@ mounted, and the listeners filter by `activeConversationId` themselves.
 ```mermaid
 flowchart TD
   subgraph Bun["Bun backend"]
-    A["AgentEngine.fullStream loop<br/>engine.ts:629"] -->|onStreamToken/Reset/Complete| CB
+    A["AgentEngine.fullStream loop<br/>engine.ts:659"] -->|onStreamToken/Reset/Complete| CB
     AL["runInlineAgent<br/>agent-loop.ts"] -->|onPartCreated/Updated| CB
     CB["AgentEngineCallbacks<br/>engine-manager.ts:464"] --> BW["broadcastToWebview()<br/>engine-manager.ts:252"]
   end
@@ -57,7 +57,7 @@ flowchart TD
 
 ### 1. The PM token stream
 The engine drives `result.fullStream` and, per `text-delta`, calls
-`onStreamToken(conversationId, messageId, delta, null)` at `engine.ts:645`. The
+`onStreamToken(conversationId, messageId, delta, null)` at `engine.ts:675`. The
 callback (`engine-manager.ts:465`) forwards it to `broadcastToWebview("streamToken", …)`,
 which becomes `agentdesk:stream-token`. `onStreamToken` in
 `chat-event-handlers.ts:83` appends the delta to `buffers.tokenBuffer` and
@@ -70,7 +70,7 @@ message on first flush.
 `onStreamReset` (`chat-event-handlers.ts:105`) clears the token buffer and resets
 `streamingContent` — the engine fires it to **retract premature PM narration**
 when a step both wrote text and dispatched a wait-type sub-agent
-(`engine.ts:651-657`), and on hallucination retries (`engine.ts:715`).
+(`engine.ts:681-700`), and on hallucination retries (`engine.ts:758`).
 `onStreamComplete` (`engine-manager.ts:479`) carries the final `content`,
 `metadata`, and `usage`; the handler (`chat-event-handlers.ts:148`) flushes the
 buffer, marks the stream completed, and commits the message in place — bumping
@@ -104,7 +104,7 @@ On mount, a bubble with `hasParts` lazy-loads its parts via `rpc.getMessageParts
 `activeInlineAgent`, and `pmPending` (with an 8 s safety-net timeout that clears a
 stuck stop button). PM reasoning is streamed separately: the engine accumulates
 `reasoning-delta` parts and flushes them through `onAgentActivity` (type
-`thinking`) on a 300 ms timer (`engine.ts:602-638`); the manager forwards only
+`thinking`) on a 300 ms timer (`engine.ts:632-668`); the manager forwards only
 `thinking` events (`engine-manager.ts:611`) → `agentdesk:pm-thinking` →
 `pmThinkingText` in the store, which `onStreamComplete` folds into the message's
 `reasoning` metadata.

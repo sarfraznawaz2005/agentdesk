@@ -2,7 +2,7 @@
 title: Freelance Uses the Real Session (no anti-detect)
 type: decision
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/mainview/components/freelance/session-webview-host.ts
   - src/shared/freelance/platforms.ts
@@ -101,10 +101,10 @@ rate-limit queries themselves (`governor.ts:153-170`).
 The telling design choice: when the platform *does* push back, the app **pauses
 and asks the human**, rather than rotating identity to dodge it. An in-page
 watcher reports 429s anywhere, 403s on the messaging API, or a captcha/challenge
-page as an anomaly (`inbox-tab.tsx:60-83`, `:542-547`). The bun side trips a
+page as an anomaly (`inbox-tab.tsx:63-87`, `:573-581`). The bun side trips a
 circuit breaker: it pauses all autonomy for a cool-off window and **escalates to
 the human** to log in / clear verification, then resume manually
-(`freelance-outbox.ts:520-539`). Sync keeps running while paused, but no
+(`freelance-outbox.ts:549-579`). Sync keeps running while paused, but no
 autonomous sends do. There is no "spin up a clean profile and keep going" path —
 that would be the anti-detect move, and it's deliberately absent.
 

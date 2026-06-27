@@ -2,7 +2,7 @@
 title: Directory Map (Structural Index)
 type: reference
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/index.ts
   - src/bun/rpc-registration.ts
@@ -38,7 +38,7 @@ Everything wires through four files. Find one of these and you can trace any fea
 | Anchor | File | What it bootstraps |
 |---|---|---|
 | Bun main entry | `src/bun/index.ts:1` | App lifecycle: migrations → seed → plugins → channels → cron/automation → issue-fixer poller → MCP → annotation/playground servers → `BrowserWindow`. Wires every subsystem's init/shutdown. |
-| RPC registration | `src/bun/rpc-registration.ts:37` | `BrowserView.defineRPC<AgentDeskRPC>` — merges all handler groups from `rpc-groups/*` and wraps them with an error-toast broadcaster (`rpc-registration.ts:19`). `maxRequestTime: Infinity` so multi-minute agent runs don't time out. |
+| RPC registration | `src/bun/rpc-registration.ts:32` | `BrowserView.defineRPC<AgentDeskRPC>` — spreads the combined handler map (`requestHandlers`, imported from `remote/rpc-handlers.ts`) and wraps it with an error-toast broadcaster (`rpc-registration.ts:15`). `maxRequestTime: Infinity` so multi-minute agent runs don't time out. |
 | Webview entry | `src/mainview/main.tsx:4` → `App.tsx:12` → `router.tsx` | React root; `RouterProvider` drives a hash-history router (`router.tsx:5`). |
 | RPC client | `src/mainview/lib/rpc.ts:15` | `Electroview` instance + typed wrappers; the *only* path from React into Bun. Also dispatches DOM events for backend broadcasts (`rpc.ts:10`). |
 
@@ -109,10 +109,12 @@ is why `playground-agent` / `issue-fixer` see everything). One file per tool fam
 `conversations.ts`, `projects.ts`, `git.ts`, `deploy.ts`, `issues.ts`,
 `freelance*.ts`, `playground.ts`, `council.ts`, `pulls.ts`, `discord/whatsapp/email.ts`,
 `updater*.ts`, etc.). `rpc-groups/*.ts` = **eight aggregator modules** that bundle
-those handlers into the objects spread into `defineRPC` (`rpc-registration.ts:9`):
-`settings-providers`, `projects-system`, `conversations-control`,
+those handlers: `settings-providers`, `projects-system`, `conversations-control`,
 `agents-kanban-notes`, `git-analytics`, `channels-inbox-scheduler`,
-`plugins-tools`, `features` (+ `setting-callbacks` for `onSettingChange`). See [[rpc-layer]].
+`plugins-tools`, `features` (+ `setting-callbacks` for `onSettingChange`). All
+eight are combined into one `requestHandlers` map in `remote/rpc-handlers.ts:31`
+(single source of truth for both transports), which `rpc-registration.ts:12`
+imports and spreads into `defineRPC`. See [[rpc-layer]].
 
 ### Feature subsystems (each owns init/shutdown called from `index.ts`)
 | Dir | Role | Wiki |
@@ -129,6 +131,7 @@ those handlers into the objects spread into `defineRPC` (`rpc-registration.ts:9`
 | `issue-fixer/` | Autonomous GitHub-issue → branch/PR engine (poller/triggers/orchestrator/prompts/shell-guard/github/config/notify). NEVER merges. | [[issue-fixer]] |
 | `issue-sources/` | Multi-source issue adapters: github/jira/linear/gitlab/trello/kanboard + registry + config-store + types. | [[issue-sources]] |
 | `remote-sync/` | Per-project SFTP/FTP sync (client/config/crypto/engine). | [[remote-sync]] |
+| `remote/` | Opt-in remote access (TASK-474+): local WebSocket RPC server + relay client/session that dispatch into the SAME `requestHandlers` map (`remote/rpc-handlers.ts`) the Electrobun bridge uses, plus broadcast forwarding. Gated off unless enabled, so existing users are unaffected. |
 | `freelance/` | Auto-Earn freelance engine (see below). | [[freelance-autoearn]] |
 | `annotations/` | Agentation toolbar server + preview window + injected script. |
 | `notifications/` | Desktop / native OS notifications. |

@@ -230,4 +230,4 @@ flowchart TD
   effectively dead code today? (Only LSP Manager ships built-in.)
 - The LSP `client.ts`/`servers.ts`/`installer.ts` internals (binary resolution,
   install methods) are referenced but not documented here — candidate for an
-  [[lsp-internals]] page.
+  [[lsp|lsp-internals]] page.

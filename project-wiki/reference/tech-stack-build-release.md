@@ -2,7 +2,7 @@
 title: Tech Stack, Build & Release
 type: reference
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - package.json
   - electrobun.config.ts
@@ -30,14 +30,14 @@ and the local dev commands — and the non-obvious *why* behind each.
 
 | Layer | Choice | Where |
 |---|---|---|
-| Desktop shell | Electrobun `1.18.1` (Bun + native webview) | `package.json:63` |
+| Desktop shell | Electrobun `1.18.1` (Bun + native webview) | `package.json:68` |
 | Frontend | React 19, TanStack Router, Zustand, Tailwind 3, Radix UI | `package.json:48,74,89` |
 | Frontend build | Vite 6 + `@vitejs/plugin-react` | `vite.config.ts:1-22` |
 | Backend | Bun + TypeScript, Drizzle ORM, SQLite | `package.json:62` |
 | AI | Vercel AI SDK (`ai` ^6) + per-provider `@ai-sdk/*` adapters | `package.json:24-52` |
 
 > Note the version drift: `CLAUDE.md` says Electrobun `1.16.0`, but the actual pinned
-> dep is `electrobun@1.18.1` (`package.json:63`). The pin is **exact** (no caret) — the
+> dep is `electrobun@1.18.1` (`package.json:68`). The pin is **exact** (no caret) — the
 > launcher binary and updater protocol are version-coupled, so this must not float.
 
 ## Two-stage build — why Vite *then* Electrobun
@@ -85,7 +85,7 @@ double-watch would clobber HMR.
 | `bun run dev:fast` | Vite dev server (`:5173`) + `electrobun dev` concurrently | HMR mode |
 | `bun run dev:hmr` | `hmr` + `start` concurrently | alt HMR variant |
 | `bun run build` / `build:canary` | production / canary bundle | |
-| `bun run typecheck` / `lint` / `format` | `tsc --noEmit` / ESLint / Prettier | `package.json:17-21` |
+| `bun run typecheck` / `lint` / `format` | `tsc --noEmit` / ESLint / Prettier | `package.json:19-23` |
 | `bun run db:generate` / `db:migrate` / `db:studio` | Drizzle Kit | see [[database]] |
 
 Dev port `5173` is `strictPort` (`vite.config.ts:18-21`) so a stale process fails loudly
@@ -184,7 +184,7 @@ don't get a popup (`whats-new.ts:37-40`).
 
 | File | Role |
 |---|---|
-| `package.json:6-22` | npm scripts — the source of truth for every dev/build command |
+| `package.json:6-27` | npm scripts — the source of truth for every dev/build command (also `build:web`/`deploy:web` for the Cloudflare Pages web build, and `wiki:check`/`wiki:mark-stale`) |
 | `electrobun.config.ts` | app identity, version, the `copy` bridge, per-OS CEF, updater `baseUrl` |
 | `vite.config.ts` | frontend build → `dist/`, aliases, dev port `5173` |
 | `build.ps1` | local stable build helper (Vite + Electrobun) |
@@ -200,7 +200,7 @@ don't get a popup (`whats-new.ts:37-40`).
 - **Version lives in three places**: `package.json`, `electrobun.config.ts`, and the git
   tag. `release.ps1` keeps the first two in sync; the tag's semver is injected into the
   `update.json` at CI time (`release.yml:103-107`). Editing one by hand desyncs the updater.
-- **`electrobun` is pinned exactly** (`package.json:63`) — do not let it float to a caret
+- **`electrobun` is pinned exactly** (`package.json:68`) — do not let it float to a caret
   range; the launcher binary and updater protocol are version-coupled.
 - **Windows builds twice on purpose** — the icon-embed step needs `launcher.exe` to exist
   in `node_modules` first (`release.yml:47-66`). Don't "optimize" it to one pass.

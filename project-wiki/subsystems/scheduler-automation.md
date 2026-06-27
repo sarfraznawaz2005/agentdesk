@@ -2,7 +2,7 @@
 title: Scheduler & Automation
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/scheduler/cron-scheduler.ts
   - src/bun/scheduler/automation-engine.ts
@@ -34,7 +34,7 @@ send a reminder, post to a channel — is the same code path either way.
 
 ### Boot order (everything starts early)
 
-`src/bun/index.ts:167-170` wires and starts the subsystem at app startup, deliberately
+`src/bun/index.ts:183-186` wires and starts the subsystem at app startup, deliberately
 *before* the slower plugin/skill/channel/MCP init (which is deferred to dom-ready). Order:
 
 1. `setTaskExecutorEngine(getOrCreateEngine)` — injects the PM-engine resolver so agent
@@ -109,8 +109,8 @@ is bumped to 50 (`event-bus.ts:19`).
 
 Emitters across the backend (where automation rules get their triggers from):
 `kanban.ts:138,210` (`task:created`, `task:moved`), `deploy.ts:96,159`
-(`deploy:completed`), `channels/manager.ts:494` (`message:received`),
-`agents/engine.ts:322` (`agent:completed`), plus the scheduler's own `cron:fired` and
+(`deploy:completed`), `channels/manager.ts:501` (`message:received`),
+`agents/engine.ts:336` (`agent:completed`), plus the scheduler's own `cron:fired` and
 `automation:completed`.
 
 ```mermaid
@@ -155,8 +155,8 @@ flowchart TD
 | `src/bun/scheduler/event-bus.ts` | In-process pub/sub; `AgentDeskEvent` union; wildcard `*` channel |
 | `src/bun/scheduler/task-executor.ts` | Single `executeTask()` sink for all task types |
 | `src/bun/scheduler/index.ts` | Barrel re-export for the subsystem |
-| `src/bun/index.ts:164-170` | Boot wiring + start order |
-| `src/bun/db/schema.ts:380-423` | `cron_jobs`, `cron_job_history`, `automation_rules` tables |
+| `src/bun/index.ts:183-186` | Boot wiring + start order |
+| `src/bun/db/schema.ts:419-471` | `cron_jobs`, `cron_job_history`, `automation_rules` tables |
 
 ## Gotchas / Constraints
 
@@ -192,5 +192,5 @@ flowchart TD
   (`automation-rule-form.tsx:92`), but no in-tree backend `eventBus.emit` for them was
   found — so rules keyed on them would currently never fire. Possibly reserved for future
   emission or emitted from a not-yet-wired path.
-- Shutdown runs on app quit via `index.ts:359-360` (`shutdownCronScheduler` clears the timer
+- Shutdown runs on app quit via `index.ts:395-396` (`shutdownCronScheduler` clears the timer
   map; `shutdownAutomationEngine` removes all bus listeners) — confirmed, no open question.

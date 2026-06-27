@@ -10,6 +10,18 @@
 > **ingest / query / lint** protocol (query the wiki first; when you learn
 > something durable, write it back; flag/fix stale pages as code changes).
 
+> **MANDATORY LAST ACTION — AFTER ANY CODE CHANGE, NO EXCEPTIONS**
+> Before you consider a coding task done, update the `project-wiki/` page(s) that
+> document the code you touched — in the SAME change — and bump their `verified_at`
+> to today's date. Code and its wiki page travel together; a code change is not
+> complete until its page reflects reality. If you added a new subsystem/flow/
+> decision/gotcha, create the page and link it from `project-wiki/index.md`.
+> Then run `bun run wiki:check` and confirm it reports **no stale pages and no
+> missing sources** for what you changed. The `.githooks/pre-commit` hook lists
+> which pages your staged change touches — treat that list as your update checklist.
+> "I'll update the wiki later" is not acceptable: later never comes and the next
+> agent inherits a lie.
+
 > This file is the **map**, not the manual. It orients AI agents quickly and
 > points to the deeper sources of truth (chiefly the `project-wiki/`).
 > Keep it short and current.
@@ -189,7 +201,7 @@ bun run db:studio    # Open Drizzle Studio (DB browser)
 - Follow established principles such as DRY, KISS, SOLID, etc. for coding tasks.
 - Always create todos before implementations.
 - Always keep `CLAUDE.md`, the `project-wiki/` pages, and `docs/workflow.md` updated if they deviate from current code.
-- **Keep the wiki fresh as you code**: when you change code, update the affected `project-wiki/` page(s) in the SAME change and bump their `verified_at` — code and its wiki page travel together. The `.githooks/pre-commit` hook lists which pages your staged change touches (non-blocking); `bun run wiki:check` audits the whole wiki for stale/missing references (CI-friendly). The hook only *detects* drift — repairing the prose is your job (see `project-wiki/WIKI.md`).
+- **Keep the wiki fresh as you code** — this is the **MANDATORY LAST ACTION** at the top of this file, restated as a rule: when you change code, update the affected `project-wiki/` page(s) in the SAME change and bump their `verified_at`, then run `bun run wiki:check` until it reports no stale/missing references. The `.githooks/pre-commit` hook lists which pages your staged change touches (non-blocking); the hook only *detects* drift — repairing the prose is your job (see `project-wiki/WIKI.md`). Bumping `verified_at` without actually re-reading the code against the page is forbidden — the date asserts you verified it.
 - Always ask questions if you have any confusion or better suggestions even if they differ with user.
 - This app has EXISTING users, so any features implemented or changes need to ensure it works not only for new users but also existing users.
 

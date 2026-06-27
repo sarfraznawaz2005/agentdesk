@@ -2,7 +2,7 @@
 title: Database Layer
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/db/connection.ts
   - src/bun/db/index.ts
@@ -37,7 +37,7 @@ that same handle with Drizzle (`drizzle(sqlite)`) and exports it as `db`. So:
 
 - `db` (Drizzle) — typed `select/insert/update` for normal RPC handlers.
 - `sqlite` (raw) — `prepare/exec/transaction` for migrations, `INSERT OR IGNORE`
-  backfills in [[seed]] logic, and the [[audit]] log.
+  backfills in seed logic, and the audit log.
 
 Both go through the **same Proxy-wrapped handle** (`connection.ts:59`), so every
 `.exec/.prepare/.run/.all/.get` is intercepted to log failures to
@@ -86,18 +86,18 @@ The runner (`src/bun/db/migrate.ts`) uses SQLite's `PRAGMA user_version` as the
 applied-migration counter — there is no migrations table. Each migration is a
 module under `migrations/v<N>_<name>.ts` exporting `name: string` and
 `run(): void`, statically imported and listed in the `migrations` array
-(`migrate.ts:69`). Current head is v43 (`migrate.ts:115`).
+(`migrate.ts:79`). Current head is v53 (`migrate.ts:135`).
 
-`runMigrations()` (`migrate.ts:117`):
+`runMigrations()` (`migrate.ts:137`):
 1. Reads `user_version`; if already at head, skips to the sanity check
-   (`migrate.ts:122`).
+   (`migrate.ts:142`).
 2. Before the **first** pending migration on a non-empty DB (`user_version > 0`),
    takes a one-shot backup via `createBackup()` → `VACUUM INTO`
-   (`migrate.ts:138`, `src/bun/rpc/backup.ts:31`). Backup failure **aborts** the
-   whole upgrade (`migrate.ts:145`).
+   (`migrate.ts:158`, `src/bun/rpc/backup.ts:31`). Backup failure **aborts** the
+   whole upgrade (`migrate.ts:165`).
 3. Runs each pending migration inside an explicit `BEGIN/COMMIT`, rolling back on
-   error (`migrate.ts:151`–`161`). `PRAGMA user_version = N` is set **outside**
-   the transaction because SQLite won't honor it inside one (`migrate.ts:164`).
+   error (`migrate.ts:171`–`181`). `PRAGMA user_version = N` is set **outside**
+   the transaction because SQLite won't honor it inside one (`migrate.ts:184`).
 
 ### Two flavors of migration
 - **DDL that mirrors `schema.ts`** — e.g. `v1_initial-schema.ts` is a wall of
@@ -110,9 +110,9 @@ module under `migrations/v<N>_<name>.ts` exporting `name: string` and
 
 ### The defensive `ensureRuntimeSchema()` net
 After migrations (and even when already at head), `ensureRuntimeSchema()`
-(`migrate.ts:179`) re-runs a curated set of *idempotent* migration `run()`s
-unconditionally — v27/v29/v30/v32/v33/v34/v35/v36/v38/v39/v40/v41/v42/v43 — and
-hand-checks for late-added `agents` columns (`migrate.ts:286`–`297`). This exists
+(`migrate.ts:199`) re-runs a curated set of *idempotent* migration `run()`s
+unconditionally — v27/v29/v30/v32/v33/v34/v35/v36/v38/v39/v40/v41/v42/v43/v44/v45/v48/v50/v51 — and
+hand-checks for late-added `agents` columns (`migrate.ts:343`–`357`). This exists
 because in dev, a hot-reload can pick up new schema code while `user_version`
 already raced ahead (e.g. a shared dev DB pulled between branches), leaving the
 running code expecting columns the DB lacks. Every branch here must be safe to
@@ -122,24 +122,24 @@ reason new tables/columns should use idempotent DDL.
 
 ## Seeding
 
-`seedDatabase()` (`src/bun/db/seed.ts:1424`) runs on **every** launch and must be
+`seedDatabase()` (`src/bun/db/seed.ts:1439`) runs on **every** launch and must be
 fully idempotent. It seeds default `settings` (only when the table is empty,
-`seed.ts:1428`), a versioned `constitution` that re-publishes on a
-`CONSTITUTION_VERSION` bump (`seed.ts:1448`), a default MCP config, a "Free"
-provider for fresh installs (`seed.ts:1531`), the built-in agent roster, prompt
+`seed.ts:1441`), a versioned `constitution` that re-publishes on a
+`CONSTITUTION_VERSION` bump (`seed.ts:1463`), a default MCP config, a "Free"
+provider for fresh installs (`seed.ts:1544`), the built-in agent roster, prompt
 templates, and per-agent tool assignments.
 
 The expensive part — re-upserting ~22 built-in agent prompts — is gated by an
 FNV-1a hash of the bundled agent defs stored in `settings`
-(`seed.ts:14`, `seed.ts:1554`). On an unchanged launch the upsert is skipped
+(`seed.ts:14`, `seed.ts:1569`). On an unchanged launch the upsert is skipped
 entirely; on an app upgrade the hash changes and prompts/colors/display-names are
-updated **without ever touching custom agents** (`seed.ts:1575`–`1601`). Hidden
+updated **without ever touching custom agents** (`seed.ts:1593`–`1616`). Hidden
 built-in agents (`playground-agent`, `issue-fixer`, `freelance-expert`) are then
 normalized to `availableToPm: 0` so the PM never orchestrates them
-(`seed.ts:1606`–`1624`). `seedAgentTools()` (`seed.ts:1662`) seeds a default tool
+(`seed.ts:1619`–`1639`). `seedAgentTools()` (`seed.ts:1677`) seeds a default tool
 set only for agents with zero `agent_tools` rows, then top-up-adds any missing
 default tools — preserving user customisation. See [[agent-roster]] and
-[[seed]] for the roster details.
+seed for the roster details.
 
 ## Audit log
 
@@ -172,7 +172,7 @@ table (`audit.ts:18`).
 - **`PRAGMA user_version` must be set outside any transaction** (`migrate.ts:164`).
 - **Seed runs on every launch**, so it must never repeatedly delete or overwrite
   user data — destructive one-shots (like removing `general-agent`) belong in a
-  migration (`seed.ts:1549`), not in seed.
+  migration (`seed.ts:1564`), not in seed.
 - **One connection, shared everywhere.** Heavy synchronous work on `sqlite`
   blocks all DB access; the 5 s `busy_timeout` only covers external lock
   contention (e.g. the background vacuum worker that reopens `dbFilePath`).
@@ -186,9 +186,7 @@ table (`audit.ts:18`).
 ## Related
 
 - [[database-tables]] — full table catalog (Drizzle-managed vs raw-SQL)
-- [[seed]] — default data + built-in agent seeding detail
 - [[agent-roster]] — the agents seeded here
-- [[backup-and-maintenance]] — `VACUUM INTO` backups, WAL checkpoint, vacuum worker
 - [[rpc-layer]] — handlers that consume `db`
 
 ## Open questions

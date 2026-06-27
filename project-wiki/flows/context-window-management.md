@@ -2,7 +2,7 @@
 title: Context Window Management
 type: flow
 status: verified
-verified_at: 2026-06-19
+verified_at: 2026-06-27
 sources:
   - src/bun/agents/context.ts
   - src/bun/agents/summarizer.ts

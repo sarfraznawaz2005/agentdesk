@@ -2,7 +2,7 @@
 title: Glossary
 type: glossary
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - CLAUDE.md
   - src/bun/agents/engine.ts

@@ -2,7 +2,7 @@
 title: Kanban & Auto Review Cycle
 type: flow
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/agents/review-cycle.ts
   - src/bun/agents/tools/kanban.ts
@@ -170,11 +170,11 @@ Three code paths fire `notifyTaskInReview` — all funnel through the same cycle
 |---|---|
 | Agent calls `verify_implementation` (pass) | `kanban.ts:745` |
 | Agent calls `move_task("review")` directly | `kanban.ts:338` |
-| PM `run_agent` sees the result completed + `verificationStatus=passed` | `pm-tools.ts:632`, `pm-tools.ts:637` |
+| PM `run_agent` sees the result completed + `verificationStatus=passed` | `pm-tools.ts:638`, `pm-tools.ts:642` |
 
 The PM-tools path also auto-commits and moves to `review` if the agent verified
-but the task was still in `working` (`pm-tools.ts:627`), and otherwise re-prompts
-the PM that the agent skipped verification (`pm-tools.ts:641`).
+but the task was still in `working` (`pm-tools.ts:642`), and otherwise re-prompts
+the PM that the agent skipped verification (`pm-tools.ts:653`).
 
 ## Key files
 
@@ -183,7 +183,7 @@ the PM that the agent skipped verification (`pm-tools.ts:641`).
 | `src/bun/agents/review-cycle.ts` | The whole auto-review cycle: spawn reviewer, read verdict, round logic, force-complete, `autoCommitTask`, PM auto-continue |
 | `src/bun/agents/tools/kanban.ts` | `move_task` transition enforcement, `verify_implementation` gate, `submit_review`, `check_criteria` |
 | `src/bun/rpc/kanban.ts` | `moveKanbanTask` DB write + activity log + `task:moved` event + done-notification side effects (`kanban.ts:179`) |
-| `src/bun/agents/tools/pm-tools.ts` | `run_agent` post-run move-to-review path (`pm-tools.ts:619`) |
+| `src/bun/agents/tools/pm-tools.ts` | `run_agent` post-run move-to-review path (`pm-tools.ts:634`) |
 | `tests/agents/review-cycle.test.ts` | Unit tests for the verdict heuristics |
 
 ## Gotchas / Constraints

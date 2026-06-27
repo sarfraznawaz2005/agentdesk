@@ -2,7 +2,7 @@
 title: Remote Access (Web App)
 type: subsystem
 status: verified
-verified_at: 2026-06-21
+verified_at: 2026-06-27
 sources:
   - relay/src/index.ts
   - src/bun/remote/

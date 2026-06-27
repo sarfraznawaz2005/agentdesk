@@ -2,7 +2,7 @@
 title: Issue Fixer
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/issue-fixer/poller.ts
   - src/bun/issue-fixer/triggers.ts
@@ -188,7 +188,7 @@ branch. A user-initiated Stop surfaces as an `AbortError` and is recorded as
 | `src/bun/issue-fixer/config.ts` | `issue_fixer_config` + `issue_fix_runs` persistence |
 | `src/bun/issue-fixer/notify.ts` | Success/failure summary to all connected channels |
 | `src/bun/db/seed.ts:1190-1214` | Hidden `issue-fixer` agent definition + system prompt |
-| `src/bun/db/schema.ts:541,573` | `issueFixerConfig` / `issueFixRuns` tables |
+| `src/bun/db/schema.ts:582,614` | `issueFixerConfig` / `issueFixRuns` tables |
 
 ## Gotchas / Constraints
 
@@ -210,13 +210,13 @@ branch. A user-initiated Stop surfaces as an `AbortError` and is recorded as
   GitHub 422 from an empty PR; PR-feedback runs skip this (a no-op push is harmless).
 - **Token auth uses an inline header with the credential helper disabled** — never
   embed the token in the remote URL (would trigger Git Credential Manager account
-  prompts on the user's own pushes). See [[github-auth]].
+  prompts on the user's own pushes). See [[github-token-auth|GitHub token auth]].
 
 ## Related
 - [[playground]] — the hidden-agent / `runInlineAgent` pattern this mirrors
 - [[agent-engine]] — the PM path this subsystem deliberately bypasses
-- [[github-auth]] — `gitAuthArgs` / `pushBranchAuthenticated` token auth
-- [[issue-tracker]] — the multi-source read-only issue browser (separate feature)
+- [[github-token-auth]] — `gitAuthArgs` / `pushBranchAuthenticated` token auth
+- [[issue-sources]] — the multi-source read-only issue browser (separate feature)
 - [[channels]] — where success/failure summaries are delivered
 
 ## Open questions

@@ -2,7 +2,7 @@
 title: Skills System
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/skills/loader.ts
   - src/bun/skills/registry.ts
@@ -45,7 +45,7 @@ The system has three layers that map cleanly onto three files:
 
 ### Startup discovery (no file watcher)
 
-On boot, `src/bun/index.ts:253` calls `skillRegistry.loadAll()` exactly once.
+On boot, `src/bun/index.ts:282` calls `skillRegistry.loadAll()` exactly once.
 There is no file watcher — picking up new or edited skills requires either an app
 restart or a manual `refreshSkills` RPC (`rpc/skills.ts:43`) which calls
 `registry.reload()` → `loadAll()` again.
@@ -167,7 +167,7 @@ All four are category `skills` and available to every agent (`tools/skills.ts:38
 | `src/bun/agents/tools/skills.ts` | The four agent tools: `read_skill`, `read_skill_file`, `find_skills`, `validate_skill` |
 | `src/bun/agents/prompts.ts` | `buildSkillsDescriptionSection` — compact `## Available Skills` prompt block |
 | `src/bun/rpc/skills.ts` | RPC handlers for the read-only Skills UI page + refresh/open-folder |
-| `src/bun/index.ts:253` | One-time `skillRegistry.loadAll()` on startup |
+| `src/bun/index.ts:282` | One-time `skillRegistry.loadAll()` on startup |
 | `docs/skills.md` | Long-form spec + Claude Code compatibility matrix |
 
 ## Gotchas / Constraints

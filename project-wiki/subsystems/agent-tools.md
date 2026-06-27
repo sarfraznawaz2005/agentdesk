@@ -26,7 +26,7 @@ command, moving a kanban card, dispatching another agent — is a **Vercel AI SD
 `tool()`** registered in `src/bun/agents/tools/`. The subsystem has two halves:
 a **static registry** of tool families assembled once at module load
 (`src/bun/agents/tools/index.ts:39`), and a **per-run binding layer** in
-[[agent-loop]] that overlays workspace-, agent-, and session-scoped versions on
+[[agent-engine|agent-loop]] that overlays workspace-, agent-, and session-scoped versions on
 top before each agent run. The single most important thing to understand: the
 registry holds *placeholder* tools; the tools an agent actually receives are
 filtered, workspace-injected, and identity-bound at dispatch time.
@@ -124,7 +124,7 @@ If `readOnly` (read-only agent, or Plan Mode), `filterReadOnlyTools`
 (`agent-loop.ts:225-233`) — file writes, `run_shell`, mutating git, and mutating
 kanban. `excludeTools` then removes named tools (supports a trailing `*` prefix
 wildcard, `agent-loop.ts:930-936`), and `git_commit` is deleted when auto-commit
-is on (`agent-loop.ts:940-945`) since the [[review-cycle]] commits automatically.
+is on (`agent-loop.ts:940-945`) since the [[kanban-review-cycle|review-cycle]] commits automatically.
 
 ## Tool families
 
@@ -162,7 +162,7 @@ lines, *tail*), search (50), and tree (300) (`truncation.ts:161-178`).
 (`agent-loop.ts:867`) stores each touched file's mtime. Before an edit,
 `checkFreshness()` (`file-tracker.ts:53`) compares stored vs disk mtime to detect
 a concurrent external modification, and `getModifiedFiles()` (`file-tracker.ts:81`)
-feeds `filesModified` (used for the [[handoff]] summary). Never persisted.
+feeds `filesModified` (used for the [[agent-engine|handoff]] summary). Never persisted.
 
 **Shell safety (`shell.ts`).** `run_shell` rejects a hardcoded denylist of
 destructive commands (`shell.ts:12-19`) before anything else, then passes through
@@ -242,15 +242,12 @@ hard cap 100 with cold-memory LRU eviction). Defaults wired in `seed.ts`
   approval — they are lost on restart.
 
 ## Related
-- [[agent-loop]]
 - [[agent-engine]]
-- [[review-cycle]]
-- [[handoff]]
+- [[kanban-review-cycle]]
 - [[agent-roster]]
-- [[kanban-workflow]]
 
 ## Open questions
 - Plugin/MCP tool loading (`getPluginTools`, `getMcpTools`) is overlaid here but
   documented elsewhere — needs a [[plugins]] / [[mcp]] page to cross-link.
 - The full kanban verification/review state machine (`verify_implementation` →
-  `submit_review` → `done`) is summarised here but belongs to [[review-cycle]].
+  `submit_review` → `done`) is summarised here but belongs to [[kanban-review-cycle|review-cycle]].

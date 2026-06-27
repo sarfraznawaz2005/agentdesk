@@ -55,6 +55,16 @@ function git(cmd) {
   }
 }
 
+// Strip fenced code blocks and inline code so illustrative `[[example]]` links
+// inside code samples (in WIKI.md, glossary.md, etc.) aren't mistaken for live
+// wikilinks. Fenced blocks are removed before inline code so backticks inside a
+// fence don't confuse the inline pass.
+function stripCode(md) {
+  return md
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`\n]*`/g, "");
+}
+
 // Pull the `---` frontmatter block and extract sources/verified_at/status.
 function parseFrontmatter(text) {
   if (!text.startsWith("---")) return null;
@@ -129,10 +139,15 @@ for (const page of pages) {
   const name = basename(page);
 
   // broken wikilinks (warn only — WIKI.md allows links to not-yet-written pages,
-  // but a link whose slug differs from every page is likely a typo)
-  for (const m of text.matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)) {
-    const slug = m[1].trim();
-    if (!slugSet.has(slug)) brokenLinks.push({ page: rel, slug });
+  // but a link whose slug differs from every page is likely a typo). Code-span
+  // examples are skipped (stripCode), and `#anchor` suffixes are resolved: a pure
+  // `[[#section]]` is a same-page anchor (always valid); `[[page#section]]`
+  // validates the page part only.
+  for (const m of stripCode(text).matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)) {
+    const target = m[1].trim();
+    const slug = target.split("#")[0].trim();
+    if (slug === "") continue; // same-page anchor link
+    if (!slugSet.has(slug)) brokenLinks.push({ page: rel, slug: target });
   }
 
   if (NON_SOURCE_PAGES.has(name)) continue;

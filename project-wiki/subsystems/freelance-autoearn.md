@@ -247,9 +247,7 @@ filter depends on that cache.
 
 ## Related
 - [[freelance-discovery]] — the RSS/wizard/shortlist "discover" layer Auto-Earn builds on
-- [[freelance-expert-agent]] — the full-auto orchestrator triggered on new inbound messages
-- [[behavior-governor]] — deeper dive on the anti-ban pacing math (if split out)
-- [[session-webview-host]] — the persistent embedded webview the interceptor runs in
+- [[electrobun-webview-overlay]] — the persistent embedded webview the interceptor runs in
 
 ## Open questions
 - The frontend always-mounted engine (`AlwaysMountedInbox` + `freelance-engine-store`)

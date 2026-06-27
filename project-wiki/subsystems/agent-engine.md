@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts
@@ -39,16 +39,16 @@ each turn ends in one of three ways:
 
 1. **Plain text** — answer the user, done.
 2. **Dispatch a sub-agent** — the PM stream is *stopped* after the current step
-   (`stopPMStream` sets `planApprovalRequested`, `engine.ts:380`,`engine.ts:662`),
+   (`stopPMStream` sets `planApprovalRequested`, `engine.ts:398`,`engine.ts:705`),
    the agent runs in the background, and when it finishes the engine **restarts
    the PM** by sending itself a synthetic `[Agent Report]` message
-   (`pm-tools.ts:480` → `onAgentDone`, `engine.ts:390`).
+   (`pm-tools.ts:480` → `onAgentDone`, `engine.ts:408`).
 3. **Request approval** — same stop mechanism, but the PM stays paused until the
    *human* replies "approve"/"reject".
 
 This self-restart is why the engine can drive a multi-task workflow with no state
 machine: each agent completion feeds a computed `[Next Action]` hint back into
-the PM (`engine.ts:402`–`engine.ts:454`) that tells it exactly what to do next
+the PM (`engine.ts:423`–`engine.ts:470`) that tells it exactly what to do next
 (DISPATCH / WAIT / MOVE TO REVIEW / ALL DONE / BLOCKED), so the PM rarely has to
 reason about kanban state itself.
 
@@ -70,34 +70,34 @@ flowchart TD
   ST -->|request_plan_approval| PAUSE[stop stream, await human]
 ```
 
-### 1. Serialization in `sendMessage` (`engine.ts:86`)
+### 1. Serialization in `sendMessage` (`engine.ts:97`)
 A new message aborts the in-flight PM stream (`pmAbort.abort()`) and all running
 sub-agents (`abortAgentsFn`), then **awaits the previous processing promise**
 before starting — otherwise two PM streams race and the stale one overwrites the
 fresh answer (`engine.ts:104`). `[Agent Report]` messages are special-cased:
 they do **not** abort sub-agents, because a review-cycle agent may legitimately
-be running (`engine.ts:91`,`engine.ts:96`). The processing lock
+be running (`engine.ts:102`,`engine.ts:107`). The processing lock
 (`pmProcessingPromise`) is installed synchronously before any `await` so
-back-to-back calls queue correctly (`engine.ts:116`).
+back-to-back calls queue correctly (`engine.ts:130`).
 
-### 2. Context + provider resolution (`engine.ts:219`)
+### 2. Context + provider resolution (`engine.ts:231`)
 The PM system prompt is built by `getPMSystemPrompt` (`prompts.ts:871`); the
 provider/model is resolved from project-level `chatProviderId/chatModelId`
-overrides falling back to the global default (`engine.ts:1047`). `buildContext`
+overrides falling back to the global default (`engine.ts:1091`). `buildContext`
 (`context.ts:28`) loads the latest conversation summary + the last 50 messages,
 sorted **in JS** by parsed timestamp (SQLite `CURRENT_TIMESTAMP` and JS ISO
 strings don't sort lexicographically the same — `context.ts:42`).
 
-### 3. PM streaming with retries + guards (`engine.ts:533`)
+### 3. PM streaming with retries + guards (`engine.ts:556`)
 `streamText` runs with `stopWhen: stepCountIs(100)` and the assembled `pmTools`.
 The fullStream loop handles several non-obvious cases:
-- **Premature-text retraction** (`engine.ts:651`): if a step emits narration text
+- **Premature-text retraction** (`engine.ts:681`): if a step emits narration text
   *and* dispatches a wait-type agent (`run_agent`/`run_agents_parallel`), the
   text is retracted (it would render before the agent's own output) and re-emitted
   to the reasoning/thinking lane via `onAgentActivity` so it is not a silent
   flash-then-vanish. It is still restored to the answer lane if the model never
-  regenerates (`engine.ts:680`).
-- **Hallucination guard** (`engine.ts:710`): when a `[Next Action] DISPATCH` hint
+  regenerates (`engine.ts:722`).
+- **Hallucination guard** (`engine.ts:753`): when a `[Next Action] DISPATCH` hint
   was injected but the PM wrote text *without* calling `run_agent`, the engine
   injects an in-memory correction and re-loops (up to 2×) — the hallucinated text
   is never written to DB so it can't poison future context. On each retry the tool
@@ -107,16 +107,16 @@ The fullStream loop handles several non-obvious cases:
   OpenAI-compatible proxies silently ignore, and which Anthropic forbids alongside
   extended thinking). If all retries are exhausted the engine logs a warning rather
   than silently persisting the misleading "I'll dispatch…" narration as the answer.
-- **Transient-error retry** (`engine.ts:746`): up to 3 attempts with exponential
+- **Transient-error retry** (`engine.ts:805`): up to 3 attempts with exponential
   backoff (`safety.ts:143`,`safety.ts:155`), distinguishing real aborts from
   empty/network failures.
 
-### 4. Message repositioning (`engine.ts:856`)
+### 4. Message repositioning (`engine.ts:904`)
 The PM's placeholder row is inserted *before* streaming (so before any sub-agent
 rows). The UI orders by SQLite `rowid`, so after the turn the engine bumps the
 PM row's `rowid` to `MAX+1` so its final text renders *after* the sub-agents it
 spawned — while the LLM-context path (`context.ts`, `summarizer.ts`) orders by
-`createdAt`, which is also bumped to the finish time (`engine.ts:835`). Both
+`createdAt`, which is also bumped to the finish time (`engine.ts:900`). Both
 views stay chronological.
 
 ## Inline sub-agent execution (`agent-loop.ts:784`)
@@ -126,7 +126,7 @@ behaviour is shaped by `prepareStep`/`onStepFinish`/`stopWhen`:
 
 - **Fresh context**: the agent message array is just the task (plus optional
   `priorMessages` for the Playground) — it never sees the parent conversation
-  (`agent-loop.ts:1007`). The PM's task description is therefore the agent's
+  (`agent-loop.ts:1055`). The PM's task description is therefore the agent's
   *entire* context, which is why `run_agent`'s schema demands a comprehensive
   task (`pm-tools.ts:256`).
 - **Tool assembly** (`agent-loop.ts:856`–`agent-loop.ts:954`): role tools from
@@ -138,9 +138,9 @@ behaviour is shaped by `prepareStep`/`onStepFinish`/`stopWhen`:
   getContextLimit`: >0.60 aggressive tool-result pruning, >0.70 rule-based
   compaction (zero-token deterministic summary, `agent-loop.ts:446`) escalating
   to AI compaction if the summary is large, >0.85 strip, >0.90 hard stop
-  (`agent-loop.ts:1098`–`agent-loop.ts:1151`). There is **no iteration cap** —
+  (`agent-loop.ts:1146`–`agent-loop.ts:1199`). There is **no iteration cap** —
   only context, a 30-min timeout, stuck-loop detection (MCP tools repeated 15×,
-  `agent-loop.ts:1188`), or abort can stop it.
+  `agent-loop.ts:1230`), or abort can stop it.
 - **Persistence toggle**: `persistToDb:false` skips all DB writes (Playground)
   while still firing callbacks (`agent-loop.ts:791`).
 
@@ -216,9 +216,9 @@ problem `docs/sequential-agent-model.md` was written to solve.
 Two distinct mechanisms:
 - **Per-conversation summarization** (`summarizer.ts:50`): keeps the most recent
   10 messages, AI-summarizes + deletes the rest, carries forward the prior
-  summary. Triggered pre-send when estimated tokens ≥ threshold (default 200k,
-  `engine.ts:257`,`engine.ts:1098`) and post-turn when context ≥80%
-  (`context.ts:90`).
+  summary. Triggered pre-send when measured tokens (real last-turn usage or char
+  estimate) reach the project's Context Window Limit (`getContextLimit`, default
+  1M, `engine.ts:279`) and post-turn when context ≥80% (`context.ts:90`).
 - **Between-task tool-output pruning** (`pruneAgentToolResults`,
   `agent-loop.ts:319`): when context ≥60% after an agent finishes, verbose tool
   outputs are replaced with short placeholders (`pm-tools.ts:659`), preserving
@@ -243,7 +243,7 @@ Two distinct mechanisms:
 ## Gotchas / Constraints
 
 - **`[Agent Report]` is load-bearing.** It is both the PM-restart mechanism and
-  the abort exemption that keeps review-cycle agents alive (`engine.ts:91`). Don't
+  the abort exemption that keeps review-cycle agents alive (`engine.ts:102`). Don't
   rename it or change the prefix without updating both sites.
 - **`run_agent` is fire-and-forget.** It returns `"dispatched"` immediately and the
   real work + kanban moves + handoff happen in the backgrounded
@@ -275,13 +275,12 @@ Two distinct mechanisms:
   Set, and review round counters reset on app restart.
 
 ## Related
-- [[review-cycle]]
-- [[pm-tools]]
-- [[sequential-agent-model]]
-- [[context-and-compaction]]
-- [[engine-manager]]
+- [[kanban-review-cycle]]
+- [[agent-tools]]
+- [[pm-sole-orchestrator]]
+- [[context-window-management]]
+- [[backend-core]]
 - [[agent-roster]]
-- [[kanban-flow]]
 
 ## Open questions
 - `kanban-integration.ts` (`KanbanIntegration`) is read here but its wiring point

@@ -2,7 +2,7 @@
 title: Conventions & Constraints
 type: reference
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - CLAUDE.md
   - src/bun/rpc/github-api.ts
@@ -61,21 +61,21 @@ breakage because each one is a contract that two layers rely on independently.
 ## Migration discipline (the part that bites)
 
 The migration runner uses SQLite `PRAGMA user_version` to track applied
-migrations (`src/bun/db/migrate.ts:117`). Each migration is its own file
+migrations (`src/bun/db/migrate.ts:137`). Each migration is its own file
 exporting `name` + `run()`, registered in the `migrations` array
-(`src/bun/db/migrate.ts:69`). Before any migration runs on an existing DB
+(`src/bun/db/migrate.ts:79`). Before any migration runs on an existing DB
 (`user_version > 0`) the runner takes an automatic VACUUM-INTO backup, once per
 session, and **aborts the whole migration if the backup fails**
-(`src/bun/db/migrate.ts:138`) — data safety beats forward progress. Each
+(`src/bun/db/migrate.ts:165`) — data safety beats forward progress. Each
 migration runs inside a `BEGIN`/`COMMIT` with `ROLLBACK` on error; the
 `PRAGMA user_version` bump happens *outside* the transaction
-(`src/bun/db/migrate.ts:151`).
+(`src/bun/db/migrate.ts:184`).
 
-The non-obvious part is `ensureRuntimeSchema()` (`src/bun/db/migrate.ts:179`):
+The non-obvious part is `ensureRuntimeSchema()` (`src/bun/db/migrate.ts:199`):
 a **defensive sanity check that runs on every startup, even when fully
 migrated**. It re-invokes a set of idempotent migrations (`v27`, `v29`, `v32`,
 `v33`, `v42`, …) and PRAGMA-guarded `ADD COLUMN`s
-(`src/bun/db/migrate.ts:283`) to catch the case where `user_version` raced ahead
+(`src/bun/db/migrate.ts:346`) to catch the case where `user_version` raced ahead
 of the actual schema — e.g. a dev DB pulled between branches, or a hot-reload
 that picked up new schema code without restarting the Bun process that runs
 migrations. **This is why new migrations must be idempotent**: use
@@ -203,10 +203,9 @@ engine** — the kanban tools themselves encode the state machine, and
 ## Related
 - [[directory-map]]
 - [[agent-engine]]
-- [[kanban-flow]]
-- [[review-cycle]]
-- [[database-schema]]
-- [[github-integration]]
+- [[kanban-review-cycle]]
+- [[database-tables]]
+- [[github-token-auth]]
 
 ## Open questions
 - Is there an ESLint/Prettier-enforced naming lint, or are conventions purely

@@ -2,7 +2,7 @@
 title: RPC Layer
 type: subsystem
 status: verified
-verified_at: 2026-06-20
+verified_at: 2026-06-27
 sources:
   - src/shared/rpc/index.ts
   - src/bun/rpc-registration.ts
@@ -48,8 +48,8 @@ Electrobun's RPC is bidirectional. The whole contract is the single type
   stream tokens, kanban updates, freelance events, etc.).
 
 Both sides import the *same* `AgentDeskRPC` and call `defineRPC<AgentDeskRPC>`:
-the Bun side in `src/bun/rpc-registration.ts:36` (`BrowserView.defineRPC`), the
-webview side in `src/mainview/lib/rpc.ts:29` (`Electroview.defineRPC`). Because
+the Bun side in `src/bun/rpc-registration.ts:32` (`BrowserView.defineRPC`), the
+webview side in `src/mainview/lib/rpc.ts:30` (`Electroview.defineRPC`). Because
 the type is shared, a contract change is a compile error on whichever side
 hasn't been updated — that is the entire safety guarantee of this layer.
 
@@ -76,17 +76,19 @@ sequenceDiagram
    `createNote` in `src/shared/rpc/notes.ts:31-34`. Each domain file exports a
    `*Requests` type; `index.ts` intersects them all into `BunRequests`.
 2. **Frontend call** — components never call `electroviewRpc` directly. They use
-   the hand-written convenience wrapper `rpc` in `src/mainview/lib/rpc.ts:340`
-   (e.g. `createNote` at `rpc.ts:649`). Each wrapper is a thin one-liner that
+   the hand-written convenience wrapper `rpc` in `src/mainview/lib/rpc.ts:369`
+   (e.g. `createNote` at `rpc.ts:722`). Each wrapper is a thin one-liner that
    maps positional args to the params object and calls
    `electroviewRpc.request.<name>(params)`.
 3. **Dispatch** — Electrobun routes the named request to the matching key in the
    Bun `handlers.requests` map.
-4. **Handler registration** — handlers are *not* registered individually.
-   `rpc-registration.ts:40-49` spreads eight pre-assembled group objects into one
-   `requests` map, all wrapped by `withErrorToast` (`rpc-registration.ts:19-33`),
-   which catches any throw, broadcasts a `showToast` error to the UI, and
-   re-throws so the Promise still rejects.
+4. **Handler registration** — handlers are *not* registered individually. The
+   eight pre-assembled group objects are spread into one combined
+   `requestHandlers` map in `src/bun/remote/rpc-handlers.ts:31-40` (shared with
+   the remote WS transport, TASK-474); `rpc-registration.ts:36` then wraps that
+   whole map in `withErrorToast` (`rpc-registration.ts:15-29`), which catches any
+   throw, broadcasts a `showToast` error to the UI, and re-throws so the Promise
+   still rejects.
 5. **Group → implementation** — each group file (e.g.
    `src/bun/rpc-groups/agents-kanban-notes.ts:7`) is a flat `Record<string, fn>`
    that delegates to the real implementation modules in `src/bun/rpc/*`
@@ -96,10 +98,10 @@ sequenceDiagram
 ## How a broadcast flows (Bun → UI push)
 
 Bun pushes events through `broadcastToWebview(method, payload)` in
-`src/bun/engine-manager.ts:252` — a thin `mainWindowRef?.webview?.rpc?.send?.[method]?.(payload)`
+`src/bun/engine-manager.ts:272` — a thin `mainWindowRef?.webview?.rpc?.send?.[method]?.(payload)`
 that silently no-ops if the window is gone. The `method` must be a key in
 `WebviewSchema.messages`. On the webview side, every such message has a handler
-in `electroviewRpc.handlers.messages` (`src/mainview/lib/rpc.ts:46-321`) that
+in `electroviewRpc.handlers.messages` (`src/mainview/lib/rpc.ts:47-340`) that
 simply **re-emits it as a DOM `CustomEvent`** (e.g. `kanbanTaskUpdated` →
 `agentdesk:kanban-task-updated`). Zustand stores / components listen for those
 DOM events (see `chat-event-handlers.ts`) — this DOM-event indirection decouples
@@ -110,7 +112,7 @@ the transport from React state. Group handlers often do both: e.g.
 ## Wiring at startup
 
 `src/bun/index.ts:25` imports the assembled `rpc` object and passes it to the
-`BrowserWindow` constructor (`index.ts:202`, `rpc`). That single object IS the
+`BrowserWindow` constructor (`index.ts:218`, `rpc`). That single object IS the
 backend RPC server. `index.ts` also re-exports `onSettingChange` from
 `rpc-registration.ts:7`, which forwards to the in-memory callback registry in
 `rpc-groups/setting-callbacks.ts` so settings changed via RPC can sync live
@@ -125,8 +127,9 @@ state without a restart.
 2. **Implementation** — write the function in `src/bun/rpc/<domain>.ts`.
 3. **Registration** — add `myCall: (params) => fooRpc.myCall(params)` to the
    matching group in `src/bun/rpc-groups/*.ts` (or to `features.ts` for newer
-   domains). It's auto-picked-up by the spread in `rpc-registration.ts` — you do
-   NOT edit `rpc-registration.ts` unless adding a whole new group import.
+   domains). It's auto-picked-up by the group spread in
+   `src/bun/remote/rpc-handlers.ts` — you do NOT edit that file (or
+   `rpc-registration.ts`) unless adding a whole new group import.
 4. **Frontend wrapper** — add a convenience method to the `rpc` object in
    `src/mainview/lib/rpc.ts` and call it from components.
 5. **(Broadcast only)** add the message to `WebviewSchema.messages` in
@@ -138,8 +141,10 @@ state without a restart.
 The original layout had one handler-registration call per domain. The
 `rpc-groups/` directory bundles ~50 implementation modules into 8 coarse groups
 (settings-providers, projects-system, conversations-control, agents-kanban-notes,
-git-analytics, channels-inbox-scheduler, plugins-tools, features) so
-`rpc-registration.ts` stays a short 8-line spread. The implementation modules in
+git-analytics, channels-inbox-scheduler, plugins-tools, features); those 8 groups
+are spread into one combined `requestHandlers` map in
+`src/bun/remote/rpc-handlers.ts` (so `rpc-registration.ts` just wraps that map and
+the remote WS transport reuses it). The implementation modules in
 `src/bun/rpc/*` remain one-file-per-domain; the group is just the assembly layer.
 
 ## Key files
@@ -158,8 +163,8 @@ git-analytics, channels-inbox-scheduler, plugins-tools, features) so
 
 ## Gotchas / Constraints
 
-- **`maxRequestTime: Infinity` on both sides** (`rpc-registration.ts:37`,
-  `mainview/lib/rpc.ts:31`) — Electrobun's default 1 s request timeout is
+- **`maxRequestTime: Infinity` on both sides** (`rpc-registration.ts:34`,
+  `mainview/lib/rpc.ts:32`) — Electrobun's default 1 s request timeout is
   disabled because agent runs take minutes. Don't reintroduce a finite timeout.
 - **Errors are auto-toasted and re-thrown.** Every Bun request goes through
   `withErrorToast`; a thrown handler surfaces a UI error toast AND rejects the
@@ -181,7 +186,7 @@ git-analytics, channels-inbox-scheduler, plugins-tools, features) so
 ## Related
 
 - [[agent-engine]]
-- [[chat-flow]]
+- [[message-streaming-broadcasts]]
 - [[directory-map]]
 
 ## Open questions

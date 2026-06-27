@@ -30,6 +30,7 @@ for the architecture narrative.
 - [[rpc-layer]] — the typed Electrobun RPC boundary: shared contracts → grouped handlers → registration → broadcasts → frontend client; how to add a new RPC end-to-end.
 - [[providers]] — provider-agnostic adapter layer; `createProviderAdapter()` maps stored config to an AI SDK model; caching/thinking/context applied one layer up.
 - [[channels]] — Discord/WhatsApp/Email adapters + singleton manager routing inbound messages into the engine and relaying replies + task-done broadcasts.
+- [[freelance-discovery]] — the discover/filter layer beneath Auto-Earn: RSS poll → workability analysis (keyword/skill/client gates + AI Condition A/B) → shortlist; the enforced status lifecycle and the TOCTOU guard on auto-promotion.
 - [[freelance-autoearn]] — opt-in autonomous bid/reply over a real session; passive JSON-tee inbox sync + draft pipelines + Behavior Governor + anomaly breaker.
 - [[issue-fixer]] — autonomous GitHub-issue → branch/PR resolution; hidden file-only agent; orchestrator owns git and never merges.
 - [[issue-sources]] — multi-source issue integration (GitHub/Jira/Linear/GitLab/Trello/Kanboard) normalised into `external_issues`; sync, buckets, kanban link, auto-close.

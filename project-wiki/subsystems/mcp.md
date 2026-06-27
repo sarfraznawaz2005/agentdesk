@@ -2,7 +2,7 @@
 title: MCP Integration
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/mcp/client.ts
   - src/bun/rpc/mcp.ts
@@ -26,7 +26,7 @@ via `getMcpTools()` / `getMcpStatus()`.
 ## Key idea: MCP tools are sub-agent-only
 
 The PM never gets MCP tools. `runInlineAgent` merges `getMcpTools()` into the
-sub-agent tool set at `src/bun/agents/agent-loop.ts:870-883`, while the PM engine
+sub-agent tool set at `src/bun/agents/agent-loop.ts:877-890`, while the PM engine
 (`engine.ts`) does not import them at all. The prompt layer makes this explicit:
 the PM prompt only *lists connected server names* and is told to delegate
 (`src/bun/agents/prompts.ts:717-725`), whereas sub-agent prompts list the actual
@@ -99,7 +99,7 @@ status/reconnect control sits in `components/chat/chat-input.tsx:208-237`.
 
 ### Stuck-loop guardrail (MCP-specific)
 The agent loop's repeated-identical-call detector applies **only** to MCP tools
-(`agent-loop.ts:872-873`, `:1181-1198`): `mcpToolNames` gates the check because
+(`agent-loop.ts:879-880`, `:1230-1250`): `mcpToolNames` gates the check because
 built-in tools are cheap to repeat, while a wedged browser/automation MCP tool
 spinning on the same args is the real failure mode. Threshold warn then abort
 with `stopReason="stuck_loop"`.
@@ -138,7 +138,6 @@ with `stopReason="stuck_loop"`.
 - [[agent-engine]]
 - [[plugins]]
 - [[skills]]
-- [[settings]]
 
 ## Open questions
 - Remote (HTTP/SSE) MCP servers have no auth header handling visible in

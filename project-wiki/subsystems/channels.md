@@ -2,7 +2,7 @@
 title: External Channels
 type: subsystem
 status: verified
-verified_at: 2026-06-15
+verified_at: 2026-06-27
 sources:
   - src/bun/channels/manager.ts
   - src/bun/channels/types.ts
@@ -37,7 +37,7 @@ Every platform implements the same interface (`src/bun/channels/types.ts:30`):
 notifications when no one has messaged us yet. The manager only ever talks to an
 adapter through this contract — it never imports `discord.js`, `baileys`, or
 `imapflow` directly. Adapters are supplied as **factories** (`AdapterFactory`,
-`manager.ts:34`) registered at startup in `src/bun/index.ts:256-258`, so the
+`manager.ts:34`) registered at startup in `src/bun/index.ts:285-287`, so the
 manager can mint a fresh instance per channel row without knowing the concrete
 class.
 
@@ -54,7 +54,7 @@ flowchart TD
   end
   subgraph Outbound
     E --> S[PM streams reply]
-    S --> O[onStreamComplete<br/>engine-manager.ts:479]
+    S --> O[onStreamComplete<br/>engine-manager.ts:592]
     O -->|source != app| K[chunkMessage 1800]
     K --> SC[sendChannelMessage<br/>manager.ts:165]
     SC --> A2[Adapter.sendMessage]
@@ -100,9 +100,9 @@ platforms:
 ### Outbound — replies and notifications
 There is no reply call inside the manager's inbound path. Instead, when the PM
 finishes streaming, `EngineManager`'s `onStreamComplete`
-(`engine-manager.ts:479`) checks the active metadata: if `source !== "app"` and a
+(`engine-manager.ts:592`) checks the active metadata: if `source !== "app"` and a
 `channelId` is present, it splits the reply with `chunkMessage`
-(`engine-manager.ts:498`) and calls `sendChannelMessage`. This decouples the
+(`engine-manager.ts:611`) and calls `sendChannelMessage`. This decouples the
 agent loop from any channel knowledge.
 
 `sendChannelMessage` (`manager.ts:165`) looks up the adapter, then reconstructs
@@ -152,13 +152,13 @@ uses `getDefaultRecipient()` (self JID) and Email needs a prior inbound context
 | `src/bun/channels/email-adapter.ts` | IMAP IDLE inbound + SMTP outbound, UID watermark |
 | `src/bun/channels/chunker.ts` | `chunkMessage` — natural-boundary split (default 1800 chars) |
 | `src/bun/channels/index.ts` | Public barrel (register/init/send/status/shutdown) |
-| `src/bun/index.ts:256` | Registers the three adapter factories at boot |
-| `src/bun/engine-manager.ts:492` | Relays PM stream-complete back to source channel |
+| `src/bun/index.ts:285` | Registers the three adapter factories at boot |
+| `src/bun/engine-manager.ts:592` | Relays PM stream-complete back to source channel |
 
 ## Gotchas / Constraints
 
 - **Replies are not sent by the manager's inbound path.** The return trip lives in
-  `EngineManager.onStreamComplete` (`engine-manager.ts:492`). If a message is
+  `EngineManager.onStreamComplete` (`engine-manager.ts:592`). If a message is
   routed into the engine but `getActiveMetadata().source === "app"` or the
   `channelId` is missing, nothing goes back out the channel.
 - **`channelId` is overloaded.** In `IncomingMessage` from WhatsApp/Email it is
@@ -199,9 +199,8 @@ uses `getDefaultRecipient()` (self JID) and Email needs a prior inbound context
 
 ## Related
 - [[agent-engine]]
-- [[engine-manager]]
-- [[inbox]]
-- [[scheduler]]
+- [[backend-core]]
+- [[scheduler-automation]]
 
 ## Open questions
 - WhatsApp `threadId` is captured but `SendOptions` threading is ignored by the

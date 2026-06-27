@@ -72,6 +72,36 @@ tags: [agents, orchestration]
    - `## Related` — `[[wikilinks]]` to adjacent pages.
    - `## Open questions` — known unknowns / unverified areas (or "None").
 
+### Wikilink conventions (how to avoid broken links)
+
+Broken `[[wikilinks]]` come in two flavours; both are avoidable:
+
+- **Typos / wrong slug — the common one.** A link's slug must be the target page's
+  **exact filename without `.md`** (kebab-case), not a guess at the concept name.
+  The concept "review cycle" lives in `kanban-review-cycle.md`, so the link is
+  `[[kanban-review-cycle]]` — `[[review-cycle]]` is broken. **Before writing a
+  link, confirm the slug exists in `index.md`** (the catalog of every page). If you
+  want the surface text to differ from the slug, use the alias form
+  `[[kanban-review-cycle|the review cycle]]` — alias the display, never invent the
+  slug.
+- **Intentional forward-links are allowed** (a link to a not-yet-written page marks
+  future work, rule 3) — but only point at a slug you actually intend to create.
+  Don't use a forward-link as a substitute for finding the real existing page.
+
+Two more rules that keep the linter honest:
+
+- **`## Related` links must be real slugs**, and a page must **never link to
+  itself**. Deduplicate — if two concepts resolve to the same page, list it once.
+- **Showing link *syntax* in prose? Wrap it in backticks** (`` `[[example]]` ``) or
+  a fenced block. `scripts/wiki-check.mjs` ignores wikilinks inside code spans, so
+  illustrative examples won't be mistaken for live links. Real anchors use
+  `[[page#section]]` (cross-page) or `[[#section]]` (same-page) — both are valid and
+  the linter resolves the `#` suffix.
+
+**Before committing wiki edits, run `bun run wiki:check` and confirm it reports no
+`BROKEN WIKILINKS`** (alongside no stale/missing-source pages). It's the same
+deterministic check CI runs.
+
 ### Page skeleton
 ```markdown
 ---

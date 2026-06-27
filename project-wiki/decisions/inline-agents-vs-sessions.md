@@ -2,7 +2,7 @@
 title: Inline Agents vs Persistent Sessions
 type: decision
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - docs/agent-sessions-proposal.md
   - src/bun/db/migrations/v3_agent-sessions.ts
@@ -82,7 +82,7 @@ Concretely:
 
 The executor is [[agent-engine#run_agent|`runInlineAgent`]] in
 `agent-loop.ts:784`. The context it builds is deliberately minimal
-(`agent-loop.ts:1005-1010`):
+(`agent-loop.ts:1055-1058`):
 
 ```ts
 const agentMessages: ModelMessage[] = [
@@ -101,7 +101,7 @@ until done or context-full.
 Cross-invocation continuity, where it matters, is reconstructed *explicitly*
 rather than replayed:
 
-- **Handoff summaries** ([[handoff]], `handoff.ts:14`) read the files an agent
+- **Handoff summaries** ([[agent-engine|handoff]], `handoff.ts:14`) read the files an agent
   actually modified and emit a `## Prior Work` block prepended to the next
   sequential task — deterministic for small diffs (≤3 files, <200 lines each,
   `handoff.ts:39-40`), AI-summarized for large ones. This passes forward *what
@@ -136,9 +136,8 @@ rather than replayed:
 
 ## Related
 - [[agent-engine]]
-- [[handoff]]
-- [[review-cycle]]
-- [[migrations]]
+- [[kanban-review-cycle]]
+- [[database]]
 
 ## Open questions
 - The v3 proposal's token-economics table (`agent-sessions-proposal.md:510-536`)

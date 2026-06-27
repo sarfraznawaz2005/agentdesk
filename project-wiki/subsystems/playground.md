@@ -2,7 +2,7 @@
 title: Playground
 type: subsystem
 status: verified
-verified_at: 2026-06-22
+verified_at: 2026-06-27
 sources:
   - src/bun/playground/orchestrator.ts
   - src/bun/playground/server.ts
@@ -28,12 +28,12 @@ this use case.
 ## Key idea — three reused-executor hooks
 
 The Playground does **not** fork `agent-loop.ts`. Instead `runInlineAgent` grew
-three options (`src/bun/agents/agent-loop.ts:159`, `:165`, `:170`, plus
-`excludeTools` `:175`) so the same loop can serve an ephemeral, JSON-backed,
+three options (`src/bun/agents/agent-loop.ts:165`, `:171`, `:176`, plus
+`excludeTools` `:181`) so the same loop can serve an ephemeral, JSON-backed,
 extra-tooled run:
 
 - **`priorMessages`** — prior turns prepended before the current task
-  (`agent-loop.ts:1006`). The Playground keeps its history in a temp JSON file,
+  (`agent-loop.ts:1055`). The Playground keeps its history in a temp JSON file,
   not the DB, and threads it here. Note: once rule-based compaction fires
   (>70% context) these fold into a summary.
 - **`persistToDb: false`** — skip ALL `messages` / `message_parts` /
@@ -44,7 +44,7 @@ extra-tooled run:
   (`agent-loop.ts:883`). The Playground injects its preview/reject tools plus an
   auto-approved `run_shell`.
 - **`excludeTools`** (supports trailing-`*` prefix matching,
-  `agent-loop.ts:930`) — removes tools that would dead-lock with no UI to satisfy
+  `agent-loop.ts:948`) — removes tools that would dead-lock with no UI to satisfy
   them: `request_human_input`, `chrome-devtools_*`, `verify_implementation`
   (`orchestrator.ts:322`).
 

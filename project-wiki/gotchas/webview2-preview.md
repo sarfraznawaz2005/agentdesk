@@ -2,7 +2,7 @@
 title: WebView2 Preview Constraints
 type: gotcha
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-06-27
 sources:
   - src/bun/index.ts
   - src/bun/playground/server.ts
@@ -29,7 +29,7 @@ is **no** need for the `<electrobun-webview>` OOPIF tag or a separate
 `BrowserWindow`; a same-page iframe pointed at a Bun static server renders fine.
 
 The one requirement is that the localhost origin is whitelisted in the window's
-navigation rules. The default rule blocks everything (`^*`); `src/bun/index.ts:306`
+navigation rules. The default rule blocks everything (`^*`); `src/bun/index.ts:342`
 explicitly re-allows `views://*`, `http://localhost:*` and `http://127.0.0.1:*`.
 
 Critically, **nav rules govern top-level/frame *navigation* only — not script /
@@ -78,7 +78,7 @@ only then falls back to `Utils.paths.downloads`
 
 | File | Role |
 |---|---|
-| `src/bun/index.ts:306` | Navigation rules — whitelists `localhost`/`127.0.0.1` so the iframe can load |
+| `src/bun/index.ts:342` | Navigation rules — whitelists `localhost`/`127.0.0.1` so the iframe can load |
 | `src/bun/playground/server.ts` | Bun static preview server (port 4760+); `/__pdf` route, console-capture/filter shim |
 | `src/bun/rpc/playground.ts:205` | `resolveDownloadsDir()` — registry lookup for the real Downloads folder |
 | `src/mainview/pages/playground.tsx:900` | The preview `<iframe>` (src = localhost server URL, sandboxed) |
