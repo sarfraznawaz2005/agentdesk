@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.4.2",
+        "title":  "New Features and Improvements",
+        "changes":  [
+                        "Added AI SDK warning logging for better error tracking.",
+                        "Enhanced model settings with global counts for improved management.",
+                        "Fixed recommendations tab placement for a better user experience."
+                    ]
+    },
+    {
         "version":  "2.4.1",
         "title":  "Enhanced Settings Management",
         "changes":  [
