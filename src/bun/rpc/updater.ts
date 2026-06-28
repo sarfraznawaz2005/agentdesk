@@ -223,6 +223,20 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 		const launcherPath = join(appDataFolder, "app", "bin", "launcher.exe");
 		applyLog(`Launcher path: ${launcherPath}`);
 
+		// Electrobun unconditionally bundles bspatch.exe + zig-zstd.exe, but AgentDesk's
+		// Windows updater never uses the native delta/decompress path (we do full-zip swaps
+		// via Expand-Archive + the system installer). The NSIS installer re-extracts the
+		// bundle on every update, so delete the unused binaries afterwards to purge them from
+		// existing installs (bspatch also trips some AV engines). Fresh installs lose them on
+		// their first update. Windows-only: mac/Linux still need zig-zstd for their updater.
+		const unusedUpdaterBins = [
+			join(appDataFolder, "app", "bin", "bspatch.exe"),
+			join(appDataFolder, "app", "bin", "zig-zstd.exe"),
+		];
+		const removeUnusedBinsPs = unusedUpdaterBins
+			.map((p) => `Remove-Item -Force '${esc(p)}' -ErrorAction SilentlyContinue; `)
+			.join("");
+
 		// Inline PowerShell command — no .ps1 file → ExecutionPolicy never checked.
 		//  1. Run the NSIS installer silently and WAIT for it to finish (-Wait).
 		//  2. If the freelance flag existed, recreate it at the same path.
@@ -242,6 +256,8 @@ async function windowsApplySetup(): Promise<{ success: boolean; error?: string }
 			`Write-Host '  [1/2]  Installing update, please wait...' -ForegroundColor Yellow; ` +
 			`Start-Process -FilePath '${esc(WIN_SETUP_EXE)}' -ArgumentList '/S' -WindowStyle Hidden -Wait; ` +
 			psLog("Installer finished") +
+				removeUnusedBinsPs +
+				psLog("Removed unused updater binaries (bspatch.exe, zig-zstd.exe)") +
 			`Write-Host '         Done.' -ForegroundColor Green; ` +
 			`Write-Host ''; ` +
 			(hadFreelanceFlag

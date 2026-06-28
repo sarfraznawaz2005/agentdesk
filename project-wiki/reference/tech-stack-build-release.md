@@ -2,7 +2,7 @@
 title: Tech Stack, Build & Release
 type: reference
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-06-28
 sources:
   - package.json
   - electrobun.config.ts
@@ -160,6 +160,36 @@ each build job produces three updater-relevant files named with the
 they bypass Electrobun's bspatch flow entirely because some AV engines flag
 `bspatch.exe`. Instead they download the **full** zip and swap files. Which zip depends
 on install mode:
+
+> **Electrobun's updater-only binaries are purged on Windows.** The CLI bundles
+> `bspatch.exe` (bsdiff delta applier) and `zig-zstd.exe` (full-bundle decompressor)
+> unconditionally (`node_modules/electrobun/src/cli/index.ts:3132-3152` — no config
+> opt-out). AgentDesk's full-zip Windows updater uses `Expand-Archive` + the self-extractor
+> installer / `robocopy`, so it invokes **neither** the native delta path nor the zstd
+> decompressor — both are dead weight (and `bspatch` is an AV-flag risk). Neither is a
+> startup dependency (the app ships uncompressed `Resources/`). **macOS/Linux keep
+> `zig-zstd`** — their native updater decompresses every full bundle with it.
+>
+> *New builds (both editions):* `release.yml` "Strip unused updater binaries from Setup
+> payload" repacks the canonical `AgentDesk-Setup.tar.zst` — extract → delete the two
+> binaries → re-tar (same System32 `tar`) → recompress with Electrobun's own
+> `dist-win-x64/zig-zstd.exe` → re-extract-and-assert verify. This is safe because the
+> metadata `hash` is the **build identity, not a payload checksum**, and the self-extractor
+> performs no integrity check, so no rehash is needed. The Setup zip, the updater tarball,
+> AND the portable zip all inherit the stripped payload from this one canonical file (the
+> portable step no longer strips separately).
+>
+> *Why not a build-time fix:* `bunx electrobun build` runs a **downloaded precompiled CLI
+> binary** (`electrobun.cjs` → `electrobun-cli-<os>-<arch>.tar.gz`), not the TS source, so
+> the unconditional copy can't be patched out; the post-build repack is the workaround. An
+> upstream `build.<os>.bundleUpdaterBinaries` opt-out would be the proper fix.
+>
+> *Existing installs:* purged on next update independently of the repack — the portable
+> apply path deletes them after `robocopy /MIR` (`updater-portable.ts`) and
+> `windowsApplySetup` deletes `app/bin/bspatch.exe` + `app/bin/zig-zstd.exe` right after
+> the installer runs (`updater.ts`). ⚠️ The repack's extractor-compatibility can't be
+> proven in CI (the verify only re-extracts the tar) — **smoke-test one Setup install**
+> after the first release that uses it.
 - **Installed (Setup) build** → `windowsDownloadSetup`/`windowsApplySetup`
   (`updater.ts:104-284`): downloads `{name}-win-{arch}-Setup.zip`, extracts via
   `Expand-Archive`, runs the NSIS installer silently (`/S`) and relaunches.

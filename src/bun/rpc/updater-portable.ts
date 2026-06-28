@@ -251,6 +251,14 @@ if ($rc -ge 8) {
   Log 'ERROR: robocopy failed (>=8)'
 }
 
+# Purge Electrobun's unused updater binaries (bspatch.exe + zig-zstd.exe). /MIR already
+# drops them once the new zip is stripped, but delete explicitly so existing installs lose
+# them regardless of what the downloaded bundle contains (AgentDesk's Windows updater never
+# uses the native bsdiff/zstd path). mac/Linux keep zig-zstd; this is the Windows path only.
+Remove-Item -Force '${ps(join(o.binDir, "bspatch.exe"))}' -ErrorAction SilentlyContinue
+Remove-Item -Force '${ps(join(o.binDir, "zig-zstd.exe"))}' -ErrorAction SilentlyContinue
+Log 'Removed unused updater binaries (bspatch.exe, zig-zstd.exe)'
+
 ${restoreFlags}
 Write-Host '  [3/3]  Launching AgentDesk...' -ForegroundColor Yellow
 if (Test-Path $launcher) {

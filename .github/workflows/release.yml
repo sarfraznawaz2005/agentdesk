@@ -73,6 +73,68 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on AgentDesk-Setup.exe"; exit 1 }
           Write-Host "Icon embedded into AgentDesk-Setup.exe"
 
+      # Strip Electrobun's unused updater binaries (bspatch.exe + zig-zstd.exe) from the
+      # canonical Setup payload. AgentDesk's Windows updater is full-zip based and never
+      # invokes the native bsdiff/zstd path, so both are dead weight (bspatch also trips
+      # some AV engines) and neither is a startup dep. The metadata.json `hash` is the
+      # build identity, NOT a payload checksum, and the self-extractor performs no
+      # integrity check — so the tar.zst can be repacked without rehashing. We re-tar with
+      # the same System32 tar and recompress with Electrobun's OWN zig-zstd, so the stream
+      # is byte-format-identical to what the extractor expects. Doing this on the canonical
+      # AgentDesk-Setup.tar.zst means the Setup zip, the updater tarball, AND the portable
+      # zip all inherit the stripped payload from one place.
+      # NOTE: the payload's top level is <bundleName>/bin/… (one level down), so the strip
+      # must recurse — a $staging/bin/* match would silently no-op.
+      - name: Strip unused updater binaries from Setup payload
+        shell: pwsh
+        run: |
+          $dir  = "build/stable-win-x64"
+          $zst  = "$dir/AgentDesk-Setup.tar.zst"
+          $work = "build/setup-repack"
+          $tar  = "build/setup-repack.tar"
+          $zstd = "node_modules/electrobun/dist-win-x64/zig-zstd.exe"
+          if (-not (Test-Path $zstd)) { Write-Error "zig-zstd.exe not found at $zstd"; exit 1 }
+
+          # 1. Extract the payload (top level is <bundleName>/bin, <bundleName>/Resources, …)
+          Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          C:\Windows\System32\tar.exe -xf $zst -C $work
+          if ($LASTEXITCODE -ne 0) { Write-Error "payload extract failed"; exit 1 }
+
+          # 2. Strip the unused binaries wherever they sit under the bundle
+          Get-ChildItem -Path $work -Recurse -Include bspatch.exe,zig-zstd.exe | Remove-Item -Force
+
+          # 3. Re-tar with the identical layout: a single top-level bundle folder
+          $bundleDir = (Get-ChildItem -Path $work -Directory | Select-Object -First 1).Name
+          if (-not $bundleDir) { Write-Error "could not find bundle folder in payload"; exit 1 }
+          Remove-Item -Force $tar -ErrorAction SilentlyContinue
+          C:\Windows\System32\tar.exe -cf $tar -C $work $bundleDir
+          if ($LASTEXITCODE -ne 0) { Write-Error "re-tar failed"; exit 1 }
+
+          # 4. Recompress with Electrobun's own zig-zstd (extractor-compatible format)
+          Remove-Item -Force $zst
+          & $zstd compress -i $tar -o $zst --threads max
+          if ($LASTEXITCODE -ne 0) { Write-Error "zstd recompress failed"; exit 1 }
+
+          # 5. VERIFY: re-extract and assert the binaries are gone but the app is intact.
+          # Fails the build (and thus the release) if the repack went wrong.
+          $verify = "build/setup-verify"
+          Remove-Item -Recurse -Force $verify -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $verify | Out-Null
+          C:\Windows\System32\tar.exe -xf $zst -C $verify
+          if ($LASTEXITCODE -ne 0) { Write-Error "VERIFY: re-extract failed"; exit 1 }
+          if (Get-ChildItem -Path $verify -Recurse -Include bspatch.exe,zig-zstd.exe) {
+            Write-Error "VERIFY: updater binaries still present after repack"; exit 1
+          }
+          if (-not (Get-ChildItem -Path $verify -Recurse -Filter launcher.exe)) {
+            Write-Error "VERIFY: launcher.exe missing after repack — bundle damaged"; exit 1
+          }
+          Write-Host "Setup payload repacked without bspatch.exe / zig-zstd.exe (verified)"
+
+          # 6. Cleanup
+          Remove-Item -Recurse -Force $work, $verify -ErrorAction SilentlyContinue
+          Remove-Item -Force $tar -ErrorAction SilentlyContinue
+
       # Bundle exe + archive into a single zip so users download one file.
       # Layout mirrors what electrobun's wrapWindowsInstallerInZip produces:
       #   AgentDesk-Setup.zip
@@ -117,6 +179,9 @@ jobs:
           $dir      = "build/stable-win-x64"
           $staging  = "build/portable-staging"
           New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          # The canonical AgentDesk-Setup.tar.zst was already stripped of the unused updater
+          # binaries upstream ("Strip unused updater binaries from Setup payload"), so the
+          # portable zip inherits the clean payload — no per-zip strip needed here.
           C:\Windows\System32\tar.exe -xf "$dir/AgentDesk-Setup.tar.zst" -C $staging
           if ($LASTEXITCODE -ne 0) { Write-Error "tar extraction failed"; exit 1 }
           Compress-Archive -Path "$staging/*" -DestinationPath "$dir/AgentDesk-win-x64-portable.zip" -Force
