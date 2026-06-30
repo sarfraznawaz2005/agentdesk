@@ -1,5 +1,17 @@
 [
     {
+        "version":  "2.4.4",
+        "title":  "New Features and Enhancements",
+        "changes":  [
+                        "Task creation is now restricted to the task-planner agent for better organization.",
+                        "You can now toggle auto-execute for task continuation in the agent engine.",
+                        "Text editing tools have been improved with better handling of end-of-line and byte order mark.",
+                        "The toolbar now features a draggable header and improved re-injection functionality.",
+                        "Unsent message drafts are now saved in the chat input for easier message management.",
+                        "Agent blocks in the chat interface can now be collapsed or expanded for better navigation."
+                    ]
+    },
+    {
         "version":  "2.4.2",
         "title":  "New Features and Improvements",
         "changes":  [
