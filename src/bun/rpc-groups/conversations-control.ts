@@ -48,6 +48,23 @@ export const handlers: Record<string, (params: any) => any> = {
 		abortAllAgents(params.projectId);
 		return { success: true };
 	},
+	retryAgent: async (params: { projectId: string; conversationId: string; agentName: string; task: string }) => {
+		const engine = engines.get(params.projectId);
+		if (!engine) return { success: false, error: "No engine found for this project" };
+		// Inject as an agent_report type so sendMessage doesn't abort any running agents
+		// and the PM treats it like an internal system event (same pathway as [Agent Report]).
+		// The PM will dispatch the same agent with the same task through the normal
+		// run_agent pathway, so all existing guards (writeAgentRunning, kanban review
+		// block, hallucination detection) apply — no special-casing needed.
+		const retryMsg =
+			`[AGENT RETRY] The user clicked Retry for \`${params.agentName}\` after it failed due to a network error. ` +
+			`Dispatch \`${params.agentName}\` immediately with the task below — do NOT modify the task, do NOT ask for confirmation. ` +
+			`Prepend this note to the task description: "⚠️ RETRY AFTER NETWORK FAILURE: Some work from the previous run may already be on disk. Read the relevant files before starting to avoid redoing completed edits."\n\n` +
+			`Task:\n${params.task}`;
+		engine.sendMessage(params.conversationId, retryMsg, { type: "agent_report" } as never)
+			.catch((err: unknown) => console.error("[retryAgent] sendMessage failed:", err));
+		return { success: true };
+	},
 	setAppFocused: (params) => {
 		setAppFocusedFn(params.focused);
 		return { success: true };

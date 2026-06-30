@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-06-30
+verified_at: 2026-07-01
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts
@@ -14,6 +14,11 @@ sources:
   - src/bun/agents/safety.ts
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/kanban-integration.ts
+  - src/bun/rpc-groups/conversations-control.ts
+  - src/shared/rpc/conversations.ts
+  - src/mainview/components/chat/message-parts.tsx
+  - src/mainview/components/chat/message-bubble.tsx
+  - src/mainview/lib/rpc.ts
   - docs/workflow.md
   - docs/sequential-agent-model.md
 tags: [agents, orchestration]
@@ -126,6 +131,18 @@ The fullStream loop handles several non-obvious cases:
   (prohibited entirely — PM has no rendering tools). Safe alternative framed for the
   model: attribute claims to the agent's self-report ("the agent updated X") rather
   than asserting unverifiable personal knowledge ("X is now fixed — verified").
+- **No-inline-code rule** (`prompts.ts`, rule 0d): PM is forbidden from performing
+  any code work inline — checking code correctness, verifying a fix worked, describing
+  implementation steps as prose, or assessing file state without `read_file`. Covers
+  the case where the PM "answers" an implementation request by describing what to
+  change instead of dispatching a write agent. Even a single-character fix must go
+  through the appropriate write agent; even "just checking" must go through
+  `code-explorer`. Supplements rule 0c (which already disallows unverified file claims)
+  with an explicit ban on the "helpful description" anti-pattern.
+- **No-self-verification rule** (`prompts.ts`, Decision Process classification item 4):
+  "code verification / checking" is its own explicit routing category — always dispatches
+  `code-explorer` or `qa-engineer`. Prevents the PM from answering "did the fix work?"
+  from memory or reasoning rather than reading the actual file.
 - **Post-stream ground-truth check** (`engine.ts:1042`, layer D): after all in-stream
   retries fail, verifies `getRunningAgentCount(projectId) === 0` — actual process
   state, not text inference. If confirmed, schedules a `[DISPATCH CORRECTION]`
@@ -265,6 +282,25 @@ Two distinct mechanisms:
 | `src/bun/agents/safety.ts` | Transient-error detection, exponential backoff, loop detection |
 | `src/bun/agents/kanban-integration.ts` | Bridges human/agent kanban moves; blocked-task enforcement |
 | `src/bun/engine-manager.ts` | One engine per project; global agent abort registry; running-agent counts |
+
+## Agent Retry Button (UI)
+
+When a sub-agent fails mid-execution (network error exhausting all 3 transient-error
+retries), the `AgentEndBlock` component in `message-parts.tsx` renders a **Retry**
+button alongside the red error text.
+
+**Flow:**
+1. User clicks **Retry** on the error card.
+2. `onRetryAgent(agentName, task)` fires → `rpc.retryAgent(projectId, conversationId, agentName, task)` → `conversations-control.ts:retryAgent` handler.
+3. Handler calls `engine.sendMessage(conversationId, retryMsg, { type: "agent_report" })` where `retryMsg` is `[AGENT RETRY] … Task: <original task>`.
+4. Because `type: "agent_report"` is used, `sendMessage` does **not** abort running agents — it enters the normal PM dispatch pipeline including all guards (`writeAgentRunning`, kanban review block, hallucination detection).
+5. The PM receives the message, reads the `[AGENT RETRY]` prefix, and dispatches the same agent with the embedded task. The task description includes a prefixed note instructing the agent to read relevant files first to avoid redoing work already on disk.
+
+**Key design decisions:**
+- `agentName` comes from `seg.start.agentName ?? seg.agentName` (already resolved in `MessageParts` segments).
+- `task` comes from `seg.start.content` — the exact string `run_agent` received as the task parameter.
+- The retry message goes through `engine.sendMessage` (not a direct `runInlineAgent` call) so the PM applies judgment: if a write-agent is already running it will queue correctly; if the task's kanban item moved to review it will not re-dispatch prematurely.
+- The `AgentEndBlock` `onRetry` prop is only wired for grouped agent blocks (where `seg.start` is available). Orphaned `agent_end` parts (rare, from old sessions) render the error text without the button since there is no task context to retry.
 
 ## Gotchas / Constraints
 

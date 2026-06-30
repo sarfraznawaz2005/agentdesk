@@ -270,6 +270,13 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
     return (agentName: string) => stopAgent(projectId, agentName);
   }, [projectId, stopAgent]);
 
+  const handleRetryAgent = useMemo(() => {
+    if (!projectId) return undefined;
+    return async (agentName: string, task: string): Promise<void> => {
+      await rpc.retryAgent(projectId, message.conversationId, agentName, task);
+    };
+  }, [projectId, message.conversationId]);
+
   // Load message parts when hasParts flag is set
   useEffect(() => {
     if (!message.hasParts) return;
@@ -595,7 +602,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
         {/* Parts-based messages render directly without a bubble wrapper */}
         {parts && parts.length > 0 ? (
           <div className="min-w-0 w-full">
-            <MessageParts parts={parts} onStopAgent={handleStopAgent} hasRunningAgents={runningAgentCount > 0} />
+            <MessageParts parts={parts} onStopAgent={handleStopAgent} hasRunningAgents={runningAgentCount > 0} onRetryAgent={handleRetryAgent} />
           </div>
         ) : (
           <div className="min-w-0">

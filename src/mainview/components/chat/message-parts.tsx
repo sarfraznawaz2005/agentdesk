@@ -11,6 +11,7 @@ import {
 	FileText,
 	Cpu,
 	Square as StopIcon,
+	RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ToolCallCard, type ToolCallPartData } from "./tool-call-card";
@@ -254,13 +255,16 @@ const AgentEndBlock = memo(function AgentEndBlock({
 	content,
 	toolState,
 	timeEnd,
+	onRetry,
 }: {
 	content: string;
 	toolState: string | null;
 	timeEnd: string | null;
+	onRetry?: () => Promise<void>;
 }) {
 	const isError = toolState === "error";
 	const [expanded, setExpanded] = useState(false);
+	const [retrying, setRetrying] = useState(false);
 	const isLong = content.length > 300;
 	const blockRef = useRef<HTMLDivElement>(null);
 
@@ -308,6 +312,21 @@ const AgentEndBlock = memo(function AgentEndBlock({
 							{expanded ? "Show less" : "Show more"}
 						</span>
 					)}
+				</div>
+			)}
+			{isError && onRetry && (
+				<div className="mt-2 pt-2 border-t border-red-200/60 dark:border-red-800/40">
+					<button
+						onClick={async () => {
+							setRetrying(true);
+							try { await onRetry(); } finally { setRetrying(false); }
+						}}
+						disabled={retrying}
+						className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium text-red-700 dark:text-red-300 bg-red-100/70 dark:bg-red-900/30 hover:bg-red-200/70 dark:hover:bg-red-800/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+					>
+						<RefreshCw className={cn("w-3 h-3", retrying && "animate-spin")} />
+						{retrying ? "Retrying…" : "Retry"}
+					</button>
 				</div>
 			)}
 		</div>
@@ -398,13 +417,14 @@ interface MessagePartsProps {
 	onStopAgent?: (agentName: string) => void;
 	/** Whether any agent is currently running. Used to distinguish "missing end part" (crashed/old session) from "actively running". */
 	hasRunningAgents?: boolean;
+	onRetryAgent?: (agentName: string, task: string) => Promise<void>;
 }
 
 /**
  * Renders an array of message parts for inline agent execution.
  * Groups parts between agent_start/agent_end into indented agent blocks.
  */
-export const MessageParts = memo(function MessageParts({ parts, onStopAgent, hasRunningAgents }: MessagePartsProps) {
+export const MessageParts = memo(function MessageParts({ parts, onStopAgent, hasRunningAgents, onRetryAgent }: MessagePartsProps) {
 	// Hooks must run unconditionally on every render — keep them above any early return.
 	// Track which agent blocks are collapsed (by their start part id) — persisted in Zustand so it survives tab switches
 	const collapsedAgentBlocks = useChatStore((s) => s.collapsedAgentBlocks);
@@ -479,6 +499,7 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 											content={seg.end.content}
 											toolState={seg.end.toolState}
 											timeEnd={seg.end.timeEnd}
+											onRetry={onRetryAgent ? () => onRetryAgent(rawName, seg.start.content) : undefined}
 										/>
 									)}
 								</>
@@ -571,6 +592,7 @@ const PartRenderer = memo(function PartRenderer({ part }: { part: MessagePartDat
 					content={part.content}
 					toolState={part.toolState}
 					timeEnd={part.timeEnd}
+					// No onRetry here: orphaned agent_end parts have no start context (task/agentName)
 				/>
 			);
 

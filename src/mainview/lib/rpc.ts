@@ -623,6 +623,10 @@ export const rpc = {
   stopGeneration: (projectId: string) =>
     electroviewRpc.request.stopGeneration({ projectId }),
 
+  /** Re-dispatch a failed sub-agent with its original task after a network error. */
+  retryAgent: (projectId: string, conversationId: string, agentName: string, task: string) =>
+    electroviewRpc.request.retryAgent({ projectId, conversationId, agentName, task }),
+
   setAppFocused: (focused: boolean) =>
     electroviewRpc.request.setAppFocused({ focused }),
 

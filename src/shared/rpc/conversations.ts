@@ -93,6 +93,15 @@ export type ConversationsRequests = {
     params: { projectId: string };
     response: { success: boolean };
   };
+  retryAgent: {
+    params: {
+      projectId: string;
+      conversationId: string;
+      agentName: string;
+      task: string;
+    };
+    response: { success: boolean; error?: string };
+  };
   setAppFocused: {
     params: { focused: boolean };
     response: { success: boolean };
