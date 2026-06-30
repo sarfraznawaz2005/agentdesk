@@ -560,6 +560,11 @@ export class AgentEngine {
 			// silently ignore and which Anthropic forbids alongside extended thinking).
 			let activeTools: typeof pmTools = pmTools;
 
+			// Set by the "retries exhausted" branch inside the while loop.
+			// Checked after step 10 (onStreamComplete) for the post-stream ground-truth layer.
+			let postStreamCorrectionNeeded = false;
+			let postStreamDetectionSource = "";
+
 			const pmThinkingOptions = buildPMThinkingOptions(pmThinkingBudget, providerRow.providerType);
 
 			const MAX_PM_RETRIES = 3;
@@ -669,6 +674,10 @@ export class AgentEngine {
 				let stepTextEmitted = "";
 				let stepHasWaitAgent = false;
 				let retractedFallback = "";
+				// Turn-level flag: was run_agent actually called at any point this turn?
+				// Used by the hallucination guard below to detect user-initiated dispatch
+				// requests where no [Next Action] hint was injected.
+				let agentDispatchedThisTurn = false;
 
 				for await (const part of result.fullStream) {
 					if (part.type === "reasoning-start" || part.type === "reasoning-end") {
@@ -691,6 +700,7 @@ export class AgentEngine {
 						const tc = part as { toolName?: string };
 						if (tc.toolName === "run_agent" || tc.toolName === "run_agents_parallel") {
 							stepHasWaitAgent = true;
+							agentDispatchedThisTurn = true;
 						}
 					} else if (part.type === "finish-step") {
 						if (stepHasWaitAgent && stepTextEmitted.trim()) {
@@ -764,9 +774,73 @@ export class AgentEngine {
 				// poison future context), inject the correction directly into context.messages
 				// in-memory and continue the while loop. The hallucinated text + correction
 				// are ephemeral — they guide the next LLM call but are never written to DB.
-				if (isDispatchExpected && fullText.trim() && !planApprovalRequested && hallucinRetries < MAX_HALLUCIN_RETRIES) {
+				//
+				// Three detection vectors (evaluated in order, stops at first hit):
+				//
+				//   A) Engine-driven: [Next Action] DISPATCH was injected into content.
+				//      `isDispatchExpected` covers auto-continue after task completion.
+				//
+				//   B) Thinking-block signal (PRIMARY for user-initiated requests):
+				//      The PM's extended reasoning uses its own trained vocabulary for tool
+				//      calls — "let me dispatch", "I'll call run_agent", "I will dispatch" —
+				//      far more consistently than its response text. Scanning the reasoning
+				//      for a conclusive dispatch decision is more reliable than regex on
+				//      output prose, which varies freely. Requires extended thinking to be
+				//      enabled (Anthropic + some OpenRouter models); gracefully absent
+				//      on other providers (falls through to vector C).
+				//
+				//   C) Response-text regex (FALLBACK for non-thinking providers):
+				//      Conservative pattern list targeting unambiguous present/past-tense
+				//      action claims. Intentionally excludes bare "Done."/"Fixed." (too
+				//      common in legitimate non-dispatch replies). Will miss novel phrasing
+				//      but vector B covers the cases where thinking is available.
+				const reasoning = accumulatedReasoning || allReasoning || "";
+
+				// Vector B — conclusive dispatch decision in thinking block.
+				// "let me dispatch", "I'll dispatch", "I will dispatch/call run_agent",
+				// "I need to dispatch", "I'm going to dispatch/call run_agent".
+				// Deliberately narrow: "should I dispatch" / "maybe dispatch" are
+				// deliberation, not a concluded decision — they do not trigger.
+				const THINKING_DISPATCH_RE =
+					/\b(?:let me|i(?:'ll| will| am going to| need to| have to| must))\s+(?:dispatch|call\s+run_agent)\b/i;
+				const thinkingSignalsDispatch = reasoning.length > 0 && THINKING_DISPATCH_RE.test(reasoning);
+
+				// Vector C — response-text fallback (only checked when thinking unavailable).
+				const DISPATCH_CLAIM_RE = new RegExp(
+					[
+						// Present participle ("Dispatching the fix", "Dispatching frontend-engineer")
+						"dispatching(?:\\s+(?:the|a|an|it|this|fix|change|update|now|agent|engineer|specialist|[a-z]+-engineer|[a-z]+-specialist))?\\b",
+						// Simple past ("I dispatched", "I've dispatched", "I have dispatched", "I just dispatched")
+						"i(?:'ve|\\s+have|\\s+just|\\s+already)?\\s+dispatched\\b",
+						// Passive voice ("[X] has been dispatched/applied/fixed/updated")
+						"(?:has|have)\\s+been\\s+(?:dispatched|applied|fixed|updated|deployed)\\b",
+						// Multi-item completion ("both/all lines updated/fixed")
+						"(?:both|all)\\s+(?:lines|files|values|changes|entries)\\s+(?:updated|fixed|changed|applied|deployed)\\b",
+						// "updated and verified" without a leading quantifier
+						"updated\\s+and\\s+verified\\b",
+						// "already done/fixed/updated/dispatched/applied"
+						"already\\s+(?:done|fixed|updated|dispatched|applied|deployed)\\b",
+						// Explicit agent dispatch completions
+						"agent\\s+has\\s+been\\s+dispatched\\b",
+						// Handed off to a specialist
+						"(?:sent|handed)\\s+(?:this\\s+|it\\s+)?(?:to|off\\s+to)\\s+(?:the\\s+)?(?:frontend|backend|agent|engineer|specialist)\\b",
+						// "[fix/change/update] [is] [now] applied/deployed"
+						"(?:fix|change|update|patch)\\s+(?:is\\s+)?(?:now\\s+)?(?:applied|deployed)\\b",
+					].join("|"),
+					"i",
+				);
+				// Use text regex only when thinking is absent (other providers).
+				// When thinking IS present, the thinking signal is authoritative — we
+				// don't double-fire on the response text to avoid noise in the log.
+				const textSignalsDispatch = !thinkingSignalsDispatch && DISPATCH_CLAIM_RE.test(fullText);
+
+				const pmClaimedDispatchWithoutTool =
+					!agentDispatchedThisTurn && (thinkingSignalsDispatch || textSignalsDispatch);
+
+				if ((isDispatchExpected || pmClaimedDispatchWithoutTool) && fullText.trim() && !planApprovalRequested && hallucinRetries < MAX_HALLUCIN_RETRIES) {
 					hallucinRetries++;
-					console.warn(`[PM] Hallucination detected — PM wrote text without calling run_agent (retry ${hallucinRetries}/${MAX_HALLUCIN_RETRIES})`);
+					const detectionSource = isDispatchExpected ? "next-action-hint" : thinkingSignalsDispatch ? "thinking-block" : "response-text-regex";
+					console.warn(`[PM] Hallucination detected via ${detectionSource} — PM wrote text without calling run_agent (retry ${hallucinRetries}/${MAX_HALLUCIN_RETRIES})`);
 					const hallucinatedText = fullText;
 					fullText = "";
 					this.callbacks.onStreamReset(conversationId, assistantMessageId);
@@ -796,8 +870,11 @@ export class AgentEngine {
 
 				// Retries exhausted but the PM still won't dispatch: surface it loudly instead of
 				// silently persisting misleading "I'll dispatch…" narration as the final answer.
-				if (isDispatchExpected && fullText.trim() && hallucinRetries >= MAX_HALLUCIN_RETRIES) {
-					console.warn(`[PM] Dispatch not corrected after ${MAX_HALLUCIN_RETRIES} retries — persisting PM text as a fallback; workflow may stall until the next user message or the review cycle re-drives it.`);
+				if ((isDispatchExpected || pmClaimedDispatchWithoutTool) && fullText.trim() && hallucinRetries >= MAX_HALLUCIN_RETRIES) {
+					const reason = isDispatchExpected ? "next-action-hint" : thinkingSignalsDispatch ? "thinking-block" : "response-text-regex";
+					console.warn(`[PM] Dispatch not corrected after ${MAX_HALLUCIN_RETRIES} retries (${reason}) — will attempt post-stream ground-truth check.`);
+					postStreamCorrectionNeeded = true;
+					postStreamDetectionSource = reason;
 				}
 
 				if (fullText.trim()) {
@@ -962,7 +1039,43 @@ export class AgentEngine {
 
 			this._touchConversation(conversationId);
 
-			// 11. (Auto-title is fired from sendMessage with a 1s delay — see above)
+			// 11. Post-stream ground-truth safety net.
+			// All in-stream retries were exhausted but the PM still didn't dispatch.
+			// Confirm with the actual running-agent count (not text inference): if it's
+			// zero, the dispatch genuinely never happened. Re-inject a correction message
+			// that re-drives the PM. Guards:
+			//   - Only fires when postStreamCorrectionNeeded (set by retries-exhausted branch)
+			//   - Loop guard: skip if this turn was itself a [DISPATCH CORRECTION] message
+			//     (prevents infinite correction→hallucination→correction loops)
+			//   - Deferred via setTimeout so the call lands AFTER pmProcessingPromise
+			//     resolves — calling sendMessage from inside _runPMProcessing deadlocks
+			//     because sendMessage awaits pmProcessingPromise before starting.
+			if (
+				postStreamCorrectionNeeded &&
+				!planApprovalRequested &&
+				!content.startsWith("[DISPATCH CORRECTION]")
+			) {
+				const { getRunningAgentCount } = await import("../engine-manager");
+				if (getRunningAgentCount(this.projectId) === 0) {
+					console.warn(`[PM] Post-stream correction (${postStreamDetectionSource}): confirmed no agents running — scheduling re-injection`);
+					const originalReq = content.startsWith("[Agent Report]")
+						? ""
+						: `\n\nThe user's original request was: "${content.slice(0, 400)}${content.length > 400 ? "…" : ""}"`;
+					const correctionMsg =
+						`[DISPATCH CORRECTION] Your previous response described dispatching an agent, ` +
+						`but no agent is currently running — the dispatch never happened.` +
+						`${originalReq}\n\nCall run_agent NOW as a tool call. Do not write any text first.`;
+					// Defer past the processing lock (see comment above).
+					setTimeout(() => {
+						this.sendMessage(conversationId, correctionMsg, { type: "agent_report" } as never)
+							.catch(err => console.error("[PM] Post-stream correction sendMessage failed:", err));
+					}, 150);
+				} else {
+					console.log(`[PM] Post-stream check: agents are running (count=${getRunningAgentCount(this.projectId)}) — no correction needed`);
+				}
+			}
+
+			// (Auto-title is fired from sendMessage with a 1s delay — see above)
 		} catch (error: unknown) {
 			const isAbort =
 				abortController?.signal.aborted === true ||

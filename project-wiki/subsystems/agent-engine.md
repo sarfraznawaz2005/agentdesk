@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-06-30
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts
@@ -98,16 +98,41 @@ The fullStream loop handles several non-obvious cases:
   to the reasoning/thinking lane via `onAgentActivity` so it is not a silent
   flash-then-vanish. It is still restored to the answer lane if the model never
   regenerates (`engine.ts:722`).
-- **Hallucination guard** (`engine.ts:753`): when a `[Next Action] DISPATCH` hint
-  was injected but the PM wrote text *without* calling `run_agent`, the engine
-  injects an in-memory correction and re-loops (up to 2×) — the hallucinated text
-  is never written to DB so it can't poison future context. On each retry the tool
-  set is also narrowed to dispatch-only (`activeTools = { run_agent,
-  run_agents_parallel }`) so the model *cannot* answer with prose again — a
-  provider-agnostic substitute for `toolChoice:'required'` (which Ollama and many
-  OpenAI-compatible proxies silently ignore, and which Anthropic forbids alongside
-  extended thinking). If all retries are exhausted the engine logs a warning rather
-  than silently persisting the misleading "I'll dispatch…" narration as the answer.
+- **Hallucination guard** (`engine.ts:767`): fires when the PM wrote text without
+  calling `run_agent` but a dispatch was expected. Three detection vectors:
+  - **A — engine-driven**: `[Next Action] DISPATCH` injected into `content`
+    (auto-continue after task completion). `isDispatchExpected` flag.
+  - **B — thinking-block signal** (primary for user-initiated requests): the PM's
+    extended reasoning uses its trained vocabulary ("let me dispatch", "I'll call
+    run_agent") far more consistently than its response prose. `THINKING_DISPATCH_RE`
+    matches conclusive dispatch decisions but not deliberation ("should I dispatch?").
+    Only fires when `accumulatedReasoning` is non-empty (Anthropic + some OpenRouter
+    models with extended thinking; absent on other providers → falls through to C).
+  - **C — response-text regex** (fallback for non-thinking providers): conservative
+    `DISPATCH_CLAIM_RE` covering present-participle claims, passive voice, multi-item
+    completion claims, and hand-off phrases. Will miss novel phrasing, but vector B
+    covers the common cases where thinking is available.
+  When any vector fires and no `run_agent` was called (`agentDispatchedThisTurn =
+  false`), the engine injects an in-memory correction and re-loops (up to 2×) —
+  hallucinated text is never written to DB. On each retry the tool set is narrowed
+  to dispatch-only (`activeTools = { run_agent, run_agents_parallel }`) — a
+  provider-agnostic substitute for `toolChoice:'required'` (Ollama/OpenRouter ignore
+  it; Anthropic rejects it alongside extended thinking). Exhausted retries → sets
+  `postStreamCorrectionNeeded = true` and falls through to layer D.
+- **Epistemic grounding rule** (`prompts.ts`, rule 0c): system-prompt instruction requiring
+  every factual claim to be backed by a tool call made in the same response. Covers
+  file-state claims (requires `read_file` result this turn), dispatch claims (rule 0b),
+  behavioral claims ("tests pass" — requires shell/test output), and visual claims
+  (prohibited entirely — PM has no rendering tools). Safe alternative framed for the
+  model: attribute claims to the agent's self-report ("the agent updated X") rather
+  than asserting unverifiable personal knowledge ("X is now fixed — verified").
+- **Post-stream ground-truth check** (`engine.ts:1042`, layer D): after all in-stream
+  retries fail, verifies `getRunningAgentCount(projectId) === 0` — actual process
+  state, not text inference. If confirmed, schedules a `[DISPATCH CORRECTION]`
+  message via `setTimeout(150ms)` to avoid deadlocking on `pmProcessingPromise`
+  (we are still inside the lock at that point). The correction message re-triggers
+  the PM with the original user request embedded. Loop guard: skips if `content`
+  already starts with `[DISPATCH CORRECTION]` to prevent infinite correction loops.
 - **Transient-error retry** (`engine.ts:805`): up to 3 attempts with exponential
   backoff (`safety.ts:143`,`safety.ts:155`), distinguishing real aborts from
   empty/network failures.
