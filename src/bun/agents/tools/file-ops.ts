@@ -10,6 +10,22 @@ import type { ToolRegistryEntry } from "./index";
 import type { FileTracker } from "./file-tracker";
 import { notifyFileChange } from "../../plugins";
 import { truncateSearchResults, truncateTree } from "./truncation";
+import { literalReplace, detectEol, toLf, fromLf } from "./text-edit";
+
+/**
+ * Read a file as UTF-8 text, re-prepending a leading BOM when the file has one
+ * on disk. Bun's `.text()` (and TextDecoder) silently strip a UTF-8 BOM, so an
+ * edit that read with `.text()` and wrote the result back would drop the BOM
+ * every time. Keeping it on the returned string lets the EOL/BOM-aware edit
+ * helpers (text-edit.ts) preserve it. Used only by the editing tools — read_file
+ * deliberately does NOT use this (the model shouldn't see a BOM in its view).
+ */
+async function readFileText(filePath: string): Promise<string> {
+	const buf = new Uint8Array(await Bun.file(filePath).arrayBuffer());
+	const hasBom = buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf;
+	const text = new TextDecoder().decode(buf); // strips a leading BOM if present
+	return hasBom ? "\uFEFF" + text : text;
+}
 
 /** Write file and notify plugins (LSP servers) of the change. Returns any diagnostics. */
 async function writeAndNotify(filePath: string, content: string): Promise<string[]> {
@@ -281,13 +297,11 @@ function applyEditReplace(
 			return { error: `invalid regex: ${err instanceof Error ? err.message : String(err)}` };
 		}
 	}
-	if (!original.includes(oldText)) {
-		return { error: "old_text not found in file" };
-	}
-	if (replaceAll) {
-		return { updated: original.split(oldText).join(newText) };
-	}
-	return { updated: original.replace(oldText, newText) };
+	// Literal mode — EOL/BOM-robust (handles CRLF files vs LF old_text, leading
+	// BOM, and `$` in the replacement). See text-edit.ts for the strategy.
+	const result = literalReplace(original, oldText, newText, replaceAll);
+	if (result.error) return { error: result.error };
+	return { updated: result.updated };
 }
 
 const editFileTool = tool({
@@ -302,7 +316,7 @@ const editFileTool = tool({
 				?? requireArg("edit_file", "new_text", args.new_text, args.path);
 			if (argErr) return argErr;
 			const resolvedPath = validatePath(args.path);
-			const original = await Bun.file(resolvedPath).text();
+			const original = await readFileText(resolvedPath);
 
 			const result = applyEditReplace(original, args.old_text, args.new_text, args.useRegex, args.regexFlags, args.replace_all);
 			if (result.error) {
@@ -576,17 +590,18 @@ const multiEditFileTool = tool({
 	execute: async (args): Promise<string> => {
 		try {
 			const resolvedPath = validatePath(args.path);
-			let content = await Bun.file(resolvedPath).text();
+			let content = await readFileText(resolvedPath);
 
 			for (let i = 0; i < args.edits.length; i++) {
 				const { old_text, new_text } = args.edits[i];
 				if (typeof old_text !== "string" || typeof new_text !== "string") {
 					return `Error in edit ${i + 1}/${args.edits.length} for "${resolvedPath}": missing old_text/new_text — include both in the same tool call.`;
 				}
-				if (!content.includes(old_text)) {
+				const r = literalReplace(content, old_text, new_text, false);
+				if (r.error) {
 					return `Error in edit ${i + 1}/${args.edits.length}: old_text not found in "${resolvedPath}":\n${old_text.slice(0, 200)}`;
 				}
-				content = content.replace(old_text, new_text);
+				content = r.updated ?? content;
 			}
 
 			const diags = await writeAndNotify(resolvedPath,content);
@@ -726,8 +741,13 @@ const patchFileTool = tool({
 			const argErr = requireArg("patch_file", "patch", args.patch, args.path);
 			if (argErr) return argErr;
 			const resolvedPath = validatePath(args.path);
-			const original = await Bun.file(resolvedPath).text();
-			const fileLines = original.split("\n");
+			const original = await readFileText(resolvedPath);
+			// Match hunks in clean LF space (a CRLF file would otherwise leave a
+			// trailing \r on every line and never match LF hunk context), then
+			// re-emit in the file's own EOL with its BOM preserved.
+			const eol = detectEol(original);
+			const hasBom = original.charCodeAt(0) === 0xFEFF;
+			const fileLines = toLf(hasBom ? original.slice(1) : original).split("\n");
 
 			const hunks = parseUnifiedDiff(args.patch);
 			if (hunks.length === 0) {
@@ -766,7 +786,7 @@ const patchFileTool = tool({
 				applied.push(`line ${hunk.origStart}${idx !== hunk.origStart - 1 ? ` (matched at ${idx + 1})` : ""}`);
 			}
 
-			const patchedContent = fileLines.join("\n");
+			const patchedContent = (hasBom ? String.fromCharCode(0xFEFF) : "") + fromLf(fileLines.join("\n"), eol);
 			const diags = await writeAndNotify(resolvedPath, patchedContent);
 			return `Successfully patched "${resolvedPath}" — ${hunks.length} hunk(s) applied: ${applied.join(", ")}${formatDiagnosticsSuffix(diags)}`;
 		} catch (err) {
@@ -1072,7 +1092,7 @@ export function createTrackedFileTools(
 					return `Error editing file "${resolvedPath}": ${FILE_MODIFIED_MSG}`;
 				}
 
-				const original = await Bun.file(resolvedPath).text();
+				const original = await readFileText(resolvedPath);
 				const result = applyEditReplace(original, args.old_text, args.new_text, args.useRegex, args.regexFlags, args.replace_all);
 				if (result.error) {
 					return `Error editing file "${resolvedPath}": ${result.error}`;
@@ -1100,16 +1120,17 @@ export function createTrackedFileTools(
 					return `Error editing file "${resolvedPath}": ${FILE_MODIFIED_MSG}`;
 				}
 
-				let content = await Bun.file(resolvedPath).text();
+				let content = await readFileText(resolvedPath);
 				for (let i = 0; i < args.edits.length; i++) {
 					const { old_text, new_text } = args.edits[i];
 					if (typeof old_text !== "string" || typeof new_text !== "string") {
 						return `Error in edit ${i + 1}/${args.edits.length} for "${resolvedPath}": missing old_text/new_text — include both in the same tool call.`;
 					}
-					if (!content.includes(old_text)) {
+					const r = literalReplace(content, old_text, new_text, false);
+					if (r.error) {
 						return `Error in edit ${i + 1}/${args.edits.length}: old_text not found in "${resolvedPath}":\n${old_text.slice(0, 200)}`;
 					}
-					content = content.replace(old_text, new_text);
+					content = r.updated ?? content;
 				}
 				const diags = await writeAndNotify(resolvedPath, content);
 				tracker.trackWrite(resolvedPath);
@@ -1136,8 +1157,12 @@ export function createTrackedFileTools(
 					return `Error patching file "${resolvedPath}": ${FILE_MODIFIED_MSG}`;
 				}
 
-				const original = await Bun.file(resolvedPath).text();
-				const fileLines = original.split("\n");
+				const original = await readFileText(resolvedPath);
+				// Match in clean LF space, re-emit in the file's EOL + BOM (see the
+				// registry patch_file for the rationale).
+				const eol = detectEol(original);
+				const hasBom = original.charCodeAt(0) === 0xFEFF;
+				const fileLines = toLf(hasBom ? original.slice(1) : original).split("\n");
 				const hunks = parseUnifiedDiff(args.patch);
 				if (hunks.length === 0) {
 					return `Error: no valid hunks found in the patch`;
@@ -1162,7 +1187,7 @@ export function createTrackedFileTools(
 					applied.push(`line ${hunk.origStart}${idx !== hunk.origStart - 1 ? ` (matched at ${idx + 1})` : ""}`);
 				}
 
-				const patched = fileLines.join("\n");
+				const patched = (hasBom ? String.fromCharCode(0xFEFF) : "") + fromLf(fileLines.join("\n"), eol);
 				const diags = await writeAndNotify(resolvedPath, patched);
 				tracker.trackWrite(resolvedPath);
 

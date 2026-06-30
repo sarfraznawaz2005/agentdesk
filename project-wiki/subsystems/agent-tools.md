@@ -2,12 +2,13 @@
 title: Agent Tools
 type: subsystem
 status: verified
-verified_at: 2026-06-26
+verified_at: 2026-06-30
 sources:
   - src/bun/agents/tools/index.ts
   - src/bun/agents/tools/memory.ts
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/tools/file-ops.ts
+  - src/bun/agents/tools/text-edit.ts
   - src/bun/agents/tools/file-tracker.ts
   - src/bun/agents/tools/shell.ts
   - src/bun/agents/tools/truncation.ts
@@ -158,6 +159,30 @@ output written to `truncated-outputs/` on disk, and the model gets a preview plu
 hint to re-read a range (`truncation.ts:144-153`). Presets exist for shell (200
 lines, *tail*), search (50), and tree (300) (`truncation.ts:161-178`).
 
+**Encoding-robust editing (`text-edit.ts`).** `edit_file`, `multi_edit_file`,
+and `patch_file` match a model-supplied `old_text` against the on-disk file — and
+the model rarely reproduces the file's exact bytes. The hard cases, all handled by
+the pure helpers in `text-edit.ts` (`literalReplace`, `detectEol`, `toLf`,
+`fromLf`): **(1) line endings** — Windows files are CRLF but LLMs emit LF, so a
+naive `content.includes(oldText)` fails with "old_text not found" (this is what
+historically pushed agents into `useRegex=true` and the follow-on "invalid regex:
+missing )" on unbalanced parens). `literalReplace` tries an exact match first
+(byte-preserving), then retries with `old_text`/`new_text` converted to the file's
+detected EOL, then a fully LF-normalised match as a last resort — and always
+re-emits the edited region in the file's own EOL. **(2) BOM** — Bun's `.text()`
+*strips* a leading UTF-8 BOM, so editing tools read via `readFileText`
+(`file-ops.ts:23`) which re-prepends the BOM from the raw bytes; `literalReplace`
+and `patch_file` then strip it for matching and restore it on write, so the BOM
+survives the edit. **(3) `$` in the replacement** — `String.prototype.replace(str,
+str)` still expands `$&`/`$1`/`$$`, so the helper splices with `indexOf`/`slice`
+(or `split`/`join` for `replace_all`) instead, keeping `new_text` literal.
+`patch_file` matches hunks in LF space (a CRLF file would otherwise leave a
+trailing `\r` on every line and never match LF context) and re-joins with the
+file's EOL + BOM. Covered by `tests/tools/text-edit.test.ts` (deterministic) plus
+an optional, network-gated live smoke driven by the free OpenCode provider
+(`tests/tools/edit-tools-smoke.test.ts`, run with `OPENCODE_SMOKE=1`). `useRegex`
+remains an explicit opt-in escape hatch and is unchanged.
+
 **File freshness tracking (`file-tracker.ts`).** One `FileTracker` per agent run
 (`agent-loop.ts:867`) stores each touched file's mtime. Before an edit,
 `checkFreshness()` (`file-tracker.ts:53`) compares stored vs disk mtime to detect
@@ -209,7 +234,8 @@ hard cap 100 with cold-memory LRU eviction). Defaults wired in `seed.ts`
 | `src/bun/agents/tools/index.ts` | Static registry assembly + `getToolsForAgent` role filter + tool cache |
 | `src/bun/agents/tools/memory.ts` | Agent memory: store + caps + `save/recall/delete_memory` (stubs + `createMemoryTools` overlay) + `buildMemoryIndexSection` |
 | `src/bun/agents/agent-loop.ts` | Per-run overlay, workspace injection, read-only/exclude filtering, hook wrap |
-| `src/bun/agents/tools/file-ops.ts` | File tools; `validatePath` boundary + `createTrackedFileTools` factory |
+| `src/bun/agents/tools/file-ops.ts` | File tools; `validatePath` boundary + `createTrackedFileTools` factory + `readFileText` (BOM-preserving read) |
+| `src/bun/agents/tools/text-edit.ts` | Pure EOL/BOM-robust literal find/replace helpers used by the edit tools (`literalReplace`, `detectEol`, `toLf`, `fromLf`) |
 | `src/bun/agents/tools/file-tracker.ts` | Per-run mtime freshness tracking + modified-file list |
 | `src/bun/agents/tools/truncation.ts` | Disk-overflow output capping (token control) |
 | `src/bun/agents/tools/shell.ts` | `run_shell` denylist, approval gate, cross-platform shell |
