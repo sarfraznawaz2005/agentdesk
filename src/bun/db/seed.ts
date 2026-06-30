@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "./index";
 import { settings, agents, prompts, agentTools, aiProviders } from "./schema";
 import { sqlite } from "./connection";
@@ -1035,8 +1035,14 @@ If additional detail is needed (more API specifics, DB schema, etc.) use \`updat
 - \`create_doc\` — create the plan/PRD document in the project's Docs tab. **Call this ONCE per planning session.** Never call it more than once.
 - \`update_doc\` — add or revise sections within the single document. Use this if you need to fill in more detail after the initial draft (e.g. expanding the DB schema or API sections). Also use it when re-planning after a rejection.
 - \`list_docs\` — check for existing plans before creating duplicates
-- \`define_tasks\` — store structured task definitions for approval
+- \`define_tasks\` — store structured task definitions for the **approval** flow (full plans)
+- \`create_task\` — create a single kanban task **directly on the board** (backlog), no approval card. You are the ONLY agent with this tool. Use it for **ad-hoc** additions the PM hands you ("add a task to fix the login bug"). See *Direct task creation* below.
 - \`read_file\`, \`list_directory\`, \`search_files\`, \`search_content\` — explore existing codebase for context
+
+## Direct task creation (ad-hoc) vs the plan flow
+You are the sole author of kanban tasks. Choose the path by the request:
+- **Ad-hoc add** — the PM asks you to add one or a few specific, well-understood tasks directly (not a whole project). Call \`create_task\` for each: put it in \`backlog\`, give it a clear title, description, at least 2 acceptance criteria, and the right \`assigned_agent\`. These appear immediately (no approval card) — that is intended.
+- **Full plan** — a new project or multi-feature effort. Do the full planning flow: \`create_doc\` → \`define_tasks\`. The PM then runs \`request_plan_approval\` and, on approval, \`create_tasks_from_plan\`. Do NOT use \`create_task\` for a full plan; use \`define_tasks\` so the user can approve it first.
 
 ## ONE Document Rule (CRITICAL)
 **You MUST produce exactly one document per planning session.** All content — PRD, technical architecture, API design, DB schema, implementation plan, best practices — goes into that single document. Use \`update_doc\` to append or revise sections rather than calling \`create_doc\` again. Creating multiple documents is always wrong.
@@ -1308,9 +1314,14 @@ const FILE_COMMON_ADVANCED = ["download_file", "find_dead_code", "diff_text"] as
 
 const SHELL = ["run_shell"] as const;
 
-/** Full kanban tools */
+/**
+ * Full kanban tools for implementer agents. NOTE: `create_task` is intentionally
+ * NOT here — task creation is restricted to the task-planner (the sole task
+ * author). See `restrictCreateTask` in tools/index.ts. Implementers still move,
+ * update, and verify tasks; they just don't author new ones.
+ */
 const KANBAN = [
-	"create_task", "update_task", "move_task", "check_criteria", "check_all_criteria",
+	"update_task", "move_task", "check_criteria", "check_all_criteria",
 	"add_task_notes", "list_tasks", "get_task", "delete_task", "submit_review",
 	"verify_implementation",
 ] as const;
@@ -1349,7 +1360,10 @@ const MEMORY = ["save_memory", "recall_memory", "delete_memory"] as const;
  * Only listed tools are enabled; all others are disabled.
  */
 const defaultAgentTools: Record<string, readonly string[]> = {
-	"task-planner": [...PLANNING, ...NOTES, ...KANBAN_READ, ...FILE_READ],
+	// task-planner is the SOLE holder of create_task — it authors all kanban tasks.
+	// (Carved out of the read-only write-tool filter in agent-loop.ts so it keeps
+	// create_task despite being a read-only agent.)
+	"task-planner": [...PLANNING, ...NOTES, ...KANBAN_READ, "create_task", ...FILE_READ],
 	// WEB added: architects evaluate libraries, look up patterns and technical docs
 	"software-architect": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...GIT_READ, ...NOTES, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...SYSTEM, ...SKILLS, ...WEB],
 	// WEB added: frontend engineers constantly reference MDN, npm, framework docs
@@ -1724,5 +1738,25 @@ async function seedAgentTools(): Promise<void> {
 	}
 	if (addedCount > 0) {
 		console.log(`[seed] Added ${addedCount} missing tool(s) to existing agents.`);
+	}
+
+	// Restrict create_task to the task-planner. On existing installs, implementer
+	// agents still carry a stale create_task row from older seeds; remove it so the
+	// Agents page reflects reality. (Runtime is already enforced by
+	// restrictCreateTask in tools/index.ts regardless of these rows.) Idempotent —
+	// a no-op once the stale rows are gone.
+	const taskPlannerIds = new Set(allAgents.filter((a) => a.name === "task-planner").map((a) => a.id));
+	const staleCreateTaskAgentIds = [
+		...new Set(
+			existingToolRows
+				.filter((r) => r.toolName === "create_task" && !taskPlannerIds.has(r.agentId))
+				.map((r) => r.agentId),
+		),
+	];
+	if (staleCreateTaskAgentIds.length > 0) {
+		await db
+			.delete(agentTools)
+			.where(and(eq(agentTools.toolName, "create_task"), inArray(agentTools.agentId, staleCreateTaskAgentIds)));
+		console.log(`[seed] Removed create_task from ${staleCreateTaskAgentIds.length} agent(s) — restricted to task-planner.`);
 	}
 }

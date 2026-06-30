@@ -513,10 +513,11 @@ export class AgentEngine {
 						});
 					},
 				}),
-				// Direct kanban access
+				// Direct kanban access (read-only + commit-from-plan). The PM does NOT
+				// get create_task — task creation is restricted to the task-planner.
+				// To add a task, the PM spawns task-planner via run_agent.
 				list_tasks: kanbanTools.list_tasks.tool,
 				get_task: kanbanTools.get_task.tool,
-				create_task: kanbanTools.create_task.tool,
 				// Docs access
 				list_docs: notesTools.list_docs.tool,
 				get_doc: notesTools.get_doc.tool,

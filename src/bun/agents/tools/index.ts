@@ -7,6 +7,7 @@ import { shellTools } from "./shell";
 import { communicationTools, createCommunicationTools } from "./communication";
 import { notesTools } from "./notes";
 import { kanbanTools, createKanbanTools } from "./kanban";
+import { restrictCreateTask } from "./create-task-policy";
 import { gitTools } from "./git";
 import { planningTools } from "./planning";
 import { webTools } from "./web";
@@ -159,6 +160,7 @@ export async function getToolsForAgent(agentName: string): Promise<Record<string
 						result[name] = agentKanbanTools[name] ?? agentCommunicationTools[name] ?? entry.tool;
 					}
 				}
+				restrictCreateTask(agentName, result);
 				toolConfigCache.set(agentName, result);
 				return result;
 			}
@@ -169,6 +171,7 @@ export async function getToolsForAgent(agentName: string): Promise<Record<string
 
 	// Default: return all tools with the agent-bound kanban + communication tools overlaid
 	const allTools = { ...getAllTools(), ...agentKanbanTools, ...agentCommunicationTools };
+	restrictCreateTask(agentName, allTools);
 	toolConfigCache.set(agentName, allTools);
 	return allTools;
 }

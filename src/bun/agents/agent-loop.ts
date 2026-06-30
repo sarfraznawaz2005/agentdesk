@@ -249,10 +249,20 @@ export const READ_ONLY_AGENTS = new Set([
 	"task-planner",
 ]);
 
-function filterReadOnlyTools(tools: Record<string, Tool>): Record<string, Tool> {
+/**
+ * Per-agent exceptions to the read-only write-tool filter. The task-planner is
+ * read-only (parallelizable, no file/shell/git writes) yet is the sole task
+ * author, so it keeps `create_task` even though that tool is in WRITE_TOOLS.
+ */
+export const READ_ONLY_WRITE_EXCEPTIONS: Record<string, ReadonlySet<string>> = {
+	"task-planner": new Set(["create_task"]),
+};
+
+function filterReadOnlyTools(tools: Record<string, Tool>, agentName: string): Record<string, Tool> {
+	const allowWrite = READ_ONLY_WRITE_EXCEPTIONS[agentName];
 	const filtered: Record<string, Tool> = {};
 	for (const [name, tool] of Object.entries(tools)) {
-		if (!WRITE_TOOLS.has(name)) {
+		if (!WRITE_TOOLS.has(name) || allowWrite?.has(name)) {
 			filtered[name] = tool;
 		}
 	}
@@ -940,7 +950,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	}
 
 	if (opts.readOnly) {
-		tools = filterReadOnlyTools(tools);
+		tools = filterReadOnlyTools(tools, agentName);
 	}
 
 	// Drop explicitly excluded tools. Names support a trailing "*" for prefix matching

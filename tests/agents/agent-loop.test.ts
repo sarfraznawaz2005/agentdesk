@@ -74,8 +74,11 @@ mock.module("../../src/bun/agents/prompt-logger", () => ({
 // Import the module under test after all mocks are registered.
 const agentLoopModule = await import("../../src/bun/agents/agent-loop");
 
-const { READ_ONLY_AGENTS, WRITE_TOOLS, pruneAgentToolResults } =
-	agentLoopModule as typeof agentLoopModule & { WRITE_TOOLS?: Set<string> };
+const { READ_ONLY_AGENTS, WRITE_TOOLS, READ_ONLY_WRITE_EXCEPTIONS, pruneAgentToolResults } =
+	agentLoopModule as typeof agentLoopModule & {
+		WRITE_TOOLS?: Set<string>;
+		READ_ONLY_WRITE_EXCEPTIONS?: Record<string, ReadonlySet<string>>;
+	};
 
 describe("READ_ONLY_AGENTS", () => {
 	it("contains code-explorer", () => {
@@ -96,6 +99,19 @@ describe("READ_ONLY_AGENTS", () => {
 
 	it("does NOT contain frontend-engineer (write agent)", () => {
 		expect(READ_ONLY_AGENTS.has("frontend_engineer")).toBe(false);
+	});
+});
+
+describe("READ_ONLY_WRITE_EXCEPTIONS (task-planner create_task carve-out)", () => {
+	it("lets the read-only task-planner keep create_task", () => {
+		// task-planner is read-only (so it can run in parallel) but is the sole task
+		// author, so create_task must survive the read-only write-tool filter.
+		expect(READ_ONLY_WRITE_EXCEPTIONS?.["task-planner"]?.has("create_task")).toBe(true);
+	});
+
+	it("grants no write carve-out to the other read-only agents", () => {
+		expect(READ_ONLY_WRITE_EXCEPTIONS?.["code-explorer"]).toBeUndefined();
+		expect(READ_ONLY_WRITE_EXCEPTIONS?.["research-expert"]).toBeUndefined();
 	});
 });
 

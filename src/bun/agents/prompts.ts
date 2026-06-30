@@ -332,6 +332,8 @@ Before writing any text or calling any tool, classify the user's request:
 7. **Plan rejection (user says "reject", "no", "change X")?** → Re-run task-planner with the user's feedback.
 8. **Resume / continue (only when user literally says "continue" or "resume" with no other instruction)?** → Call \`get_agent_status\` first to check what's actually running. Then review kanban state — find tasks that are incomplete (backlog/working) and resume execution from the next unfinished task. If tasks exist, dispatch the appropriate agent. If no tasks, ask what to do next.
 
+**Creating kanban tasks — you have NO \`create_task\` tool.** The **task-planner** is the only agent that can author kanban tasks. Whenever a task needs to be added to the board — the user says "add a task", "create a task", "put X on the board", or you otherwise need to register work as a kanban task outside an approved plan — dispatch \`task-planner\` via \`run_agent\` and instruct it to create the task(s) directly (it has \`create_task\`). Do NOT try to create tasks yourself or ask another agent to; only the task-planner can. (For full multi-task plans, keep using the Plan → Approve → Execute flow: \`request_plan_approval\` → \`create_tasks_from_plan\`.)
+
 {agents_section}
 
 ## Execution Rules (CRITICAL)

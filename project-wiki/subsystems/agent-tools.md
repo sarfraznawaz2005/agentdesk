@@ -13,6 +13,7 @@ sources:
   - src/bun/agents/tools/shell.ts
   - src/bun/agents/tools/truncation.ts
   - src/bun/agents/tools/kanban.ts
+  - src/bun/agents/tools/create-task-policy.ts
   - src/bun/agents/tools/communication.ts
   - src/bun/agents/tools/planning.ts
   - src/bun/agents/tools/ignore.ts
@@ -90,6 +91,26 @@ The agent-bound kanban and communication tools are always overlaid regardless of
 filtering (`index.ts:157`, `index.ts:169`). Results are memoised in
 `toolConfigCache` (`index.ts:71`); call `clearToolCache(agentName?)`
 (`index.ts:79`) when tool assignments change.
+
+#### `create_task` is task-planner-only
+
+`create_task` is restricted to a single agent — the **task-planner**, the sole
+author of kanban tasks. `getToolsForAgent` calls `restrictCreateTask`
+(`tools/create-task-policy.ts`) on **both** return paths — the allowlist path AND
+the zero-rows full-registry path — so it is stripped from every other agent,
+*including* full-registry agents like `freelance-expert`, `issue-fixer`, and any
+custom agent with no `agent_tools` rows. The PM is handled separately: its tool
+set is built inline in `engine.ts` and simply omits `create_task` — when a task
+needs creating, the PM spawns the task-planner (its prompt instructs this). The
+seed reflects this: `create_task` was removed from the `KANBAN` bundle and added
+only to `task-planner`'s allowlist (`seed.ts`), and `seedAgentTools` deletes any
+stale `create_task` row from non-planner agents on existing installs. Because
+`create_task` is in `WRITE_TOOLS` but the task-planner is read-only, a carve-out
+in `agent-loop.ts` (`READ_ONLY_WRITE_EXCEPTIONS`) preserves it for the planner
+through the read-only filter. The task-planner uses it for **ad-hoc** direct
+creation (no approval card); full plans still go through `define_tasks` →
+`create_tasks_from_plan` (the latter inserts via the `createKanbanTask` RPC, not
+the `create_task` tool, so it is unaffected).
 
 ### Step 2 — per-run overlays (`agent-loop.ts`)
 
