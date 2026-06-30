@@ -16,6 +16,7 @@ import { BrowserWindow, Screen, Utils, GlobalShortcut } from "electrobun/bun";
 import { existsSync, mkdirSync, watch } from "fs";
 import type { FSWatcher } from "fs";
 import { ANNOTATION_SERVER_PORT } from "./server";
+import { getToolbarScript } from "./toolbar-script";
 
 interface PreviewWindowState {
 	width:  number;
@@ -292,12 +293,18 @@ function attachWindowListeners(win: BrowserWindow): void {
 			maximizedOnce = true;
 			try { win.maximize(); } catch { /* ignore */ }
 		}
-		// Re-inject console hook after every navigation
+		// Re-inject after every navigation. `dom-ready` fires on every full page
+		// load in the preview window, so this is the safety net that keeps the
+		// annotation toolbar present "no matter what" — internal links, JS
+		// redirects, or address-bar loads that bypass the proxy (e.g. an
+		// externally-hosted preview whose internal links aren't localhost/file and
+		// so are never routed back through the proxy). Both scripts are idempotent,
+		// so this is harmless on proxied pages that already baked the toolbar in.
 		if (currentOpts) {
-			const script = buildConsoleHookScript(currentOpts.conversationId);
 			try {
 				const wv = win.webview as unknown as { executeJavascript?: (s: string) => void };
-				wv.executeJavascript?.(script);
+				wv.executeJavascript?.(buildConsoleHookScript(currentOpts.conversationId));
+				wv.executeJavascript?.(getToolbarScript(ANNOTATION_SERVER_PORT, currentOpts.projectId, currentOpts.conversationId));
 			} catch { /* ignore */ }
 		}
 	});

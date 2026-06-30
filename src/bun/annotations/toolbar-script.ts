@@ -47,7 +47,10 @@ host.id='__ad_host';
 host.style.cssText='all:initial!important;position:fixed!important;bottom:24px!important;right:24px!important;'+
   'top:auto!important;left:auto!important;transform:none!important;filter:none!important;'+
   'z-index:2147483647!important;font-size:0!important;'+
-  'contain:none!important;will-change:auto!important;isolation:auto!important;';
+  'contain:none!important;will-change:auto!important;isolation:auto!important;'+
+  /* Never let a frameless/app-region window treat a drag on the toolbar as a
+     window-move — the header implements its own pointer drag below. */
+  '-webkit-app-region:no-drag!important;';
 var sd=host.attachShadow({mode:'open'});
 var _root=document.documentElement||document.body;
 _root.appendChild(host);
@@ -128,8 +131,14 @@ css.textContent=[
   '#panel.hidden{display:none;}',
 
   /* Header */
-  '#hdr{display:flex;align-items:center;gap:8px;padding:11px 13px;',
+  /* cursor:move + no text selection signals the header is the drag handle;
+     touch-action:none lets pointer drag work without the browser hijacking it
+     for scroll/zoom gestures. */
+  '#hdr{display:flex;align-items:center;gap:8px;padding:11px 13px;cursor:move;',
+    'user-select:none;-webkit-user-select:none;touch-action:none;',
     'background:#0a1120;border-bottom:1px solid rgba(255,255,255,.06);}',
+  /* Buttons inside the header keep a normal pointer and never start a drag. */
+  '#hdr .hdr-btn{cursor:pointer;}',
   '#hdr-icon{font-size:16px;color:#6366f1;}',
   '#hdr-title{flex:1;font-size:14px;font-weight:600;color:#e2e8f0;letter-spacing:.2px;}',
   '#badge{background:#6366f1;color:#fff;border-radius:999px;font-size:13px;font-weight:700;',
@@ -250,7 +259,7 @@ sd.appendChild(root);
 
 // ── Refs ──────────────────────────────────────────────────────────────────────
 function $$(id){return sd.getElementById(id);}
-var panel=$$('panel'),fab=$$('fab');
+var panel=$$('panel'),fab=$$('fab'),hdr=$$('hdr');
 var addBtn=$$('add-btn'),collapseBtn=$$('collapse-btn'),closeBtn=$$('close-btn');
 var editWrap=$$('edit-wrap'),editSel=$$('edit-sel'),editNote=$$('edit-note');
 var saveAnn=$$('save-ann'),cancelAnn=$$('cancel-ann');
@@ -435,6 +444,75 @@ document.addEventListener('click',function(e){
   openEdit(null);
 },true);
 
+// ── Draggable header ──────────────────────────────────────────────────────────
+// Reposition the whole host by dragging the header. The host is anchored
+// bottom/right by default; on first drag we pin its current rect as top/left
+// (with !important to beat the inline cssText) so it can move freely. Position
+// is clamped to the viewport and persisted to localStorage so it survives the
+// re-injection that happens on every page navigation (see preview-window.ts).
+var POS_KEY='__ad_toolbar_pos';
+function setHostPos(left,top){
+  host.style.setProperty('left',left+'px','important');
+  host.style.setProperty('top',top+'px','important');
+  host.style.setProperty('right','auto','important');
+  host.style.setProperty('bottom','auto','important');
+}
+function clampPos(left,top){
+  var w=host.offsetWidth||360,h=host.offsetHeight||60;
+  var maxL=Math.max(0,window.innerWidth-w),maxT=Math.max(0,window.innerHeight-h);
+  return {left:Math.min(Math.max(0,left),maxL),top:Math.min(Math.max(0,top),maxT)};
+}
+function savePos(){
+  try{
+    var r=host.getBoundingClientRect();
+    localStorage.setItem(POS_KEY,JSON.stringify({left:Math.round(r.left),top:Math.round(r.top)}));
+  }catch(e){}
+}
+function restorePos(){
+  try{
+    var raw=localStorage.getItem(POS_KEY);
+    if(!raw)return;
+    var p=JSON.parse(raw);
+    if(p&&typeof p.left==='number'&&typeof p.top==='number'){
+      var c=clampPos(p.left,p.top);
+      setHostPos(c.left,c.top);
+    }
+  }catch(e){}
+}
+var dragging=false,dragDX=0,dragDY=0;
+hdr.addEventListener('pointerdown',function(e){
+  if(e.target.closest('.hdr-btn'))return; // min/close buttons aren't drag handles
+  if(e.button!==0)return;                 // primary button only
+  dragging=true;
+  var r=host.getBoundingClientRect();
+  setHostPos(r.left,r.top);               // switch bottom/right → top/left anchoring
+  dragDX=e.clientX-r.left; dragDY=e.clientY-r.top;
+  try{hdr.setPointerCapture(e.pointerId);}catch(_){}
+  e.preventDefault();
+});
+hdr.addEventListener('pointermove',function(e){
+  if(!dragging)return;
+  var c=clampPos(e.clientX-dragDX,e.clientY-dragDY);
+  setHostPos(c.left,c.top);
+});
+function endDrag(e){
+  if(!dragging)return;
+  dragging=false;
+  try{hdr.releasePointerCapture(e.pointerId);}catch(_){}
+  savePos();
+}
+hdr.addEventListener('pointerup',endDrag);
+hdr.addEventListener('pointercancel',endDrag);
+// If the viewport shrinks, keep a moved toolbar fully on-screen.
+window.addEventListener('resize',function(){
+  try{
+    if(!localStorage.getItem(POS_KEY))return;
+    var r=host.getBoundingClientRect();
+    var c=clampPos(r.left,r.top);
+    setHostPos(c.left,c.top);
+  }catch(e){}
+});
+
 // ── Collapse / close ──────────────────────────────────────────────────────────
 collapseBtn.addEventListener('click',function(){
   collapsed=true;
@@ -488,6 +566,7 @@ function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 renderQueue();
+restorePos(); // re-apply a previously dragged position (persists across navigation)
 })();
 `.trim();
 }

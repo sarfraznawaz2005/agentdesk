@@ -2,7 +2,7 @@
 title: Backend Core & Entry
 type: subsystem
 status: verified
-verified_at: 2026-06-26
+verified_at: 2026-06-30
 sources:
   - src/bun/index.ts
   - src/bun/engine-manager.ts
@@ -220,13 +220,27 @@ replacement for chrome-devtools MCP previews.
   (`previewWin`, `preview-window.ts:41`) that loads the proxy URL. Re-running
   `/preview` reuses + navigates it (`openPreviewWindow`, `preview-window.ts:309`).
   It persists its own frame, polls `document.title` every 2s to mirror it into the
-  native title (`preview-window.ts:137`), re-injects a console hook after every
-  `dom-ready` so errors flow back to `/preview-events` (`preview-window.ts:98`),
-  and for `projectType === "static"` runs a debounced `fs.watch` reload for cheap
-  HMR (`preview-window.ts:172`).
+  native title (`preview-window.ts:137`), and for `projectType === "static"` runs a
+  debounced `fs.watch` reload for cheap HMR (`preview-window.ts:172`). After every
+  `dom-ready` it re-injects **both** the console hook (so errors flow back to
+  `/preview-events`, `preview-window.ts:98`) **and the toolbar itself**
+  (`getToolbarScript`, in the `dom-ready` handler ~`preview-window.ts:296`). This
+  toolbar re-injection is the **navigation safety net**: `dom-ready` fires on every
+  full page load, so the toolbar reappears no matter how the page changed —
+  including direct (non-proxied) navigations such as an externally-hosted preview
+  whose internal links aren't `localhost`/`file` and so are never routed back
+  through the proxy. Both injected scripts are idempotent, so this is harmless on
+  proxied pages that already baked the toolbar in.
 - **`toolbar-script.ts`** — the self-contained shadow-DOM toolbar string. It
-  intercepts local link clicks and routes them back through the proxy so the
-  toolbar persists across navigation (`toolbar-script.ts:17`).
+  intercepts local link clicks and routes them back through the proxy
+  (`toolbar-script.ts:17`); the proxy path covers `localhost`/`file` navigation
+  while the window-side `dom-ready` re-injection (above) covers everything else.
+  The header is a **drag handle** — pointer-drag repositions the shadow host
+  (switching its default bottom/right anchoring to clamped `top/left` via
+  `!important`), and the position is persisted to `localStorage` (`__ad_toolbar_pos`)
+  and restored on each re-injection so a dragged toolbar keeps its place across
+  navigation. The host carries `-webkit-app-region:no-drag` so a drag can never be
+  mistaken for a window-move.
 
 ## Gotchas / Constraints
 
