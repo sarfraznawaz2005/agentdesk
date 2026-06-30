@@ -64,6 +64,10 @@ interface ChatState {
   // Collapsed agent blocks — keyed by message part id (persists across tab switches)
   collapsedAgentBlocks: Record<string, true>;
 
+  // Unsent chat-input drafts — keyed by conversationId, mirrored to localStorage so a
+  // typed-but-unsent message survives navigation, tab switches, and app restart.
+  drafts: Record<string, string>;
+
 
   // Actions
   loadConversations: (projectId: string) => Promise<void>;
@@ -87,6 +91,10 @@ interface ChatState {
   renameConversation: (id: string, title: string) => Promise<void>;
   pinConversation: (id: string, pinned: boolean) => Promise<void>;
   toggleCollapsedAgent: (id: string) => void;
+  /** Save (or, when value is empty, delete) the unsent draft for a conversation. */
+  setDraft: (conversationId: string, value: string) => void;
+  /** Remove a conversation's unsent draft (e.g. after send or on delete). */
+  clearDraft: (conversationId: string) => void;
   clearActivity: () => void;
   syncRunningAgents: (projectId: string) => Promise<void>;
   reset: () => void;
@@ -95,6 +103,39 @@ interface ChatState {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Unsent-draft persistence. Drafts are mirrored to localStorage (keyed by
+ * conversationId) so a typed-but-unsent message survives navigation and a full
+ * app restart. All access is wrapped — localStorage can throw (quota/privacy
+ * modes) and a draft is never important enough to break the chat over.
+ */
+const DRAFTS_KEY = "agentdesk:chat-drafts";
+
+function loadDrafts(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(DRAFTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    // Keep only string values — guard against a corrupted/old payload shape.
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === "string" && v !== "") out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveDrafts(drafts: Record<string, string>): void {
+  try {
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+  } catch {
+    /* ignore — localStorage unavailable or over quota */
+  }
+}
 
 /**
  * Sort conversations: pinned first, then descending by updatedAt.
@@ -130,6 +171,7 @@ const initialState = {
   liveContextTokens: 0,
   liveContextLimit: 0,
   collapsedAgentBlocks: {} as Record<string, true>,
+  drafts: loadDrafts(),
 };
 
 // ---------------------------------------------------------------------------
@@ -214,6 +256,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   deleteConversation: async (id: string) => {
     await rpc.deleteConversation(id);
+    get().clearDraft(id);
     set((state) => {
       const conversations = state.conversations.filter((c) => c.id !== id);
       const activeConversationId =
@@ -387,6 +430,26 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     });
   },
 
+  setDraft: (conversationId: string, value: string) => {
+    set((state) => {
+      // Empty draft → drop the key so the map (and localStorage) stays bounded.
+      if (!value) {
+        if (!(conversationId in state.drafts)) return {};
+        const { [conversationId]: _omit, ...rest } = state.drafts;
+        saveDrafts(rest);
+        return { drafts: rest };
+      }
+      if (state.drafts[conversationId] === value) return {};
+      const next = { ...state.drafts, [conversationId]: value };
+      saveDrafts(next);
+      return { drafts: next };
+    });
+  },
+
+  clearDraft: (conversationId: string) => {
+    get().setDraft(conversationId, "");
+  },
+
   clearActivity: () => {
     set({ activeAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0 });
   },
@@ -438,7 +501,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     if (buffers.tokenFlushTimer) { clearTimeout(buffers.tokenFlushTimer); buffers.tokenFlushTimer = null; }
     buffers.tokenBuffer = "";
     buffers.tokenStreamMeta = null;
-    set({ ...initialState, collapsedAgentBlocks: {} });
+    // Preserve drafts across project switches — they're keyed by conversationId
+    // and globally unique, and initialState carries the app-launch snapshot only.
+    set({ ...initialState, collapsedAgentBlocks: {}, drafts: get().drafts });
   },
 }));
 

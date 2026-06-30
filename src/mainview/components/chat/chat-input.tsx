@@ -20,6 +20,7 @@ import {
 import { cn } from "../../lib/utils";
 import { PromptsDropdown } from "./prompts-dropdown";
 import { rpc } from "../../lib/rpc";
+import { useChatStore } from "../../stores/chat-store";
 import { Tip } from "@/components/ui/tooltip";
 import {
   useInputPopover,
@@ -150,7 +151,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   queuedMessages = [],
   onRemoveQueued,
 }, ref) {
-  const [value, setValue] = useState("");
+  // Seed from the persisted draft for the conversation we mount on, so a
+  // typed-but-unsent message survives navigation / tab switches / restart.
+  const [value, setValue] = useState(
+    () => (activeConversationId ? useChatStore.getState().drafts[activeConversationId] ?? "" : ""),
+  );
+  const setDraft = useChatStore((s) => s.setDraft);
+  // Track which conversation `value` belongs to. On a conversation switch, swap
+  // in that conversation's saved draft during render (React's "adjust state when
+  // a prop changes" pattern) — the outgoing draft was already persisted by the
+  // effect below on each keystroke, so `value` and `draftConv` stay a consistent
+  // pair without a stale-value window.
+  const [draftConv, setDraftConv] = useState<string | null>(activeConversationId ?? null);
+  if ((activeConversationId ?? null) !== draftConv) {
+    const nextConv = activeConversationId ?? null;
+    setDraftConv(nextConv);
+    setValue(nextConv ? useChatStore.getState().drafts[nextConv] ?? "" : "");
+  }
   const [lastSent, setLastSent] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<AttachmentFile[]>([]);
   const [enhancing, setEnhancing] = useState(false);
@@ -254,6 +271,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     adjustHeight();
   }, [value, adjustHeight]);
+
+  // ---- Draft persistence ---------------------------------------------------
+  // Persist every change to the current conversation's draft. Covers all sources
+  // that mutate `value` (typing, slash resets, enhance, imperative setValue) and
+  // clears the draft on send (value → ""). The draft swap on conversation switch
+  // is handled during render above, so `value` and `draftConv` are always a
+  // consistent pair here — no risk of writing one conversation's text under
+  // another's key.
+  useEffect(() => {
+    if (draftConv) setDraft(draftConv, value);
+  }, [value, draftConv, setDraft]);
 
   // ---- File search for @ mentions -----------------------------------------
   const searchFiles = useCallback((query: string) => {

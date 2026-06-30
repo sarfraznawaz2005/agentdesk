@@ -2,7 +2,7 @@
 title: Frontend State Stores
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-06-30
 sources:
   - src/mainview/stores/chat-store.ts
   - src/mainview/stores/chat-types.ts
@@ -10,6 +10,7 @@ sources:
   - src/mainview/stores/kanban-store.ts
   - src/mainview/lib/rpc.ts
   - src/mainview/components/chat/message-list.tsx
+  - src/mainview/components/chat/chat-input.tsx
 tags: [frontend, zustand]
 ---
 
@@ -117,6 +118,33 @@ operations target the persisted row. `reset()` also clears the module-level
 token buffers/timers to stop stale tokens leaking into the next conversation
 (`chat-store.ts:420`).
 
+### Unsent-message drafts
+
+A typed-but-unsent chat-input message survives navigation, tab switches, and a
+full app restart. The store holds `drafts: Record<conversationId, string>`,
+hydrated at module load from `localStorage` (`agentdesk:chat-drafts`) by
+`loadDrafts()` and mirrored back on every write by `saveDrafts()` —
+all `localStorage` access is wrapped in `try/catch` because a draft must never
+break the chat. `setDraft(conversationId, value)` writes the draft, and
+**deletes the key when `value` is empty** so the map (and localStorage payload)
+stays bounded; `clearDraft` is the empty-value shorthand. `deleteConversation`
+calls `clearDraft(id)`, and `reset()` deliberately **preserves** the live
+`drafts` (`set({ ...initialState, …, drafts: get().drafts })`) because
+`initialState` only carries the app-launch snapshot — a bare spread would wipe
+drafts created during the session.
+
+The `ChatInput` component (`src/mainview/components/chat/chat-input.tsx`) keeps
+the textarea `value` as **local** state (popover/slash detection needs it
+synchronously) and bridges to the store at three points: it **seeds** `value`
+from the stored draft via a lazy `useState` initializer; a single effect
+**persists** `value` to `setDraft(draftConv, value)` on every change (covering
+typing, slash resets, enhance, imperative `setValue`, and clear-on-send);
+and on a **conversation switch** it swaps in the new conversation's draft
+*during render* (React's "adjust state when a prop changes" pattern, guarded by
+a `draftConv` state) — not in an effect, both to satisfy
+`react-hooks/set-state-in-effect` and to avoid a stale-value window where the
+outgoing text could be written under the incoming conversation's key.
+
 ## Kanban store
 
 `useKanbanStore` (`src/mainview/stores/kanban-store.ts:93`) is far simpler. It
@@ -132,7 +160,8 @@ which agent-driven kanban moves (PM/review-cycle) appear live in the UI.
 
 | File | Role |
 |---|---|
-| `src/mainview/stores/chat-store.ts` | `useChatStore` — conversations, messages, streaming/agent status; actions call RPC then setState |
+| `src/mainview/stores/chat-store.ts` | `useChatStore` — conversations, messages, streaming/agent status, unsent-message `drafts`; actions call RPC then setState |
+| `src/mainview/components/chat/chat-input.tsx` | Consumer; local textarea `value` bridged to the store's `drafts` (seed on mount, persist on change, swap-during-render on conversation switch) |
 | `src/mainview/stores/chat-types.ts` | `Conversation`, `Message`, `ActiveInlineAgent`, `AgentStatusValue`, `ShellApprovalRequest` |
 | `src/mainview/stores/chat-event-handlers.ts` | All `agentdesk:*` DOM listeners; token buffering, completed-stream guard, busy-state logic |
 | `src/mainview/stores/kanban-store.ts` | `useKanbanStore` — board tasks, optimistic mutations, refetch-on-event |
