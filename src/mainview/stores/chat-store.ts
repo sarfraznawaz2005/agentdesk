@@ -61,6 +61,9 @@ interface ChatState {
   liveContextTokens: number;
   liveContextLimit: number;
 
+  // Collapsed agent blocks — keyed by message part id (persists across tab switches)
+  collapsedAgentBlocks: Record<string, true>;
+
 
   // Actions
   loadConversations: (projectId: string) => Promise<void>;
@@ -83,6 +86,7 @@ interface ChatState {
   branchConversation: (projectId: string, conversationId: string, upToMessageId: string) => Promise<string>;
   renameConversation: (id: string, title: string) => Promise<void>;
   pinConversation: (id: string, pinned: boolean) => Promise<void>;
+  toggleCollapsedAgent: (id: string) => void;
   clearActivity: () => void;
   syncRunningAgents: (projectId: string) => Promise<void>;
   reset: () => void;
@@ -125,6 +129,7 @@ const initialState = {
   isCompacting: false,
   liveContextTokens: 0,
   liveContextLimit: 0,
+  collapsedAgentBlocks: {} as Record<string, true>,
 };
 
 // ---------------------------------------------------------------------------
@@ -372,6 +377,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   // ---- Activity ------------------------------------------------------------
 
+  toggleCollapsedAgent: (id: string) => {
+    set((state) => {
+      if (id in state.collapsedAgentBlocks) {
+        const { [id]: _omit, ...rest } = state.collapsedAgentBlocks;
+        return { collapsedAgentBlocks: rest };
+      }
+      return { collapsedAgentBlocks: { ...state.collapsedAgentBlocks, [id]: true } };
+    });
+  },
+
   clearActivity: () => {
     set({ activeAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0 });
   },
@@ -423,7 +438,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     if (buffers.tokenFlushTimer) { clearTimeout(buffers.tokenFlushTimer); buffers.tokenFlushTimer = null; }
     buffers.tokenBuffer = "";
     buffers.tokenStreamMeta = null;
-    set({ ...initialState });
+    set({ ...initialState, collapsedAgentBlocks: {} });
   },
 }));
 
@@ -432,3 +447,4 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 // ---------------------------------------------------------------------------
 
 initChatEventHandlers();
+

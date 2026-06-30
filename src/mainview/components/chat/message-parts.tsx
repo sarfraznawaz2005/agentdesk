@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ToolCallCard, type ToolCallPartData } from "./tool-call-card";
 import { rpc } from "@/lib/rpc";
+import { useChatStore } from "@/stores/chat-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -183,6 +184,8 @@ const AgentStartBlock = memo(function AgentStartBlock({
 	timeEnd,
 	isRunning,
 	onStop,
+	collapsed,
+	onToggle,
 }: {
 	agentName: string;
 	task: string;
@@ -190,6 +193,8 @@ const AgentStartBlock = memo(function AgentStartBlock({
 	timeEnd?: string | null;
 	isRunning?: boolean;
 	onStop?: () => void;
+	collapsed?: boolean;
+	onToggle?: () => void;
 }) {
 	const displayName = formatAgentDisplayName(agentName);
 	const badgeColor = getAgentBadgeColor(agentName);
@@ -198,6 +203,19 @@ const AgentStartBlock = memo(function AgentStartBlock({
 		<div className="bg-muted/50 rounded-t-lg pb-1">
 			{/* Header: agent badge + status + controls */}
 			<div className="flex items-center gap-2 py-1.5 px-2.5">
+				{/* Collapse/expand toggle — only when agent is not running */}
+				{!isRunning ? (
+					<button
+						onClick={onToggle}
+						className="shrink-0 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+						aria-label={collapsed ? "Expand agent card" : "Collapse agent card"}
+						aria-expanded={!collapsed}
+					>
+						{collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+					</button>
+				) : (
+					<div className="w-5 shrink-0" /> /* Spacer to keep layout aligned */
+				)}
 				<Cpu className={cn("w-3.5 h-3.5 shrink-0", isRunning ? "text-indigo-500 animate-pulse" : "text-muted-foreground")} />
 				<span className={cn("text-[13px] font-semibold px-2 py-0.5 rounded-md ring-1 ring-inset", badgeColor)}>
 					{displayName}
@@ -387,6 +405,11 @@ interface MessagePartsProps {
  * Groups parts between agent_start/agent_end into indented agent blocks.
  */
 export const MessageParts = memo(function MessageParts({ parts, onStopAgent, hasRunningAgents }: MessagePartsProps) {
+	// Hooks must run unconditionally on every render — keep them above any early return.
+	// Track which agent blocks are collapsed (by their start part id) — persisted in Zustand so it survives tab switches
+	const collapsedAgentBlocks = useChatStore((s) => s.collapsedAgentBlocks);
+	const toggleCollapsedAgent = useChatStore((s) => s.toggleCollapsedAgent);
+
 	if (!parts || parts.length === 0) return null;
 
 	const sorted = [...parts].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -431,6 +454,7 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 					const borderColor = getAgentBorderColor(seg.start.agentName ?? seg.agentName);
 					const agentRunning = !seg.end && !!hasRunningAgents;
 					const rawName = seg.start.agentName ?? seg.agentName;
+					const isCollapsed = !!collapsedAgentBlocks[seg.start.id];
 					return (
 						<div key={seg.start.id} className={cn("border border-border border-l-[3px] rounded-lg my-2 overflow-hidden", borderColor)}>
 							<AgentStartBlock
@@ -440,18 +464,24 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 								timeEnd={seg.end?.timeEnd ?? null}
 								isRunning={agentRunning}
 								onStop={agentRunning && onStopAgent ? () => onStopAgent(rawName) : undefined}
+								collapsed={isCollapsed}
+								onToggle={() => toggleCollapsedAgent(seg.start.id)}
 							/>
-							<div className="pl-3 pr-2 py-1 overflow-hidden">
-								{seg.children.map((child) => (
-									<PartRenderer key={child.id} part={child} />
-								))}
-							</div>
-							{seg.end && seg.end.toolState === "error" && (
-								<AgentEndBlock
-									content={seg.end.content}
-									toolState={seg.end.toolState}
-									timeEnd={seg.end.timeEnd}
-								/>
+							{!isCollapsed && (
+								<>
+									<div className="pl-3 pr-2 py-1 overflow-hidden">
+										{seg.children.map((child) => (
+											<PartRenderer key={child.id} part={child} />
+										))}
+									</div>
+									{seg.end && seg.end.toolState === "error" && (
+										<AgentEndBlock
+											content={seg.end.content}
+											toolState={seg.end.toolState}
+											timeEnd={seg.end.timeEnd}
+										/>
+									)}
+								</>
 							)}
 						</div>
 					);
