@@ -26,6 +26,7 @@ import {
 import { runInlineAgent, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
 import { getKanbanTask, moveKanbanTask, updateKanbanTask } from "../rpc/kanban";
 import { getSetting } from "../rpc/settings";
+import { isAutoExecuteEnabled } from "../rpc/projects";
 import {
 	broadcastToWebview,
 	registerAgentController,
@@ -150,15 +151,10 @@ function isAgentCancelled(result: { status: string; summary: string }): boolean 
 
 async function triggerPMAutoContinue(projectId: string, completedTaskTitle: string): Promise<void> {
 	try {
-		// Check project setting
-		const autoExecRows = await db
-			.select({ value: settings.value })
-			.from(settings)
-			.where(eq(settings.key, `project:${projectId}:autoExecuteNextTask`))
-			.limit(1);
-		// Default to true if not set
-		const autoExec = autoExecRows.length === 0 || autoExecRows[0].value !== "false";
-		if (!autoExec) return;
+		// Read the auto-execute setting live so the Project Settings toggle applies
+		// immediately. When off we still notify the PM (so the user sees the task is
+		// done) but swap the DISPATCH hint for PAUSED below, so no next task starts.
+		const autoExec = await isAutoExecuteEnabled(projectId);
 
 		const eng = getOrCreateEngine(projectId);
 		const conversationId = eng.getActiveConversationId();
@@ -201,7 +197,14 @@ async function triggerPMAutoContinue(projectId: string, completedTaskTitle: stri
 			}
 		} catch { /* non-fatal — PM can use list_tasks */ }
 
-		console.log(`[ReviewCycle] Auto-continue: task "${completedTaskTitle}" done, sending continue to PM`);
+		// Auto-execute gate: when off, never auto-dispatch the next task. Keep the
+		// ALL DONE / BLOCKED hints (they don't start work) but replace DISPATCH with
+		// PAUSED so the PM reports completion and waits for the user's "continue".
+		if (!autoExec && nextAction.includes("[Next Action] DISPATCH")) {
+			nextAction = `\n\n[Next Action] PAUSED — auto-execute is off. The task is done; do NOT dispatch the next task. Tell the user it's complete and that they can say "continue" to proceed.`;
+		}
+
+		console.log(`[ReviewCycle] Auto-continue: task "${completedTaskTitle}" done (autoExec=${autoExec}), sending ${autoExec ? "continue" : "paused"} to PM`);
 		eng.sendMessage(conversationId, `[Agent Report] Task "${completedTaskTitle}" passed code review and moved to done.${nextAction}`, { type: "agent_report" } as Parameters<typeof eng.sendMessage>[2]).catch((err) => {
 			console.error(`[ReviewCycle] Auto-continue failed:`, err);
 		});

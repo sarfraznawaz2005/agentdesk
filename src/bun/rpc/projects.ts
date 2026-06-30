@@ -696,6 +696,25 @@ export async function saveProjectSetting(
 }
 
 /**
+ * Whether the PM may automatically dispatch the NEXT kanban task after one
+ * completes. Stored per-project as a raw "true"/"false" string under
+ * `project:<id>:autoExecuteNextTask` (default: true when unset).
+ *
+ * Read live on every auto-continue decision (engine `onAgentDone` and the review
+ * cycle's `triggerPMAutoContinue`) so toggling it in Project Settings takes
+ * effect immediately — no restart. When false, the PM finishes the current task
+ * but does NOT auto-pick the next one; the user drives progress with "continue".
+ */
+export async function isAutoExecuteEnabled(projectId: string): Promise<boolean> {
+	const rows = await db
+		.select({ value: settings.value })
+		.from(settings)
+		.where(eq(settings.key, `project:${projectId}:autoExecuteNextTask`))
+		.limit(1);
+	return rows.length === 0 || rows[0].value !== "false";
+}
+
+/**
  * Fetch all settings for a project, returned as a flat key/value map.
  */
 export async function getProjectSettings(

@@ -2,12 +2,14 @@
 title: Kanban & Auto Review Cycle
 type: flow
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-06-30
 sources:
   - src/bun/agents/review-cycle.ts
   - src/bun/agents/tools/kanban.ts
   - src/bun/rpc/kanban.ts
   - src/bun/agents/tools/pm-tools.ts
+  - src/bun/agents/engine.ts
+  - src/bun/rpc/projects.ts
 tags: [kanban, review]
 ---
 
@@ -116,8 +118,32 @@ duplicate reviewer spawns for the same task (`review-cycle.ts:462`). It then:
 
 - **Approved / no issues** (`review-cycle.ts:537`): move to `done` via
   `moveKanbanTask(..., "review-cycle")`, then `triggerPMAutoContinue` nudges the
-  PM to dispatch the next task (gated by the `autoExecuteNextTask` project
-  setting, `review-cycle.ts:154`).
+  PM to dispatch the next task — **gated by the `autoExecuteNextTask` project
+  setting** (see *Auto-execute next task* below).
+
+#### Auto-execute next task (the continue gate)
+
+Two paths can auto-continue the PM to the *next* task after one finishes, and
+**both** consult `isAutoExecuteEnabled(projectId)` (`rpc/projects.ts`, raw
+`project:<id>:autoExecuteNextTask` string, default `true`), read **live** on
+every completion so the Project-Settings toggle applies without a restart:
+
+1. `triggerPMAutoContinue` (`review-cycle.ts`) — fires after a task passes review
+   and reaches `done`.
+2. The engine's `onAgentDone` next-action injection (`engine.ts`, the
+   `[Next Action] DISPATCH` branch) — fires after any PM-dispatched agent
+   completes and a backlog task is ready.
+
+When the setting is **off**, each swaps its `[Next Action] DISPATCH` hint for
+`[Next Action] PAUSED`: the PM reports the task is done and stops, moving **no**
+task into `working`. The current task's own lifecycle is never gated — the
+reviewer dispatch (`REVIEW NEEDED`), `MOVE TO REVIEW`, `WAIT`, `ALL DONE`, and
+`INVESTIGATE` hints are untouched. The gate is on *automatic* continuation only:
+an explicit user message ("continue", or "work on task X") drives `get_next_task`
+/ `run_agent` normally regardless of the setting, advancing one task per nudge.
+The toggle persists immediately from the UI (`project-settings-tab.tsx`,
+`onCheckedChange` → `rpc.saveProjectSetting`, not behind "Save Changes"); turning
+it off mid-run does **not** abort the running agent, only the next auto-pick.
 - **Changes requested, rounds remaining** (`review-cycle.ts:543`): increment the
   per-task round counter (`reviewRounds`, `review-cycle.ts:45`), move back to
   `working`, **wait for any running write-agents to finish** (poll up to 5 min,

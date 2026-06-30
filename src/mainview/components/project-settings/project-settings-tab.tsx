@@ -990,14 +990,23 @@ function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
           <FieldRow
             id="ai-auto-execute-next-task"
             label="Auto-execute next task"
-            description="When a task passes code review and moves to done, automatically dispatch the next task without waiting for a 'continue' command."
+            description="When ON, the PM automatically dispatches the next kanban task after the current one passes code review. When OFF, the PM stops after each task — no task is moved to In Progress automatically, even if undone tasks remain; say “continue” to start the next one. Saved immediately (no restart needed). Explicitly asking the PM to work on a specific task always works regardless of this setting."
           >
             <Switch
               id="ai-auto-execute-next-task"
               checked={form.autoExecuteNextTask === "true"}
-              onCheckedChange={(checked) =>
-                handleChange("autoExecuteNextTask", checked ? "true" : "false")
-              }
+              onCheckedChange={(checked) => {
+                const value = checked ? "true" : "false";
+                // Persist immediately (not behind the "Save Changes" button) so the
+                // backend's live read picks it up at once — the auto-continue
+                // decision in the engine/review-cycle reads this on every task
+                // completion.
+                setForm((prev) => ({ ...prev, autoExecuteNextTask: value }));
+                rpc
+                  .saveProjectSetting(projectId, "autoExecuteNextTask", value)
+                  .then(() => toast("success", `Auto-execute next task ${checked ? "enabled" : "disabled"}.`))
+                  .catch(() => toast("error", "Failed to update setting."));
+              }}
             />
           </FieldRow>
 

@@ -471,6 +471,19 @@ export class AgentEngine {
 						} catch { /* non-fatal — PM can still call get_next_task */ }
 						} // end if (!agentFailed)
 
+						// Auto-execute gate (read live so the Project Settings toggle
+						// applies immediately). When off, never auto-dispatch the NEXT
+						// backlog task — the user steps through tasks with "continue".
+						// Only the "DISPATCH next backlog task" decision is gated;
+						// REVIEW NEEDED / MOVE TO REVIEW / WAIT / ALL DONE / INVESTIGATE
+						// complete the current task's lifecycle and are left untouched.
+						if (nextAction.includes("[Next Action] DISPATCH")) {
+							const { isAutoExecuteEnabled } = await import("../rpc/projects");
+							if (!(await isAutoExecuteEnabled(this.projectId))) {
+								nextAction = `\n\n[Next Action] PAUSED — auto-execute is off. This task is complete and more tasks remain, but they will NOT start automatically. Tell the user the task is done and that they can say "continue" to work on the next task. Do NOT call run_agent.`;
+							}
+						}
+
 						// Don't restart PM if next action is WAIT — review cycle will
 						// trigger PM via triggerPMAutoContinue when review completes.
 						if (nextAction.includes("[Next Action] WAIT")) {

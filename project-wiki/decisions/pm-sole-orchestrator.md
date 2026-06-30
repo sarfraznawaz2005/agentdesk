@@ -85,7 +85,9 @@ transition logic is split deliberately:
 
 - **Next-step routing → `onAgentDone`.** After each agent, the engine reads the
   live kanban state and emits exactly one directive — `WAIT`, `MOVE TO REVIEW`,
-  `DISPATCH`, `ALL DONE`, `BLOCKED`, or `INVESTIGATE` (on failure) —
+  `DISPATCH`, `ALL DONE`, `BLOCKED`, `INVESTIGATE` (on failure), or `PAUSED`
+  (when the `autoExecuteNextTask` setting is off, a `DISPATCH` becomes `PAUSED`
+  so no next task auto-starts — see [[kanban-review-cycle]]) —
   (`engine.ts:423`–`:470`). This is the closest thing to a state-transition
   function, but it is a *hint computed fresh from the DB each time*, not a
   persisted FSM. The PM still chooses whether to obey, with prompt rules telling it

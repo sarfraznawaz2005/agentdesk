@@ -49,6 +49,7 @@ const {
 	deleteProjectHandler,
 	saveProjectSetting,
 	getProjectSettings,
+	isAutoExecuteEnabled,
 } = await import("../../src/bun/rpc/projects");
 
 // -------------------------------------------------------------------------
@@ -87,6 +88,42 @@ describe("createProjectHandler", () => {
 		expect(settings["thinkingBudget"]).toBe("medium");
 		expect(settings["shellApprovalMode"]).toBe("ask");
 		expect(settings["maxReviewRounds"]).toBeTruthy();
+	});
+});
+
+describe("isAutoExecuteEnabled (auto-execute next task gate)", () => {
+	it("is true by default", async () => {
+		const { id } = await createProjectHandler({ name: "AutoExecDefault", workspacePath: randomPath() });
+		expect(await isAutoExecuteEnabled(id)).toBe(true);
+	});
+
+	it("is false when the setting is \"false\"", async () => {
+		const { id } = await createProjectHandler({ name: "AutoExecOff", workspacePath: randomPath() });
+		await saveProjectSetting(id, "autoExecuteNextTask", "false");
+		expect(await isAutoExecuteEnabled(id)).toBe(false);
+	});
+
+	it("is true when the setting is \"true\"", async () => {
+		const { id } = await createProjectHandler({ name: "AutoExecOn", workspacePath: randomPath() });
+		await saveProjectSetting(id, "autoExecuteNextTask", "true");
+		expect(await isAutoExecuteEnabled(id)).toBe(true);
+	});
+
+	it("reflects a toggle immediately (live — the basis for no-restart behaviour)", async () => {
+		const { id } = await createProjectHandler({ name: "AutoExecToggle", workspacePath: randomPath() });
+		expect(await isAutoExecuteEnabled(id)).toBe(true);
+		await saveProjectSetting(id, "autoExecuteNextTask", "false");
+		expect(await isAutoExecuteEnabled(id)).toBe(false);
+		await saveProjectSetting(id, "autoExecuteNextTask", "true");
+		expect(await isAutoExecuteEnabled(id)).toBe(true);
+	});
+
+	it("is scoped per-project", async () => {
+		const a = await createProjectHandler({ name: "AutoExecA", workspacePath: randomPath() });
+		const b = await createProjectHandler({ name: "AutoExecB", workspacePath: randomPath() });
+		await saveProjectSetting(a.id, "autoExecuteNextTask", "false");
+		expect(await isAutoExecuteEnabled(a.id)).toBe(false);
+		expect(await isAutoExecuteEnabled(b.id)).toBe(true); // unaffected
 	});
 });
 

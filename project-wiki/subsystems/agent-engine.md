@@ -49,8 +49,9 @@ each turn ends in one of three ways:
 This self-restart is why the engine can drive a multi-task workflow with no state
 machine: each agent completion feeds a computed `[Next Action]` hint back into
 the PM (`engine.ts:423`–`engine.ts:470`) that tells it exactly what to do next
-(DISPATCH / WAIT / MOVE TO REVIEW / ALL DONE / BLOCKED), so the PM rarely has to
-reason about kanban state itself.
+(DISPATCH / WAIT / MOVE TO REVIEW / ALL DONE / BLOCKED, or PAUSED when the
+`autoExecuteNextTask` project setting is off — see [[kanban-review-cycle]]), so
+the PM rarely has to reason about kanban state itself.
 
 ## How a turn works
 

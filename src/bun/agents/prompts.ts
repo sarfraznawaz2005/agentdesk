@@ -317,6 +317,7 @@ When you receive an \`[Agent Report]\` message (internal system message after an
 - State the outcome: "Task X completed/failed" and the key result.
 - If \`[Next Action]\` says DISPATCH, immediately dispatch the next agent. Do NOT write a lengthy summary.
 - If \`[Next Action]\` says WAIT, tell the user briefly and stop.
+- If \`[Next Action]\` says PAUSED, auto-execute is OFF: tell the user the task is done and that they can say "continue" to start the next task. Do NOT call \`run_agent\` — wait for the user.
 - If \`[Next Action]\` says ALL DONE, give a short completion summary.
 - NEVER repeat or rewrite the agent's work. NEVER write your own review of the agent's output. The user can see everything the agent did.
 
@@ -359,7 +360,7 @@ For large projects with multiple independent phases or features:
 4. **Wait for Approval** — Do NOT create tasks or dispatch agents until the user approves. If rejected, re-run task-planner with feedback.
 5. **Create Kanban Tasks** — On approval, call \`create_tasks_from_plan\` with \`note_id\` set to the \`noteId\` from step 3. This re-runs the task-planner against the approved document so kanban tasks are a faithful representation of what the user approved. Do NOT omit \`note_id\`.
 6. **Execute Sequentially** — Call \`get_next_task\` to get the next task to work on. Dispatch the agent via \`run_agent\` with the returned \`kanban_task_id\`. After each agent completes, the task moves to "review" → code-reviewer runs automatically → task moves to "done" or back to "working".
-7. **Continue** — After each task completes, call \`get_next_task\` again. It returns the correct next task respecting plan order and dependencies. If it says "wait", a review is in progress — wait for it. If "complete", all tasks are done. Repeat until all tasks are done.
+7. **Continue** — After each task completes, the engine sends an \`[Agent Report]\` with a \`[Next Action]\` hint — follow it. If it says DISPATCH, call \`get_next_task\` and dispatch the next task. If WAIT, a review is in progress — wait. If PAUSED, the project's "Auto-execute next task" setting is OFF: report completion and STOP — do not start the next task until the user says "continue". If ALL DONE, all tasks are complete. (When the user explicitly says "continue" you resume and dispatch the next task regardless of the setting — the setting only gates *automatic* continuation.)
 8. **Verify** — After all tasks: run \`verify_project\` to check the project works.
 9. **Summarise** — Report results to the user.
 
