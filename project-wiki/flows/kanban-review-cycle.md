@@ -2,7 +2,7 @@
 title: Kanban & Auto Review Cycle
 type: flow
 status: verified
-verified_at: 2026-06-30
+verified_at: 2026-07-01
 sources:
   - src/bun/agents/review-cycle.ts
   - src/bun/agents/tools/kanban.ts
@@ -214,11 +214,30 @@ the PM that the agent skipped verification (`pm-tools.ts:653`).
 
 ## Gotchas / Constraints
 
-- **In-memory state is volatile.** `activeReviews`, `reviewRounds`, and
-  `taskCommitHashes` (`review-cycle.ts:42-48`) are plain in-process maps — they
-  reset on app restart. A restart mid-review loses the round count (review starts
-  fresh at round 0) and the commit hash (reviewer falls back to `git log`/`git
-  diff`, `review-cycle.ts:484`).
+- **In-memory state is volatile.** `activeReviews`, `reviewRounds`,
+  `taskCommitHashes`, and `taskConversations` (`review-cycle.ts:42-56`) are
+  plain in-process maps — they reset on app restart. A restart mid-review loses
+  the round count (review starts fresh at round 0), the commit hash (reviewer
+  falls back to `git log`/`git diff`, `review-cycle.ts:484`), and the recorded
+  task→conversation mapping (reviewer falls back to the PM's active
+  conversation, see below).
+- **Review activity is routed to the task's own conversation, not always the
+  PM's.** `spawnReviewAgent` resolves its `conversationId` as
+  `taskConversations.get(kanbanTaskId) || eng.getActiveConversationId() || ""`
+  (`review-cycle.ts`). `pm-tools.ts`'s `run_agent` calls
+  `setTaskConversation(taskId, agentConversationId)` right after resolving which
+  conversation the implementation agent will run in — which is the per-task
+  conversation created by `run_agent` when the **"New Conv. per task"** project
+  setting is on (`project:<id>:newConvPerTask`) and a task moves out of
+  `backlog`, or the routing conversation otherwise. Without this mapping, the
+  code-reviewer (and any fix agent, since it's spawned through the same
+  `spawnReviewAgent` helper) would always post into the PM's currently-active
+  conversation — invisible from a per-task conversation's point of view, making
+  review look like it silently never happened even though the underlying gating
+  (task-in-review blocks new dispatch) was working correctly. This was a real
+  bug fixed 2026-07-01. `triggerPMAutoContinue` deliberately does **not** use
+  this mapping — the "next task" orchestration nudge must always reach the PM's
+  live conversation, not a finished task's now-dead-end conversation.
 - **The reviewer moves the task too.** `submit_review` already performs the
   `done`/`working` move (`kanban.ts:638`); the review cycle then *also* reads the
   verdict and acts. This redundancy is intentional (the cycle is the backstop)

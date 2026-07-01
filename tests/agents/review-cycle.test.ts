@@ -22,12 +22,16 @@ const { db: testDb, sqlite: testSqlite } = createTestDb();
 
 mock.module("../../src/bun/db", () => ({ db: testDb }));
 
+// The PM's "active conversation" — used to verify the fallback path when a
+// task has no dedicated conversation recorded via setTaskConversation.
+const PM_ACTIVE_CONV = "pm-main-conv";
+
 // Stub out heavy collaborators review-cycle pulls in.
 mock.module("../../src/bun/engine-manager", () => ({
 	broadcastToWebview: () => {},
 	registerAgentController: () => {},
 	unregisterAgentController: () => {},
-	getOrCreateEngine: () => ({ getActiveConversationId: () => null }),
+	getOrCreateEngine: () => ({ getActiveConversationId: () => PM_ACTIVE_CONV }),
 	getRunningAgentCount: () => 0,
 	getRunningAgentNames: () => [],
 	abortAllAgents: () => {},
@@ -44,8 +48,16 @@ mock.module("../../src/bun/db/connection", () => ({ sqlite: testSqlite }));
 mock.module("../../src/bun/notifications/desktop", () => ({
 	sendDesktopNotification: async () => {},
 }));
+// Captures every runInlineAgent call so tests can assert which conversationId
+// spawnReviewAgent resolved to. Returns "cancelled" so notifyTaskInReview's
+// early-return path fires and no downstream moveKanbanTask/channel/issue
+// collaborators (unmocked here) are exercised.
+const runInlineAgentCalls: Array<{ conversationId: string; agentName: string }> = [];
 mock.module("../../src/bun/agents/agent-loop", () => ({
-	runInlineAgent: async () => ({ status: "completed", summary: "done", filesModified: [], tokensUsed: { prompt: 0, completion: 0, total: 0 }, messageIds: [] }),
+	runInlineAgent: async (opts: { conversationId: string; agentName: string }) => {
+		runInlineAgentCalls.push({ conversationId: opts.conversationId, agentName: opts.agentName });
+		return { status: "cancelled", summary: "Cancelled by test", filesModified: [], tokensUsed: { prompt: 0, completion: 0, total: 0 }, messageIds: [] };
+	},
 	READ_ONLY_AGENTS: new Set(["code-explorer", "research-expert", "task-planner"]),
 }));
 
@@ -326,6 +338,79 @@ describe("getSubmitReviewVerdict (via DB state)", () => {
 		const verdict = await getVerdict(taskId);
 		// DESC order means most recent comes first.  Most recently created is "approved".
 		expect(verdict).toBe("approved");
+	});
+});
+
+describe("spawnReviewAgent conversation routing (setTaskConversation)", () => {
+	// Regression coverage for the "New Conv. per task" bug: review activity
+	// must land in the task's own dedicated conversation (when recorded via
+	// setTaskConversation, as pm-tools.ts's run_agent does on dispatch) rather
+	// than always falling back to the PM's active conversation — otherwise the
+	// code-reviewer runs invisibly from the task's own conversation's point of
+	// view, making review look like it never happened.
+	let kanbanTasks: (typeof import("../../src/bun/db/schema"))["kanbanTasks"];
+	let projects: (typeof import("../../src/bun/db/schema"))["projects"];
+	let aiProviders: (typeof import("../../src/bun/db/schema"))["aiProviders"];
+
+	beforeAll(async () => {
+		({ kanbanTasks, projects, aiProviders } = await import("../../src/bun/db/schema"));
+	});
+
+	let projectId: string;
+	let taskId: string;
+	let providerId: string;
+
+	beforeEach(async () => {
+		runInlineAgentCalls.length = 0;
+		projectId = crypto.randomUUID();
+		taskId = crypto.randomUUID();
+		providerId = crypto.randomUUID();
+		await testDb.insert(projects).values({ id: projectId, name: "p", workspacePath: "/tmp" });
+		// spawnReviewAgent bails out (without calling runInlineAgent) unless a
+		// provider row resolves — seed a default one so the mocked runInlineAgent
+		// actually gets invoked and we can assert on its conversationId.
+		await testDb.insert(aiProviders).values({
+			id: providerId,
+			name: "test-provider",
+			providerType: "anthropic",
+			apiKey: "test-key",
+			isDefault: 1,
+		});
+		await testDb.insert(kanbanTasks).values({
+			id: taskId,
+			projectId,
+			title: "Test task",
+			column: "review",
+			priority: "medium",
+			position: 0,
+			reviewRounds: 0,
+		});
+	});
+
+	afterEach(() => {
+		testSqlite.exec(`DELETE FROM kanban_task_activity WHERE task_id = '${taskId}'`);
+		testSqlite.exec(`DELETE FROM kanban_tasks WHERE id = '${taskId}'`);
+		testSqlite.exec(`DELETE FROM ai_providers WHERE id = '${providerId}'`);
+		testSqlite.exec(`DELETE FROM projects WHERE id = '${projectId}'`);
+	});
+
+	it("routes the reviewer into the task's dedicated conversation when one is recorded", async () => {
+		reviewCycleModule.setTaskConversation(taskId, "task-dedicated-conv");
+
+		reviewCycleModule.notifyTaskInReview(projectId, taskId);
+		await new Promise((r) => setTimeout(r, 50));
+
+		expect(runInlineAgentCalls.length).toBeGreaterThan(0);
+		expect(runInlineAgentCalls[0].conversationId).toBe("task-dedicated-conv");
+		expect(runInlineAgentCalls[0].agentName).toBe("code-reviewer");
+	});
+
+	it("falls back to the PM's active conversation when no dedicated conversation was recorded", async () => {
+		reviewCycleModule.notifyTaskInReview(projectId, taskId);
+		await new Promise((r) => setTimeout(r, 50));
+
+		expect(runInlineAgentCalls.length).toBeGreaterThan(0);
+		expect(runInlineAgentCalls[0].conversationId).toBe(PM_ACTIVE_CONV);
 	});
 });
 

@@ -513,6 +513,17 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						console.log(`[PM run_agent] Cross-project channel conv created: ${agentConversationId} in project ${effectiveProjectId}`);
 					}
 
+					// Remember which conversation this task's implementation is running in
+					// so the review cycle (spawnReviewAgent) can post the code-reviewer's
+					// activity into the SAME conversation instead of always falling back to
+					// the PM's active conversation. Matters most with "New Conv. per task":
+					// without this, review activity for a task silently lands in the PM's
+					// main conversation, invisible from the task's own dedicated conversation.
+					if (args.kanban_task_id) {
+						const { setTaskConversation } = await import("../review-cycle");
+						setTaskConversation(args.kanban_task_id, agentConversationId);
+					}
+
 					// Build project context + workflow instructions if kanban task
 					const projectContext = [
 						effectiveWorkspacePath ? `Workspace: ${effectiveWorkspacePath}` : "",

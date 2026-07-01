@@ -48,6 +48,23 @@ const reviewRounds = new Map<string, number>();
 /** Commit hash recorded by autoCommitTask — read by the reviewer to locate the diff. */
 const taskCommitHashes = new Map<string, string>();
 
+/**
+ * Which conversation a task's implementation agent ran in — populated by
+ * pm-tools.ts's run_agent on dispatch. Lets spawnReviewAgent post the
+ * code-reviewer's (and fix-agent's) activity into that SAME conversation
+ * instead of always falling back to the PM's currently-active conversation.
+ * Without this, review activity for a task dispatched into its own dedicated
+ * conversation (the "New Conv. per task" project setting) silently lands in
+ * the PM's main conversation — invisible from the task's own conversation,
+ * making review look like it never happened.
+ */
+const taskConversations = new Map<string, string>();
+
+/** Record which conversation a kanban task's agent is running in. */
+export function setTaskConversation(taskId: string, conversationId: string): void {
+	taskConversations.set(taskId, conversationId);
+}
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -231,7 +248,12 @@ async function spawnReviewAgent(
 	kanbanTaskId?: string,
 ): Promise<{ status: string; summary: string }> {
 	const eng = getOrCreateEngine(projectId);
-	const conversationId = eng.getActiveConversationId() ?? "";
+	// Prefer the task's own dedicated conversation (if one was recorded at
+	// dispatch time) so review/fix activity is visible where the task's
+	// implementation happened, falling back to the PM's active conversation
+	// for tasks that don't have a dedicated conversation ("New Conv. per
+	// task" off, or an ad-hoc reviewer run with no kanbanTaskId).
+	const conversationId = (kanbanTaskId && taskConversations.get(kanbanTaskId)) || eng.getActiveConversationId() || "";
 
 	// Resolve display name
 	const agentRows = await db
@@ -626,6 +648,7 @@ export function notifyTaskInReview(projectId: string, taskId: string): void {
 				if (task?.column === "done") {
 					reviewRounds.delete(taskId);
 					taskCommitHashes.delete(taskId);
+					taskConversations.delete(taskId);
 				}
 			} catch { /* non-critical */ }
 		}
