@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.4.6",
+        "title":  "Improved Task Review Cycle",
+        "changes":  [
+                        "Enhanced review cycle to better route task conversations."
+                    ]
+    },
+    {
         "version":  "2.4.5",
         "title":  "Enhanced Agent Engine Features",
         "changes":  [
