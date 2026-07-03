@@ -2,7 +2,7 @@
 title: Frontend Pages & Routing
 type: subsystem
 status: verified
-verified_at: 2026-06-25
+verified_at: 2026-07-03
 sources:
   - src/mainview/router.tsx
   - src/mainview/components/layout/app-shell.tsx
@@ -11,6 +11,7 @@ sources:
   - src/mainview/pages/settings.tsx
   - src/mainview/pages/dashboard.tsx
   - src/mainview/pages/onboarding.tsx
+  - src/mainview/pages/inbox.tsx
 tags: [frontend, routing]
 ---
 
@@ -27,7 +28,7 @@ All routes are children of one root route whose component is the `AppShell` layo
 | `/` | `DashboardPage` | `pages/dashboard.tsx` | project list + "new project" |
 | `/onboarding` | `OnboardingPage` | `pages/onboarding.tsx` | first-run provider wizard; rendered chrome-less |
 | `/project/$projectId` | `ProjectPage` | `pages/project.tsx` | the workhorse — chat/kanban/git/etc. tabs |
-| `/inbox` | `InboxPage` | `pages/inbox.tsx` | cross-channel message inbox |
+| `/inbox` | `InboxPage` | `pages/inbox.tsx` | cross-channel message inbox; master-detail split — checkbox-selectable message list (left) + `MessageDetailPane` preview (right, `inbox.tsx:131`), mirroring the Docs tab's layout; the pane selection is *derived* from the filtered list by id, so deletes/archives/filter changes fall back to auto-selecting the first message (auto-select never marks read; only a row click does, and a ref suppresses re-select after the mobile back button). Agent responses render as sanitized markdown (per-file `MD_COMPONENTS` map, the same idiom as notes-tab) |
 | `/agents` | `AgentsPage` | `pages/agents.tsx` | agent roster + custom-agent editor |
 | `/skills` | `SkillsPage` | `pages/skills.tsx` | skills browser |
 | `/prompts` | `PromptsPage` | `pages/prompts.tsx` | reusable prompt library |
@@ -111,4 +112,4 @@ flowchart TD
 
 ## Open questions
 - The dashboard floating PM chat widgets and `CustomAgentChatLauncher` are visibility-gated to `/` (`app-shell.tsx:356-357`) but always mounted — their internal state behavior across navigation is not documented here.
-- `pages/inbox.tsx`, `agents.tsx`, `analytics.tsx`, `scheduler.tsx`, `skills.tsx`, `council.tsx` were only inspected at a header level; their internal sub-structure may warrant their own pages.
+- `pages/agents.tsx`, `analytics.tsx`, `scheduler.tsx`, `skills.tsx`, `council.tsx` were only inspected at a header level; their internal sub-structure may warrant their own pages. (`inbox.tsx` is now documented in the route map: master-detail list + preview pane with server/client filter split.)

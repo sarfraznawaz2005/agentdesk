@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import { relativeTime as formatTimestamp } from "@/lib/date-utils";
 import { useHeaderActions } from "@/lib/header-context";
 import {
+  ArrowLeft,
   Inbox,
   Mail,
   MailOpen,
@@ -30,12 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
@@ -99,6 +98,55 @@ function getSourceLabel(source: string): string {
   }
 }
 
+// Markdown components for the agent-response preview (compact map, same idiom
+// as notes-tab / freelance-chat-modal)
+const MD_COMPONENTS = {
+  code({ className, children, ref: _ref, ...props }: Record<string, unknown>) {
+    const match = /language-(\w+)/.exec((className as string) ?? "");
+    if (!match) {
+      return (
+        <code className="px-1 py-0.5 rounded text-[13px] font-mono bg-muted text-foreground" {...props}>
+          {children as ReactNode}
+        </code>
+      );
+    }
+    return (
+      <pre className="my-2 rounded-md bg-gray-900 text-gray-100 p-3 overflow-x-auto text-[13px] font-mono leading-relaxed">
+        <code>{children as ReactNode}</code>
+      </pre>
+    );
+  },
+  p: ({ children }: { children: ReactNode }) => <p className="mb-2 last:mb-0 text-sm leading-relaxed">{children}</p>,
+  ul: ({ children }: { children: ReactNode }) => <ul className="list-disc pl-4 mb-2 space-y-0.5 text-sm">{children}</ul>,
+  ol: ({ children }: { children: ReactNode }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5 text-sm">{children}</ol>,
+  li: ({ children }: { children: ReactNode }) => <li className="leading-relaxed">{children}</li>,
+  h1: ({ children }: { children: ReactNode }) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
+  h2: ({ children }: { children: ReactNode }) => <h2 className="text-sm font-bold mb-1.5 mt-3 first:mt-0">{children}</h2>,
+  h3: ({ children }: { children: ReactNode }) => <h3 className="text-sm font-semibold mb-1 mt-2 first:mt-0">{children}</h3>,
+  strong: ({ children }: { children: ReactNode }) => <strong className="font-semibold">{children}</strong>,
+  blockquote: ({ children }: { children: ReactNode }) => (
+    <blockquote className="border-l-2 border-border pl-3 italic mb-2 text-muted-foreground">{children}</blockquote>
+  ),
+  a: ({ href, children }: { href?: string; children: ReactNode }) => (
+    <a
+      href={href}
+      className="text-primary hover:text-primary/80 underline cursor-pointer"
+      onClick={(e) => { e.preventDefault(); if (href) rpc.openExternalUrl(href).catch(() => {}); }}
+    >
+      {children}
+    </a>
+  ),
+  hr: () => <hr className="my-3 border-border" />,
+  table: ({ children }: { children: ReactNode }) => (
+    <div className="my-2 overflow-x-auto rounded-md border border-border">
+      <table className="min-w-full text-xs">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: { children: ReactNode }) => <thead className="bg-muted/50 border-b border-border">{children}</thead>,
+  th: ({ children }: { children: ReactNode }) => <th className="px-3 py-1.5 text-left font-semibold">{children}</th>,
+  td: ({ children }: { children: ReactNode }) => <td className="px-3 py-1.5 border-t border-border/50">{children}</td>,
+};
+
 // ---------------------------------------------------------------------------
 // Message Row Skeleton
 // ---------------------------------------------------------------------------
@@ -121,64 +169,85 @@ function MessageRowSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Message Detail Dialog
+// Message Detail Pane (right side of the master-detail split)
 // ---------------------------------------------------------------------------
 
-interface MessageDetailDialogProps {
-  message: InboxMessage | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface MessageDetailPaneProps {
+  message: InboxMessage;
   threadMessages: InboxMessage[];
   onDelete: (id: string) => void;
   onArchive: (id: string) => void;
+  onBack: () => void;
   projectName?: string;
 }
 
-function MessageDetailDialog({
+function MessageDetailPane({
   message,
-  open,
-  onOpenChange,
   threadMessages,
   onDelete,
   onArchive,
+  onBack,
   projectName,
-}: MessageDetailDialogProps) {
-  if (!message) return null;
-
+}: MessageDetailPaneProps) {
   const source = getChannelSource(message);
   const senderLabel = message.sender || "Unknown";
   const hasThread = threadMessages.length > 1;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-lg max-h-[80vh] overflow-y-auto"
-        // Skip Radix's auto-focus of the first interactive element (Archive button),
-        // which was triggering its tooltip every time the dialog opened.
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <div className="flex items-center gap-2 pr-6">
-            <MessageSquare
-              className={cn(
-                "h-4 w-4 flex-shrink-0",
-                source === "chat"
-                  ? "text-blue-500"
-                  : source === "discord"
-                    ? "text-indigo-500"
-                    : source === "whatsapp"
-                      ? "text-green-500"
-                      : source === "email"
-                        ? "text-amber-500"
-                        : "text-muted-foreground"
-              )}
-              aria-hidden="true"
-            />
-            <DialogTitle className="text-base">{senderLabel}</DialogTitle>
-          </div>
-        </DialogHeader>
-        <Separator />
+    <div className="flex flex-col h-full min-h-0">
+      {/* Header: sender + actions */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border shrink-0 bg-background">
+        {/* Back to the list (mobile single-pane) */}
+        <button
+          type="button"
+          onClick={onBack}
+          className="md:hidden shrink-0 -ml-1 p-1 text-muted-foreground hover:text-foreground rounded"
+          aria-label="Back to message list"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <MessageSquare
+          className={cn(
+            "h-4 w-4 flex-shrink-0",
+            source === "chat"
+              ? "text-blue-500"
+              : source === "discord"
+                ? "text-indigo-500"
+                : source === "whatsapp"
+                  ? "text-green-500"
+                  : source === "email"
+                    ? "text-amber-500"
+                    : "text-muted-foreground"
+          )}
+          aria-hidden="true"
+        />
+        <h2 className="text-base font-semibold text-foreground truncate">{senderLabel}</h2>
+        <div className="ml-auto flex items-center gap-1 shrink-0">
+          <Tip content={message.isArchived ? "Unarchive" : "Archive"} side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => onArchive(message.id)}
+            >
+              {message.isArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+            </Button>
+          </Tip>
+          <Tip content="Delete" side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground hover:text-destructive"
+              onClick={() => onDelete(message.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </Tip>
+        </div>
+      </div>
 
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Metadata badges */}
         <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
           <Badge
@@ -220,27 +289,6 @@ function MessageDetailDialog({
           <span aria-label="Received at">
             {new Date(message.createdAt).toLocaleString()}
           </span>
-
-          <div className="ml-auto flex items-center gap-1">
-            <Tip content={message.isArchived ? "Unarchive" : "Archive"} side="top">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-muted-foreground hover:text-foreground"
-              onClick={() => { onArchive(message.id); onOpenChange(false); }}
-            >
-              {message.isArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-            </Button>
-            </Tip>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-muted-foreground hover:text-destructive"
-              onClick={() => { onDelete(message.id); onOpenChange(false); }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
         </div>
 
         {/* Message content */}
@@ -254,9 +302,15 @@ function MessageDetailDialog({
             <Separator />
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent Response</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words bg-muted/50 rounded-md p-3">
-                {message.agentResponse}
-              </p>
+              <div className="text-sm leading-relaxed break-words bg-muted/50 rounded-md p-3">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                  components={MD_COMPONENTS as never}
+                >
+                  {message.agentResponse}
+                </ReactMarkdown>
+              </div>
             </div>
           </>
         )}
@@ -300,9 +354,8 @@ function MessageDetailDialog({
             </div>
           </>
         )}
-
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -375,9 +428,11 @@ export function InboxPage() {
   // Rules editor
   const [rulesOpen, setRulesOpen] = useState(false);
 
-  // Detail dialog
-  const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // Detail pane selection (message shown in the right-side preview)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Suppresses auto-select after the mobile back button clears the selection
+  // (otherwise the effect would immediately re-select and hide the list again).
+  const suppressAutoSelectRef = useRef(false);
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -492,8 +547,8 @@ export function InboxPage() {
   }
 
   function handleRowClick(msg: InboxMessage) {
-    setSelectedMessage(msg);
-    setDialogOpen(true);
+    suppressAutoSelectRef.current = false;
+    setSelectedId(msg.id);
     handleMarkAsRead(msg);
   }
 
@@ -646,6 +701,25 @@ export function InboxPage() {
   }
 
   const visibleUnread = displayMessages.filter((m) => m.isRead === 0).length;
+
+  // Message shown in the detail pane — derived from the filtered list so
+  // deletes/archives/filter changes automatically clear the pane when the
+  // message leaves the visible set.
+  const selectedMessage = selectedId
+    ? (displayMessages.find((m) => m.id === selectedId) ?? null)
+    : null;
+
+  // Auto-select the first message so the preview pane isn't empty (mirrors the
+  // Docs tab). Selection alone never marks a message read — only a row click
+  // does. displayMessages is recomputed each render (not memoized), so the
+  // guards below (not the deps) are what prevent redundant setState calls.
+  useEffect(() => {
+    if (loading || suppressAutoSelectRef.current) return;
+    if (displayMessages.length === 0) return;
+    if (!selectedId || !displayMessages.some((m) => m.id === selectedId)) {
+      setSelectedId(displayMessages[0].id);
+    }
+  }, [loading, displayMessages, selectedId]);
 
   const hasActiveFilter =
     channelFilter !== "all" ||
@@ -852,8 +926,17 @@ export function InboxPage() {
         onClearSelection={() => setSelectedIds(new Set())}
       />
 
-      {/* Message list */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      {/* Master-detail split: message list (left) | detail pane (right) */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left column — message list. Mobile: full-width single pane, hidden
+            once a message is selected (the detail pane takes over). */}
+        <div
+          className={cn(
+            "w-full md:w-[280px] lg:w-[320px] shrink-0 md:border-r border-border flex flex-col min-h-0",
+            selectedMessage && "max-md:hidden",
+          )}
+        >
+          <div className="flex-1 overflow-y-auto min-h-0">
         {loading ? (
           <div aria-busy="true" aria-label="Loading messages">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -920,6 +1003,7 @@ export function InboxPage() {
                 : 0;
               const pName = msg.projectId ? projectMap.get(msg.projectId) : undefined;
               const isSelected = selectedIds.has(msg.id);
+              const isViewing = selectedId === msg.id;
 
               return (
                 <li key={msg.id}>
@@ -929,6 +1013,7 @@ export function InboxPage() {
                       "border-b border-border last:border-0",
                       "hover:bg-muted/50 transition-colors",
                       isSelected && "bg-indigo-50/50",
+                      isViewing && "bg-indigo-50",
                       isUnread
                         ? "border-l-2 border-l-indigo-500 pl-[14px]"
                         : "border-l-2 border-l-transparent pl-[14px]"
@@ -1056,54 +1141,73 @@ export function InboxPage() {
             })}
           </ul>
         )}
-      </div>
+          </div>
 
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 px-6 py-3 border-t border-border shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-3 text-xs"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={clampedPage === 1}
-          >
-            Previous
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Page {clampedPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-3 text-xs"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={clampedPage === totalPages}
-          >
-            Next
-          </Button>
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 px-4 py-3 border-t border-border shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={clampedPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Page {clampedPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={clampedPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Message detail dialog */}
-      <MessageDetailDialog
-        message={selectedMessage}
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setSelectedMessage(null);
-        }}
-        threadMessages={
-          selectedMessage?.threadId
-            ? (threadGroups.get(selectedMessage.threadId) ?? [selectedMessage])
-            : selectedMessage
-              ? [selectedMessage]
-              : []
-        }
-        onDelete={handleDeleteMessage}
-        onArchive={handleArchiveMessage}
-        projectName={selectedMessage?.projectId ? projectMap.get(selectedMessage.projectId) : undefined}
-      />
+        {/* Right pane — message detail preview */}
+        <div
+          className={cn(
+            "flex-1 flex flex-col min-w-0 min-h-0",
+            !selectedMessage && "max-md:hidden",
+          )}
+        >
+          {selectedMessage ? (
+            <MessageDetailPane
+              message={selectedMessage}
+              threadMessages={
+                selectedMessage.threadId
+                  ? (threadGroups.get(selectedMessage.threadId) ?? [selectedMessage])
+                  : [selectedMessage]
+              }
+              onDelete={handleDeleteMessage}
+              onArchive={handleArchiveMessage}
+              onBack={() => {
+                suppressAutoSelectRef.current = true;
+                setSelectedId(null);
+              }}
+              projectName={selectedMessage.projectId ? projectMap.get(selectedMessage.projectId) : undefined}
+            />
+          ) : (
+            !loading &&
+            displayMessages.length > 0 && (
+              <div className="flex flex-1 items-center justify-center">
+                <EmptyState
+                  icon={<MessageSquare className="h-6 w-6" aria-hidden="true" />}
+                  title="Select a message"
+                  description="Choose a message from the list to read it here."
+                />
+              </div>
+            )
+          )}
+        </div>
+      </div>
 
       {/* Inbox rules editor */}
       <InboxRulesEditor open={rulesOpen} onOpenChange={setRulesOpen} />
