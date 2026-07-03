@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.4.8",
+        "title":  "Improved Chat Component",
+        "changes":  [
+                        "Enhanced message queue handling to preserve chat state."
+                    ]
+    },
+    {
         "version":  "2.4.6",
         "title":  "Improved Task Review Cycle",
         "changes":  [
