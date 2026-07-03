@@ -2,15 +2,18 @@
 title: Frontend State Stores
 type: subsystem
 status: verified
-verified_at: 2026-06-30
+verified_at: 2026-07-03
 sources:
   - src/mainview/stores/chat-store.ts
   - src/mainview/stores/chat-types.ts
   - src/mainview/stores/chat-event-handlers.ts
   - src/mainview/stores/kanban-store.ts
+  - src/mainview/stores/message-queue.ts
   - src/mainview/lib/rpc.ts
   - src/mainview/components/chat/message-list.tsx
   - src/mainview/components/chat/chat-input.tsx
+  - src/mainview/components/chat/chat-layout.tsx
+  - src/mainview/pages/project.tsx
 tags: [frontend, zustand]
 ---
 
@@ -156,6 +159,30 @@ coarse-grained: a single `agentdesk:kanban-task-updated` listener
 when the event's `projectId` matches `activeProjectId`. This is the channel by
 which agent-driven kanban moves (PM/review-cycle) appear live in the UI.
 
+`useMessageQueueStore` (`src/mainview/stores/message-queue.ts`) holds messages
+the user sends while the chat is busy (streaming/agent running), up to
+`MESSAGE_QUEUE_MAX`; `ChatLayout` dequeues and sends the oldest one once
+`isBusy` flips false. Being a module-level Zustand store, `queue` survives
+`ChatLayout` unmounting/remounting (e.g. navigating away from and back to the
+chat page) — the array isn't reset just because the component was removed
+from the tree. The only intended reset is a genuine conversation switch. That
+guard must live *in the store*, not in a component `useEffect`/`ref`, because
+a ref resets to its initial value on every remount and can't distinguish
+"remounted, same conversation" from "switched conversation" — a `useEffect`
+keyed on `activeConversationId` alone fires on mount either way. The store
+tracks its own `activeConversationId` and exposes `syncActiveConversation(id)`,
+which clears `queue` only when `id` differs from what the store last saw;
+`ChatLayout` calls it on every render instead of calling `clear()` directly.
+**`syncActiveConversation` ignores a falsy `id` entirely** rather than
+treating it as "switched away" — `ProjectPage`'s project-load effect
+(`src/mainview/pages/project.tsx:99-133`) calls `useChatStore.reset()` on
+unmount (leaving the project) and again defensively on mount, so
+`activeConversationId` is briefly `undefined` while conversations reload
+before the same conversation gets re-selected. Clearing on that transient
+falsy value would reproduce the exact bug this store exists to prevent —
+so only a transition between two *concrete, different* ids counts as a
+switch.
+
 ## Key files
 
 | File | Role |
@@ -165,6 +192,7 @@ which agent-driven kanban moves (PM/review-cycle) appear live in the UI.
 | `src/mainview/stores/chat-types.ts` | `Conversation`, `Message`, `ActiveInlineAgent`, `AgentStatusValue`, `ShellApprovalRequest` |
 | `src/mainview/stores/chat-event-handlers.ts` | All `agentdesk:*` DOM listeners; token buffering, completed-stream guard, busy-state logic |
 | `src/mainview/stores/kanban-store.ts` | `useKanbanStore` — board tasks, optimistic mutations, refetch-on-event |
+| `src/mainview/stores/message-queue.ts` | `useMessageQueueStore` — send-while-busy queue; self-tracks `activeConversationId` so remounts don't drop it |
 | `src/mainview/lib/rpc.ts` | Bridges Electrobun RPC messages → `window` CustomEvents (the fan-out point) |
 | `src/mainview/components/chat/message-list.tsx` | Consumer; final `seq`/`createdAt` sort that the store's ordering is designed for |
 
@@ -197,7 +225,7 @@ which agent-driven kanban moves (PM/review-cycle) appear live in the UI.
 ## Open questions
 
 - Other stores in `src/mainview/stores/` (playground, unread, issue-fixer,
-  remote-sync, freelance-engine, message-queue) follow the same pattern but are
-  out of scope here — each could get its own short section if they grow.
+  remote-sync, freelance-engine) follow the same pattern but are out of scope
+  here — each could get its own short section if they grow.
 - No automatic rollback exists for failed optimistic kanban mutations; unclear
   whether this has caused visible drift in practice.

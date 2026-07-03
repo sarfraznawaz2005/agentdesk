@@ -315,10 +315,14 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
     }
   }, [isBusy, dequeue, handleSend, activeConversationId]);
 
-  // Clear the queue when the user switches to a different conversation.
+  // Clear the queue only on a genuine conversation switch — not on every
+  // ChatLayout mount, so navigating away and back preserves the queue.
+  // The "did it actually change" check lives in the store (not a component
+  // ref) because the store survives this component unmounting.
+  const syncActiveConversation = useMessageQueueStore((s) => s.syncActiveConversation);
   useEffect(() => {
-    clearQueue();
-  }, [activeConversationId, clearQueue]);
+    syncActiveConversation(activeConversationId);
+  }, [activeConversationId, syncActiveConversation]);
 
   const handleStop = useCallback(() => {
     const count = useMessageQueueStore.getState().queue.length;
