@@ -19,6 +19,10 @@ interface Toast {
   type: "success" | "error" | "warning" | "info";
   message: string;
   action?: ToastAction;
+  // Action toasts are sticky by default (see ToastItem). Set true for
+  // informational toasts whose action is a shortcut, not a required choice —
+  // they auto-dismiss like plain toasts.
+  autoDismiss?: boolean;
 }
 
 interface ToastStore {
@@ -42,8 +46,13 @@ export const useToastStore = create<ToastStore>((set) => ({
 // Convenience function
 // ---------------------------------------------------------------------------
 
-export function toast(type: Toast["type"], message: string, action?: ToastAction) {
-  useToastStore.getState().addToast({ type, message, action });
+export function toast(
+  type: Toast["type"],
+  message: string,
+  action?: ToastAction,
+  opts?: { autoDismiss?: boolean },
+) {
+  useToastStore.getState().addToast({ type, message, action, autoDismiss: opts?.autoDismiss });
 }
 
 // ---------------------------------------------------------------------------
@@ -113,10 +122,11 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   useEffect(() => {
     // Toasts carrying an action are sticky — auto-dismiss would steal the
     // recovery option before the user can click it. They close on click/dismiss.
-    if (toast.action) return clearTimer;
+    // autoDismiss opts back into the timer for shortcut-style actions.
+    if (toast.action && !toast.autoDismiss) return clearTimer;
     startTimer();
     return clearTimer;
-  }, [toast.id, toast.action, startTimer, clearTimer]);
+  }, [toast.id, toast.action, toast.autoDismiss, startTimer, clearTimer]);
 
   return (
     <div

@@ -2,7 +2,7 @@
 title: Tech Stack, Build & Release
 type: reference
 status: verified
-verified_at: 2026-06-28
+verified_at: 2026-07-04
 sources:
   - package.json
   - electrobun.config.ts
@@ -31,10 +31,10 @@ and the local dev commands — and the non-obvious *why* behind each.
 | Layer | Choice | Where |
 |---|---|---|
 | Desktop shell | Electrobun `1.18.1` (Bun + native webview) | `package.json:68` |
-| Frontend | React 19, TanStack Router, Zustand, Tailwind 3, Radix UI | `package.json:48,74,89` |
+| Frontend | React 19, TanStack Router, Zustand, Tailwind 3, Radix UI | `package.json:53,79,94,114` |
 | Frontend build | Vite 6 + `@vitejs/plugin-react` | `vite.config.ts:1-22` |
-| Backend | Bun + TypeScript, Drizzle ORM, SQLite | `package.json:62` |
-| AI | Vercel AI SDK (`ai` ^6) + per-provider `@ai-sdk/*` adapters | `package.json:24-52` |
+| Backend | Bun + TypeScript, Drizzle ORM, SQLite | `package.json:67` |
+| AI | Vercel AI SDK (`ai` ^6) + per-provider `@ai-sdk/*` adapters | `package.json:29-35,57` |
 
 > Note the version drift: `CLAUDE.md` says Electrobun `1.16.0`, but the actual pinned
 > dep is `electrobun@1.18.1` (`package.json:68`). The pin is **exact** (no caret) — the
@@ -45,7 +45,7 @@ and the local dev commands — and the non-obvious *why* behind each.
 Every build path runs the same two commands in order (`package.json:12`,
 `build.ps1:14-24`):
 
-1. `vite build` — compiles `src/mainview/` (root set at `vite.config.ts:6`) into
+1. `vite build` — compiles `src/mainview/` (root set at `vite.config.ts:7`) into
    `dist/` (`vite.config.ts:15-16`, `emptyOutDir: true`). The `@` / `@shared` aliases
    (`vite.config.ts:9-12`) resolve frontend imports.
 2. `electrobun build` — packages the Bun backend + the webview assets into a native
@@ -62,14 +62,14 @@ bundle icon, once as `app.ico` (`electrobun.config.ts:16-17`).
 Electrobun's `--env` flag names the output channel, which becomes the build-folder and
 artifact prefix: `dev` (default, `bun run dev`), `stable` (CI + `build.ps1:8`), and
 `canary` (`bun run build:canary`, `package.json:13`). Output lands in
-`build/<channel>-<os>-<arch>/` (e.g. `build/stable-win-x64/`, `build.ps1:31`).
+`build/<channel>-<os>-<arch>/` (e.g. `build/stable-win-x64/`, `build.ps1:30`).
 
 ### CEF per-platform (`electrobun.config.ts:27-35`)
 - **Windows / macOS: `bundleCEF: false`** — uses the OS webview (WebView2 / WKWebView),
   so the download stays tiny.
 - **Linux: `bundleCEF: true`** — WebKitGTK has significant limitations, so Chromium
   Embedded Framework is bundled instead (larger download; see the rationale comment at
-  `.github/workflows/release.yml:193-196`).
+  `.github/workflows/release.yml:258-261`).
 
 ### Dev watch ignore (`electrobun.config.ts:26`)
 `watchIgnore: ["dist/**", "src/mainview/**"]` stops `electrobun dev --watch` from
@@ -124,23 +124,25 @@ the three parallel build jobs can upload into an existing Release (`release.yml:
 Each build job: checkout → `setup-bun` → `bun install --frozen-lockfile` →
 `bun run vite build` → `bunx electrobun build --env=stable` → prepare artifacts → upload.
 
-**Windows specifics (`release.yml:30-135`):** the app is built **twice**. The first
+**Windows specifics (`release.yml:30-200`):** the app is built **twice**. The first
 `electrobun build` downloads the `launcher.exe` into `node_modules`; `rcedit` then embeds
 `assets/icon.ico` into that launcher (`release.yml:56-62`), and a second build packs the
 icon-embedded launcher (`release.yml:64-66`). The installer exe also gets the icon
-embedded (`release.yml:68-74`). Two user deliverables are produced: a single-zip
-**Setup** installer (NSIS exe + `.installer/` payload, `release.yml:86-98`) and a
-**portable** zip (extract the bundle `tar.zst`, re-zip, `release.yml:114-124`).
+embedded (`release.yml:68-74`). The canonical `AgentDesk-Setup.tar.zst` is then repacked
+to strip the unused updater binaries (`release.yml:88-136`, see the blockquote below).
+Two user deliverables are produced: a single-zip **Setup** installer (NSIS exe +
+`.installer/` payload, `release.yml:148-160`) and a **portable** zip (extract the bundle
+`tar.zst`, re-zip, `release.yml:176-189`).
 
-**macOS (`release.yml:138-186`):** arm64 only — Intel/`macos-13` runners are skipped due
-to queue times (`release.yml:188-190`). Produces a drag-to-`/Applications` zip plus the
+**macOS (`release.yml:202-251`):** arm64 only — Intel/`macos-13` runners are skipped due
+to queue times (`release.yml:253-255`). Produces a drag-to-`/Applications` zip plus the
 updater `.app.tar.zst`.
 
-**Linux (`release.yml:197-281`):** the genuine runtime bundle is
+**Linux (`release.yml:257-346`):** the genuine runtime bundle is
 `artifacts/stable-linux-x64-AgentDesk.tar.zst` (Electrobun's own `artifactFolder`), NOT
-the `build/.../AgentDesk/` self-extractor — the comment at `release.yml:227-243` explains
+the `build/.../AgentDesk/` self-extractor — the comment at `release.yml:292-308` explains
 the self-extractor must not be shipped on Linux. Ships a portable `tar.gz` of the
-already-unpacked bundle so users skip self-extraction (`release.yml:255-265`).
+already-unpacked bundle so users skip self-extraction (`release.yml:319-331`).
 
 ## Updater artifact contract
 
@@ -151,7 +153,7 @@ each build job produces three updater-relevant files named with the
 
 | File | Consumed by |
 |---|---|
-| `<chan>-<os>-<arch>-update.json` | `Updater.checkForUpdate()` — version injected from the git tag (`release.yml:103-107,168-170,248-250`) |
+| `<chan>-<os>-<arch>-update.json` | `Updater.checkForUpdate()` — version injected from the git tag (`release.yml:162-169,231-235,310-315`) |
 | `<chan>-<os>-<arch>-AgentDesk.tar.zst` | `Updater.downloadUpdate()` (non-Windows) |
 | Setup zip / portable zip | the **custom Windows** update path (below) |
 
@@ -191,11 +193,11 @@ on install mode:
 > proven in CI (the verify only re-extracts the tar) — **smoke-test one Setup install**
 > after the first release that uses it.
 - **Installed (Setup) build** → `windowsDownloadSetup`/`windowsApplySetup`
-  (`updater.ts:104-284`): downloads `{name}-win-{arch}-Setup.zip`, extracts via
+  (`updater.ts:104-300`): downloads `{name}-win-{arch}-Setup.zip`, extracts via
   `Expand-Archive`, runs the NSIS installer silently (`/S`) and relaunches.
 - **Portable build** → `updater-portable.ts`: downloads `{name}-win-{arch}-portable.zip`
   and `robocopy /MIR`s it over the running folder via a detached PowerShell script
-  (`updater-portable.ts:218-273`).
+  (`updater-portable.ts:200-282`).
 
 Install mode is inferred purely from **location** — there is no marker file. A Setup
 build runs from `%LOCALAPPDATA%\<identifier>\<channel>\app\`; anything else on Windows is
@@ -229,13 +231,13 @@ don't get a popup (`whats-new.ts:37-40`).
 
 - **Version lives in three places**: `package.json`, `electrobun.config.ts`, and the git
   tag. `release.ps1` keeps the first two in sync; the tag's semver is injected into the
-  `update.json` at CI time (`release.yml:103-107`). Editing one by hand desyncs the updater.
+  `update.json` at CI time (`release.yml:162-169`). Editing one by hand desyncs the updater.
 - **`electrobun` is pinned exactly** (`package.json:68`) — do not let it float to a caret
   range; the launcher binary and updater protocol are version-coupled.
 - **Windows builds twice on purpose** — the icon-embed step needs `launcher.exe` to exist
   in `node_modules` first (`release.yml:47-66`). Don't "optimize" it to one pass.
 - **Linux must ship the `artifacts/` tarball, not `build/.../AgentDesk/`** — the latter is
-  a macOS-style self-extractor that fails on Linux (`release.yml:227-243`).
+  a macOS-style self-extractor that fails on Linux (`release.yml:292-308`).
 - **No code signing** — `build.ps1:32-33` notes Windows users will see SmartScreen
   warnings; an EV cert + `signtool` is the documented remedy but is not wired up.
 - **CLAUDE.md tech-stack table lists Electrobun 1.16.0** but the real pin is 1.18.1 —

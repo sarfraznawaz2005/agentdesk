@@ -369,9 +369,13 @@ function onConversationUpdated(e: Event): void {
   const conv = store.conversations.find((c) => c.id === conversationId);
 
   if (!conv) {
-    // Conversation not in store yet (e.g. a new channel conversation just created).
-    // Re-fetch the project's conversation list so it appears in the sidebar.
-    if (projectId) {
+    // Conversation not in store yet (e.g. a new channel/task conversation just
+    // created). Re-fetch so it appears in the sidebar — but ONLY when the event
+    // belongs to the project the user is viewing. Broadcasts are global, and
+    // agents working in a background project fire this constantly; reloading
+    // for their projectId would replace the visible sidebar with the wrong
+    // project's conversations.
+    if (projectId && projectId === store.activeProjectId) {
       store.loadConversations(projectId).catch(() => {});
     }
     return;
@@ -406,9 +410,11 @@ function onSwitchToConversation(e: Event): void {
 
   const store = useChatStore.getState();
 
-  // Only switch if the user is currently viewing the same project
-  const isOnProject = store.conversations.some((c) => c.projectId === projectId);
-  if (!isOnProject) return;
+  // Only switch if the user is currently viewing the same project. This must
+  // check the explicitly-tracked activeProjectId — deriving "am I on this
+  // project?" from the loaded conversations is unsafe, because a cross-project
+  // reload could have replaced that list with another project's rows.
+  if (store.activeProjectId !== projectId) return;
 
   // Stamp updatedAt to now in the store so it immediately sorts to the top,
   // regardless of what the PM conversation's updatedAt is.

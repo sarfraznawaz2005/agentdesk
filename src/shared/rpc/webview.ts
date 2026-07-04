@@ -95,6 +95,16 @@ export type WebviewSchema = RPCSchema<{
       action: "created" | "updated" | "moved" | "deleted";
     };
 
+    // A task reached the "done" column. Fired from the moveKanbanTask
+    // chokepoint (every done-transition funnels through it) so the UI can
+    // toast completions that happen in a project the user is not viewing.
+    taskCompleted: {
+      projectId: string;
+      taskId: string;
+      taskTitle: string;
+      projectName: string;
+    };
+
     // Shell approval request (agent wants to run a command)
     shellApprovalRequest: {
       requestId: string;
@@ -195,7 +205,9 @@ export type WebviewSchema = RPCSchema<{
     conversationUpdated: {
       conversationId: string;
       updatedAt: string;
-      projectId?: string;
+      // Required on every emitter: the frontend gates cross-project sidebar
+      // updates on this (chat store activeProjectId guard).
+      projectId: string;
     };
     switchToConversation: {
       conversationId: string;

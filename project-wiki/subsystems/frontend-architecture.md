@@ -2,7 +2,7 @@
 title: Frontend Architecture
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/mainview/main.tsx
   - src/mainview/App.tsx
@@ -56,7 +56,7 @@ component is `AppShell` (`router.tsx:28-30`). Key decisions:
 - **Hash history** (`createHashHistory()`, `router.tsx:25`) — chosen so the
   webview never needs a server for navigation; URLs look like
   `app://index.html#/settings`. The RPC layer reports the current route to Bun
-  by reading `window.location.hash` (`rpc.ts:39-44`).
+  by reading `window.location.hash` (`rpc.ts:40-45`).
 - All ~15 pages are siblings registered on the root route
   (`router.tsx:116-132`); only `/project/$projectId` is parameterised
   (`router.tsx:50-54`).
@@ -76,34 +76,37 @@ flowchart TD
 
 ## The AppShell — persistent chrome
 
-`AppShellContent` (`app-shell.tsx:111`) is the heart of the layout. It is
-wrapped by `HeaderProvider` (`app-shell.tsx:105-107`) and `TooltipProvider`
-(`app-shell.tsx:320`), and lays out a flex row of `<Sidebar>` + a `<main>`
+`AppShellContent` (`app-shell.tsx:112`) is the heart of the layout. It is
+wrapped by `HeaderProvider` (`app-shell.tsx:106-108`) and `TooltipProvider`
+(`app-shell.tsx:321`), and lays out a flex row of `<Sidebar>` + a `<main>`
 column containing `<TopNav>` and a scrollable `<Outlet>` wrapped in an
-`ErrorBoundary` (`app-shell.tsx:319-352`).
+`ErrorBoundary` (`app-shell.tsx:320-355`).
 
 What the shell owns (and why it lives here, above the router outlet):
 
 - **Page title / workspace path resolution** — an effect keyed on
   `projectId` + `location.pathname` maps the route to a human title via
-  `PAGE_TITLES` (`app-shell.tsx:87-103`), or fetches the project name for
-  `/project/$projectId` (`app-shell.tsx:216-221`). Uses an `ignore` flag to
+  `PAGE_TITLES` (`app-shell.tsx:88-102`), or fetches the project name for
+  `/project/$projectId` (`app-shell.tsx:217-222`). Uses an `ignore` flag to
   discard stale async results when the user navigates away mid-fetch.
 - **First-launch gate** — redirects to `/onboarding` when no providers exist
-  (`app-shell.tsx:234-248`); the onboarding route renders bare, without chrome
-  (`app-shell.tsx:302-308`).
+  (`app-shell.tsx:235-249`); the onboarding route renders bare, without chrome
+  (`app-shell.tsx:303-310`).
 - **Sidebar collapse state**, including a `sidebarDefaultRef` that preserves the
   user's saved preference while "focus mode" transiently collapses it
-  (`app-shell.tsx:118-152`). Toggling persists `sidebar_default` back to settings.
+  (`app-shell.tsx:114-163`). Toggling persists `sidebar_default` back to settings.
 - **Session-wide effects**: toast relay (`agentdesk:show-toast`), What's New
   dialog, silent update check, and window focus → `setAppFocused` so the backend
   can suppress desktop notifications while the app is focused
-  (`app-shell.tsx:250-299`).
+  (`app-shell.tsx:251-300`).
 - **Always-mounted singletons** that must outlive page changes: the Auto-Earn
-  background engine `<AlwaysMountedInbox>` (`app-shell.tsx:375`), the floating
-  PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:383-384`),
-  and side-effect store imports for the issue-fixer and unread stores
-  (`app-shell.tsx:21-26`).
+  background engine `<AlwaysMountedInbox>` (`app-shell.tsx:377`), the floating
+  PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:385-386`),
+  `<BackgroundTaskToast>` (`app-shell.tsx:357`) — a render-nothing listener that
+  toasts `agentdesk:task-completed` events for projects the user is *not*
+  viewing (gated on the chat store's `activeProjectId`,
+  `background-task-toast.tsx:27`) — and side-effect store imports for the
+  issue-fixer and unread stores (`app-shell.tsx:28-33`).
 
 ### Top-nav action slot (header context)
 
@@ -111,7 +114,7 @@ Pages need to inject buttons into the shared top bar without prop-drilling.
 `header-context.tsx` solves this: `useHeaderActions(factory, deps)` stores the
 JSX factory in a ref (so handlers never go stale) and registers/clears it on
 mount/unmount (`header-context.tsx:65-77`). The shell reads `headerActions` from
-context and renders them inside `<TopNav>` (`app-shell.tsx:125`, `:346`). The
+context and renders them inside `<TopNav>` (`app-shell.tsx:126`, `:347`). The
 documented rule: only put **primitive** values in `deps` — passing a fresh
 function reference causes an infinite update loop through the context
 (`header-context.tsx:52-63`).
@@ -149,16 +152,24 @@ documented at `rpc.ts:9-12`), and `chat-event-handlers.ts` (imported by
 `chat-store.ts:10`) subscribes and mutates the store. This is why side-effect
 imports like `import "@/stores/issue-fixer-store"` exist in the shell — they
 attach those event listeners at app startup so live runs stream in regardless of
-the current page (`app-shell.tsx:21-26`).
+the current page (`app-shell.tsx:28-33`).
+
+Because broadcasts are global (one window, all projects), cross-project events
+need a gate: `ProjectPage` declares which project is open via the chat store's
+`setActiveProject` (`chat-store.ts:194-196`, called at `project.tsx:112`, cleared
+on unmount at `project.tsx:139`), and store-side handlers ignore broadcasts whose
+`projectId` doesn't match `activeProjectId` (`chat-event-handlers.ts:414-417`).
+`BackgroundTaskToast` inverts the same signal to toast completions from *other*
+projects.
 
 ## RPC bridge
 
 All frontend → backend traffic goes through one typed client,
 `src/mainview/lib/rpc.ts`. It builds an `Electroview.defineRPC<AgentDeskRPC>`
 with `maxRequestTime: Infinity` because agent runs take minutes
-(`rpc.ts:29-31`), exposes incoming `requests`/`messages` handlers (e.g.
+(`rpc.ts:30-32`), exposes incoming `requests`/`messages` handlers (e.g.
 `getViewState`, `navigateTo`), and re-exports a thin typed `rpc` object so
-callers never touch raw primitives (`rpc.ts:369`). Full detail lives in
+callers never touch raw primitives (`rpc.ts:372`). Full detail lives in
 [[rpc-layer]].
 
 ## Styling & primitives
@@ -219,19 +230,19 @@ preview). `APP_BACKGROUNDS` is the registry; the empty id = default theme bg.
   `deps` causes an infinite render loop via the header context
   (`header-context.tsx:52-63`).
 - **Hash routing**: the route lives in `window.location.hash`. Bun reads it via
-  the `getViewState` RPC handler (`rpc.ts:39-44`); deep-link/path assumptions
+  the `getViewState` RPC handler (`rpc.ts:40-45`); deep-link/path assumptions
   that ignore the `#` will break.
 - **Backend state never pushes into Zustand directly** — it arrives as
   `agentdesk:*` `window` CustomEvents. Listeners must be attached at startup
   (hence the side-effect store imports in the shell), or a page that isn't
   mounted yet will miss live events.
 - **Async-in-effect staleness**: title/project effects use an `ignore` flag to
-  discard results from a navigation the user already left (`app-shell.tsx:166`,
-  `:216-221`). Copy this pattern for any project-keyed fetch.
+  discard results from a navigation the user already left (`app-shell.tsx:167`,
+  `:217-222`). Copy this pattern for any project-keyed fetch.
 - **Singletons must be mounted in `AppShell`, not a page** — anything that must
   survive navigation (Auto-Earn engine, dialogs, event listeners) goes in the
   shell; mounting it in a page kills it on route change.
-- **Theme flash**: changing theme init from synchronous (`App.tsx:6`) to an
+- **Theme flash**: changing theme init from synchronous (`App.tsx:7-8`) to an
   effect reintroduces a flash-of-wrong-theme on launch.
 
 ## Related
@@ -246,6 +257,6 @@ preview). `APP_BACKGROUNDS` is the registry; the empty id = default theme bg.
   (plugin manifest → extension registration) is not documented in this page; a
   dedicated `[[plugins]]` page should own it.
 - `command-palette.tsx` (Cmd/Ctrl-K) is mounted in the shell
-  (`app-shell.tsx:356`) but `paletteOpen` is never set to `true` in
+  (`app-shell.tsx:358`) but `paletteOpen` is never set to `true` in
   `app-shell.tsx` — the open trigger (keyboard shortcut handler) was not located
   during this pass and should be verified.

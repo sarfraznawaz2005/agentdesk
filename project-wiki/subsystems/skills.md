@@ -2,7 +2,7 @@
 title: Skills System
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/skills/loader.ts
   - src/bun/skills/registry.ts
@@ -37,7 +37,7 @@ The system has three layers that map cleanly onto three files:
 2. **Registry** (`src/bun/skills/registry.ts`) — a singleton `SkillRegistry`
    holding a `Map<name, Skill>`, fed by the loader from two directories.
 3. **Consumption** — the registry is read by the prompt builder
-   (`buildSkillsDescriptionSection`, `prompts.ts:647`) for the compact listing,
+   (`buildSkillsDescriptionSection`, `prompts.ts:679`) for the compact listing,
    and by the four agent tools in `src/bun/agents/tools/skills.ts` for on-demand
    loading.
 
@@ -97,19 +97,22 @@ Two frontmatter fields control visibility:
   from the Skills UI (`rpc/skills.ts:8` `isSkillVisible`).
 - `feature: <name>` (`loader.ts:121`) — a feature gate. A skill tagged
   `feature: freelance` is only listed in agent prompts when freelance is enabled
-  (`prompts.ts:649` filters via `isFeatureEnabled`, `prompts.ts:642`), and only
+  (`prompts.ts:681` filters via `isFeatureEnabled`, `prompts.ts:674`), and only
   shown in the UI when the flag is on (`rpc/skills.ts:10`).
 
 ### The compact prompt listing
 
-`buildSkillsDescriptionSection` (`prompts.ts:647`) produces the `## Available
-Skills` block appended to every agent's system prompt (`prompts.ts:941` for the
-PM; sub-agents and the dashboard chatbot call it too). Each line is
+`buildSkillsDescriptionSection` (`prompts.ts:679`) produces the `## Available
+Skills` block appended to every agent's system prompt (`prompts.ts:973` for the
+PM, `prompts.ts:1240` for standard sub-agents; the scheduler's task executor and
+the freelance chat/wizard call it too). Each line is
 `- **name**: <120-char description> [agent: <preferredAgent>]`. The `[agent:…]`
-tag and the delegation/routing/skill-creation rules (`prompts.ts:669-687`) are
-only emitted when `includeAgentRules` is true — sub-agents and custom-prompt
-agents get the listing *without* the routing rules (`prompts.ts:1138`,
-`prompts.ts:1178`).
+tag and the delegation/routing/skill-creation rules (`prompts.ts:701-719`) are
+only emitted when `includeAgentRules` is true — the standalone hidden agents
+(playground-agent / issue-fixer, `prompts.ts:1170`) and custom-prompt
+(`useSystemPromptOnly`) agents (`prompts.ts:1210`) get the listing *without*
+the routing rules; standard roster sub-agents get the full variant
+(`prompts.ts:1240`).
 
 ### Content resolution pipeline (on `read_skill`)
 
@@ -187,13 +190,15 @@ All four are category `skills` and available to every agent (`tools/skills.ts:38
   rather than aborting.
 - **`read_skill_file` is path-confined** to the two skills dirs and rejects
   binaries / files >512KB (`tools/skills.ts:129-160`) to protect agent context.
-- **Two callers, two prompt variants.** `buildSkillsDescriptionSection(true)`
-  includes routing+delegation rules (PM); `(false)` is the bare listing for
-  sub-agents/custom-prompt agents — keep both call sites in mind when editing the
+- **Two prompt variants, several callers.** `buildSkillsDescriptionSection(true)`
+  includes routing+delegation rules (PM `prompts.ts:973`, standard sub-agents
+  `prompts.ts:1240`, scheduler task executor); `(false)` is the bare listing for
+  the standalone hidden agents and custom-prompt agents (`prompts.ts:1170,1210`)
+  plus the freelance chat/wizard — keep all call sites in mind when editing the
   prompt copy.
 - **Removed legacy fields.** `disable-model-invocation`, `user-invocable`,
   `_activeSkill`, and keyword `matchForAgent()` auto-matching no longer exist
-  (`docs/skills.md:106`, `:252`). All skills are visible to all agents; the LLM
+  (`docs/skills.md:108`, `:268-271`). All skills are visible to all agents; the LLM
   alone decides relevance.
 
 ## Related

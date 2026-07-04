@@ -2,7 +2,7 @@
 title: MCP Integration
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/mcp/client.ts
   - src/bun/rpc/mcp.ts
@@ -26,11 +26,11 @@ via `getMcpTools()` / `getMcpStatus()`.
 ## Key idea: MCP tools are sub-agent-only
 
 The PM never gets MCP tools. `runInlineAgent` merges `getMcpTools()` into the
-sub-agent tool set at `src/bun/agents/agent-loop.ts:877-890`, while the PM engine
+sub-agent tool set at `src/bun/agents/agent-loop.ts:887-900`, while the PM engine
 (`engine.ts`) does not import them at all. The prompt layer makes this explicit:
 the PM prompt only *lists connected server names* and is told to delegate
-(`src/bun/agents/prompts.ts:717-725`), whereas sub-agent prompts list the actual
-tool keys with "use these directly" (`src/bun/agents/prompts.ts:734-751`). MCP
+(`src/bun/agents/prompts.ts:749-757`), whereas sub-agent prompts list the actual
+tool keys with "use these directly" (`src/bun/agents/prompts.ts:766-779`). MCP
 tools also reach the scheduler task executor (`scheduler/task-executor.ts:316`)
 and the freelance chat agent (`rpc/freelance-chat.ts:40`), which run sub-agent-style.
 
@@ -53,8 +53,8 @@ written as a raw object instead of a double-encoded string — important for
 existing users.
 
 ### Connection lifecycle
-1. Boot: `initMcpClients()` is called from `src/bun/index.ts:278`, **delayed ~10s**
-   (`index.ts:277`) so spawning external servers (e.g. chrome-devtools launching
+1. Boot: `initMcpClients()` is called from `src/bun/index.ts:307`, **delayed ~10s**
+   (`index.ts:303-308`) so spawning external servers (e.g. chrome-devtools launching
    Chrome) doesn't fight the initial UI load.
 2. `connectServer` (`client.ts:185`) decides transport by inspecting `cfg.command`:
    an `http(s)://` prefix → remote (`connectRemote`, `client.ts:300`), otherwise a
@@ -93,13 +93,14 @@ One hard-coded special case: `take_screenshot` calls are forced to
 `reconnectMcpServerRpc`, `disconnectMcpServerRpc`. `saveMcpConfig` validates JSON,
 persists, then fire-and-forget calls `reloadMcpClients()` (`rpc/mcp.ts:63-75`).
 These are wired into the RPC surface via `rpc-groups/plugins-tools.ts:44-48`,
-contracts in `shared/rpc/system.ts:103-122`, client in `lib/rpc.ts:1065-1069`. The
+contracts in `shared/rpc/system.ts:111-134`, client in `lib/rpc.ts:1155-1159`. The
 config editor + live status badges live in `pages/settings/mcp.tsx` and a quick
-status/reconnect control sits in `components/chat/chat-input.tsx:208-237`.
+status/reconnect control sits in `components/chat/chat-input.tsx:671-745` (state
+at `:217-221`).
 
 ### Stuck-loop guardrail (MCP-specific)
 The agent loop's repeated-identical-call detector applies **only** to MCP tools
-(`agent-loop.ts:879-880`, `:1230-1250`): `mcpToolNames` gates the check because
+(`agent-loop.ts:889-890`, `:1240-1260`): `mcpToolNames` gates the check because
 built-in tools are cheap to repeat, while a wedged browser/automation MCP tool
 spinning on the same args is the real failure mode. Threshold warn then abort
 with `stopReason="stuck_loop"`.

@@ -2,9 +2,10 @@
 title: Frontend Components Map
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/mainview/components/layout/app-shell.tsx
+  - src/mainview/components/layout/background-task-toast.tsx
   - src/mainview/components/layout/sidebar.tsx
   - src/mainview/pages/project.tsx
   - src/mainview/components/chat/chat-layout.tsx
@@ -35,12 +36,15 @@ state layer described in [[frontend-architecture]].
 
 The mount chain is `AppShell → <Outlet /> → page → feature-tab → components`:
 
-1. **App chrome.** `app-shell.tsx:320-391` renders `Sidebar` + `TopNav` +
+1. **App chrome.** `app-shell.tsx:320-395` renders `Sidebar` + `TopNav` +
    `ErrorBoundary` around the router `<Outlet />`, plus app-lifetime singletons
    that live *outside* the page tree: `CommandPalette`, `StartupHealthDialog`,
-   `UserQuestionDialog`, `WhatsNewDialog`, the `Toaster`, and two
-   dashboard-only floating widgets (`PmChatWidget`, `CustomAgentChatLauncher`,
-   `app-shell.tsx:383-384`). `AlwaysMountedInbox` (`app-shell.tsx:375`) is the
+   `UserQuestionDialog`, `WhatsNewDialog`, the `Toaster`,
+   `BackgroundTaskToast` (`app-shell.tsx:357` — render-nothing listener that
+   toasts `agentdesk:task-completed` for projects the user is not viewing,
+   `layout/background-task-toast.tsx`), and two dashboard-only floating widgets
+   (`PmChatWidget`, `CustomAgentChatLauncher`, `app-shell.tsx:385-386`).
+   `AlwaysMountedInbox` (`app-shell.tsx:377`) is the
    freelance Auto-Earn background engine — mounted here so it survives every
    navigation (see [[freelance-autoearn]]).
 2. **Sidebar nav** (`layout/sidebar.tsx:57-67`) is a static `BASE_NAV_ITEMS`
@@ -50,21 +54,21 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
    pathname, not stored (`sidebar.tsx:349-351`).
 3. **Project chrome.** `pages/project.tsx` is the hub for all per-project
    feature folders. `activeTab` is plain local state (`project.tsx:33`), the tab
-   bar is a hand-rolled row of buttons (`project.tsx:182-297`), and the content
+   bar is a hand-rolled row of buttons (`project.tsx:190-305`), and the content
    region is a switch that mounts one feature root at a time
-   (`project.tsx:351-382`): `ChatLayout`, `KanbanBoard`, `GitTab`,
+   (`project.tsx:359-390`): `ChatLayout`, `KanbanBoard`, `GitTab`,
    `IssueTrackerTab`, `DeployTab`, `RemoteSyncTab`, `NotesTab`,
    `ProjectSettingsTab`. Plugin tabs use a `plugin:<name>:<id>` tab id
-   (`project.tsx:283-297`).
+   (`project.tsx:291-305`).
 
 ## Folder-by-folder map
 
 | Folder | Root component (entry) | What it is |
 |---|---|---|
-| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:343`) |
+| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:344`), `background-task-toast.tsx` (cross-project task-completion toasts), `maintenance-overlay.tsx` |
 | `chat/` | `chat-layout.tsx` | The Chat tab: 3-pane layout (conv sidebar + message area + activity pane). See "Chat subtree" below. |
 | `activity/` | `context-panel.tsx` | The right-hand activity pane inside Chat. Two inner tabs `files`/`docs` (`context-panel.tsx:8,21-24`) → `files-tab.tsx`, `docs-tab.tsx`. |
-| `kanban/` | `kanban-board.tsx` | Kanban tab: `kanban-column.tsx`, `kanban-card.tsx`, `kanban-filters.tsx`, `kanban-stats-bar.tsx`. `task-detail-modal.tsx` is mounted at the page level (`project.tsx:385`), not inside the board. |
+| `kanban/` | `kanban-board.tsx` | Kanban tab: `kanban-column.tsx`, `kanban-card.tsx`, `kanban-filters.tsx`, `kanban-stats-bar.tsx`. `task-detail-modal.tsx` is mounted at the page level (`project.tsx:393`), not inside the board. |
 | `git/` | `git-tab.tsx` | Git tab with 3 sub-tabs `overview`/`pull-requests`/`conflicts` (`git-tab.tsx:12-20`) → `branch-list`, `commit-log`, `diff-viewer`, `staged-files`, `pull-requests`, `conflict-resolver`, `branch-strategy`. |
 | `issues/` | `issue-tracker-tab.tsx` | Issue Tracker tab: 2 sub-views `issues`/`auto-fixer` (`issue-tracker-tab.tsx:7-12`). `issues.tsx` is the multi-source list; the auto-fixer view embeds the `issue-fixer/` subtree. |
 | `issue-fixer/` | `issue-fixer-tab.tsx` | Auto Issues Fixer — rendered *inside* the Issue Tracker tab (`issue-tracker-tab.tsx:3,52`), not a top-level tab. Plus `issue-fixer-settings.tsx`. |
@@ -79,27 +83,27 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
 | `inbox/` | `inbox-rules-editor.tsx` | Inbox-rules editor for the Inbox route. |
 | `modals/` | — | App-level dialogs mounted by `app-shell.tsx`: `startup-health-dialog`, `user-question-dialog`, `whats-new-dialog`, `new-project-modal`. |
 | `ui/` | — | ~40 design-system primitives. See "The `ui/` primitive layer". |
-| `command-palette.tsx` | (root file) | The Ctrl/Cmd-K palette, mounted once in `app-shell.tsx:356`. |
+| `command-palette.tsx` | (root file) | The Ctrl/Cmd-K palette, mounted once in `app-shell.tsx:358`. |
 
 ## Chat subtree (the densest folder)
 
 `chat/chat-layout.tsx` owns the 3-pane Chat experience and is the most stateful
-view in the app. Left = `ConversationSidebar` (`chat-layout.tsx:488`), centre =
-`MessageList` + `ChatInput` + `ModelSelector` (`chat-layout.tsx:686-743`), right
-= `ContextPanel` from `activity/` (`chat-layout.tsx:780`). It pulls live data
-from `useChatStore` and a separate `useMessageQueueStore` (`chat-layout.tsx:100-130`),
+view in the app. Left = `ConversationSidebar` (`chat-layout.tsx:500`), centre =
+`MessageList` + `ChatInput` + `ModelSelector` (`chat-layout.tsx:698-755`), right
+= `ContextPanel` from `activity/` (`chat-layout.tsx:792`). It pulls live data
+from `useChatStore` and a separate `useMessageQueueStore` (`chat-layout.tsx:105-135`),
 and coordinates focus-mode with the app sidebar via `window` CustomEvents
-(`agentdesk:focus-mode-enter/-exit`, `chat-layout.tsx:57-61`) rather than props —
+(`agentdesk:focus-mode-enter/-exit`, `chat-layout.tsx:49-67`) rather than props —
 the same event-bus pattern documented in [[frontend-architecture]].
 
 Message rendering is a chain: `MessageList → message-bubble.tsx →
 message-parts.tsx`. `message-bubble.tsx:15` delegates structured tool/thinking
 parts to `MessageParts`, which dispatches to `tool-call-card.tsx`,
-`code-block.tsx`, `plan-diff.tsx`, etc. `message-parts.tsx:132` exports the
-shared `AGENT_BADGE_COLORS` map that `project.tsx:20,305` reuses for the running-
+`code-block.tsx`, `plan-diff.tsx`, etc. `message-parts.tsx:134` exports the
+shared `AGENT_BADGE_COLORS` map that `project.tsx:20,313` reuses for the running-
 agent badge — a small but load-bearing cross-folder dependency. Shell approval
 prompts surface as `ShellApprovalCard` stacked above the input
-(`chat-layout.tsx:708-719`).
+(`chat-layout.tsx:720-732`).
 
 ## The `ui/` primitive layer
 
@@ -109,9 +113,12 @@ Everything renders on `ui/` — Radix-wrapped, Tailwind-styled primitives
 defining `variant`/`size` classes (e.g. `ui/button.tsx:8-30`) composed via
 `cn()` from `@/lib/utils`. Notable non-trivial primitives: `mermaid-diagram.tsx`
 (diagram rendering used by message bubbles), `unified-diff.tsx` (git/playground
-diffs), `error-boundary.tsx` (wraps the `<Outlet />` in `app-shell.tsx:327`),
+diffs), `error-boundary.tsx` (wraps the `<Outlet />` in `app-shell.tsx:351`),
 `connection-status.tsx` (RPC-bridge health banner), `unread-dot.tsx` (the red
-attention dot used across tabs and the sidebar). Feature folders should reach
+attention dot used across tabs and the sidebar), and `toast.tsx` — whose
+`toast()` accepts an optional action button plus `{ autoDismiss }`
+(`toast.tsx:53-55`): action toasts are sticky by default and only auto-dismiss
+when `autoDismiss: true` is passed (as `BackgroundTaskToast` does). Feature folders should reach
 for a `ui/` primitive before hand-rolling chrome; the chat header buttons in
 `chat-layout.tsx` are a deliberate exception (icon-only toolbar styling).
 
@@ -121,12 +128,12 @@ for a `ui/` primitive before hand-rolling chrome; the chat header buttons in
   `useState` (`project.tsx:33`); switching project tabs does **not** change the
   URL (only `/project/$projectId` is routed). Deep-linking to a specific tab
   isn't possible; cross-component tab switches go through the
-  `agentdesk:switch-tab` CustomEvent (`project.tsx:76-83`).
+  `agentdesk:switch-tab` CustomEvent (`project.tsx:77-84`).
 - **`issue-fixer/` is nested, not top-level.** Despite being its own folder, the
   Auto Issues Fixer renders only *inside* the Issue Tracker tab
   (`issue-tracker-tab.tsx:52`). There is no standalone "Issue Fixer" project tab.
 - **`task-detail-modal` lives at the page, not in `kanban/`'s tree.** It's
-  mounted by `project.tsx:385` so it can be opened from anywhere via the kanban
+  mounted by `project.tsx:393` so it can be opened from anywhere via the kanban
   store's `selectedTaskId`, not just from a card click.
 - **Some "always-on" components live outside the page tree.** `AlwaysMountedInbox`,
   `CommandPalette`, and the app-level modals are children of `app-shell.tsx`, so

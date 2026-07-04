@@ -69,6 +69,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   contextUsage: "agentdesk:context-usage",
   presentPlan: "agentdesk:plan-presented",
   kanbanTaskUpdated: "agentdesk:kanban-task-updated",
+  taskCompleted: "agentdesk:task-completed",
   providerTestResult: "agentdesk:provider-test-result",
   providersChanged: "agentdesk:providers-changed",
   directorySelected: "agentdesk:directory-selected",

@@ -2,7 +2,7 @@
 title: Issue Fixer
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/issue-fixer/poller.ts
   - src/bun/issue-fixer/triggers.ts
@@ -47,7 +47,7 @@ guarantees enforceable in code rather than relying on the model to behave.
 ### 1. Polling (outbound, restart-safe)
 
 `startIssueFixerPolling()` (`poller.ts:36`) is called once at app init
-(`src/bun/index.ts:173`). It installs a **60-second tick** (`poller.ts:40`) and
+(`src/bun/index.ts:189`). It installs a **60-second tick** (`poller.ts:40`) and
 fires `pollAllEnabledOnce()` immediately on startup (`poller.ts:47`) so pending
 `agentdesk-*` issues are picked up without waiting for the interval. Each
 project's own `pollIntervalMin` gates whether the tick actually polls it
@@ -155,7 +155,7 @@ flowchart TD
 
 ### 5. The "never merge" enforcement (three layers)
 
-1. **System prompt** (`seed.ts:1201-1205`): explicit absolute rules — never merge,
+1. **System prompt** (`seed.ts:1207-1211`): explicit absolute rules — never merge,
    never push, never use `gh`, never force-push, no human input.
 2. **Toolset**: `git_push`/`git_pr` and branch-mutating git tools are in
    `excludeTools` (`orchestrator.ts:326-339`); there is no merge tool in the
@@ -187,7 +187,7 @@ branch. A user-initiated Stop surfaces as an `AbortError` and is recorded as
 | `src/bun/issue-fixer/github.ts` | Outbound GitHub REST client (issues/comments/PR create/comment) |
 | `src/bun/issue-fixer/config.ts` | `issue_fixer_config` + `issue_fix_runs` persistence |
 | `src/bun/issue-fixer/notify.ts` | Success/failure summary to all connected channels |
-| `src/bun/db/seed.ts:1190-1214` | Hidden `issue-fixer` agent definition + system prompt |
+| `src/bun/db/seed.ts:1196-1221` | Hidden `issue-fixer` agent definition + system prompt |
 | `src/bun/db/schema.ts:582,614` | `issueFixerConfig` / `issueFixRuns` tables |
 
 ## Gotchas / Constraints

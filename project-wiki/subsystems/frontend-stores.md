@@ -2,7 +2,7 @@
 title: Frontend State Stores
 type: subsystem
 status: verified
-verified_at: 2026-07-03
+verified_at: 2026-07-04
 sources:
   - src/mainview/stores/chat-store.ts
   - src/mainview/stores/chat-types.ts
@@ -40,7 +40,7 @@ The backend has no handle on React state. The bridge is one-directional fan-out:
    (`src/mainview/lib/rpc.ts:112`).
 3. Stores register listeners *once at module-load time* and call `setState`
    inside them — `chat-store.ts` calls `initChatEventHandlers()` at the bottom
-   (`src/mainview/stores/chat-store.ts:434`); the kanban store registers its
+   (`src/mainview/stores/chat-store.ts:540`); the kanban store registers its
    single listener inline (`src/mainview/stores/kanban-store.ts:184`).
 
 ```mermaid
@@ -55,13 +55,15 @@ flowchart LR
 
 The reverse path (UI → backend) is plain: store **actions** call typed wrappers
 in `rpc.ts` (e.g. `sendMessage` → `rpc.sendMessage`,
-`src/mainview/stores/chat-store.ts:333`) and then optimistically update local
+`src/mainview/stores/chat-store.ts:392`) and then optimistically update local
 state.
 
 ## Chat store
 
-`useChatStore` (`src/mainview/stores/chat-store.ts:134`) holds conversations,
-the active conversation's messages, and a large amount of *transient* status
+`useChatStore` (`src/mainview/stores/chat-store.ts:189`) holds the
+`activeProjectId` (which project ProjectPage is showing — see the
+project-scoping section below), conversations, the active conversation's
+messages, and a large amount of *transient* status
 (`isStreaming`, `activeInlineAgent`, `runningAgentCount`, `pmThinkingText`,
 `shellApprovalRequests`, `isCompacting`, live context-token gauges). Domain
 types live in `chat-types.ts` (`Conversation`, `Message`, `ActiveInlineAgent`,
@@ -74,52 +76,84 @@ action methods:
 
 - **Tokens are buffered, not applied per-token.** `onStreamToken` appends to a
   shared `buffers.tokenBuffer` and schedules a flush every ~32 ms (≈30 fps,
-  `TOKEN_FLUSH_INTERVAL`) — see `src/mainview/stores/chat-event-handlers.ts:102`.
+  `TOKEN_FLUSH_INTERVAL`) — see `src/mainview/stores/chat-event-handlers.ts:103`.
   `flushTokenBuffer` (`:47`) lazily inserts an empty assistant placeholder
   message on the first flush so `onStreamComplete` can later update it in place.
 - **A completed-stream guard** drops late tokens. `completedStreamIds` is a
   capped (50-entry) `Set`; `onStreamToken` early-returns for any id already in
-  it (`:92`), preventing a PM bubble from getting stuck streaming after a stale
+  it (`:93`), preventing a PM bubble from getting stuck streaming after a stale
   token arrives.
-- **`onStreamComplete`** (`:148`) flushes the buffer, marks the stream complete,
+- **`onStreamComplete`** (`:149`) flushes the buffer, marks the stream complete,
   and writes the final message — preferring backend content but falling back to
   accumulated `streamingContent`. It also handles the **stale-completion** case:
   if a *newer* stream is already active it updates only the message content and
-  leaves streaming flags alone (`:206`).
+  leaves streaming flags alone (`:207`).
 - **`createdAt` is the ordering lever.** On completion the PM message's
   `createdAt` is bumped to its finish time so it sorts *below* the sub-agents it
   spawned (which carry earlier timestamps) — see the comment at
-  `src/mainview/stores/chat-event-handlers.ts:247`. The message list mirrors
+  `src/mainview/stores/chat-event-handlers.ts:248`. The message list mirrors
   this: it sorts by the DB `seq` (rowid) when present and falls back to
   `createdAt` for live/optimistic rows (`src/mainview/components/chat/message-list.tsx:115`).
 
 ### Conversation-scoping guard
 
 Almost every handler early-returns unless the event's `conversationId` matches
-`activeConversationId` (e.g. `onStreamToken` `:95`, `onNewMessage`
-`chat-event-handlers.ts:452`). This keeps background activity in other
+`activeConversationId` (e.g. `onStreamToken` `:96`, `onNewMessage`
+`chat-event-handlers.ts:458`). This keeps background activity in other
 conversations from polluting the visible message list — when the user navigates
 back, `loadMessages` re-fetches from the DB the backend already updated
-(`onStreamComplete` returns early if the conversation isn't loaded, `:226`).
+(`onStreamComplete` returns early if the conversation isn't loaded, `:227`).
+
+### Project-scoping guard (cross-project broadcast gate)
+
+Conversation-**list** events need a second gate: broadcasts are global (one
+window, all projects), and agents working in a *background* project emit
+`conversationUpdated` on every sub-agent start/completion
+(`src/bun/agents/agent-loop.ts:1035,1419,1510`, `src/bun/agents/engine.ts:1343`)
+and `switchToConversation` when dispatching a task with new-conversation-per-task
+on (`src/bun/agents/tools/pm-tools.ts:486`). The store therefore tracks an
+explicit `activeProjectId`, set only by `ProjectPage` via `setActiveProject`
+(`src/mainview/stores/chat-store.ts:194`) — on mount/project-change before
+`loadConversations`, nulled on unmount (`src/mainview/pages/project.tsx:99-141`).
+`reset()` deliberately *preserves* it (like `drafts`) since reset clears
+conversation data, not which project is open.
+
+Three places enforce the gate:
+- `onConversationUpdated` (`chat-event-handlers.ts:361`) only re-fetches the
+  conversation list for an unknown conversation when the event's `projectId`
+  equals `activeProjectId`.
+- `onSwitchToConversation` (`chat-event-handlers.ts:405`) compares the event's
+  `projectId` against `activeProjectId` — it must NOT derive "am I on this
+  project?" from the loaded conversations, because a cross-project reload could
+  have replaced that list.
+- `loadConversations` itself (`chat-store.ts:198`) drops its result if
+  `activeProjectId` has moved on by the time the RPC resolves (belt-and-braces
+  against slow fetches from a previous project).
+
+Without this gate, a background project's agent completing a step would replace
+the visible sidebar with that project's conversations, and a subsequent
+`switchToConversation` would then pass the (list-derived) project check and load
+the wrong project's messages into the main chat area — while the Files tab
+(keyed on the route param) stayed correct.
 
 ### Inline-agent & busy-state tracking
 
-`onAgentInlineStart`/`onAgentInlineComplete` (`:593`/`:613`) maintain
+`onAgentInlineStart`/`onAgentInlineComplete` (`:599`/`:619`) maintain
 `runningAgentCount` and the `activeInlineAgent` badge. `pmPending` bridges the
 gap between an agent finishing and the PM restarting its stream so the stop
 button stays live; a **safety-net `setTimeout(…, 8000)`** clears `pmPending` if
-the PM's first token never arrives (crash/early-return), `:649`.
-`syncRunningAgents` (`chat-store.ts:380`) rebuilds all of this from the backend
+the PM's first token never arrives (crash/early-return), `:655`.
+`syncRunningAgents` (`chat-store.ts:475`) rebuilds all of this from the backend
 after navigation, using a synthetic `sync-*` messageId so the
 count-drops-to-zero clear path works.
 
 ### Optimistic IDs
 
 `sendMessage` inserts a `temp-…` user message, then swaps its id for the real DB
-id once `rpc.sendMessage` returns (`chat-store.ts:341`) so later delete/branch
+id once `rpc.sendMessage` returns (`chat-store.ts:402`) so later delete/branch
 operations target the persisted row. `reset()` also clears the module-level
 token buffers/timers to stop stale tokens leaking into the next conversation
-(`chat-store.ts:420`).
+(`chat-store.ts:515`).
 
 ### Unsent-message drafts
 
@@ -175,7 +209,7 @@ which clears `queue` only when `id` differs from what the store last saw;
 `ChatLayout` calls it on every render instead of calling `clear()` directly.
 **`syncActiveConversation` ignores a falsy `id` entirely** rather than
 treating it as "switched away" — `ProjectPage`'s project-load effect
-(`src/mainview/pages/project.tsx:99-133`) calls `useChatStore.reset()` on
+(`src/mainview/pages/project.tsx:99-141`) calls `useChatStore.reset()` on
 unmount (leaving the project) and again defensively on mount, so
 `activeConversationId` is briefly `undefined` while conversations reload
 before the same conversation gets re-selected. Clearing on that transient
@@ -200,16 +234,19 @@ switch.
 
 - **Listeners are registered at module load, not in React.** `chat-store.ts`
   imports trigger `initChatEventHandlers()`; a `handlersInitialized` guard
-  (`chat-event-handlers.ts:722`) makes it idempotent so HMR re-evaluation
+  (`chat-event-handlers.ts:728`) makes it idempotent so HMR re-evaluation
   doesn't double-register. The kanban listener has **no such guard** —
   acceptable because it only refetches, but HMR can leave duplicate listeners.
 - **Token buffers are module-level singletons** (`buffers`,
-  `chat-event-handlers.ts:34`), exported as an object specifically so
+  `chat-event-handlers.ts:35`), exported as an object specifically so
   `chat-store.reset()` can clear them by reference (plain `let` exports are
   bound by value).
 - **Everything is keyed on `activeConversationId`/`activeProjectId`.** If those
   drift from what the backend thinks is active, real-time updates silently
-  vanish until a navigation/refetch.
+  vanish until a navigation/refetch. The chat store's `activeProjectId` is the
+  *only* legitimate "which project am I on?" signal for its handlers — never
+  derive it from `conversations[…].projectId` (see the project-scoping guard
+  above for the cross-project sidebar-corruption bug that pattern caused).
 - **PM message ordering relies on `createdAt` finish-time bumping** matching the
   backend rowid repositioning. If one side changes without the other, live view
   and reload disagree on PM-vs-subagent order.

@@ -2,7 +2,7 @@
 title: Playground
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/playground/orchestrator.ts
   - src/bun/playground/server.ts
@@ -33,18 +33,18 @@ three options (`src/bun/agents/agent-loop.ts:165`, `:171`, `:176`, plus
 extra-tooled run:
 
 - **`priorMessages`** — prior turns prepended before the current task
-  (`agent-loop.ts:1055`). The Playground keeps its history in a temp JSON file,
+  (`agent-loop.ts:1066`). The Playground keeps its history in a temp JSON file,
   not the DB, and threads it here. Note: once rule-based compaction fires
   (>70% context) these fold into a summary.
 - **`persistToDb: false`** — skip ALL `messages` / `message_parts` /
-  `conversations` writes (`agent-loop.ts:791`). Callbacks still fire to drive the
+  `conversations` writes (`agent-loop.ts:808`). Callbacks still fire to drive the
   UI; this is why the Playground produces zero orphan DB rows for its throwaway
   conversation.
 - **`extraTools`** — merged *last* so they override built-ins
-  (`agent-loop.ts:883`). The Playground injects its preview/reject tools plus an
+  (`agent-loop.ts:900`). The Playground injects its preview/reject tools plus an
   auto-approved `run_shell`.
 - **`excludeTools`** (supports trailing-`*` prefix matching,
-  `agent-loop.ts:948`) — removes tools that would dead-lock with no UI to satisfy
+  `agent-loop.ts:958-963`) — removes tools that would dead-lock with no UI to satisfy
   them: `request_human_input`, `chrome-devtools_*`, `verify_implementation`
   (`orchestrator.ts:322`).
 
@@ -84,7 +84,7 @@ sequenceDiagram
 3. **Execute.** `runInlineAgent` runs with `workspacePath = PLAYGROUND_FILES_DIR`
    and `projectId = "playground"` (`orchestrator.ts:305`). The agent-loop's
    cwd-wrapper scopes `run_shell` and the directory tools to that folder
-   (`agent-loop.ts:907`), so even the auto-approved shell can't escape the
+   (`agent-loop.ts:914-949`), so even the auto-approved shell can't escape the
    sandbox. Activity streams via `agentdesk:playground-*` broadcasts mirrored
    into an in-memory `activityParts` buffer so navigating away and back restores
    the log within a session (`orchestrator.ts:201`, `bufferPart` `:167`).
@@ -177,7 +177,7 @@ other exits.
 | `src/bun/agents/tools/playground.ts` | `playground_render_preview` / `playground_reject` (injected via `extraTools`, never in the global registry) |
 | `src/bun/rpc/playground.ts` | RPCs: send/stop/new/state/source, create-project, export-zip, dev-server list/start/stop, surge deploy |
 | `src/bun/agents/agent-loop.ts` | The reused executor — `priorMessages` / `persistToDb` / `extraTools` / `excludeTools` options |
-| `src/bun/db/seed.ts` | `playground-agent` row + system prompt (`:1107`) + its tool list (`:1386`) |
+| `src/bun/db/seed.ts` | `playground-agent` row + system prompt (`:1112`) + its tool list (`:1401`) |
 | `src/mainview/pages/playground.tsx` | The page: live log, iframe, console panel, servers strip |
 
 ## Gotchas / Constraints
@@ -185,10 +185,10 @@ other exits.
 - **The "zero `agent_tools` rows ⇒ full registry" claim is WRONG for this
   agent.** `CLAUDE.md` and the agent roster say `playground-agent` has no
   `agent_tools` rows so `getToolsForAgent` returns the whole registry. In
-  reality `seed.ts:1386` seeds it a **focused ~37-tool set**
+  reality `seed.ts:1401` seeds it a **focused ~37-tool set**
   (`FILE_READ`+`FILE_WRITE`+`download_file`+`SHELL`+`WEB`+`LSP`+`PROCESS`+`sleep`+`SKILLS`
   — no git/kanban/notes/planning). `getToolsForAgent` only returns the full set
-  when an agent truly has zero rows (`tools/index.ts:147`,`:169`), which is not
+  when an agent truly has zero rows (`tools/index.ts:150`,`:172`), which is not
   the case here. The "all tools" experience comes from `extraTools` + the lack
   of role filtering, not from an empty tool config. Treat the roster note as
   stale.
@@ -197,7 +197,7 @@ other exits.
   agent-loop cwd-wrapper scoping it to `files/`; do not assume the normal shell
   approval guardrails apply.
 - **`request_human_input` is removed**, and `playground-agent` is in
-  `NO_HUMAN_INPUT_AGENTS` (`seed.ts:1397`): it must never raise a blocking
+  `NO_HUMAN_INPUT_AGENTS` (`seed.ts:1412`): it must never raise a blocking
   dialog. It escalates by *rejecting* (`playground_reject`) instead.
 - **chrome-devtools_* MCP tools are excluded on purpose** — they attach to a
   separate external browser and can't see the in-app preview
@@ -207,7 +207,7 @@ other exits.
   shared temp folder for the whole app, not one per project.
 - **Legacy name `general-agent`.** The agent was renamed from `general-agent`
   (collided with users' custom agents); migration v26 deletes the old row on
-  upgrade (`seed.ts:1549`).
+  upgrade (`seed.ts:1578-1581`, note).
 - **`persistToDb:false` means callbacks ARE the persistence.** All UI state and
   the JSON history come from callbacks; if a callback path breaks, nothing is
   recoverable from the DB.

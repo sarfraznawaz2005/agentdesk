@@ -2,7 +2,7 @@
 title: Electrobun Artifact Folder Layout
 type: gotcha
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - .github/workflows/release.yml
   - node_modules/electrobun/src/cli/index.ts
@@ -59,7 +59,7 @@ So the runtime tar.zst that started life as
 `artifacts/stable-linux-x64-AgentDesk.tar.zst`. **`build/` is scratch space;
 `artifacts/` is the output contract.** This is why `release.yml` treats
 `artifacts/stable-linux-x64-AgentDesk.tar.zst` as the "source of truth" and hard-
-fails if it is missing (`.github/workflows/release.yml:237`–`:243`).
+fails if it is missing (`.github/workflows/release.yml:292`–`:308`).
 
 ```text
 project-root/
@@ -79,21 +79,23 @@ some archive entries with `TarUnsupportedFileType`, so the self-extractor path i
 unreliable on Linux. The fix in `release.yml` deliberately **bypasses the self-
 extractor entirely**: it consumes only the runtime bundle from `artifacts/`,
 decompresses the zstd, untars it, and re-packs it as a plain `tar.gz`
-(`.github/workflows/release.yml:253`–`:266`). Users then `tar -xzf` and run
+(`.github/workflows/release.yml:319`–`:331`). Users then `tar -xzf` and run
 `./AgentDesk/bin/launcher` directly — no self-extraction step.
 
 Note the Linux job's `metadata.json` for `update.json` is still read out of
-`build/` (`.github/workflows/release.yml:248`), since that small file is fine
+`build/` (`.github/workflows/release.yml:313`), since that small file is fine
 there; only the *runnable bundle* must come from `artifacts/`.
 
 ## Why other platforms don't hit this the same way
 
 Windows and macOS jobs read their deliverables straight out of `build/` because
 those platforms' wrapped installers *are* the intended distribution form: the
-Windows job repacks `build/stable-win-x64/AgentDesk-Setup.*`
-(`.github/workflows/release.yml:86`–`:124`) and the macOS job zips
+Windows job first strips Electrobun's unused updater binaries out of the canonical
+`AgentDesk-Setup.tar.zst` (in-place repack, `.github/workflows/release.yml:88`–`:136`),
+then repacks `build/stable-win-x64/AgentDesk-Setup.*` into the Setup and portable
+zips (`.github/workflows/release.yml:148`–`:189`), and the macOS job zips
 `build/stable-macos-arm64/AgentDesk.app`
-(`.github/workflows/release.yml:157`–`:176`). Linux is the odd one out precisely
+(`.github/workflows/release.yml:222`–`:241`). Linux is the odd one out precisely
 because its self-extractor is broken, forcing it to reach into `artifacts/` for
 the raw runtime bundle. So the "final output is in `artifacts/` not `build/`" rule
 is universal in Electrobun, but AgentDesk only *needs* to honor it on Linux.
@@ -106,8 +108,8 @@ is universal in Electrobun, but AgentDesk only *needs* to honor it on Linux.
 | `node_modules/electrobun/src/cli/index.ts:3761` | tars the runtime bundle, then deletes it from `build/` (`:3765`) |
 | `node_modules/electrobun/src/cli/index.ts:3995` | builds the self-extractor bundle into `build/<env>/AgentDesk/` |
 | `node_modules/electrobun/src/cli/index.ts:4222` | renames `artifactsToUpload` into `artifacts/` with platform prefix |
-| `.github/workflows/release.yml:237` | Linux job pins `artifacts/stable-linux-x64-AgentDesk.tar.zst` as source of truth |
-| `.github/workflows/release.yml:253` | Linux portable fix — unpack runtime bundle, repack as `tar.gz` |
+| `.github/workflows/release.yml:302` | Linux job pins `artifacts/stable-linux-x64-AgentDesk.tar.zst` as source of truth |
+| `.github/workflows/release.yml:319` | Linux portable fix — unpack runtime bundle, repack as `tar.gz` |
 | `electrobun.config.ts` | `linux.bundleCEF: true` (`build/` is Electrobun's default build folder; the config does not override it) |
 
 ## Gotchas / Constraints
@@ -132,4 +134,4 @@ is universal in Electrobun, but AgentDesk only *needs* to honor it on Linux.
 ## Open questions
 - Will Electrobun's Linux self-extractor (`createLinuxInstallerArchive`) ever fix
   the `TarUnsupportedFileType` rejection so the portable `tar.gz` workaround can be
-  retired? Tracked only by the inline comment at `release.yml:257`–`:259`.
+  retired? Tracked only by the inline comment at `release.yml:322`–`:324`.

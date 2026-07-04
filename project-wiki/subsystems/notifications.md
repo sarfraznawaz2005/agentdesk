@@ -2,7 +2,7 @@
 title: Notifications
 type: subsystem
 status: verified
-verified_at: 2026-06-25
+verified_at: 2026-07-04
 sources:
   - src/bun/notifications/desktop.ts
   - src/bun/notifications/native.ts
@@ -51,7 +51,7 @@ notification never throws into a caller (`desktop.ts:24,68`).
 ### 2. `sendNativeNotification({ platform, projectId, title, body })` — preference-gated
 `src/bun/notifications/native.ts:8`. This is the **only** path that honours the
 `notification_preferences` table, and it is used in exactly one place: inbound
-channel messages from [[channels]] (`src/bun/channels/manager.ts:497`). It calls
+channel messages from [[channels]] (`src/bun/channels/manager.ts:504`). It calls
 `shouldNotify(platform, projectId)` and only shows a banner when `prefs.banner`
 is true (`native.ts:14-27`). Confusingly, it calls Electrobun's
 `Utils.showNotification` directly (`native.ts:20`) — i.e. it does **not** route
@@ -61,7 +61,7 @@ caller still works. (See Gotchas.)
 
 ## Preferences: `notification_preferences` table + `shouldNotify`
 
-The table (`src/bun/db/schema.ts:355-364`) stores one row per `platform`
+The table (`src/bun/db/schema.ts:396-405`) stores one row per `platform`
 (optionally scoped to a `projectId`) with three boolean-as-integer flags
 (`soundEnabled`, `badgeEnabled`, `bannerEnabled`, default 1) and an optional
 `muteUntil` ISO timestamp.
@@ -81,7 +81,7 @@ CRUD lives in `src/bun/rpc/notifications.ts`: `getNotificationPreferences`
 are exposed over RPC via the `inbox` contract group
 (`src/shared/rpc/inbox.ts:103-110`) and registered in
 `src/bun/rpc-groups/channels-inbox-scheduler.ts:35-36`. The Settings →
-Notifications page reads/writes them (`notification-settings.tsx:299,391,412`).
+Notifications page reads/writes them (`notification-settings.tsx:301,396,420`).
 
 ## Per-feature gating (the second, ad-hoc preference layer)
 
@@ -90,27 +90,30 @@ Because `sendDesktopNotification` is ungated, several features add their own
 
 - **Session complete** (PM + all agents idle): gated by the
   `session_complete_notification` setting and only fired when the app window is
-  **not** focused (`engine-manager.ts:507-525`). The idle check is wrapped in a
+  **not** focused (`engine-manager.ts:620-638`). The idle check is wrapped in a
   `setTimeout(0)` so the engine's `finally` clears `pmProcessing` first
-  (`engine-manager.ts:508-511`).
+  (`engine-manager.ts:621-624`).
 - **Agent error**: gated by the `error_notification` setting (default on) and,
   like session-complete, only fired when the app is **not** focused. Fires from
-  the `onStreamError` callback (`engine-manager.ts`, the same callback that
-  broadcasts `streamError`) so the red in-chat error and the toast share a
+  the `onStreamError` callback (`engine-manager.ts:640-659`, the same callback
+  that broadcasts `streamError`) so the red in-chat error and the toast share a
   trigger point.
 - **Shell approval required**: always fired so the user can approve while away
-  (`engine-manager.ts:354-357`).
-- **Agent needs input**: `request_human_input` (`engine-manager.ts:440`).
-- **Task done**: kanban move to done (`src/bun/rpc/kanban.ts:213`).
+  (`engine-manager.ts:393-398`).
+- **Agent needs input**: `request_human_input` (`engine-manager.ts:499`).
+- **Task done**: kanban move to done (`src/bun/rpc/kanban.ts:213`). The same
+  done-branch also broadcasts a `taskCompleted` webview event
+  (`kanban.ts:220`) that feeds an **in-app** toast for background projects —
+  that path is frontend toast plumbing, not an OS notification.
 - **Scheduler/cron**: reminders + job results (`scheduler/cron-scheduler.ts:69`,
   `scheduler/task-executor.ts:64,366`).
-- **Freelance**: new listings (`freelance/fetcher.ts:143`), bid ready
-  (`rpc/freelance-outbox.ts:220`), auto-shortlist (`rpc/freelance-wizard.ts:1277`),
+- **Freelance**: new listings (`freelance/fetcher.ts:218`), bid ready
+  (`rpc/freelance-outbox.ts:226`), auto-shortlist (`rpc/freelance-wizard.ts:1489`),
   inbox (`rpc/freelance-inbox.ts:132`), expert notify
   (`freelance/expert/notify.ts:77,167`).
 - **Council** completion (`rpc/council.ts:551`).
 - **Test button**: Settings fires a sample toast to verify the OS path works
-  (`rpc-groups/projects-system.ts:269`).
+  (`rpc-groups/projects-system.ts:274`).
 
 So a notification can be suppressed by **either** the `notification_preferences`
 table (channels only) **or** a feature-specific `settings` flag — there is no
@@ -123,7 +126,7 @@ single gate.
 | `src/bun/notifications/desktop.ts` | Ungated OS toast; Windows PowerShell/WinRT workaround for missing AUMID |
 | `src/bun/notifications/native.ts` | Preference-gated banner for inbound channel messages |
 | `src/bun/rpc/notifications.ts` | `getNotificationPreferences` / `saveNotificationPreference` / `shouldNotify` (project-over-global resolution, mute logic) |
-| `src/bun/db/schema.ts:355` | `notification_preferences` table |
+| `src/bun/db/schema.ts:396` | `notification_preferences` table |
 | `src/shared/rpc/inbox.ts:103` | RPC contract for the preference CRUD |
 | `src/mainview/pages/settings/notification-settings.tsx` | Settings UI (per-platform prefs + per-feature settings toggles) |
 

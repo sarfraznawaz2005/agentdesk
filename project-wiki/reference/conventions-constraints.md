@@ -2,7 +2,7 @@
 title: Conventions & Constraints
 type: reference
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - CLAUDE.md
   - src/bun/rpc/github-api.ts
@@ -10,6 +10,7 @@ sources:
   - src/bun/db/seed.ts
   - src/bun/db/schema.ts
   - src/bun/agents/tools/kanban.ts
+  - src/bun/agents/tools/create-task-policy.ts
   - src/bun/rpc-registration.ts
   - src/shared/rpc/index.ts
 tags: [conventions, rules]
@@ -36,9 +37,9 @@ breakage because each one is a contract that two layers rely on independently.
    `src/shared/rpc/index.ts:1`), the implementation in `src/bun/rpc/*.ts`, and
    the wiring in `src/bun/rpc-registration.ts`. Handlers are assembled from
    per-domain groups and wrapped by `withErrorToast` so any throw surfaces as a
-   toast in the UI (`src/bun/rpc-registration.ts:19`). Agent operations get
+   toast in the UI (`src/bun/rpc-registration.ts:15`). Agent operations get
    `maxRequestTime: Infinity` because a sub-agent run can take minutes
-   (`src/bun/rpc-registration.ts:38`). **Adding a feature = define the contract
+   (`src/bun/rpc-registration.ts:34`). **Adding a feature = define the contract
    in `shared/rpc/`, implement in `bun/rpc/`, register in
    `rpc-registration.ts`, call via `src/mainview/lib/rpc.ts`.** Never reach
    around it with a direct DB call from the frontend — the types and the toast
@@ -156,6 +157,18 @@ This is why **the PM is the sole orchestrator and there is no separate workflow
 engine** — the kanban tools themselves encode the state machine, and
 `review-cycle.ts` reacts to the "review" notification independently.
 
+Task *authorship* is restricted the same way (since 2026-06-30): **only the
+`task-planner` holds `create_task`** — it is the sole author of kanban tasks.
+The restriction is enforced in three places: the default tool assignment
+(`src/bun/db/seed.ts:1366`), a runtime strip applied to every other agent's tool
+set on both the allowlist and full-registry paths (`restrictCreateTask`,
+`src/bun/agents/tools/create-task-policy.ts:23`, applied in
+`src/bun/agents/tools/index.ts:163` and `:174`), and an idempotent seed pass
+that deletes stale `create_task` rows older installs seeded onto implementer
+agents (`src/bun/db/seed.ts:1743`). The PM never gets it either — its inline
+toolset omits `create_task` (`src/bun/agents/engine.ts:516`); to add a task it
+dispatches the task-planner.
+
 ## Naming conventions (observed, not always consistent)
 
 - **Internal agent names are kebab-case** in `seed.ts` — `project-manager`,
@@ -198,6 +211,10 @@ engine** — the kanban tools themselves encode the state machine, and
   from the DB, seeded from `seed.ts`.
 - **`done` is not a valid `move_task` destination** — only `submit_review`
   finalises a task; tests/tools that try to set `done` directly will fail.
+- **Only the task-planner may hold `create_task`** — `restrictCreateTask` strips
+  it from every other agent at tool-build time, regardless of `agent_tools` rows
+  (`src/bun/agents/tools/create-task-policy.ts:23`); the PM's inline toolset
+  omits it by construction.
 - **`frontend_engineer` is the one underscore agent name** — don't "fix" it.
 
 ## Related

@@ -2,7 +2,7 @@
 title: Frontend Pages & Routing
 type: subsystem
 status: verified
-verified_at: 2026-07-03
+verified_at: 2026-07-04
 sources:
   - src/mainview/router.tsx
   - src/mainview/components/layout/app-shell.tsx
@@ -72,7 +72,7 @@ flowchart TD
 
 ## The two genuinely complex pages
 
-**`ProjectPage`** (`project.tsx:31`) is the heart of the app. It is a tab host (chat, kanban, docs, git, issue-tracker, remote, deploy, settings, plus plugin tabs) where `activeTab` is local state (`project.tsx:33`), and each tab lazily renders a heavy component (`project.tsx:352-367`). Its hard part is *data lifecycle on project switch*: a project-scoped `conversationsLoadedForProject` marker (not a boolean) guards a chained pair of effects so a late-resolving `loadConversations` from the previous project can't auto-select the wrong conversation (`project.tsx:99-162`). It coordinates the chat store and kanban store, resets both on unmount, and defers kanban load to idle time so chat is the critical path (`project.tsx:116-120`). It also bridges `agentdesk:switch-tab` window events from child components into tab changes (`project.tsx:76-83`) and manages per-tab unread dots via the unread store (`project.tsx:37-96`).
+**`ProjectPage`** (`project.tsx:31`) is the heart of the app. It is a tab host (chat, kanban, docs, git, issue-tracker, remote, deploy, settings, plus plugin tabs) where `activeTab` is local state (`project.tsx:33`), and each tab lazily renders a heavy component (`project.tsx:360-375`). Its hard part is *data lifecycle on project switch*: a project-scoped `conversationsLoadedForProject` marker (not a boolean) guards a chained pair of effects so a late-resolving `loadConversations` from the previous project can't auto-select the wrong conversation (`project.tsx:99-170`). The same load effect also declares the chat store's `activeProjectId` via `setActiveProject` on mount/project change and nulls it on unmount — the gate that keeps background-project broadcasts from replacing the sidebar (see [[frontend-stores]], project-scoping guard). It coordinates the chat store and kanban store, resets both on unmount, and defers kanban load to idle time so chat is the critical path (`project.tsx:120-124`). It also bridges `agentdesk:switch-tab` window events from child components into tab changes (`project.tsx:77-84`) and manages per-tab unread dots via the unread store (`project.tsx:37-97`).
 
 **`SettingsPage`** (`settings.tsx:47`) is a two-level tab hub: top-level Radix `Tabs` (General / AI / Channels / Integrations / Notifications / System / Plugins) each containing a hand-rolled `SubTabs` component (`settings.tsx:22-45`) that fans out to the leaf editors under `pages/settings/*`. The Plugins top-level tab simply embeds the `PluginsPage` component (`settings.tsx:106-108`). All of this is local state — no settings sub-page has its own route. The **AI** tab's sub-tabs are `Providers` (credentials/connection) and `Models` (`pages/settings/models.tsx`) — the latter manages global per-model enable/disable + favourite via the `model_preferences` table; favourites and disabled state are mirrored by the chat model picker (`components/chat/model-selector.tsx`, which adds top-pinned `Latest` + `Favorites` sections). See [[database-tables]].
 
@@ -94,11 +94,11 @@ flowchart TD
 
 - **Hash routing, not browser routing.** Routes are `#/...` paths so the webview needs no server (`router.tsx:23-25`). Don't assume real URLs or server-side routing.
 - **In-page tabs are not routable.** Project tabs and Settings sub-tabs live in `useState`, so they can't be deep-linked and reset to default on reload (`project.tsx:33`, `settings.tsx:50`).
-- **`/plugins` is a phantom route.** It has a title entry (`app-shell.tsx:93`) but no route; the actual Plugins UI is a Settings tab (`settings.tsx:106`). The only `/plugin/*` route is the DB viewer.
-- **Onboarding bypasses shell chrome.** `AppShell` returns early for `/onboarding` (`app-shell.tsx:283`), so anything added to the shell (top-nav, sidebar) is invisible there.
-- **First-launch redirect runs on every navigation.** The `isFirstLaunch` check fires in an effect keyed on pathname (`app-shell.tsx:217-231`); a slow RPC briefly shows a "Loading…" gate (`app-shell.tsx:292-298`).
+- **`/plugins` is a phantom route.** It has a title entry (`app-shell.tsx:100`) but no route; the actual Plugins UI is a Settings tab (`settings.tsx:106`). The only `/plugin/*` route is the DB viewer.
+- **Onboarding bypasses shell chrome.** `AppShell` returns early for `/onboarding` (`app-shell.tsx:303`), so anything added to the shell (top-nav, sidebar) is invisible there.
+- **First-launch redirect runs on every navigation.** The `isFirstLaunch` check fires in an effect keyed on pathname (`app-shell.tsx:234-249`); a slow RPC briefly shows a "Loading…" gate (`app-shell.tsx:312-318`).
 - **Sidebar items are partly dynamic.** Plugin sidebar items and the Freelance entry are injected at runtime (`sidebar.tsx:328-333`); the Freelance entry only appears when the feature flag RPC returns enabled (`sidebar.tsx:212-224`).
-- **Project-switch race is deliberately guarded.** The `conversationsLoadedForProject` string marker (not a boolean) exists specifically to stop stale async loads from clobbering the new project's chat state (`project.tsx:44-46,138-162`) — don't "simplify" it to a boolean.
+- **Project-switch race is deliberately guarded.** The `conversationsLoadedForProject` string marker (not a boolean) exists specifically to stop stale async loads from clobbering the new project's chat state (`project.tsx:44-46,146-170`) — don't "simplify" it to a boolean.
 
 ## Related
 - [[frontend-architecture]]

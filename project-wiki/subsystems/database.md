@@ -2,7 +2,7 @@
 title: Database Layer
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/db/connection.ts
   - src/bun/db/index.ts
@@ -66,7 +66,7 @@ applied *before* the Proxy wrap so PRAGMA noise stays out of the error log
 WAL grows unbounded over a long session. `startWalCheckpointTimer()`
 (`connection.ts:161`) runs `PRAGMA wal_checkpoint(TRUNCATE)` once at startup and
 every 30 minutes thereafter (`connection.ts:153`, `connection.ts:155`). It is
-fired from the main startup sequence at `src/bun/index.ts:158`. `closeDatabase()`
+fired from the main startup sequence at `src/bun/index.ts:174`. `closeDatabase()`
 clears the timer before closing (`connection.ts:144`).
 
 ## Startup sequence
@@ -75,9 +75,9 @@ The order in `src/bun/index.ts` is load-bearing — schema must exist before any
 seed write, and seed must run before the rest of the app touches `db`:
 
 ```
-runMigrations()        // index.ts:142  — create/alter tables, set user_version
-await seedDatabase()   // index.ts:143  — idempotent default data
-startWalCheckpointTimer() // index.ts:158
+runMigrations()        // index.ts:150  — create/alter tables, set user_version
+await seedDatabase()   // index.ts:151  — idempotent default data
+startWalCheckpointTimer() // index.ts:174
 ```
 
 ## Migration discipline
@@ -122,24 +122,27 @@ reason new tables/columns should use idempotent DDL.
 
 ## Seeding
 
-`seedDatabase()` (`src/bun/db/seed.ts:1439`) runs on **every** launch and must be
+`seedDatabase()` (`src/bun/db/seed.ts:1453`) runs on **every** launch and must be
 fully idempotent. It seeds default `settings` (only when the table is empty,
-`seed.ts:1441`), a versioned `constitution` that re-publishes on a
-`CONSTITUTION_VERSION` bump (`seed.ts:1463`), a default MCP config, a "Free"
-provider for fresh installs (`seed.ts:1544`), the built-in agent roster, prompt
+`seed.ts:1457`), a versioned `constitution` that re-publishes on a
+`CONSTITUTION_VERSION` bump (`seed.ts:1477`), a default MCP config, a "Free"
+provider for fresh installs (`seed.ts:1560`), the built-in agent roster, prompt
 templates, and per-agent tool assignments.
 
 The expensive part — re-upserting ~22 built-in agent prompts — is gated by an
 FNV-1a hash of the bundled agent defs stored in `settings`
-(`seed.ts:14`, `seed.ts:1569`). On an unchanged launch the upsert is skipped
+(`seed.ts:14`, `seed.ts:1583`). On an unchanged launch the upsert is skipped
 entirely; on an app upgrade the hash changes and prompts/colors/display-names are
-updated **without ever touching custom agents** (`seed.ts:1593`–`1616`). Hidden
+updated **without ever touching custom agents** (`seed.ts:1600`–`1631`). Hidden
 built-in agents (`playground-agent`, `issue-fixer`, `freelance-expert`) are then
 normalized to `availableToPm: 0` so the PM never orchestrates them
-(`seed.ts:1619`–`1639`). `seedAgentTools()` (`seed.ts:1677`) seeds a default tool
+(`seed.ts:1633`–`1653`). `seedAgentTools()` (`seed.ts:1691`) seeds a default tool
 set only for agents with zero `agent_tools` rows, then top-up-adds any missing
-default tools — preserving user customisation. See [[agent-roster]] and
-seed for the roster details.
+default tools — preserving user customisation. One targeted exception: it also
+**removes** stale `create_task` rows from every agent except the `task-planner`
+(the sole task author since 2026-06-30), so existing installs' Agents pages
+reflect the restriction (`seed.ts:1743`–`1761`; runtime is enforced separately by
+`restrictCreateTask`). See [[agent-roster]] and seed for the roster details.
 
 ## Audit log
 
@@ -164,15 +167,17 @@ table (`audit.ts:18`).
 
 - **`schema.ts` does not create tables.** Editing it alone changes nothing at
   runtime. A schema change requires a matching migration file *and* an entry in
-  the `migrations` array (`migrate.ts:69`). Drifting the two yields queries that
+  the `migrations` array (`migrate.ts:79`). Drifting the two yields queries that
   type-check but fail at runtime.
 - **`user_version`, not a migrations table.** Manually bumping it (or a dev
   hot-reload doing so) can skip real DDL — the reason `ensureRuntimeSchema()`
   exists. New migrations should be idempotent so they survive that net.
-- **`PRAGMA user_version` must be set outside any transaction** (`migrate.ts:164`).
+- **`PRAGMA user_version` must be set outside any transaction** (`migrate.ts:184`).
 - **Seed runs on every launch**, so it must never repeatedly delete or overwrite
   user data — destructive one-shots (like removing `general-agent`) belong in a
-  migration (`seed.ts:1564`), not in seed.
+  migration (`seed.ts:1578`), not in seed. (The one sanctioned exception is the
+  idempotent removal of stale `create_task` rows from non-task-planner agents,
+  `seed.ts:1743` — it targets only a built-in default the app itself seeded.)
 - **One connection, shared everywhere.** Heavy synchronous work on `sqlite`
   blocks all DB access; the 5 s `busy_timeout` only covers external lock
   contention (e.g. the background vacuum worker that reopens `dbFilePath`).

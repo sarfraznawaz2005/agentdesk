@@ -2,13 +2,14 @@
 title: Claude Subscription / OAuth
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/providers/claude-subscription.ts
   - src/bun/claude/feature-flag.ts
   - src/bun/providers/index.ts
   - src/bun/rpc/providers.ts
   - src/bun/rpc/updater.ts
+  - src/bun/rpc/updater-portable.ts
   - src/bun/agents/engine-types.ts
   - src/bun/agents/agent-loop.ts
   - src/mainview/pages/settings/providers.tsx
@@ -64,7 +65,8 @@ The provider factory maps `"claude-subscription"` to `ClaudeSubscriptionAdapter`
 2. Builds an `@ai-sdk/anthropic` client with `authToken` (→ `Authorization:
    Bearer <token>`) plus a header set that mirrors Claude Code:
    `anthropic-beta` carrying `oauth-2025-04-20` (without it the API returns
-   generic 429s), `claude-code-20250219`, interleaved/redact-thinking betas,
+   generic 429s), `claude-code-20250219`, interleaved/redact-thinking plus
+   thinking-token-count and prompt-caching-scope betas,
    `x-app: cli`, and a pinned `user-agent: claude-cli/...`
    (`claude-subscription.ts:170-179`).
 3. Installs a custom `fetch` (`interceptFetch`, `claude-subscription.ts:137-168`)
@@ -126,7 +128,7 @@ headers and falls back to a hardcoded `CLAUDE_MODELS` list on any failure
 Both the PM engine and inline sub-agent loop treat `claude-subscription`
 identically to `anthropic` when building extended-thinking options, emitting
 `providerOptions.anthropic.thinking` (`engine-types.ts:39-46`,
-`agent-loop.ts:205-212`). This works because the underlying client is the real
+`agent-loop.ts:211-218`). This works because the underlying client is the real
 `@ai-sdk/anthropic` adapter.
 
 ### Surviving updates
@@ -134,8 +136,9 @@ identically to `anthropic` when building extended-thinking options, emitting
 The Windows NSIS installer wipes `bin/` during an update, which would delete the
 `claude` marker file. `rpc/updater.ts` snapshots whether the flag existed
 (`updater.ts:210-213`) and, if so, recreates it after the silent install via an
-inline PowerShell `New-Item` step (`updater.ts:250-252`). The freelance and
-Auto-Earn flags are preserved the same way.
+inline PowerShell `New-Item` step (`updater.ts:266-268`). The freelance and
+Auto-Earn flags are preserved the same way. The portable update path preserves
+the same flags around its `robocopy /MIR` (`updater-portable.ts:159-162,213-215`).
 
 ## Key files
 
@@ -145,7 +148,7 @@ Auto-Earn flags are preserved the same way.
 | `src/bun/claude/feature-flag.ts` | `isClaudeSubscriptionEnabled()` — true iff a `claude` marker file sits beside the exe or in cwd |
 | `src/bun/providers/index.ts` | Factory mapping `"claude-subscription"` → `ClaudeSubscriptionAdapter` (`:54-55`); type in `SUPPORTED_TYPES` (`:17`) |
 | `src/bun/rpc/providers.ts` | `getClaudeSubscriptionEnabledHandler` (`:372-374`) exposes the flag to the UI |
-| `src/bun/rpc/updater.ts` | Preserves the `claude` marker file across NSIS reinstalls (`:210-213,250-252`) |
+| `src/bun/rpc/updater.ts` | Preserves the `claude` marker file across NSIS reinstalls (`:210-213,266-268`) |
 | `src/bun/agents/engine-types.ts` / `agent-loop.ts` | Treat the provider as `anthropic` for thinking options |
 | `src/mainview/pages/settings/providers.tsx` | Conditionally shows the "Claude Subscription" option + "no API key" notice |
 

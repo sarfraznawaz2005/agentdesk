@@ -24,6 +24,11 @@ export type {
 
 interface ChatState {
   // Data
+  // The project currently open in ProjectPage. Broadcasts are global (one
+  // window, all projects), so cross-project events must be gated on this —
+  // never inferred from the loaded conversations, which those very events
+  // can replace.
+  activeProjectId: string | null;
   conversations: Conversation[];
   activeConversationId: string | null;
   messages: Message[];
@@ -70,6 +75,8 @@ interface ChatState {
 
 
   // Actions
+  /** Record which project ProjectPage is showing (null when none is open). */
+  setActiveProject: (projectId: string | null) => void;
   loadConversations: (projectId: string) => Promise<void>;
   loadMessages: (conversationId: string) => Promise<void>;
   setActiveConversation: (id: string | null) => void;
@@ -154,6 +161,7 @@ export function sortConversations(conversations: Conversation[]): Conversation[]
 // ---------------------------------------------------------------------------
 
 const initialState = {
+  activeProjectId: null as string | null,
   conversations: [] as Conversation[],
   activeConversationId: null as string | null,
   messages: [] as Message[],
@@ -183,9 +191,18 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   // ---- Conversations -------------------------------------------------------
 
+  setActiveProject: (projectId: string | null) => {
+    set({ activeProjectId: projectId });
+  },
+
   loadConversations: async (projectId: string) => {
     const raw = await rpc.getConversations(projectId);
     const conversations = sortConversations(raw as Conversation[]);
+    // Drop the result unless the user is still viewing this project — a slow
+    // fetch from a previous project, or a background-project broadcast that
+    // slipped past a handler guard, must never replace the visible sidebar.
+    const activeProjectId = get().activeProjectId;
+    if (activeProjectId !== null && activeProjectId !== projectId) return;
     // Drop result if a later navigation already loaded a different project.
     // (Each conversation row carries its projectId so we can detect staleness.)
     if (conversations.length > 0 && conversations[0].projectId !== projectId) return;
@@ -503,7 +520,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     buffers.tokenStreamMeta = null;
     // Preserve drafts across project switches — they're keyed by conversationId
     // and globally unique, and initialState carries the app-launch snapshot only.
-    set({ ...initialState, collapsedAgentBlocks: {}, drafts: get().drafts });
+    // activeProjectId is preserved too: reset() clears conversation *data*, not
+    // which project is open — ProjectPage owns that via setActiveProject (it
+    // nulls it on unmount and sets the new id before reloading), and callers
+    // like the project-settings reset stay on the same project.
+    set({
+      ...initialState,
+      collapsedAgentBlocks: {},
+      drafts: get().drafts,
+      activeProjectId: get().activeProjectId,
+    });
   },
 }));
 

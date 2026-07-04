@@ -45,6 +45,7 @@ export function ProjectPage() {
   // being reset/reloaded after a project switch.
   const [conversationsLoadedForProject, setConversationsLoadedForProject] = useState<string | null>(null);
 
+  const setActiveProject = useChatStore((s) => s.setActiveProject);
   const loadConversations = useChatStore((s) => s.loadConversations);
   const createConversation = useChatStore((s) => s.createConversation);
   const setActiveConversation = useChatStore((s) => s.setActiveConversation);
@@ -106,6 +107,9 @@ export function ProjectPage() {
     setActiveTab("chat");
     resetChat();
     resetKanban();
+    // Declare which project the chat store should accept broadcasts for —
+    // set BEFORE loadConversations so its staleness guard sees the new id.
+    setActiveProject(projectId);
 
     loadConversations(projectId).then(() => {
       if (cancelled) return;
@@ -129,8 +133,12 @@ export function ProjectPage() {
       cancelled = true;
       resetChat();
       resetKanban();
+      // No project is open now (reset() deliberately preserves activeProjectId,
+      // so clear it here). On a project switch the next effect run re-sets it
+      // synchronously before anything can observe the null.
+      setActiveProject(null);
     };
-  }, [projectId, loadConversations, loadTasks, resetChat, resetKanban, syncRunningAgents]);
+  }, [projectId, loadConversations, loadTasks, resetChat, resetKanban, setActiveProject, syncRunningAgents]);
 
   // Auto-select the most recent conversation, or create one if none exist.
   // Keyed on conversationsLoadedForProject (not a plain boolean) so this effect

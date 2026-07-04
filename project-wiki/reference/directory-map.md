@@ -2,7 +2,7 @@
 title: Directory Map (Structural Index)
 type: reference
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/index.ts
   - src/bun/rpc-registration.ts
@@ -40,7 +40,7 @@ Everything wires through four files. Find one of these and you can trace any fea
 | Bun main entry | `src/bun/index.ts:1` | App lifecycle: migrations → seed → plugins → channels → cron/automation → issue-fixer poller → MCP → annotation/playground servers → `BrowserWindow`. Wires every subsystem's init/shutdown. |
 | RPC registration | `src/bun/rpc-registration.ts:32` | `BrowserView.defineRPC<AgentDeskRPC>` — spreads the combined handler map (`requestHandlers`, imported from `remote/rpc-handlers.ts`) and wraps it with an error-toast broadcaster (`rpc-registration.ts:15`). `maxRequestTime: Infinity` so multi-minute agent runs don't time out. |
 | Webview entry | `src/mainview/main.tsx:4` → `App.tsx:12` → `router.tsx` | React root; `RouterProvider` drives a hash-history router (`router.tsx:5`). |
-| RPC client | `src/mainview/lib/rpc.ts:15` | `Electroview` instance + typed wrappers; the *only* path from React into Bun. Also dispatches DOM events for backend broadcasts (`rpc.ts:10`). |
+| RPC client | `src/mainview/lib/rpc.ts:30` | `Electroview` instance + typed wrappers; the *only* path from React into Bun (branches to the remote WS transport when `IS_REMOTE`). Also dispatches DOM events for backend broadcasts (`rpc.ts:9-13`). |
 
 The RPC contract type `AgentDeskRPC` is assembled in `src/shared/rpc/index.ts:1`
 from one `*Requests` type per domain — this is the interface boundary both sides
@@ -52,7 +52,7 @@ compile against. See [[rpc-layer]] and [[rpc-client]].
 | Path | Role |
 |---|---|
 | `src/bun/index.ts` | Main entry / lifecycle (see anchors). |
-| `src/bun/engine-manager.ts` | One `AgentEngine` per project, cached in memory (`getOrCreateEngine` at `engine-manager.ts:459`, instantiation at `:623`); global abort registry; `broadcastToWebview`. See [[agent-engine]]. |
+| `src/bun/engine-manager.ts` | One `AgentEngine` per project, cached in memory (`getOrCreateEngine` at `engine-manager.ts:572`, instantiation at `:755`); global abort registry; `broadcastToWebview`. See [[agent-engine]]. |
 | `src/bun/rpc-registration.ts` | Wires all RPC handlers (see anchors). |
 | `src/bun/windows-registry.ts` | Registers the Windows uninstaller entry. |
 
@@ -75,16 +75,22 @@ compile against. See [[rpc-layer]] and [[rpc-client]].
 
 ### `agents/tools/` — the agent tool registry
 `tools/index.ts` is the **filter seam**: `getToolsForAgent(name)`
-(`tools/index.ts:100`) reads `agent_tools` rows and returns only enabled tools —
+(`tools/index.ts:103`) reads `agent_tools` rows and returns only enabled tools —
 unless an agent has **zero** rows, in which case it gets the full registry (this
-is why `playground-agent` / `issue-fixer` see everything). One file per tool family:
+is why `playground-agent` / `issue-fixer` see everything). On top of that it
+applies the `create_task` allowlist policy (`create-task-policy.ts` — only
+`task-planner` keeps `create_task`, on both the allowlist and full-registry
+paths). One file per tool family:
 
 | Path | Tools |
 |---|---|
 | `tools/index.ts` | Registry assembly + per-agent filtering. [[agent-tools]] |
-| `tools/pm-tools.ts` | `run_agent`, `run_agents_parallel`, plan-approval, task creation, feature-branch, status reads. |
-| `tools/kanban.ts` | create/move/update/get/delete tasks, `submit_review`. |
+| `tools/create-task-policy.ts` | The `create_task` allowlist (`CREATE_TASK_AGENT = "task-planner"`); enforced by `getToolsForAgent`. |
+| `tools/pm-tools.ts` | `run_agent`, `run_agents_parallel`, plan-approval, task creation (`create_tasks_from_plan`), feature-branch, status reads. |
+| `tools/kanban.ts` | create/move/update/get/delete tasks, `submit_review` (`create_task` is stripped for everyone but `task-planner`). |
 | `tools/file-ops.ts` | read/write/edit/patch/list/tree/search/diff/archive/etc. |
+| `tools/text-edit.ts` | Encoding-robust literal matching for the edit tools (CRLF/LF + BOM tolerant, `$`-safe replacement). |
+| `tools/memory.ts` | Per-(agent + project) durable memory store (always-on index + on-demand recall). |
 | `tools/file-tracker.ts` | Per-run read/write tracking → `filesModified`. |
 | `tools/shell.ts` | `run_shell` (safety guards + approval gate). |
 | `tools/git.ts` | status/diff/commit/branch/push/pull/pr/stash/reset/cherry_pick. |
@@ -101,11 +107,11 @@ is why `playground-agent` / `issue-fixer` see everything). One file per tool fam
 | `db/connection.ts` | SQLite (WAL, corruption-safe) connection. |
 | `db/migrate.ts` | Migration runner. |
 | `db/seed.ts` | Built-in agent roster + system prompts. |
-| `db/migrations/` | Versioned migrations **v1–v43** (`v1_initial-schema.ts` … `v43_freelance-client-quality.ts`). Raw-SQL tables not in schema.ts (e.g. `keyboard_shortcuts`) are created here. |
+| `db/migrations/` | Versioned migrations **v1–v53** (`v1_initial-schema.ts` … `v53_remove-enhanced-web-search.ts`). Raw-SQL tables not in schema.ts (e.g. `keyboard_shortcuts`) are created here. |
 | `db/audit.ts` · `summaries.ts` · `maintenance.ts` · `error-logger.ts` · `index.ts` | Audit log, conversation summaries, startup maintenance, global error capture, `db` export. |
 
 ### `rpc/` and `rpc-groups/` — the handler layer
-`rpc/*.ts` = one implementation file per domain (~55 files: `kanban.ts`,
+`rpc/*.ts` = one implementation file per domain (~57 files: `kanban.ts`,
 `conversations.ts`, `projects.ts`, `git.ts`, `deploy.ts`, `issues.ts`,
 `freelance*.ts`, `playground.ts`, `council.ts`, `pulls.ts`, `discord/whatsapp/email.ts`,
 `updater*.ts`, etc.). `rpc-groups/*.ts` = **eight aggregator modules** that bundle
@@ -136,7 +142,7 @@ imports and spreads into `defineRPC`. See [[rpc-layer]].
 | `annotations/` | Agentation toolbar server + preview window + injected script. |
 | `notifications/` | Desktop / native OS notifications. |
 | `playground/` | Artifacts-style preview: orchestrator + static `Bun.serve` server + temp paths. | [[playground]] |
-| `lib/` | Cross-cutting helpers: `git-runner.ts`, `secret-crypto.ts`, `path-utils.ts`, `install-mode.ts`, `encrypt-existing-secrets.ts`. |
+| `lib/` | Cross-cutting helpers: `git-runner.ts`, `secret-crypto.ts`, `path-utils.ts`, `install-mode.ts`, `encrypt-existing-secrets.ts`, `coalesce-broadcast.ts`, `network.ts`, `spawn-async.ts`. |
 
 ### `freelance/` — Auto-Earn (largest subsystem)
 | Path | Role |
@@ -154,15 +160,17 @@ imports and spreads into `defineRPC`. See [[rpc-layer]].
 | `main.tsx` / `App.tsx` | React root + `RouterProvider`. |
 | `router.tsx` | TanStack hash router; ~14 routes registered via `createRoute` (`router.tsx:32`+): index/dashboard, agents, settings, project, inbox, scheduler, analytics, onboarding, prompts, skills, db-viewer, **council**, **freelance**, **playground**. |
 | `lib/rpc.ts` | Typed RPC client (the React→Bun seam). |
-| `lib/` | `theme.ts`, `pricing.ts`, `header-context.tsx`, `use-agent-colors.ts`, `global-error-handler.ts`, `date-utils.ts`, `types.ts`, `utils.ts`. |
+| `lib/remote-transport.ts` | `IS_REMOTE` detection + WS/relay transport for the web build (see [[remote-access]]). |
+| `lib/` | `theme.ts`, `pricing.ts`, `header-context.tsx`, `use-agent-colors.ts`, `global-error-handler.ts`, `date-utils.ts`, `types.ts`, `utils.ts`, plus `app-background.ts`, `coalesce.ts`, `export-markdown.ts`, `web-notifications.ts` and the `use-conv-font-size` / `use-is-mobile` / `use-online-status` hooks. |
 
 ### `pages/` — route components
 Top-level: `dashboard`, `project` (the tab shell: chat/kanban/git/deploy/issues/remote),
 `agents`, `inbox`, `scheduler`, `analytics`, `onboarding`, `prompts`, `skills`,
-`council`, `freelance`, `playground`, `plugin-db-viewer`, `settings`.
-`pages/settings/` holds ~18 sub-pages (general, providers, github, channels-per-platform,
-notification-settings, appearance, ai-debug, constitution, data, env-vars, health,
-mcp, audit-log, recommendations, tavily-settings). See [[frontend-pages]].
+`council`, `freelance`, `playground`, `plugin-db-viewer`, `plugins`, `settings`.
+`pages/settings/` holds 19 sub-pages (general, providers, models, github,
+channels-per-platform, remote-access, notification-settings, appearance, ai-debug,
+constitution, data, env-vars, health, mcp, audit-log, recommendations,
+tavily-settings). See [[frontend-pages]].
 
 ### `components/` — grouped by feature (mirrors backend domains)
 `chat/` (input, message list/bubble/parts, tool-call-card, shell-approval, plan-diff),
@@ -170,23 +178,28 @@ mcp, audit-log, recommendations, tavily-settings). See [[frontend-pages]].
 branch-strategy), `activity/` (context panel + docs/files tabs), `notes/`,
 `issues/` + `issue-fixer/`, `deploy/`, `remote-sync/`, `freelance/`, `scheduler/`,
 `inbox/`, `dashboard/`, `analytics/`, `project-settings/`, `layout/` (app-shell,
-sidebar, topnav, project-branch-badge, project-switcher), `modals/`, and `ui/`
+sidebar, topnav, project-branch-badge, project-switcher, maintenance-overlay,
+background-task-toast — a global listener mounted in AppShell that toasts task
+completions from background projects), `modals/`, and `ui/`
 (~35 Radix-based primitives + `mermaid-diagram`, `unified-diff`, `password-input`).
 See [[frontend-components]].
 
 ### `stores/` — Zustand state
 `chat-store.ts` (+ `chat-types.ts`, `chat-event-handlers.ts`, `message-queue.ts`),
 `kanban-store.ts`, `freelance-engine-store.ts`, `issue-fixer-store.ts`,
-`remote-sync-store.ts`, `playground-store.ts`, `unread-store.ts`. See [[frontend-stores]].
+`remote-sync-store.ts`, `playground-store.ts`, `unread-store.ts`,
+`dashboard-launcher-store.ts`, `network-store.ts`. See [[frontend-stores]].
 
 ## src/shared — the contract boundary
 `shared/rpc/index.ts` assembles `AgentDeskRPC` from per-domain `*Requests` types
 (`activity`, `agents`, `analytics`, `conversations`, `council`, `dashboard`,
 `deploy`, `env-vars`, `freelance`, `git`, `inbox`, `integrations`, `issue-fixer`,
 `issues`, `kanban`, `lsp`, `notes`, `playground`, `plugins`, `projects`,
-`providers`, `recommendations`, `remote-sync`, `settings`, `skills`, `system`,
-`updater`, `webview`, `whats-new`). `shared/freelance/` holds cross-cutting
+`providers`, `recommendations`, `remote-access`, `remote-sync`, `settings`,
+`skills`, `system`, `updater`, `webview`, `whats-new`). `shared/freelance/` holds cross-cutting
 freelance descriptors (`platforms.ts`, `write-steps.ts`, `attention.ts`).
+`shared/remote/` is the browser+Bun portable remote-access layer (E2E crypto,
+pairing, WS/relay RPC clients — see [[remote-access]]).
 `shared/freelance-currencies.ts` + `shared/rpc.ts` are root re-exports.
 
 ## Project-root directories
@@ -194,11 +207,11 @@ freelance descriptors (`platforms.ts`, `write-steps.ts`, `attention.ts`).
 |---|---|
 | `docs/` | Design docs: `prd.md`, `workflow.md`, `auto-earn-plan.md`, `issue-fixer-plan.md`, `sequential-agent-model.md`, `skills.md`, `freelance.md`, plus proposals. |
 | `plugins/db-viewer/` | The one bundled plugin (manifest + index). [[plugins]] |
-| `skills/` | Bundled SKILL.md skills: `agentdesk-guide`, `docx/xlsx/pptx/pdf` (with `scripts/`), `frontend-design`, `humanizer`, `freelance-writing`, `live-browser`, `screenshot`, `skill-creator`, `weather`. [[skills]] |
+| `skills/` | Bundled SKILL.md skills: `agentdesk-guide`, `docx/xlsx/pptx/pdf` (with `scripts/`), `frontend-design`, `humanizer`, `freelance-writing`, `live-browser`, `remotion-video`, `screenshot`, `skill-creator`, `weather`. [[skills]] |
 | `assets/` | App icons (`icon.ico/png`, `tray-icon.png`) + `uninstall.ps1`. |
 | `.github/workflows/release.yml` | The only CI workflow (release). |
 | `packaging/msix/` | Windows MSIX packaging. |
-| `tests/` | Bun tests mirroring backend dirs (`agents/`, `channels/`, `db/`, `frontend/`). |
+| `tests/` | Bun tests mirroring backend dirs (`agents/`, `channels/`, `db/`, `frontend/`, `issue-fixer/`, `playground/`, `rpc/`, `scheduler/`, `tools/`, + `helpers/`). |
 | `build/` · `dist/` · `node_modules/` | Generated/installed — not source. |
 | `electrobun.config.ts` | App bundle config (entry points, build). |
 | `drizzle.config.ts` / `vite.config.ts` / `tailwind.config.js` / `eslint.config.js` / `tsconfig.json` | Build & lint config. |
@@ -217,7 +230,9 @@ freelance descriptors (`platforms.ts`, `write-steps.ts`, `attention.ts`).
   and a wrapper in `src/mainview/lib/rpc.ts`. Skipping the aggregator means the
   handler is never registered.
 - **An agent's tools depend on its `agent_tools` rows** — zero rows = full
-  registry (intentional for hidden agents), not "no tools". See `tools/index.ts:100`.
+  registry (intentional for hidden agents), not "no tools". See `tools/index.ts:103`.
+  Exception: `create_task` is stripped for every agent except `task-planner`
+  (`tools/create-task-policy.ts`), even on the full-registry path.
 - **Migrations are the only way to change tables** — never edit `schema.ts`
   without a paired `db/migrations/vN_*.ts`.
 

@@ -728,6 +728,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				broadcastToWebview("conversationUpdated", {
 					conversationId,
 					updatedAt,
+					projectId,
 				});
 			},
 			onCompactionStarted: (conversationId) => {

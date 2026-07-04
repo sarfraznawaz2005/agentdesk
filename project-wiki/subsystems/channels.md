@@ -2,7 +2,7 @@
 title: External Channels
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/channels/manager.ts
   - src/bun/channels/types.ts
@@ -47,7 +47,7 @@ class.
 flowchart TD
   subgraph Inbound
     P[Platform event<br/>discord.js / baileys / imapflow] --> A[Adapter.onMessage handler]
-    A --> H[handleIncomingMessage<br/>manager.ts:480]
+    A --> H[handleIncomingMessage<br/>manager.ts:487]
     H --> I[writeInboxMessage + native notif + eventBus]
     H --> C[getOrCreateChannelConversation<br/>daily channel: conv]
     H --> E[engine.sendMessage<br/>source/channelId/username meta]
@@ -65,37 +65,37 @@ flowchart TD
 `initChannelManager` (`manager.ts:93`) is the boot path: it loads every
 `channels` row where `enabled = 1`, looks up the registered factory for that
 platform, builds a `ChannelConfig` (parsing the JSON `config` column via
-`parseJsonConfig`, `manager.ts:644`), calls `adapter.connect(config)`, then wires
+`parseJsonConfig`, `manager.ts:712`), calls `adapter.connect(config)`, then wires
 `adapter.onMessage(...)` to the inbound pipeline. Live adapters are kept in three
 module-level maps keyed by `channelId`: `activeAdapters`, `channelConfigs`, and
 (for reply threading) `lastInboundContext` (`manager.ts:54-69`).
-`connectSingleChannel` (`manager.ts:371`) does the same for one channel after
+`connectSingleChannel` (`manager.ts:378`) does the same for one channel after
 startup (e.g. when a user saves a new config), guarded by a `connectingChannels`
 set against concurrent connects.
 
 ### Inbound routing — the heart of it
-`handleIncomingMessage` (`manager.ts:480`) is the unified pipeline for all three
+`handleIncomingMessage` (`manager.ts:487`) is the unified pipeline for all three
 platforms:
 1. Persist to the inbox (`writeInboxMessage`), emit a `message:received` event,
-   fire a native OS notification (`manager.ts:485-502`).
+   fire a native OS notification (`manager.ts:492-509`).
 2. Stash **reply context** in `lastInboundContext` — `threadId`, `subject`,
    `senderId`, and (Discord only) `msgChannelId` so outbound replies go to the
-   originating channel snowflake, not the username (`manager.ts:507-512`).
+   originating channel snowflake, not the username (`manager.ts:511-519`).
 3. **Resolve the target project with zero config required**: channel's own
    `projectId` (bound mode) → `default_channel_project_id` setting (explicit
    override) → a dedicated per-platform **`<Platform> Chat`** project for global-mode
    channels (`getOrCreateGlobalChannelProject`, created on first use + reused), with a
-   first-project safety net only if that project can't be created (`manager.ts:519-548`).
+   first-project safety net only if that project can't be created (`manager.ts:521-555`).
    This is why channels "just work" out of the box.
 4. Ensure a **daily conversation** exists (`getOrCreateChannelConversation`,
-   `manager.ts:585`) titled `Platform - YYYY-MM-DD` with a `channel:`-prefixed
+   `manager.ts:653`) titled `Platform - YYYY-MM-DD` with a `channel:`-prefixed
    composite ID (`channel:{channelId}:{projectId}:{date}`) so the backend can
    detect channel-sourced conversations and so the same channel used across
    projects never collides.
 5. Forward to the engine with a `[platform thread:...] sender: ` prefix prepended
-   to the content (`manager.ts:545`) and `{ source, channelId, username }`
-   metadata (`manager.ts:567`) — the `channelId` here is the **config UUID**, used
-   later by the engine-manager to find the adapter for the reply.
+   to the content (`manager.ts:560`) and `{ source, channelId, username }`
+   metadata (`manager.ts:582-585`) — the `channelId` here is the **config UUID**,
+   used later by the engine-manager to find the adapter for the reply.
 
 ### Outbound — replies and notifications
 There is no reply call inside the manager's inbound path. Instead, when the PM
@@ -128,7 +128,7 @@ uses `getDefaultRecipient()` (self JID) and Email needs a prior inbound context
 - **WhatsApp** (`whatsapp-adapter.ts`): Baileys multi-device socket; auth state
   persisted via `useSQLiteAuthState` (`whatsapp-auth-store.ts`). Emits the
   pairing **QR** through `onQR`, which the manager renders to a PNG data URL and
-  broadcasts (`broadcastQR`, `manager.ts:464`). Only processes `type === "notify"`
+  broadcasts (`broadcastQR`, `manager.ts:471`). Only processes `type === "notify"`
   (not history sync), does **echo prevention** by tracking sent message IDs
   (`whatsapp-adapter.ts:94`), and resolves `@lid` → phone JID for self-chat
   (`whatsapp-adapter.ts:108`). Reconnect: 5 attempts, exponential from 5s.
@@ -204,7 +204,7 @@ uses `getDefaultRecipient()` (self JID) and Email needs a prior inbound context
 
 ## Open questions
 - WhatsApp `threadId` is captured but `SendOptions` threading is ignored by the
-  adapter's `sendMessage` (`whatsapp-adapter.ts:141`) — replies are flat. Is
+  adapter's `sendMessage` (`whatsapp-adapter.ts:170`) — replies are flat. Is
   quoted-reply support intended?
 - The `"chat"` platform in `ChannelPlatform` (`types.ts:3`) has no adapter or
   factory; appears to be a placeholder.

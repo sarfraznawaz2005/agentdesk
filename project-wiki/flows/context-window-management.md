@@ -2,7 +2,7 @@
 title: Context Window Management
 type: flow
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/agents/context.ts
   - src/bun/agents/summarizer.ts
@@ -35,11 +35,11 @@ reported by the provider.
 
 ## Key idea: where the limit comes from
 
-`getContextLimit()` (`src/bun/providers/models.ts:29`) does **not** look at the
+`getContextLimit()` (`src/bun/providers/models.ts:32`) does **not** look at the
 model. It returns a user-configurable number (**default `1_000_000`**), read from
 `project:<id>:contextWindowLimit` then global `contextWindowLimit`, cached per
-project in `contextLimitCache` (`models.ts:22`). The cache must be cleared via
-`clearContextLimitCache()` (`models.ts:63`) when settings change.
+project in `contextLimitCache` (`models.ts:25`). The cache must be cleared via
+`clearContextLimitCache()` (`models.ts:66`) when settings change.
 
 This is now the **single** limit that governs everything: it is the meter's
 denominator (frontend `ContextIndicator`), the PM conversation's compaction
@@ -121,9 +121,9 @@ so the bar climbs in real time rather than only jumping at completion. Because t
 PM and each sub-agent have separate context windows, the bar reflects the
 *currently active* context, not a sum across them.
 
-`triggerSummarization` (`engine.ts:1109`) just calls `summarizeConversation` and
+`triggerSummarization` (`engine.ts:1282`) just calls `summarizeConversation` and
 then recomputes remaining tokens for the UI indicator
-(`onConversationCompacted`, `engine.ts:1137`).
+(`onConversationCompacted`, `engine.ts:1313`).
 
 There is also a **between-task hygiene** hook in PM tooling (`pm-tools.ts`): after
 each sub-agent finishes, if `utilizationPercent >= 60` it prunes *that agent's*
@@ -161,20 +161,23 @@ path can fire.
 
 ### Layer 2 — Inline sub-agent (in-memory, progressive tiers)
 
-This is the **60/70/85/90** ladder, and it lives entirely inside the single
-`generateText` call in `runInlineAgent` (`agent-loop.ts:1061`). Termination is
-handled by `stopWhen` (no more tool calls, or a `stopReason` is set —
-`agent-loop.ts:1072-1081`); there is **no max-step / iteration cap**.
+This is the **60/70/85/90** ladder, and it lives entirely inside the
+`generateText` call in `runInlineAgent` (`agent-loop.ts:1119`; one call per
+attempt of the transient-failure `retry:` loop, `MAX_RETRIES=2`,
+`agent-loop.ts:1080-1083` — a retry resumes from the compacted in-memory
+history). Termination is handled by `stopWhen` (no more tool calls, or a
+`stopReason` is set — `agent-loop.ts:1130-1139`); there is **no max-step /
+iteration cap**.
 
 `lastPromptTokens` is updated in `onStepFinish` from the provider's *real*
 `step.usage.inputTokens` (falling back to v5 `promptTokens`),
 **not** accumulated — it is the current context size each step
-(`agent-loop.ts:1166-1171`). `CONTEXT_LIMIT = getContextLimit(modelId, projectId)`
-(`agent-loop.ts:1013`).
+(`agent-loop.ts:1224-1231`). `CONTEXT_LIMIT = getContextLimit(modelId, projectId)`
+(`agent-loop.ts:1071`).
 
-Each step, `prepareStep` (`agent-loop.ts:1084`) computes
-`contextRatio = lastPromptTokens / CONTEXT_LIMIT` (`agent-loop.ts:1098`) and
-picks a tier (`agent-loop.ts:1103-1151`):
+Each step, `prepareStep` (`agent-loop.ts:1142`) computes
+`contextRatio = lastPromptTokens / CONTEXT_LIMIT` (`agent-loop.ts:1156`) and
+picks a tier (`agent-loop.ts:1162-1209`):
 
 | Ratio | Condition | Action |
 |---|---|---|
@@ -184,17 +187,17 @@ picks a tier (`agent-loop.ts:1103-1151`):
 | > 0.60 | — | `compactToolResultsInMessages(…,5)` (aggressive) |
 | else | — | `compactToolResultsInMessages(…, COMPACT_KEEP_RECENT=5)` |
 
-`compactToolResultsInMessages` (`agent-loop.ts:376`) keeps the most recent
+`compactToolResultsInMessages` (`agent-loop.ts:393`) keeps the most recent
 `keepRecent` tool messages verbatim and prunes older ones — but it **skips**
-file read/write tools (`SKIP_PRUNE_TOOLS`, `agent-loop.ts:387`) because agents
+file read/write tools (`SKIP_PRUNE_TOOLS`, `agent-loop.ts:404`) because agents
 rely on file content as working memory. `stripOldAssistantText`
-(`agent-loop.ts:411`) replaces stale reasoning with a placeholder, keeping the
+(`agent-loop.ts:428`) replaces stale reasoning with a placeholder, keeping the
 last 2 assistant messages intact.
 
 The 0.70 tier is one-shot (gated by `!aiCompactionDone`): the heavy
 summary-and-replace happens once; after that, 0.85/0.90 only do cheap stripping
 or stop. On a fatal full context the agent ends with a "context window full"
-summary (`agent-loop.ts:1386`) rather than crashing.
+summary (`agent-loop.ts:1448`) rather than crashing.
 
 ## Why two systems / tradeoffs
 
@@ -207,7 +210,7 @@ summary (`agent-loop.ts:1386`) rather than crashing.
   usage because they have it (the provider reports it each step) and need
   precision to avoid both premature stripping and overflow.
 - Rule-based compaction is preferred over AI compaction in the sub-agent loop
-  because it is "zero tokens, instant" (`agent-loop.ts:436`, comment) — AI
+  because it is "zero tokens, instant" (`agent-loop.ts:453`, comment) — AI
   compaction is only a fallback for unusually large conversations.
 
 ## Key files
@@ -249,7 +252,7 @@ summary (`agent-loop.ts:1386`) rather than crashing.
 - **Sub-agent compaction never persists.** It mutates the in-memory
   `agentMessages` array only; the chat-visible message parts are written
   separately.
-- The 0.70 rule-based tier requires `> 5` messages (`agent-loop.ts:1109`); tiny
+- The 0.70 rule-based tier requires `> 5` messages (`agent-loop.ts:1167`); tiny
   conversations skip straight to cheap pruning.
 
 ## Related

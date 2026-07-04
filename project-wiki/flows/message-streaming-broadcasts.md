@@ -2,7 +2,7 @@
 title: Message Streaming & Broadcasts
 type: flow
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/agents/engine.ts
   - src/bun/engine-manager.ts
@@ -34,7 +34,10 @@ update is: **engine callback → `broadcastToWebview(method, payload)` → webvi
 RPC message handler → `window.dispatchEvent(new CustomEvent("agentdesk:...", …))`
 → a `window.addEventListener` somewhere in the renderer.** The DOM event bus is
 the decoupling layer: the backend doesn't know which React component (if any) is
-mounted, and the listeners filter by `activeConversationId` themselves.
+mounted, and the listeners filter by `activeConversationId` themselves —
+conversation-*list* events (`conversationUpdated`, `switchToConversation`)
+additionally gate on the chat store's `activeProjectId` (see [[frontend-stores]],
+project-scoping guard).
 
 ## How it works
 
@@ -60,30 +63,30 @@ The engine drives `result.fullStream` and, per `text-delta`, calls
 `onStreamToken(conversationId, messageId, delta, null)` at `engine.ts:675`. The
 callback (`engine-manager.ts:465`) forwards it to `broadcastToWebview("streamToken", …)`,
 which becomes `agentdesk:stream-token`. `onStreamToken` in
-`chat-event-handlers.ts:83` appends the delta to `buffers.tokenBuffer` and
+`chat-event-handlers.ts:84` appends the delta to `buffers.tokenBuffer` and
 schedules a flush. **Tokens are not rendered one-by-one** — `flushTokenBuffer`
-(`chat-event-handlers.ts:46`) coalesces them on a 32 ms (~30 fps) timer and only
+(`chat-event-handlers.ts:47`) coalesces them on a 32 ms (~30 fps) timer and only
 then writes `streamingContent` into the Zustand store, creating the PM placeholder
 message on first flush.
 
 ### 2. Stream reset & completion
-`onStreamReset` (`chat-event-handlers.ts:105`) clears the token buffer and resets
+`onStreamReset` (`chat-event-handlers.ts:106`) clears the token buffer and resets
 `streamingContent` — the engine fires it to **retract premature PM narration**
 when a step both wrote text and dispatched a wait-type sub-agent
 (`engine.ts:681-700`), and on hallucination retries (`engine.ts:758`).
 `onStreamComplete` (`engine-manager.ts:479`) carries the final `content`,
-`metadata`, and `usage`; the handler (`chat-event-handlers.ts:148`) flushes the
+`metadata`, and `usage`; the handler (`chat-event-handlers.ts:149`) flushes the
 buffer, marks the stream completed, and commits the message in place — bumping
 `createdAt` to the PM's finish time so the PM bubble sorts **below** the
 sub-agents it spawned.
 
 ### 3. Late-token & stale-stream guards
-A capped `completedStreamIds` set (`chat-event-handlers.ts:15`) drops
+A capped `completedStreamIds` set (`chat-event-handlers.ts:16`) drops
 `stream-token` events that arrive after a stream finished (otherwise the bubble
 sticks in a streaming state). `onStreamComplete` also handles the **stale**
 case: if a newer stream is active (user sent a new message that aborted the old
 PM stream), it updates only the message content and leaves streaming state alone
-(`chat-event-handlers.ts:206`).
+(`chat-event-handlers.ts:207`).
 
 ### 4. Message parts (the structured channel)
 Sub-agents run via `runInlineAgent` (`agent-loop.ts`), which emits typed
@@ -100,7 +103,7 @@ On mount, a bubble with `hasParts` lazy-loads its parts via `rpc.getMessageParts
 ### 5. Inline-agent lifecycle & PM "thinking"
 `onAgentInlineStart`/`Complete` (`engine-manager.ts:543-550`) become
 `agentdesk:agent-inline-start`/`complete`; the store handlers
-(`chat-event-handlers.ts:534,554`) maintain `runningAgentCount`,
+(`chat-event-handlers.ts:599,619`) maintain `runningAgentCount`,
 `activeInlineAgent`, and `pmPending` (with an 8 s safety-net timeout that clears a
 stuck stop button). PM reasoning is streamed separately: the engine accumulates
 `reasoning-delta` parts and flushes them through `onAgentActivity` (type
@@ -112,7 +115,7 @@ stuck stop button). PM reasoning is streamed separately: the engine accumulates
 ### 6. Whole-message broadcasts
 Agent messages persisted as a unit (not streamed) come through `onNewMessage`
 (`engine-manager.ts:533`) → `agentdesk:new-message`. `onNewMessage`
-(`chat-event-handlers.ts:451`) detects agent messages via `metadata.source ===
+(`chat-event-handlers.ts:458`) detects agent messages via `metadata.source ===
 "agent"`, sets `hasParts: 1`, and commits any in-flight PM `streamingContent`
 before appending so the agent card lands as the latest item. Plan cards
 (`presentPlan` → `agentdesk:plan-presented`) arrive right after their
@@ -142,19 +145,24 @@ before appending so the agent card lands as the latest item. Plan cards
   the window is closed (`engine-manager.ts:255`) — if the user is on another page
   the events are silently lost and the DB is the source of truth on navigation
   back (`onStreamComplete` bails when the conversation isn't loaded,
-  `chat-event-handlers.ts:226`).
+  `chat-event-handlers.ts:227`).
 - **Every store handler filters by `activeConversationId`** — broadcasts are
   global (one window, all projects), so a handler for a non-active conversation
-  must early-return.
+  must early-return. Handlers that touch the conversation *list*
+  (`onConversationUpdated` `:361`, `onSwitchToConversation` `:405`) must
+  additionally early-return unless the event's `projectId` matches the chat
+  store's `activeProjectId` — otherwise a background project's agent activity
+  replaces the visible sidebar and can hijack the active conversation
+  (see [[frontend-stores]]).
 - **`completedStreamIds` is capped at 50** — across a very long session the
   oldest entries are evicted, so a *very* late token for an ancient stream could
   theoretically slip through.
 - **Listeners register once** — `initChatEventHandlers` is HMR-guarded
-  (`chat-event-handlers.ts:655`) to avoid duplicate listeners; bubble listeners
+  (`chat-event-handlers.ts:728`) to avoid duplicate listeners; bubble listeners
   unregister on unmount.
 - **PM bubble ordering depends on a `createdAt` bump** in `onStreamComplete`; the
   backend repositions the same row by rowid so live view, reload, and model
-  replay agree (`chat-event-handlers.ts:248-253`).
+  replay agree (`chat-event-handlers.ts:249-254`).
 
 ## Related
 - [[agent-engine]] — the engine that drives the `fullStream` loop and callbacks

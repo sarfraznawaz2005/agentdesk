@@ -2,7 +2,7 @@
 title: RPC Layer
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/shared/rpc/index.ts
   - src/bun/rpc-registration.ts
@@ -37,10 +37,10 @@ hard interface boundary.
 ## Key idea: one schema type, two registration points
 
 Electrobun's RPC is bidirectional. The whole contract is the single type
-`AgentDeskRPC` in `src/shared/rpc/index.ts:70-76`, which has two halves:
+`AgentDeskRPC` in `src/shared/rpc/index.ts:72-78`, which has two halves:
 
 - `bun` — what the **Bun side handles**: `requests` (the giant
-  `BunRequests` intersection at `index.ts:40-68`) plus `messages` (fire-and-forget
+  `BunRequests` intersection at `index.ts:41-70`) plus `messages` (fire-and-forget
   log calls, `BunMessages`).
 - `webview` — what the **webview side handles** (`WebviewSchema`,
   `src/shared/rpc/webview.ts:3`): a single request `getViewState`, and a large
@@ -76,8 +76,8 @@ sequenceDiagram
    `createNote` in `src/shared/rpc/notes.ts:31-34`. Each domain file exports a
    `*Requests` type; `index.ts` intersects them all into `BunRequests`.
 2. **Frontend call** — components never call `electroviewRpc` directly. They use
-   the hand-written convenience wrapper `rpc` in `src/mainview/lib/rpc.ts:369`
-   (e.g. `createNote` at `rpc.ts:722`). Each wrapper is a thin one-liner that
+   the hand-written convenience wrapper `rpc` in `src/mainview/lib/rpc.ts:372`
+   (e.g. `createNote` at `rpc.ts:729`). Each wrapper is a thin one-liner that
    maps positional args to the params object and calls
    `electroviewRpc.request.<name>(params)`.
 3. **Dispatch** — Electrobun routes the named request to the matching key in the
@@ -101,13 +101,16 @@ Bun pushes events through `broadcastToWebview(method, payload)` in
 `src/bun/engine-manager.ts:272` — a thin `mainWindowRef?.webview?.rpc?.send?.[method]?.(payload)`
 that silently no-ops if the window is gone. The `method` must be a key in
 `WebviewSchema.messages`. On the webview side, every such message has a handler
-in `electroviewRpc.handlers.messages` (`src/mainview/lib/rpc.ts:47-340`) that
+in `electroviewRpc.handlers.messages` (`src/mainview/lib/rpc.ts:47-343`) that
 simply **re-emits it as a DOM `CustomEvent`** (e.g. `kanbanTaskUpdated` →
 `agentdesk:kanban-task-updated`). Zustand stores / components listen for those
 DOM events (see `chat-event-handlers.ts`) — this DOM-event indirection decouples
 the transport from React state. Group handlers often do both: e.g.
 `createKanbanTask` runs the DB write then `broadcastToWebview("kanbanTaskUpdated", …)`
-(`agents-kanban-notes.ts:22-30`).
+(`agents-kanban-notes.ts:22-30`). The newer `taskCompleted` broadcast
+(`webview.ts:98-106`, fired from the `moveKanbanTask` done-transition chokepoint
+in `src/bun/rpc/kanban.ts`) follows the same path and feeds the cross-project
+completion toast in the app shell.
 
 ## Wiring at startup
 
@@ -123,7 +126,7 @@ state without a restart.
 1. **Contract** — add `myCall: { params; response }` to the right domain file in
    `src/shared/rpc/`. If it's a new domain, create `src/shared/rpc/foo.ts`
    exporting `FooRequests`, import it in `index.ts`, and add it to the
-   `BunRequests` intersection (`index.ts:40-68`).
+   `BunRequests` intersection (`index.ts:41-70`).
 2. **Implementation** — write the function in `src/bun/rpc/<domain>.ts`.
 3. **Registration** — add `myCall: (params) => fooRpc.myCall(params)` to the
    matching group in `src/bun/rpc-groups/*.ts` (or to `features.ts` for newer
@@ -191,7 +194,7 @@ the remote WS transport reuses it). The implementation modules in
 
 ## Open questions
 
-- The `rpc` convenience wrapper (`mainview/lib/rpc.ts`, ~1587 lines) is partly
+- The `rpc` convenience wrapper (`mainview/lib/rpc.ts`, ~1687 lines) is partly
   redundant with the typed `electroviewRpc.request.*` surface — is it kept purely
   for ergonomics, or do any callers depend on its arg-reshaping? Worth a lint to
   confirm no contract methods are missing wrappers.

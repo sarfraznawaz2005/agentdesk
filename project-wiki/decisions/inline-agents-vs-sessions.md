@@ -2,7 +2,7 @@
 title: Inline Agents vs Persistent Sessions
 type: decision
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - docs/agent-sessions-proposal.md
   - src/bun/db/migrations/v3_agent-sessions.ts
@@ -81,8 +81,8 @@ Concretely:
 ## How the inline model works instead
 
 The executor is [[agent-engine#run_agent|`runInlineAgent`]] in
-`agent-loop.ts:784`. The context it builds is deliberately minimal
-(`agent-loop.ts:1055-1058`):
+`agent-loop.ts:801`. The context it builds is deliberately minimal
+(`agent-loop.ts:1065-1068`):
 
 ```ts
 const agentMessages: ModelMessage[] = [
@@ -93,7 +93,7 @@ const agentMessages: ModelMessage[] = [
 
 `priorMessages` is **not** a revived session — it is an opt-in escape hatch used
 only by the Playground, which keeps its own history in a JSON file
-(`agent-loop.ts:154-159`); the PM/kanban/review paths never pass it, so a normal
+(`agent-loop.ts:160-165`); the PM/kanban/review paths never pass it, so a normal
 sub-agent run is exactly `[ { role: "user", content: task } ]`. There is no
 iteration cap; the agent runs a `generateText` loop with progressive compaction
 until done or context-full.

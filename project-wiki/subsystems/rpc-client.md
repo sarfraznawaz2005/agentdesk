@@ -2,7 +2,7 @@
 title: RPC Client (Frontend)
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/mainview/lib/rpc.ts
   - src/shared/rpc/index.ts
@@ -33,27 +33,27 @@ end-to-end contract, registration, and Bun side live in [[rpc-layer]].
 `src/mainview/lib/rpc.ts` has exactly three jobs, in this order:
 
 1. **Define the webview RPC schema** (`Electroview.defineRPC<AgentDeskRPC>`,
-   `rpc.ts:29`). Because both sides share the `AgentDeskRPC` type
-   (`src/shared/rpc/index.ts:70-76`), `defineRPC` here registers what the
+   `rpc.ts:30`). Because both sides share the `AgentDeskRPC` type
+   (`src/shared/rpc/index.ts:72-78`), `defineRPC` here registers what the
    *webview* answers — the Bun→UI direction — while exposing `rpc.request.*` /
    `rpc.send.*` for calling Bun. The webview's `handlers` have two sub-maps:
    - `requests` — incoming *requests* from Bun. There is exactly one:
-     `getViewState` (`rpc.ts:39-44`), which reports the current SPA route from
+     `getViewState` (`rpc.ts:40-45`), which reports the current SPA route from
      `window.location.hash` so Bun can query where the UI is.
    - `messages` — incoming fire-and-forget *broadcasts* from Bun
-     (`rpc.ts:47-340`). Every entry matches a key in `WebviewSchema.messages`
+     (`rpc.ts:47-343`). Every entry matches a key in `WebviewSchema.messages`
      (`src/shared/rpc/webview.ts:10`).
 
 2. **Construct the live transport** — `new Electroview({ rpc: electrobunRpc })`
-   (`rpc.ts:356`, native only — `null` in web mode). This is what wires the
+   (`rpc.ts:359`, native only — `null` in web mode). This is what wires the
    renderer to the Bun process; the exported `electroview` is rarely used
    elsewhere, the `rpc` wrapper is.
 
-3. **Export the typed `rpc` wrapper** (`rpc.ts:369-1680`) — ~250 thin
+3. **Export the typed `rpc` wrapper** (`rpc.ts:372-1687`) — ~250 thin
    one-liners grouped by domain (Settings, Providers, Projects, Conversations,
    Kanban, Git, Freelance, Playground, …). Each maps positional/ergonomic args
    to the contract's params object and forwards to `electroviewRpc.request.*`
-   (or `electroviewRpc.send.*` for fire-and-forget like `log`, `rpc.ts:1217`).
+   (or `electroviewRpc.send.*` for fire-and-forget like `log`, `rpc.ts:1223`).
 
 ## Why every broadcast becomes a DOM CustomEvent
 
@@ -65,9 +65,14 @@ nothing but re-emit the payload as a `window` `CustomEvent`** under an
 This indirection exists to **decouple the RPC transport from React state**.
 `rpc.ts` has no knowledge of Zustand or any component; it just throws a DOM
 event. Consumers subscribe with `window.addEventListener("agentdesk:…")` — e.g.
-`chat-event-handlers.ts:732-750` wires the streaming/plan/conversation events
+`chat-event-handlers.ts:735-757` wires the streaming/plan/conversation events
 into the chat store. New broadcast consumers can be added anywhere in the UI
 without touching this file, and a broadcast with no listener is simply ignored.
+A recent example: `taskCompleted` → `agentdesk:task-completed` (`rpc.ts:115-117`)
+was added for cross-project completion toasts; its only consumer is the
+`BackgroundTaskToast` singleton in the app shell
+(`src/mainview/components/layout/background-task-toast.tsx:40`), which gates on
+the chat store's `activeProjectId` so only *other* projects' completions toast.
 The flip side is the gotcha below: a broadcast needs **both** a `webview.ts`
 schema entry and a re-emit handler here, or it silently does nothing.
 
@@ -75,7 +80,7 @@ schema entry and a re-emit handler here, or it silently does nothing.
 
 Electrobun's default request timeout is ~1 second. Agent operations (PM
 streaming, sub-agent runs, deploys) take minutes, so the webview RPC disables
-the timeout entirely (`rpc.ts:30-31`). The Bun side does the same. Do not
+the timeout entirely (`rpc.ts:31-32`). The Bun side does the same. Do not
 reintroduce a finite timeout here — long-running requests would spuriously
 reject.
 
@@ -88,7 +93,7 @@ objects, gives each method a JSDoc one-liner, and is the single import surface
 the whole renderer agreed on. The cost: it is **hand-maintained and can drift** —
 a new contract method has no wrapper until someone adds one (see Open questions).
 Newer freelance/auto-earn methods use bracket-key access for dotted contract
-names (e.g. `electroviewRpc.request["freelance.inbox.ingest"]`, `rpc.ts:1587`).
+names (e.g. `electroviewRpc.request["freelance.inbox.ingest"]`, `rpc.ts:1594`).
 
 ## Key files
 
@@ -97,19 +102,19 @@ names (e.g. `electroviewRpc.request["freelance.inbox.ingest"]`, `rpc.ts:1587`).
 | `src/mainview/lib/rpc.ts` | `Electroview.defineRPC` + the `Electroview` instance + the typed `rpc` wrapper; webview `getViewState` handler; all broadcast→DOM-event re-emitters |
 | `src/shared/rpc/index.ts` | Shared `AgentDeskRPC` type — the contract both sides instantiate |
 | `src/shared/rpc/webview.ts` | `WebviewSchema` — the catalog of Bun→UI broadcasts this client must re-emit |
-| `src/mainview/stores/chat-event-handlers.ts` | Representative consumer: listens for `agentdesk:*` DOM events and updates the chat store (`:732-750`) |
+| `src/mainview/stores/chat-event-handlers.ts` | Representative consumer: listens for `agentdesk:*` DOM events and updates the chat store (`:735-757`) |
 
 ## Gotchas / Constraints
 
 - **Broadcast needs two edits, not one.** To deliver a Bun→UI event you must add
   it to `WebviewSchema.messages` (`webview.ts`) AND add a re-emit handler in the
-  `messages` map here (`rpc.ts:47-340`). Missing the handler = the payload
+  `messages` map here (`rpc.ts:47-343`). Missing the handler = the payload
   arrives and is dropped silently.
 - **Broadcasts are lossy.** They are fire-and-forget; the Bun side no-ops when
   the window is gone. Treat `agentdesk:*` events as cache-invalidation hints, not
   state-of-record — components should refetch via `rpc.*` on mount, not rely on
   having received every event (see the completed-stream guard in
-  `chat-event-handlers.ts:15-25` that defensively drops late `stream-token`s).
+  `chat-event-handlers.ts:16-26` that defensively drops late `stream-token`s).
 - **The wrapper can lag the contract.** It is not generated; a contract method
   with no `rpc.*` wrapper is invisible to most of the app until added.
 - **Never bypass it with direct DB access** — `CLAUDE.md` makes RPC the hard
