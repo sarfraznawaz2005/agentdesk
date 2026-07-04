@@ -17,7 +17,7 @@ import { PmChatWidget } from "@/components/dashboard/pm-chat-widget";
 import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-chat-launcher";
 import { ChatFab } from "@/components/dashboard/chat-fab";
 import { MaintenanceOverlay } from "@/components/layout/maintenance-overlay";
-import { BackgroundTaskToast } from "@/components/layout/background-task-toast";
+import { AgentSessionToast } from "@/components/layout/agent-session-toast";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { ProjectAvatar } from "@/components/project-avatar";
@@ -354,7 +354,7 @@ function AppShellContent() {
         </div>
       </main>
       <Toaster />
-      <BackgroundTaskToast />
+      <AgentSessionToast />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
 
       <StartupHealthDialog />

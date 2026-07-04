@@ -179,8 +179,8 @@ branch-strategy), `activity/` (context panel + docs/files tabs), `notes/`,
 `issues/` + `issue-fixer/`, `deploy/`, `remote-sync/`, `freelance/`, `scheduler/`,
 `inbox/`, `dashboard/`, `analytics/`, `project-settings/`, `layout/` (app-shell,
 sidebar, topnav, project-branch-badge, project-switcher, maintenance-overlay,
-background-task-toast — a global listener mounted in AppShell that toasts task
-completions from background projects), `modals/`, and `ui/`
+agent-session-toast — a global listener mounted in AppShell that toasts an
+agent-dispatch session finishing in a background project), `modals/`, and `ui/`
 (~35 Radix-based primitives + `mermaid-diagram`, `unified-diff`, `password-input`).
 See [[frontend-components]].
 

@@ -102,10 +102,10 @@ What the shell owns (and why it lives here, above the router outlet):
 - **Always-mounted singletons** that must outlive page changes: the Auto-Earn
   background engine `<AlwaysMountedInbox>` (`app-shell.tsx:377`), the floating
   PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:385-386`),
-  `<BackgroundTaskToast>` (`app-shell.tsx:357`) — a render-nothing listener that
-  toasts `agentdesk:task-completed` events for projects the user is *not*
-  viewing (gated on the chat store's `activeProjectId`,
-  `background-task-toast.tsx:27`) — and side-effect store imports for the
+  `<AgentSessionToast>` (`app-shell.tsx:357`) — a render-nothing listener that
+  toasts `agentdesk:agent-session-complete` events for projects the user is
+  *not* viewing (gated on the chat store's `activeProjectId`,
+  `agent-session-toast.tsx:27`) — and side-effect store imports for the
   issue-fixer and unread stores (`app-shell.tsx:28-33`).
 
 ### Top-nav action slot (header context)
@@ -159,8 +159,10 @@ need a gate: `ProjectPage` declares which project is open via the chat store's
 `setActiveProject` (`chat-store.ts:194-196`, called at `project.tsx:112`, cleared
 on unmount at `project.tsx:139`), and store-side handlers ignore broadcasts whose
 `projectId` doesn't match `activeProjectId` (`chat-event-handlers.ts:414-417`).
-`BackgroundTaskToast` inverts the same signal to toast completions from *other*
-projects.
+`AgentSessionToast` inverts the same signal to toast a finished agent-dispatch
+session from *other* projects — the broadcast itself only fires once a
+project's PM and all its agents have gone idle (`engine-manager.ts`), not once
+per kanban task. See [[agent-engine]].
 
 ## RPC bridge
 

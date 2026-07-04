@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-07-01
+verified_at: 2026-07-04
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts

@@ -90,21 +90,29 @@ Because `sendDesktopNotification` is ungated, several features add their own
 
 - **Session complete** (PM + all agents idle): gated by the
   `session_complete_notification` setting and only fired when the app window is
-  **not** focused (`engine-manager.ts:620-638`). The idle check is wrapped in a
-  `setTimeout(0)` so the engine's `finally` clears `pmProcessing` first
-  (`engine-manager.ts:621-624`).
+  **not** focused (`engine-manager.ts:630-660`). The idle check is wrapped in a
+  `setTimeout(0)` so the engine's `finally` clears `pmProcessing` first. The
+  same idle check now also drives an **in-app** toast (`agentSessionComplete`,
+  `engine-manager.ts:647`) that fires regardless of window focus — see the
+  cross-reference below.
 - **Agent error**: gated by the `error_notification` setting (default on) and,
   like session-complete, only fired when the app is **not** focused. Fires from
-  the `onStreamError` callback (`engine-manager.ts:640-659`, the same callback
+  the `onStreamError` callback (`engine-manager.ts:663-682`, the same callback
   that broadcasts `streamError`) so the red in-chat error and the toast share a
   trigger point.
 - **Shell approval required**: always fired so the user can approve while away
   (`engine-manager.ts:393-398`).
 - **Agent needs input**: `request_human_input` (`engine-manager.ts:499`).
-- **Task done**: kanban move to done (`src/bun/rpc/kanban.ts:213`). The same
-  done-branch also broadcasts a `taskCompleted` webview event
-  (`kanban.ts:220`) that feeds an **in-app** toast for background projects —
-  that path is frontend toast plumbing, not an OS notification.
+- **Task done**: kanban move to done (`src/bun/rpc/kanban.ts:213`). This is
+  OS-notification-only now — there is no in-app toast keyed on a single kanban
+  task reaching done (that used to exist via a `taskCompleted` broadcast, since
+  retired). The in-app equivalent is `agentSessionComplete`, which fires once a
+  project's *entire* agent-dispatch session goes idle
+  (`engine-manager.ts:630-660`, gated on `sessionHadAgentActivity` so a plain
+  PM chat reply with zero agent dispatches doesn't toast), not once per task.
+  Its sole consumer is the `AgentSessionToast` singleton in the app shell
+  (`layout/agent-session-toast.tsx`), gated on the chat store's
+  `activeProjectId` — see [[frontend-components]] and [[agent-engine]].
 - **Scheduler/cron**: reminders + job results (`scheduler/cron-scheduler.ts:69`,
   `scheduler/task-executor.ts:64,366`).
 - **Freelance**: new listings (`freelance/fetcher.ts:218`), bid ready

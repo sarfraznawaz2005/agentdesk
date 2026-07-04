@@ -95,13 +95,15 @@ export type WebviewSchema = RPCSchema<{
       action: "created" | "updated" | "moved" | "deleted";
     };
 
-    // A task reached the "done" column. Fired from the moveKanbanTask
-    // chokepoint (every done-transition funnels through it) so the UI can
-    // toast completions that happen in a project the user is not viewing.
-    taskCompleted: {
+    // A project's PM went idle with no agents running or queued — i.e. an entire
+    // dispatch session finished, not just one kanban task. Fired from the same
+    // idle-check in engine-manager.ts that already drives the "Session Complete"
+    // desktop notification, so the UI can toast this for a project the user is
+    // not currently viewing. Only fires if at least one agent actually ran
+    // during the session (a plain PM chat reply with zero dispatches is not a
+    // "session"); see the session-had-agent-activity tracking in engine-manager.ts.
+    agentSessionComplete: {
       projectId: string;
-      taskId: string;
-      taskTitle: string;
       projectName: string;
     };
 

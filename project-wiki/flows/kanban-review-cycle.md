@@ -208,7 +208,7 @@ the PM that the agent skipped verification (`pm-tools.ts:653`).
 |---|---|
 | `src/bun/agents/review-cycle.ts` | The whole auto-review cycle: spawn reviewer, read verdict, round logic, force-complete, `autoCommitTask`, PM auto-continue |
 | `src/bun/agents/tools/kanban.ts` | `move_task` transition enforcement, `verify_implementation` gate, `submit_review`, `check_criteria` |
-| `src/bun/rpc/kanban.ts` | `moveKanbanTask` DB write + activity log + `task:moved` event + done side effects: desktop notification, `taskCompleted` broadcast, channel notify, issue auto-close (`kanban.ts:179`) |
+| `src/bun/rpc/kanban.ts` | `moveKanbanTask` DB write + activity log + `task:moved` event + done side effects: desktop notification, channel notify, issue auto-close (`kanban.ts:179`) |
 | `src/bun/agents/tools/pm-tools.ts` | `run_agent` post-run move-to-review path (`pm-tools.ts:634`) |
 | `tests/agents/review-cycle.test.ts` | Unit tests for the verdict heuristics |
 
@@ -255,12 +255,15 @@ the PM that the agent skipped verification (`pm-tools.ts:653`).
   with the issues only recorded as a note. "Done" is therefore not an absolute
   quality guarantee — read `importantNotes`.
 - **`done` has heavy side effects.** `moveKanbanTask(..., "done")` fires a
-  desktop notification, broadcasts a `taskCompleted` webview event (the in-app
-  toast for completions in projects the user isn't viewing —
-  `background-task-toast.tsx`, mounted in AppShell, gated on the chat store's
-  `activeProjectId`), notifies all channels, and auto-closes any linked
+  desktop notification, notifies all channels, and auto-closes any linked
   external issue (`rpc/kanban.ts:212`). Every done-transition funnels through
-  this one function.
+  this one function. There is deliberately **no in-app toast keyed on this
+  specific transition** — an earlier version toasted every kanban task reaching
+  `done`, but that was retired in favor of `agentSessionComplete`
+  (`engine-manager.ts`), which toasts once a project's *entire* agent-dispatch
+  session goes idle (PM done + no agents running/queued), not once per task.
+  See [[agent-engine]] and the `AgentSessionToast` component
+  (`layout/agent-session-toast.tsx`).
 
 ## Related
 - [[agent-engine]]

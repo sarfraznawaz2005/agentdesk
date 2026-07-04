@@ -2,7 +2,7 @@
 title: Glossary
 type: glossary
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - CLAUDE.md
   - src/bun/agents/engine.ts
@@ -35,6 +35,12 @@ extension that autonomously reads the freelance platform inbox and drafts/sends
 replies and bids over the freelancer's *own* real session, never as a flagged
 bot. Every send passes the [[freelance-autoearn|Behavior Governor]] and an
 anomaly circuit breaker. See [[freelance-autoearn]], [[auto-earn-end-to-end]].
+
+**Auto-execute** — The per-project `autoExecuteNextTask` setting (default on).
+When off, the engine swaps a computed `[Next Action] DISPATCH` hint for
+`PAUSED` after a task completes — the PM reports the task done and waits for
+the user to say "continue" instead of auto-starting the next backlog task. See
+[[pm-sole-orchestrator]], [[kanban-review-cycle]].
 
 **autoCommitTask** — The function in `review-cycle.ts` that, when a task is
 approved, switches to (or creates) the active feature branch and commits the
@@ -122,9 +128,19 @@ embedding tokens, never Git Credential Manager). Use `gitAuthArgs(token)` /
 
 ## H
 
-**Handoff** — A generated summary of the prior task's modified files, prepended
-to the next sequential agent's task as `## Prior Work` to carry continuity
-between stateless inline agents. See [[inline-agents-vs-sessions]].
+**Hallucination guard** — The engine's defense against the PM writing "I'll
+dispatch…"/"Done." narration without actually calling `run_agent`: detected via
+the injected `[Next Action] DISPATCH` hint, a scan of the PM's thinking block
+for a concluded dispatch decision, or a response-text regex fallback; corrected
+by an in-memory retry (up to twice) and, if retries are exhausted, a post-stream
+ground-truth check against the live running-agent count. See [[agent-engine]],
+[[pm-sole-orchestrator]].
+
+**Handoff** — A generated summary of the prior task's modified files, stored as
+a `## Handoff Summary` note on the completed kanban task and surfaced to the PM
+via `get_next_task`'s `priorWork` field so it can fold it into the next
+sequential agent's task description, carrying continuity between stateless
+inline agents. See [[inline-agents-vs-sessions]].
 
 ## I
 

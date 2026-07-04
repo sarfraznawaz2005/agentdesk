@@ -112,8 +112,8 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       kanbanTaskUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:kanban-task-updated", { detail: payload }));
       },
-      taskCompleted: (payload) => {
-        window.dispatchEvent(new CustomEvent("agentdesk:task-completed", { detail: payload }));
+      agentSessionComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:agent-session-complete", { detail: payload }));
       },
       providerTestResult: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:provider-test-result", { detail: payload }));

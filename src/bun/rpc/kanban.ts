@@ -211,20 +211,15 @@ export async function moveKanbanTask(
 		broadcastToWebview("kanbanTaskUpdated", { projectId: current.projectId, taskId: id, action: "moved" });
 		if (column === "done") {
 			sendDesktopNotification("✅ Task Done", current.title ?? id).catch(() => {});
-			// Notify all connected channels + the in-app toast (fire-and-forget)
+			// Notify all connected channels (fire-and-forget). The in-app toast for
+			// this project is no longer keyed off a single task reaching "done" — see
+			// the agentSessionComplete broadcast in engine-manager.ts, which fires once
+			// the whole project goes idle instead of once per task.
 			db.select({ name: projects.name })
 				.from(projects)
 				.where(eq(projects.id, current.projectId))
 				.limit(1)
-				.then((rows) => {
-					broadcastToWebview("taskCompleted", {
-						projectId: current.projectId,
-						taskId: id,
-						taskTitle: current.title ?? id,
-						projectName: rows[0]?.name ?? "Project",
-					});
-					return broadcastTaskDoneNotification(current.title ?? id, rows[0]?.name ?? undefined);
-				})
+				.then((rows) => broadcastTaskDoneNotification(current.title ?? id, rows[0]?.name ?? undefined))
 				.catch(() => {});
 			// Close any linked external issue across all sources (best-effort; no-op if
 			// none is linked or the source isn't configured). Every done-transition

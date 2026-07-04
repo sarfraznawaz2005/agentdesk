@@ -107,10 +107,12 @@ simply **re-emits it as a DOM `CustomEvent`** (e.g. `kanbanTaskUpdated` →
 DOM events (see `chat-event-handlers.ts`) — this DOM-event indirection decouples
 the transport from React state. Group handlers often do both: e.g.
 `createKanbanTask` runs the DB write then `broadcastToWebview("kanbanTaskUpdated", …)`
-(`agents-kanban-notes.ts:22-30`). The newer `taskCompleted` broadcast
-(`webview.ts:98-106`, fired from the `moveKanbanTask` done-transition chokepoint
-in `src/bun/rpc/kanban.ts`) follows the same path and feeds the cross-project
-completion toast in the app shell.
+(`agents-kanban-notes.ts:22-30`). The newer `agentSessionComplete` broadcast
+(`webview.ts:105-113`, fired from the idle-check inside `onStreamComplete` in
+`src/bun/engine-manager.ts:630-660` — once a project's PM and all its agents
+are idle, not once per kanban task) follows the same path and feeds the
+cross-project agent-session-completion toast in the app shell. See
+[[notifications]] and [[agent-engine]].
 
 ## Wiring at startup
 

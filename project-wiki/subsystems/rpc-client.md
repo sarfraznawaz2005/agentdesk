@@ -68,11 +68,16 @@ event. Consumers subscribe with `window.addEventListener("agentdesk:…")` — e
 `chat-event-handlers.ts:735-757` wires the streaming/plan/conversation events
 into the chat store. New broadcast consumers can be added anywhere in the UI
 without touching this file, and a broadcast with no listener is simply ignored.
-A recent example: `taskCompleted` → `agentdesk:task-completed` (`rpc.ts:115-117`)
-was added for cross-project completion toasts; its only consumer is the
-`BackgroundTaskToast` singleton in the app shell
-(`src/mainview/components/layout/background-task-toast.tsx:40`), which gates on
-the chat store's `activeProjectId` so only *other* projects' completions toast.
+A recent example: `agentSessionComplete` → `agentdesk:agent-session-complete`
+(`rpc.ts:115-117`) fires once a project's PM and all its agents go idle
+(mirrors the existing "Session Complete" desktop notification's trigger, see
+[[notifications]]); its only consumer is the `AgentSessionToast` singleton in
+the app shell (`src/mainview/components/layout/agent-session-toast.tsx:41`),
+which gates on the chat store's `activeProjectId` so only *other* projects'
+completions toast. An earlier version of this toast fired per kanban task
+reaching "done" (`taskCompleted`) — retired in favor of the session-level
+signal, since a task can pass through several review rounds before it's truly
+done.
 The flip side is the gotcha below: a broadcast needs **both** a `webview.ts`
 schema entry and a re-emit handler here, or it silently does nothing.
 

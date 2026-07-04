@@ -79,6 +79,16 @@ export function getRunningAgentCount(projectId: string): number {
 	return runningAgentControllers.get(projectId)?.size ?? 0;
 }
 
+/**
+ * Tracks whether at least one (non-cancelled) sub-agent has completed since the
+ * project's last idle-settle. Set in onAgentInlineComplete, consumed + cleared
+ * by the idle-check in onStreamComplete — this is what lets that check
+ * distinguish "a whole agent-dispatch session just finished" from "the PM sent
+ * a plain chat reply with zero dispatches" (both look identical to the
+ * existing isProcessing()/getRunningAgentCount()==0/queue-empty gate alone).
+ */
+const sessionHadAgentActivity = new Map<string, boolean>();
+
 /** Returns names of currently running agents for a project. */
 export function getRunningAgentNames(projectId: string): string[] {
 	const map = runningAgentControllers.get(projectId);
@@ -617,11 +627,26 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					}
 				}
 
-				// Desktop notification when everything is idle (PM done + no agents).
+				// Fires when everything is idle (PM done + no agents running/queued).
 				// Use setTimeout(0) so the engine's finally block sets pmProcessing=false first.
 				setTimeout(() => {
 					const e = engines.get(projectId);
 					if (!e || e.isProcessing() || getRunningAgentCount(projectId) > 0 || e.getQueuedAgentsSnapshot().length > 0) return;
+
+					const hadAgentActivity = sessionHadAgentActivity.get(projectId) === true;
+					if (hadAgentActivity) sessionHadAgentActivity.set(projectId, false);
+
+					const row = db.select({ name: projects.name }).from(projects).where(eq(projects.id, projectId)).get();
+					const name = row?.name ?? "Project";
+
+					// In-app toast for a background project — fires regardless of window
+					// focus (that's the point of it; the desktop notification below is for
+					// when the user is away entirely). Skipped if the PM never actually
+					// dispatched an agent this turn — a plain chat reply isn't a "session".
+					if (hadAgentActivity) {
+						broadcastToWebview("agentSessionComplete", { projectId, projectName: name });
+					}
+
 					// Skip if app window is in focus — notification only useful when user is away
 					if (appFocused) return;
 					// Respect the "session complete" notification setting (default: enabled)
@@ -629,8 +654,6 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 						.where(eq(settings.key, "session_complete_notification")).get();
 					const enabled = settingRow ? settingRow.value !== "\"false\"" && settingRow.value !== "false" : true;
 					if (!enabled) return;
-					const row = db.select({ name: projects.name }).from(projects).where(eq(projects.id, projectId)).get();
-					const name = row?.name ?? "Project";
 					sendDesktopNotification(
 						`${name} — Session Complete`,
 						usage.content.slice(0, 150) || "All agents have finished.",
@@ -677,7 +700,13 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 			onAgentInlineComplete: (conversationId, messageId, agentName, status, summary, tokensUsed) => {
 				broadcastToWebview("agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
 				// A sub-agent finished work in the main chat (skip user-cancelled runs).
-				if (status !== "cancelled") recordActivity(projectId, "chat").catch(() => {});
+				if (status !== "cancelled") {
+					recordActivity(projectId, "chat").catch(() => {});
+					// Marks this project's session as having real agent activity, so the
+					// idle-check in onStreamComplete knows a plain PM chat reply (zero
+					// dispatches) shouldn't trigger the "all agents completed" toast.
+					sessionHadAgentActivity.set(projectId, true);
+				}
 			},
 			onPartCreated: (conversationId, part) => {
 				broadcastToWebview("partCreated", {

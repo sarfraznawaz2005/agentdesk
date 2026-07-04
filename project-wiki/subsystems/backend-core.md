@@ -2,7 +2,7 @@
 title: Backend Core & Entry
 type: subsystem
 status: verified
-verified_at: 2026-06-30
+verified_at: 2026-07-04
 sources:
   - src/bun/index.ts
   - src/bun/engine-manager.ts
@@ -55,31 +55,31 @@ flowchart TD
   DR --> MCP[setTimeout 10s: MCP clients]
 ```
 
-### 1. Synchronous critical path (`index.ts:137`–`index.ts:182`)
-Global error handlers install first (`index.ts:137`) so nothing later throws
+### 1. Synchronous critical path (`index.ts:140`–`index.ts:189`)
+Global error handlers install first (`index.ts:140`) so nothing later throws
 unlogged. Immediately after, `installAiSdkWarningHandler()` (`db/error-logger.ts`)
 claims the Vercel AI SDK's `globalThis.AI_SDK_LOG_WARNINGS` seam — routing every
 SDK warning to the console in the `dev` channel and to `error.log` with a
 `[WARNING]` prefix in production/canary — before any inference can fire with the
 SDK's default logger. Then the DB pipeline runs in strict order: `runMigrations()` →
 `await seedDatabase()` → `loadCustomEnvVarsIntoProcess()` → `encryptExistingSecrets()`
-(`index.ts:142`–`index.ts:145`). The secret-encryption pass must run *after* seed
+(`index.ts:150`–`index.ts:153`). The secret-encryption pass must run *after* seed
 but *before* anything reads credentials. After that the cheap, fire-on-time
 services start early so health checks pass and scheduled jobs aren't late: WAL
-checkpoint timer (`index.ts:158`), truncation dir (`index.ts:161`), cron scheduler
-+ automation engine (`index.ts:167`–`index.ts:170`), and Issue Fixer polling
-(`index.ts:173`). `setTaskExecutorEngine(getOrCreateEngine)` (`index.ts:167`) is
+checkpoint timer (`index.ts:174`), truncation dir (`index.ts:177`), cron scheduler
++ automation engine (`index.ts:183`–`index.ts:186`), and Issue Fixer polling
+(`index.ts:189`). `setTaskExecutorEngine(getOrCreateEngine)` (`index.ts:183`) is
 the wiring point that lets the scheduler dispatch into the engine layer.
 
-### 2. Window creation (`index.ts:185`–`index.ts:206`)
-`loadWindowState()` restores the persisted frame from
-`<userData>/window-state.json` (`index.ts:52`), falling back to a centered default
-on the primary display. `getMainViewUrl()` (`index.ts:115`) decides between the
+### 2. Window creation (`index.ts:202`–`index.ts:222`)
+`loadWindowState()` (`index.ts:59`) restores the persisted frame from
+`<userData>/window-state.json` (`index.ts:56`), falling back to a centered default
+on the primary display. `getMainViewUrl()` (`index.ts:118`) decides between the
 Vite dev server (`http://localhost:5173`, retried up to 15s in the `dev` channel)
 and the bundled `views://mainview/index.html`. **`isDevMode` is derived purely
-from whether that URL is localhost** (`index.ts:190`) — it gates DevTools and the
+from whether that URL is localhost** (`index.ts:206`) — it gates DevTools and the
 right-click context menu. Immediately after construction,
-`setMainWindowRef(mainWindow)` (`index.ts:206`) hands the window to the
+`setMainWindowRef(mainWindow)` (`index.ts:222`) hands the window to the
 EngineManager so engine callbacks can broadcast RPC.
 
 ### 3. DB maintenance split (the "never block the window, never flash a modal" rule)
@@ -96,8 +96,10 @@ Maintenance is deliberately split by cost profile:
   file (duration scales with size) and holds a lock that stalls queries app-wide,
   so it is the one startup op that shows the overlay — but only when actually due.
 
-A `setTimeout(0)` (`index.ts`) also pushes workspace folder sync, stuck-deploy
-reconcile, and an orphaned-`workflow:%`-settings cleanup off the boot path.
+A `setTimeout(0)` (`index.ts:229`) also pushes workspace folder sync, stuck-deploy
+reconcile, an orphaned-`workflow:%`-settings cleanup, and
+`reconcilePendingApprovalsOnStartup()` (`index.ts:236`–`index.ts:238`, see
+"Durability" below) off the boot path.
 
 **Maintenance overlay.** Because VACUUM (and the manual Settings ops) hold a DB
 lock and stall queries app-wide, they drive a **global overlay** instead of bare
@@ -110,85 +112,98 @@ shown ONLY by the rare 7-day VACUUM and by the **manual** optimize/vacuum/prune
 RPCs (user-clicked in Settings); the pre-window incremental optimize and the
 periodic WAL checkpoint never show it.
 
-### 4. Background services on `dom-ready` (`index.ts:237`–`index.ts:301`)
+### 4. Background services on `dom-ready` (`index.ts:258`–`index.ts:337`)
 A `backgroundServicesInitialised` boolean guards this block so it runs once. On
 DOM ready the window maximizes, the Win32 titlebar icon is set via FFI
-(`setWindowTitlebarIcon`, `index.ts:381` — a `user32.dll` `WM_SETICON` call), and
+(`setWindowTitlebarIcon`, `index.ts:419` — a `user32.dll` `WM_SETICON` call), and
 in production a `contextmenu` preventDefault is injected to remove Inspect Element.
 Then, in order: `initPlugins()` → `skillRegistry.loadAll()` → register channel
 adapters + `initChannelManager` (fire-and-forget so a slow WhatsApp reconnect
-can't stall the rest) → **MCP clients delayed another 10s** (`index.ts:277`, so
+can't stall the rest) → **MCP clients delayed another 10s** (`index.ts:306`, so
 spawning external servers like chrome-devtools doesn't fight the UI load) →
 annotation + playground static servers → optional freelance poller + Auto-Earn
 watchdog (both self-gated on the freelance flag).
 
-### 5. Navigation lockdown (`index.ts:306`)
+### 5. Navigation lockdown (`index.ts:342`)
 `setNavigationRules` blocks all navigation by default and allow-lists only
 `views://*`, `http://localhost:*`, and `http://127.0.0.1:*`. This is a security
 boundary: AI-generated content (preview/playground) can never redirect the main
 window to an arbitrary external origin.
 
-### 6. Shutdown (`index.ts:344`)
+### 6. Shutdown (`index.ts:380`)
 `before-quit` saves the final window frame, then tears down every long-lived
 service (channels, cron, automation, issue-fixer, MCP, preview window, annotation
 + playground servers) and finally `closeDatabase()` so WAL is checkpointed
-cleanly. Window `close` calls `Utils.quit()` (`index.ts:336`), which routes
+cleanly. Window `close` calls `Utils.quit()` (`index.ts:373`), which routes
 through this handler.
 
 ## EngineManager — engine cache + control plane (`engine-manager.ts`)
 
-`getOrCreateEngine(projectId)` (`engine-manager.ts:459`) is the single factory for
+`getOrCreateEngine(projectId)` (`engine-manager.ts:572`) is the single factory for
 `AgentEngine` instances; they live in the module-level `engines` Map
-(`engine-manager.ts:19`). On a cache miss it first calls `evictOldestIdleEngine()`
-(`engine-manager.ts:215`) — when the map exceeds `ENGINE_MAP_MAX_SIZE` (50,
-`engine-manager.ts:194`) it evicts the first **idle** engine (not processing, zero
+(`engine-manager.ts:26`). On a cache miss it first calls `evictOldestIdleEngine()`
+(`engine-manager.ts:222`) — when the map exceeds `ENGINE_MAP_MAX_SIZE` (50,
+`engine-manager.ts:201`) it evicts the first **idle** engine (not processing, zero
 running agents); if all 50 are busy the map is allowed to grow temporarily. The
-factory wires the engine's huge `AgentEngineCallbacks` object (`engine-manager.ts:464`)
-— every callback funnels through `broadcastToWebview` (`engine-manager.ts:252`),
+factory wires the engine's huge `AgentEngineCallbacks` object (`engine-manager.ts:577`)
+— every callback funnels through `broadcastToWebview` (`engine-manager.ts:272`),
 and the abort hooks (`registerAgentAbort`/`unregisterAgentAbort`/`setAbortAgentsFn`,
-`engine-manager.ts:625`) connect the engine to the global abort registry below.
+`engine-manager.ts:756`–`engine-manager.ts:759`) connect the engine to the global
+abort registry below.
 
-### Global abort registry (`engine-manager.ts:30`–`engine-manager.ts:91`)
+### Global abort registry (`engine-manager.ts:33`–`engine-manager.ts:98`)
 `runningAgentControllers` is a `Map<projectId, Map<AbortController, entry>>`.
 `registerAgentController`/`unregisterAgentController` keep it current as agents
 start/stop; `abortAllAgents` (used by stopGeneration) and `abortAgentByName` (stop
 one agent) are the two cancellation entry points. `getRunningAgentCount` /
 `getRunningAgentNames` / `getAllRunningAgents` / `getSystemActivity`
-(`engine-manager.ts:97`) read this registry — `getSystemActivity` also asks each
+(`engine-manager.ts:104`) read this registry — `getSystemActivity` also asks each
 live engine `isProcessing()` and `getQueuedAgentsSnapshot()` to report
-PM-streaming + queued state, and `getStatusReport` (`engine-manager.ts:127`) turns
+PM-streaming + queued state, and `getStatusReport` (`engine-manager.ts:134`) turns
 all of that into the markdown for the `/info` slash command and the dashboard
 widget.
 
 ### Human-in-the-loop: shell approval + user questions
 Two near-identical "broadcast a request, return a Promise, resolve from an RPC"
 patterns live here:
-- **Shell approval** (`engine-manager.ts:333`): `installShellApprovalHandler`
-  (called at module load, `engine-manager.ts:372`) wires the shell tool. It reads
-  the project's `shellApprovalMode` setting (`engine-manager.ts:315`); `"auto"`
-  returns `"allow"` immediately, `"ask"` broadcasts `shellApprovalRequest` + an OS
-  toast and returns a Promise that the RPC `resolveShellApproval`
-  (`engine-manager.ts:299`) settles. **Auto-denies after 5 minutes** so a missed
-  prompt never deadlocks an agent.
-- **User questions** (`askUserQuestion`, `engine-manager.ts:416`): same shape for
+- **Shell approval** (`engine-manager.ts:333` `resolveShellApproval`):
+  `installShellApprovalHandler` (`engine-manager.ts:368`, called at module load
+  `engine-manager.ts:417`) wires the shell tool. It reads the project's
+  `shellApprovalMode` setting via `getShellApprovalMode` (`engine-manager.ts:350`);
+  `"auto"` returns `"allow"` immediately, `"ask"` broadcasts `shellApprovalRequest`
+  + an OS toast and returns a Promise that the RPC `resolveShellApproval`
+  (`engine-manager.ts:333`) settles. **Auto-denies after 5 minutes**
+  (`SHELL_APPROVAL_TIMEOUT_MS`, `engine-manager.ts:324`, timeout fires at
+  `engine-manager.ts:402`) so a missed prompt never deadlocks an agent.
+- **User questions** (`askUserQuestion`, `engine-manager.ts:462`): same shape for
   the PM/agent `request_human_input` modal. `timeoutMs` is tunable — autonomous
   background agents (freelance, issue-fixer) pass a short window so an absent user
   doesn't stall the run; on timeout it broadcasts `userQuestionCancel` to close the
   stale dialog and resolves with a "timed out" string.
+- **Durability (TASK-478, `engine-manager.ts:519`–`engine-manager.ts:565`).** Both
+  paths now write the pending request through to the DB via `savePendingApproval`
+  before waiting (shell: `engine-manager.ts:385`; question: `engine-manager.ts:489`),
+  so a reconnecting web client can re-render the still-live card via
+  `getPendingApprovals` (`engine-manager.ts:530`), and a desktop restart calls
+  `reconcilePendingApprovalsOnStartup()` (`engine-manager.ts:557`, wired from
+  `index.ts:237`) to broadcast a clean expiry for every request orphaned by the
+  previous process instead of leaving a stuck spinner.
 
 ### Channel relay + activity (in the `onStreamComplete` callback)
-When a PM turn completes, the callback (`engine-manager.ts:479`) records chat
+When a PM turn completes, the callback (`engine-manager.ts:592`) records chat
 activity, and if the originating message came from a channel (`meta.source !==
 "app"`) it chunks the reply and relays it back via `sendChannelMessage`, then
-`linkAgentResponseToInbox` (`engine-manager.ts:268`) attaches the reply to the
-latest unanswered inbox row using raw SQL. A `setTimeout(0)` desktop notification
-fires only when everything is idle **and the app is not focused** (`appFocused`,
-`engine-manager.ts:118`, toggled by the `setAppFocused` RPC) and the
-`session_complete_notification` setting is on.
+`linkAgentResponseToInbox` (`engine-manager.ts:299`, called at
+`engine-manager.ts:616`) attaches the reply to the latest unanswered inbox row
+using raw SQL. A `setTimeout(0)` desktop notification fires only when everything
+is idle **and the app is not focused** (`appFocused`, `engine-manager.ts:125`,
+toggled by the `setAppFocused` RPC) and the `session_complete_notification`
+setting is on.
 
-> `activeProjectId` (`engine-manager.ts:293`) is set on every `getOrCreateEngine`
-> call and is what the shell-approval handler keys off. It is a single global, so
-> it reflects whichever project most recently created/fetched an engine.
+> `activeProjectId` (`engine-manager.ts:327`) is set on every `getOrCreateEngine`
+> call (`engine-manager.ts:573`) and is what the shell-approval handler keys off.
+> It is a single global, so it reflects whichever project most recently
+> created/fetched an engine.
 
 ## Shared lib utilities (`lib/*`)
 
@@ -217,14 +232,15 @@ replacement for chrome-devtools MCP previews.
   conversation if needed. Idle timeout is bumped to 120s because real dev servers
   (Laravel/Django) can be slow on a cold first request (`server.ts:283`).
 - **`preview-window.ts`** — a **singleton** Electrobun `BrowserWindow`
-  (`previewWin`, `preview-window.ts:41`) that loads the proxy URL. Re-running
-  `/preview` reuses + navigates it (`openPreviewWindow`, `preview-window.ts:309`).
+  (`previewWin`, `preview-window.ts:42`) that loads the proxy URL. Re-running
+  `/preview` reuses + navigates it (`openPreviewWindow`, `preview-window.ts:316`).
   It persists its own frame, polls `document.title` every 2s to mirror it into the
-  native title (`preview-window.ts:137`), and for `projectType === "static"` runs a
-  debounced `fs.watch` reload for cheap HMR (`preview-window.ts:172`). After every
-  `dom-ready` it re-injects **both** the console hook (so errors flow back to
-  `/preview-events`, `preview-window.ts:98`) **and the toolbar itself**
-  (`getToolbarScript`, in the `dom-ready` handler ~`preview-window.ts:296`). This
+  native title (`preview-window.ts:147`), and for `projectType === "static"` runs a
+  debounced `fs.watch` reload for cheap HMR (`startWatcher`, `preview-window.ts:173`).
+  After every `dom-ready` it re-injects **both** the console hook (so errors flow
+  back to `/preview-events`, `buildConsoleHookScript` at `preview-window.ts:99`)
+  **and the toolbar itself** (`getToolbarScript`, in the `dom-ready` handler at
+  `preview-window.ts:307`). This
   toolbar re-injection is the **navigation safety net**: `dom-ready` fires on every
   full page load, so the toolbar reappears no matter how the page changed —
   including direct (non-proxied) navigations such as an externally-hosted preview
@@ -244,35 +260,38 @@ replacement for chrome-devtools MCP previews.
 
 ## Gotchas / Constraints
 
-- **Startup order is a contract, not a coincidence.** Reordering `index.ts:142`–
-  `index.ts:145` (migrate → seed → env → encrypt) breaks invariants: secrets
+- **Startup order is a contract, not a coincidence.** Reordering `index.ts:150`–
+  `index.ts:153` (migrate → seed → env → encrypt) breaks invariants: secrets
   must encrypt after seed but before any reader, and cron must start after the DB
   exists. Anything network/disk-heavy belongs in the `dom-ready` block, not the
   synchronous path.
 - **`activeProjectId` is a single global.** The shell-approval handler keys off
-  whichever project last called `getOrCreateEngine` (`engine-manager.ts:460`). With
+  whichever project last called `getOrCreateEngine` (`engine-manager.ts:573`). With
   concurrent multi-project agent runs this is the project to suspect for a
   mis-routed approval prompt.
 - **Approvals + user questions auto-resolve.** Shell approval auto-*denies* after
-  5 min (`engine-manager.ts:361`); user questions auto-resolve with a timeout
+  5 min (`engine-manager.ts:402`); user questions auto-resolve with a timeout
   message. Nothing waits forever — but a "denied" shell or "no answer" string can
   surface as a confusing agent failure if a human just didn't notice the prompt.
+  On restart, any still-pending request left over from the previous process is
+  reconciled away (not just left to time out) — see the Durability bullet above.
 - **The abort registry is in-memory and per-project.** App restart clears all
   running-agent state; `engines`, the controller map, and `appFocused` are module
-  globals with no persistence.
+  globals with no persistence. (Pending shell/question approvals are the one
+  exception — they're durably persisted and reconciled on restart, see above.)
 - **`broadcastToWebview` is fire-and-forget through an `any` ref.** Electrobun's
   exported types don't expose `webview.rpc.send.<method>` statically, so it's
-  routed through `mainWindowRef: any` (`engine-manager.ts:230`,`engine-manager.ts:254`)
+  routed through `mainWindowRef: any` (`engine-manager.ts:237`,`engine-manager.ts:274`)
   and silently swallows errors when the window is gone. A typo in a method name
   fails silently.
 - **The annotation server feeds the engine directly.** A `POST /annotations`
   bypasses the chat UI entirely and calls `sendMessage` (`server.ts:411`); it is
   CORS-open to `*` including `null` origins (`server.ts:30`) because it must accept
   `file://` pages — keep it bound to localhost only.
-- **Win32 titlebar icon uses raw FFI.** `setWindowTitlebarIcon` (`index.ts:381`)
+- **Win32 titlebar icon uses raw FFI.** `setWindowTitlebarIcon` (`index.ts:419`)
   `dlopen`s `user32.dll`; it's wrapped in try/catch and purely cosmetic, but it
   depends on `FindWindowW` matching the window title exactly ("AgentDesk").
-- **The `workflow:%` settings cleanup is permanent.** `index.ts:218` deletes
+- **The `workflow:%` settings cleanup is permanent.** `index.ts:244` deletes
   orphaned settings from the removed WorkflowEngine on every boot — don't reuse
   that key prefix.
 

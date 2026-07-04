@@ -2,7 +2,7 @@
 title: AgentDesk — Architecture Overview
 type: overview
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - CLAUDE.md
   - docs/workflow.md
@@ -82,6 +82,9 @@ Three design pillars define the model:
 1. **PM as sole orchestrator** — no FSM. Workflow state lives in the PM's
    conversation context plus the kanban board. Transitions are enforced by a mix
    of prompt rules, tool-level code guards, and recomputed `[Next Action]` hints.
+   Task *authorship* is code-restricted too: the PM has no `create_task` tool —
+   only the task-planner can author kanban tasks; the PM reads/moves tasks and
+   commits already-approved plans via `create_tasks_from_plan`.
    ([[pm-sole-orchestrator]])
 2. **Inline sub-agents, not sessions** — v4 dropped the persistent
    `agent_sessions` tables. Each sub-agent gets a *fresh* context (system prompt +
@@ -141,7 +144,9 @@ Surrounding flows keep this sane at scale:
   inline sub-agent 60/70/85/90% progressive compaction ladder; no iteration cap.
   ([[context-window-management]])
 - **Handoff summaries** — each finished agent's modified files become a
-  `## Prior Work` block prepended to the next agent's task. (see [[agent-engine]])
+  `## Handoff Summary` note on the completed kanban task, surfaced to the PM as
+  `get_next_task`'s `priorWork` field; the PM prompt instructs it to fold that
+  into the next agent's task description. (see [[agent-engine]])
 
 ---
 

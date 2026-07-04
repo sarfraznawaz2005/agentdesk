@@ -217,5 +217,5 @@ installs.
 
 ## Open questions
 - The v26 migration comment and `CLAUDE.md` both describe `playground-agent` as
-  having the full registry. Is the focused tool set at `seed.ts:1386` the intended
+  having the full registry. Is the focused tool set at `seed.ts:1401` the intended
   final state, or a regression? (Documented here as current reality.)

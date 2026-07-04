@@ -5,7 +5,7 @@ status: verified
 verified_at: 2026-07-04
 sources:
   - src/mainview/components/layout/app-shell.tsx
-  - src/mainview/components/layout/background-task-toast.tsx
+  - src/mainview/components/layout/agent-session-toast.tsx
   - src/mainview/components/layout/sidebar.tsx
   - src/mainview/pages/project.tsx
   - src/mainview/components/chat/chat-layout.tsx
@@ -40,9 +40,9 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
    `ErrorBoundary` around the router `<Outlet />`, plus app-lifetime singletons
    that live *outside* the page tree: `CommandPalette`, `StartupHealthDialog`,
    `UserQuestionDialog`, `WhatsNewDialog`, the `Toaster`,
-   `BackgroundTaskToast` (`app-shell.tsx:357` — render-nothing listener that
-   toasts `agentdesk:task-completed` for projects the user is not viewing,
-   `layout/background-task-toast.tsx`), and two dashboard-only floating widgets
+   `AgentSessionToast` (`app-shell.tsx:357` — render-nothing listener that
+   toasts `agentdesk:agent-session-complete` for projects the user is not
+   viewing, `layout/agent-session-toast.tsx`), and two dashboard-only floating widgets
    (`PmChatWidget`, `CustomAgentChatLauncher`, `app-shell.tsx:385-386`).
    `AlwaysMountedInbox` (`app-shell.tsx:377`) is the
    freelance Auto-Earn background engine — mounted here so it survives every
@@ -65,7 +65,7 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
 
 | Folder | Root component (entry) | What it is |
 |---|---|---|
-| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:344`), `background-task-toast.tsx` (cross-project task-completion toasts), `maintenance-overlay.tsx` |
+| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:344`), `agent-session-toast.tsx` (cross-project agent-session-completion toasts), `maintenance-overlay.tsx` |
 | `chat/` | `chat-layout.tsx` | The Chat tab: 3-pane layout (conv sidebar + message area + activity pane). See "Chat subtree" below. |
 | `activity/` | `context-panel.tsx` | The right-hand activity pane inside Chat. Two inner tabs `files`/`docs` (`context-panel.tsx:8,21-24`) → `files-tab.tsx`, `docs-tab.tsx`. |
 | `kanban/` | `kanban-board.tsx` | Kanban tab: `kanban-column.tsx`, `kanban-card.tsx`, `kanban-filters.tsx`, `kanban-stats-bar.tsx`. `task-detail-modal.tsx` is mounted at the page level (`project.tsx:393`), not inside the board. |
@@ -118,7 +118,7 @@ diffs), `error-boundary.tsx` (wraps the `<Outlet />` in `app-shell.tsx:351`),
 attention dot used across tabs and the sidebar), and `toast.tsx` — whose
 `toast()` accepts an optional action button plus `{ autoDismiss }`
 (`toast.tsx:53-55`): action toasts are sticky by default and only auto-dismiss
-when `autoDismiss: true` is passed (as `BackgroundTaskToast` does). Feature folders should reach
+when `autoDismiss: true` is passed (as `AgentSessionToast` does). Feature folders should reach
 for a `ui/` primitive before hand-rolling chrome; the chat header buttons in
 `chat-layout.tsx` are a deliberate exception (icon-only toolbar styling).
 

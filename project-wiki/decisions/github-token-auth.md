@@ -2,7 +2,7 @@
 title: GitHub Token Auth Without Credential Helper
 type: decision
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-04
 sources:
   - src/bun/rpc/github-api.ts
   - src/bun/rpc/git.ts
