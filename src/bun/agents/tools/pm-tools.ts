@@ -750,7 +750,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 											metadata: planMetadata,
 										});
 
-										broadcastToWebview("planPresented", {
+										broadcastToWebview("presentPlan", {
 											projectId: effectiveProjectId,
 											conversationId: deps.conversationId,
 											plan: { title: planTitle, content: planContent },
@@ -1702,12 +1702,40 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// Notify frontend via newMessage (gives it the real UUID + persisted data)
 					deps.emitNewMessage({ messageId: planMessageId, agentId: "task-planner", agentName: "Task Planner", content: planContent, metadata });
 
-					// Broadcast planPresented so the frontend shows the approval card
-					broadcastToWebview("planPresented", {
+					// Broadcast presentPlan so the frontend shows the approval card. (Method
+					// name must match the "presentPlan" entry in shared/rpc/webview.ts —
+					// broadcastToWebview looks it up by exact string key on Electrobun's
+					// generated rpc.send object; a mismatched name here silently no-ops.)
+					broadcastToWebview("presentPlan", {
 						projectId: deps.projectId,
 						conversationId: deps.conversationId,
 						plan: { title, content: planContent },
 					});
+
+					// Desktop notification so the user is alerted even if they're on a
+					// different project or the app isn't focused — mirrors the shell
+					// approval notification. Previously plan approval had NO desktop
+					// notification at all, so a plan waiting for approval in a project
+					// the user isn't viewing gave zero signal.
+					try {
+						const { isAppFocused } = await import("../../engine-manager");
+						if (!isAppFocused()) {
+							const notifSetting = await db.select({ value: settings.value }).from(settings)
+								.where(eq(settings.key, "plan_approval_notification")).limit(1);
+							const enabled = notifSetting.length > 0
+								? notifSetting[0].value !== "\"false\"" && notifSetting[0].value !== "false"
+								: true;
+							if (enabled) {
+								const projRow = await db.select({ name: projectsTable.name }).from(projectsTable)
+									.where(eq(projectsTable.id, deps.projectId)).limit(1);
+								const projName = projRow[0]?.name ?? "Project";
+								const { sendDesktopNotification } = await import("../../notifications/desktop");
+								sendDesktopNotification(`${projName} — Plan Ready for Approval`, title).catch(() => {});
+							}
+						}
+					} catch {
+						/* best-effort — never block plan presentation on notification failure */
+					}
 
 					// Stop PM stream — wait for user's approve/reject
 					deps.stopPMStream?.();

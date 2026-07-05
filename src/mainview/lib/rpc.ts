@@ -91,6 +91,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       streamError: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:stream-error", { detail: payload }));
       },
+      agentStatus: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:agent-status", { detail: payload }));
+      },
       partCreated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:part-created", { detail: payload }));
       },
@@ -114,6 +117,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       agentSessionComplete: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:agent-session-complete", { detail: payload }));
+      },
+      messageQueueUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:message-queue-updated", { detail: payload }));
       },
       providerTestResult: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:provider-test-result", { detail: payload }));
@@ -625,6 +631,19 @@ export const rpc = {
   /** Stop the current generation for a project. */
   stopGeneration: (projectId: string) =>
     electroviewRpc.request.stopGeneration({ projectId }),
+
+  /** Queue a message server-side for later delivery once this conversation is idle. */
+  enqueueMessage: (projectId: string, conversationId: string, content: string) =>
+    electroviewRpc.request.enqueueMessage({ projectId, conversationId, content }),
+  /** Remove one queued message before it's sent. */
+  removeQueuedMessage: (projectId: string, conversationId: string, messageId: string) =>
+    electroviewRpc.request.removeQueuedMessage({ projectId, conversationId, messageId }),
+  /** Current queue snapshot for a conversation. */
+  getQueuedMessages: (projectId: string, conversationId: string) =>
+    electroviewRpc.request.getQueuedMessages({ projectId, conversationId }),
+  /** Discard every queued message for a conversation (e.g. Stop button). */
+  clearQueuedMessages: (projectId: string, conversationId: string) =>
+    electroviewRpc.request.clearQueuedMessages({ projectId, conversationId }),
 
   /** Re-dispatch a failed sub-agent with its original task after a network error. */
   retryAgent: (projectId: string, conversationId: string, agentName: string, task: string) =>

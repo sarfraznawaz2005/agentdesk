@@ -38,6 +38,16 @@ export type WebviewSchema = RPCSchema<{
       error: string;
     };
 
+    // Per-agent status (spawned/running/paused/completed/failed/cancelled).
+    // Was previously broadcast under a name not declared here at all — the
+    // frontend's onAgentStatus listener existed but never fired. See the
+    // broadcastToWebview method-name test (tests/rpc/broadcast-method-names.test.ts).
+    agentStatus: {
+      projectId: string;
+      agentId: string;
+      status: "spawned" | "running" | "paused" | "completed" | "failed" | "cancelled";
+    };
+
     // Plan approval
     presentPlan: {
       projectId: string;
@@ -107,10 +117,22 @@ export type WebviewSchema = RPCSchema<{
       projectName: string;
     };
 
+    // The server-side message queue for a conversation changed (a message was
+    // enqueued/removed, or auto-drained once the engine went idle). Lets any
+    // mounted frontend showing THIS project+conversation refresh its queue
+    // display live, and is how a queued message's eventual send becomes
+    // visible even if the user switched away from it in the meantime.
+    messageQueueUpdated: {
+      projectId: string;
+      conversationId: string;
+      queue: Array<{ id: string; conversationId: string; content: string; queuedAt: number }>;
+    };
+
     // Shell approval request (agent wants to run a command)
     shellApprovalRequest: {
       requestId: string;
       projectId: string;
+      conversationId: string;
       agentId: string;
       agentName: string;
       command: string;
