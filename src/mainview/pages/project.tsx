@@ -52,6 +52,7 @@ export function ProjectPage() {
   const loadMessages = useChatStore((s) => s.loadMessages);
   const resetChat = useChatStore((s) => s.reset);
   const syncRunningAgents = useChatStore((s) => s.syncRunningAgents);
+  const setPendingConversationTarget = useChatStore((s) => s.setPendingConversationTarget);
 
   const activeInlineAgent = useChatStore((s) => s.activeInlineAgent);
 
@@ -146,11 +147,25 @@ export function ProjectPage() {
   useEffect(() => {
     if (!projectId || conversationsLoadedForProject !== projectId) return;
 
-    const { conversations, activeConversationId } = useChatStore.getState();
+    const { conversations, activeConversationId, pendingConversationTarget } = useChatStore.getState();
 
     // Filter to the current project — guards against a stale loadConversations
     // from a previous project resolving late and overwriting the store.
     const projectConvs = conversations.filter((c) => c.projectId === projectId);
+
+    // A cross-project "needs your attention" toast (shell/plan approval
+    // waiting elsewhere) asked to land on a SPECIFIC conversation — honor
+    // that over the normal auto-select fallback below. Consume it either way
+    // so a stale/mismatched target can't leak into a later project switch.
+    if (pendingConversationTarget && pendingConversationTarget.projectId === projectId) {
+      setPendingConversationTarget(null);
+      if (projectConvs.some((c) => c.id === pendingConversationTarget.conversationId)) {
+        setActiveConversation(pendingConversationTarget.conversationId);
+        loadMessages(pendingConversationTarget.conversationId);
+        return;
+      }
+      // Target conversation no longer exists — fall through to normal auto-select.
+    }
 
     if (projectConvs.length === 0) {
       createConversation(projectId).then((id) => {
@@ -167,7 +182,7 @@ export function ProjectPage() {
       setActiveConversation(target.id);
       loadMessages(target.id);
     }
-  }, [projectId, conversationsLoadedForProject, createConversation, setActiveConversation, loadMessages]);
+  }, [projectId, conversationsLoadedForProject, createConversation, setActiveConversation, loadMessages, setPendingConversationTarget]);
 
   if (!projectId) {
     return (

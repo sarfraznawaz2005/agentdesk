@@ -33,6 +33,14 @@ interface ChatState {
   activeConversationId: string | null;
   messages: Message[];
 
+  // Set by a cross-project "needs your attention" toast's Open button (shell
+  // approval / plan approval waiting in a project the user isn't viewing) —
+  // consumed by ProjectPage's conversation auto-select effect once that
+  // project's conversations finish loading, so navigation + conversation
+  // switch land in the right order instead of racing. Cleared once consumed
+  // (or if it doesn't match the project that ends up loading).
+  pendingConversationTarget: { projectId: string; conversationId: string } | null;
+
   // Loading
   messagesLoading: boolean;
 
@@ -77,6 +85,9 @@ interface ChatState {
   // Actions
   /** Record which project ProjectPage is showing (null when none is open). */
   setActiveProject: (projectId: string | null) => void;
+  /** Request that ProjectPage jump straight to a specific conversation once
+   * this project's conversations finish loading (see pendingConversationTarget). */
+  setPendingConversationTarget: (target: { projectId: string; conversationId: string } | null) => void;
   loadConversations: (projectId: string) => Promise<void>;
   loadMessages: (conversationId: string) => Promise<void>;
   setActiveConversation: (id: string | null) => void;
@@ -165,6 +176,7 @@ const initialState = {
   conversations: [] as Conversation[],
   activeConversationId: null as string | null,
   messages: [] as Message[],
+  pendingConversationTarget: null as { projectId: string; conversationId: string } | null,
   messagesLoading: false,
   isStreaming: false,
   streamingMessageId: null as string | null,
@@ -195,6 +207,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     set({ activeProjectId: projectId });
   },
 
+  setPendingConversationTarget: (target) => {
+    set({ pendingConversationTarget: target });
+  },
+
   loadConversations: async (projectId: string) => {
     const raw = await rpc.getConversations(projectId);
     const conversations = sortConversations(raw as Conversation[]);
@@ -213,7 +229,35 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   setActiveConversation: (id: string | null) => {
-    set({ activeConversationId: id, liveContextTokens: 0, liveContextLimit: 0 });
+    const prevId = get().activeConversationId;
+    if (id === prevId) {
+      set({ liveContextTokens: 0, liveContextLimit: 0 });
+      return;
+    }
+    // A genuine switch: any in-flight streaming state (buffered-but-unflushed
+    // tokens, streamingContent, the "PM is mid-reply" flags) belongs to the
+    // OUTGOING conversation. Left uncleared, a still-pending token-buffer
+    // flush (up to TOKEN_FLUSH_INTERVAL late, chat-event-handlers.ts) or a
+    // delayed onStreamComplete for that conversation attributes content to
+    // whichever conversation is active BY THEN — mixing one conversation's
+    // reply into another's, since streamingContent/isStreaming/
+    // streamingMessageId are single global fields, not keyed per conversation.
+    // reset() already does this for a project switch; this extends the same
+    // guarantee to same-project conversation switches (sidebar click,
+    // switch-to-conversation broadcast, auto-select on mount), which never
+    // routed through reset().
+    if (buffers.tokenFlushTimer) { clearTimeout(buffers.tokenFlushTimer); buffers.tokenFlushTimer = null; }
+    buffers.tokenBuffer = "";
+    buffers.tokenStreamMeta = null;
+    set({
+      activeConversationId: id,
+      liveContextTokens: 0,
+      liveContextLimit: 0,
+      isStreaming: false,
+      streamingMessageId: null,
+      streamingContent: "",
+      pmThinkingText: "",
+    });
   },
 
   createConversation: async (projectId: string) => {
@@ -378,15 +422,31 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   loadMessages: async (conversationId: string) => {
     set({ messagesLoading: true });
-    const raw = await rpc.getMessages(conversationId);
-    // Filter out empty-content assistant rows — these are in-flight stream
-    // placeholders inserted by the backend before streaming starts. If the
-    // stream is still running, onStreamComplete will add the full message
-    // directly. If already finished, the DB row will have content and passes.
-    const messages = (raw as Message[]).filter(
-      (m) => m.role !== "assistant" || m.content.trim() !== "",
-    );
-    set({ messages, messagesLoading: false });
+    try {
+      const raw = await rpc.getMessages(conversationId);
+      // Drop the result unless the user is still viewing this conversation —
+      // a slower fetch from a conversation switched away from (rapid clicking
+      // across conversations/projects while multiple fetches are in flight)
+      // must never overwrite whichever conversation is actually being viewed
+      // now. Whichever fetch resolves last for the CURRENT activeConversationId
+      // is the one that gets applied, regardless of call order — same pattern
+      // as loadConversations' activeProjectId guard.
+      if (get().activeConversationId !== conversationId) return;
+      // Filter out empty-content assistant rows — these are in-flight stream
+      // placeholders inserted by the backend before streaming starts. If the
+      // stream is still running, onStreamComplete will add the full message
+      // directly. If already finished, the DB row will have content and passes.
+      const messages = (raw as Message[]).filter(
+        (m) => m.role !== "assistant" || m.content.trim() !== "",
+      );
+      set({ messages });
+    } finally {
+      // Only this conversation's own (possibly stale) call may clear the flag
+      // for itself — if the user has since switched again, a NEWER fetch for
+      // the now-current conversation may still be in flight, and this stale
+      // call's finally must not prematurely hide its loading overlay.
+      if (get().activeConversationId === conversationId) set({ messagesLoading: false });
+    }
   },
 
   sendMessage: async (
@@ -529,6 +589,11 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       collapsedAgentBlocks: {},
       drafts: get().drafts,
       activeProjectId: get().activeProjectId,
+      // Also preserved — this reset() is exactly what runs when ProjectPage
+      // mounts for the project a cross-project toast just navigated to; wiping
+      // it here would clear the target before the auto-select effect ever
+      // gets a chance to consume it.
+      pendingConversationTarget: get().pendingConversationTarget,
     });
   },
 }));

@@ -48,6 +48,15 @@ export type AgentStatusValue =
 
 export interface ShellApprovalRequest {
   requestId: string;
+  // Which project this approval belongs to — broadcasts are global (one
+  // window, all projects), so the rendering side must filter by this against
+  // the currently-viewed project; otherwise a background project's pending
+  // approval renders inline in whichever project's chat happens to be open,
+  // indistinguishable from a request that actually belongs there.
+  projectId: string;
+  /** Which conversation this shell command was run from — lets a cross-project
+   * "needs approval" toast deep-link to the exact conversation. */
+  conversationId: string;
   agentName: string;
   command: string;
   timestamp: string;

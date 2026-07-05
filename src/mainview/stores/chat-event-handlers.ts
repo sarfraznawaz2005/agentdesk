@@ -50,6 +50,17 @@ function flushTokenBuffer(): void {
   const buf = buffers.tokenBuffer;
   const meta = buffers.tokenStreamMeta;
   buffers.tokenBuffer = "";
+  buffers.tokenStreamMeta = null;
+  // Re-validate against the CURRENT active conversation, not just the one that
+  // was active when these tokens were buffered. onStreamToken already checked
+  // this before buffering, but up to TOKEN_FLUSH_INTERVAL (32ms) can pass
+  // before this timer fires, and the user can switch conversations in that
+  // window. setActiveConversation clears the buffer synchronously on a real
+  // switch (closing this race at the source), but this check stays as a
+  // defensive backstop — without it, a flush firing after a switch would
+  // attribute buffered text to whatever conversation is active BY THEN
+  // (via `prev.activeConversationId`, not the tokens' own conversation).
+  if (useChatStore.getState().activeConversationId !== meta.conversationId) return;
   useChatStore.setState((prev) => {
     // Ensure PM placeholder exists in messages array on first token flush
     // so onStreamComplete can find it and update it in place (its createdAt is
@@ -57,7 +68,7 @@ function flushTokenBuffer(): void {
     const hasMsg = prev.messages.some((m) => m.id === meta.messageId);
     const messages = hasMsg ? prev.messages : [...prev.messages, {
       id: meta.messageId,
-      conversationId: prev.activeConversationId ?? "",
+      conversationId: meta.conversationId,
       role: "assistant" as const,
       agentId: null,
       agentName: null,
@@ -171,6 +182,15 @@ function onStreamComplete(e: Event): void {
 
   const state = useChatStore.getState();
 
+  // The user has navigated to a different conversation — the backend has
+  // already persisted this message, so loadMessages will pick it up if/when
+  // the user comes back. Applying it here would mutate a messages array that
+  // now belongs to a DIFFERENT conversation (this used to be inferred from
+  // whether `messages` contained any row for `conversationId`, which is a
+  // weaker proxy — it can still be true mid-switch, while the outgoing
+  // conversation's stale array hasn't been replaced by loadMessages yet).
+  if (state.activeConversationId !== conversationId) return;
+
   // Prefer the backend-delivered content; fall back to accumulated streaming content.
   const finalContent = content || state.streamingContent;
 
@@ -218,13 +238,6 @@ function onStreamComplete(e: Event): void {
 
     // AI returned nothing — just clear streaming state.
     if (!finalContent.trim()) return streaming;
-
-    // Only update the messages array if this conversation's messages are
-    // currently loaded. If the user is on a completely different page,
-    // don't pollute the store — loadMessages will fetch from DB (which the
-    // backend has already updated) when the user navigates back.
-    const convMessages = prev.messages.filter((m) => m.conversationId === conversationId);
-    if (convMessages.length === 0) return streaming;
 
     const finalMetadata = resolveMetadata(null);
 
@@ -277,6 +290,16 @@ function onStreamError(e: Event): void {
 
   const state = useChatStore.getState();
 
+  // A background conversation's error must not touch a DIFFERENT, currently
+  // active conversation's own in-progress stream. state.streamingMessageId is
+  // a single global field — it only actually belongs to THIS errored stream
+  // when the conversations match; otherwise it belongs to whatever the user
+  // is now watching, and both the drop-late-tokens marker below and the
+  // streaming-state clear would wrongly stomp on that unrelated, still-live
+  // stream (killing its visible in-progress bubble, or making its later
+  // legitimate tokens get dropped as "already completed").
+  if (state.activeConversationId !== conversationId) return;
+
   // Mark the current stream as completed so late tokens are dropped.
   if (state.streamingMessageId) {
     markStreamCompleted(state.streamingMessageId);
@@ -289,24 +312,21 @@ function onStreamError(e: Event): void {
     pmThinkingText: "",
   });
 
-  // Add an error message to the list if the errored conversation is active.
-  if (state.activeConversationId === conversationId) {
-    const errorMessage: Message = {
-      id: `error-${Date.now()}`,
-      conversationId,
-      role: "error",
-      agentId: null,
-      agentName: null,
-      content: error || "Something went wrong. Please try again.",
-      metadata: null,
-      tokenCount: 0,
-      hasParts: 0,
-      createdAt: new Date().toISOString(),
-    };
-    useChatStore.setState((prev) => ({
-      messages: [...prev.messages, errorMessage],
-    }));
-  }
+  const errorMessage: Message = {
+    id: `error-${Date.now()}`,
+    conversationId,
+    role: "error",
+    agentId: null,
+    agentName: null,
+    content: error || "Something went wrong. Please try again.",
+    metadata: null,
+    tokenCount: 0,
+    hasParts: 0,
+    createdAt: new Date().toISOString(),
+  };
+  useChatStore.setState((prev) => ({
+    messages: [...prev.messages, errorMessage],
+  }));
 }
 
 function onAgentStatus(e: Event): void {
@@ -518,10 +538,11 @@ function onNewMessage(e: Event): void {
 }
 
 function onShellApprovalRequest(e: Event): void {
-  const { requestId, agentName, command, timestamp } = (
+  const { requestId, projectId, conversationId, agentName, command, timestamp } = (
     e as CustomEvent<{
       requestId: string;
       projectId: string;
+      conversationId: string;
       agentId: string;
       agentName: string;
       command: string;
@@ -529,14 +550,19 @@ function onShellApprovalRequest(e: Event): void {
     }>
   ).detail;
 
-  // Add to shell approval requests (shown inline in chat). De-dup by requestId so
-  // a reconnect re-surfacing the same pending request can't double the card.
+  // Add to shell approval requests (shown inline in chat) regardless of which
+  // project it's for — kept in the global store so switching TO that project
+  // still shows it without needing a fresh reload. ChatLayout filters by
+  // projectId before rendering so a background project's request never
+  // appears blended into whichever project's chat is currently open. De-dup
+  // by requestId so a reconnect re-surfacing the same pending request can't
+  // double the card.
   useChatStore.setState((prev) => {
     if (prev.shellApprovalRequests.some((r) => r.requestId === requestId)) return prev;
     return {
       shellApprovalRequests: [
         ...prev.shellApprovalRequests,
-        { requestId, agentName, command, timestamp },
+        { requestId, projectId, conversationId, agentName, command, timestamp },
       ],
     };
   });
