@@ -80,6 +80,14 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   const [defaultModelName, setDefaultModelName] = useState<string>("");
   const searchRef = useRef<HTMLInputElement>(null);
   const hasFetched = useRef(false);
+  // ModelSelector lives inside ChatLayout, which stays mounted across a
+  // project switch (ProjectPage always force-selects the Chat tab on a
+  // project change) — unlike other project tabs, there's no unmount to reset
+  // a stale in-flight fetch. Track the latest projectId so an async callback
+  // can tell, after its await, whether it's still relevant. Assigned in an
+  // effect (not during render) per react-hooks/refs.
+  const projectIdRef = useRef(projectId);
+  useEffect(() => { projectIdRef.current = projectId; });
 
   // Load saved selection from project settings + provider defaults + prefs.
   useEffect(() => {
@@ -88,6 +96,10 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
       rpc.getProviders(),
       rpc.getModelPreferences(),
     ]).then(([settings, providersList, prefRows]) => {
+      // A rapid project switch (A -> B) before this resolves must not let A's
+      // stale settings (model/thinking-level/shell-approval/plan-mode)
+      // overwrite what's showing — and would be used — for B.
+      if (projectIdRef.current !== projectId) return;
       const s = settings as Record<string, string>;
       const pid = s.chatProviderId ?? "";
       const mid = s.chatModelId ?? "";

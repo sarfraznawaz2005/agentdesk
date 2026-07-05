@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import {
   File,
   FileCode,
@@ -248,6 +248,16 @@ export const FilesTab = forwardRef<FilesTabHandle, FilesTabProps>(function Files
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
+  // This component lives inside ChatLayout/ContextPanel, which stays mounted
+  // across a project switch when the user lands on the Chat tab (ProjectPage
+  // always force-selects "chat" on a project change) — unlike the other
+  // project tabs, there's no unmount to reset stale in-flight fetches. Track
+  // the latest projectId in a ref so an async callback can tell, after its
+  // await, whether it's still relevant. Assigned in an effect (not during
+  // render) per react-hooks/refs.
+  const projectIdRef = useRef(projectId);
+  useEffect(() => { projectIdRef.current = projectId; });
+
   // ----- Root load on first render -----
 
   const loadRoot = useCallback(async () => {
@@ -256,6 +266,9 @@ export const FilesTab = forwardRef<FilesTabHandle, FilesTabProps>(function Files
     setRootError(null);
     try {
       const entries = await rpc.listWorkspaceFiles(projectId);
+      // A rapid project switch (A -> B) before this resolves must not let A's
+      // stale response overwrite B's already-loaded tree.
+      if (projectIdRef.current !== projectId) return;
       setRootNodes(
         entries.map((e) => ({
           ...e,
@@ -265,9 +278,9 @@ export const FilesTab = forwardRef<FilesTabHandle, FilesTabProps>(function Files
         })),
       );
     } catch {
-      setRootError("Could not list workspace files");
+      if (projectIdRef.current === projectId) setRootError("Could not list workspace files");
     } finally {
-      setIsLoadingRoot(false);
+      if (projectIdRef.current === projectId) setIsLoadingRoot(false);
     }
   }, [projectId]);
 

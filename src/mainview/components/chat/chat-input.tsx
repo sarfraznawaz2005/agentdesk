@@ -189,8 +189,37 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const filesCacheRef = useRef<PopoverItem[] | null>(null);
   const fileDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ChatInput lives inside ChatLayout, which stays mounted across a project
+  // switch (ProjectPage always force-selects the Chat tab). Without this, the
+  // "no query" @-mention cache populated for one project would silently keep
+  // being served for a different project after switching, since the cache
+  // check (`!query && filesCacheRef.current`) has no project awareness.
+  useEffect(() => {
+    filesCacheRef.current = null;
+  }, [projectId]);
+
+  // Same reasoning: an in-flight async action (enhance prompt) that spans a
+  // project/conversation switch must not apply its result to whatever is now
+  // showing. Tracked in refs (not state) so the async callback can read the
+  // LATEST value after its await, not the one captured when it started.
+  const projectIdRef = useRef(projectId);
+  useEffect(() => { projectIdRef.current = projectId; });
+  const activeConversationIdRef = useRef(activeConversationId);
+  useEffect(() => { activeConversationIdRef.current = activeConversationId; });
+
   // ---- Mentioned files (@ references) ------------------------------------
   const [mentionedFiles, setMentionedFiles] = useState<string[]>([]);
+
+  // Clear attachments/mentions on a genuine conversation switch too — same
+  // "adjust state when a prop changes" render-time pattern as the draft swap
+  // above (reusing that same draftConv comparison, which hasn't been updated
+  // to its new value yet within this render). Otherwise a file attached or an
+  // @-mention typed in conversation A would silently carry over into B's
+  // input and, if sent there, get attached to the wrong conversation.
+  if ((activeConversationId ?? null) !== draftConv) {
+    if (attachedFiles.length > 0) setAttachedFiles([]);
+    if (mentionedFiles.length > 0) setMentionedFiles([]);
+  }
 
   // ---- Shell result bubbles (ephemeral, in-chat) -------------------------
   // Managed by parent via onShellResult callback — we just execute and report
@@ -286,6 +315,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   // ---- File search for @ mentions -----------------------------------------
   const searchFiles = useCallback((query: string) => {
     if (fileDebounceRef.current) clearTimeout(fileDebounceRef.current);
+    const searchProjectId = projectId;
     fileDebounceRef.current = setTimeout(async () => {
       try {
         // Use cache if no query and already fetched
@@ -293,12 +323,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           setFileItems(filesCacheRef.current);
           return;
         }
-        const files = await rpc.searchWorkspaceFiles(projectId, query || undefined);
+        const files = await rpc.searchWorkspaceFiles(searchProjectId, query || undefined);
+        // The debounce timer itself isn't cancelled on a project switch (only
+        // the cache is cleared, above) — without this check, a slow search
+        // for the OLD project could still resolve after switching and
+        // populate the @-mention popover with the wrong project's files.
+        if (projectIdRef.current !== searchProjectId) return;
         const items = files.map(buildFileItem);
         if (!query) filesCacheRef.current = items;
         setFileItems(items);
       } catch {
-        setFileItems([]);
+        if (projectIdRef.current === searchProjectId) setFileItems([]);
       }
     }, query ? 150 : 0); // Instant for initial load, debounced for search
   }, [projectId]);
@@ -385,21 +420,29 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       case "clear":
         onClear?.();
         break;
-      case "compact":
+      case "compact": {
         if (activeConversationId) {
+          const startConversationId = activeConversationId;
           setCompacting(true);
           setCompactError(null);
           rpc.compactConversation(projectId, activeConversationId)
             .then((result) => {
+              // The user may have switched conversations while this was in
+              // flight — its error banner (or the compacting spinner cleared
+              // below) belongs to `startConversationId`, not whatever's shown now.
+              if (activeConversationIdRef.current !== startConversationId) return;
               if (!result.success && result.message) {
                 setCompactError(result.message);
                 setTimeout(() => setCompactError(null), 3000);
               }
             })
             .catch(() => {})
-            .finally(() => setCompacting(false));
+            .finally(() => {
+              if (activeConversationIdRef.current === startConversationId) setCompacting(false);
+            });
         }
         break;
+      }
       case "fork":
         onFork?.();
         break;
@@ -613,6 +656,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const handleEnhance = useCallback(async () => {
     const trimmed = value.trim();
     if (trimmed.length < 25 || enhancing) return;
+    const startProjectId = projectId;
+    const startConversationId = activeConversationId;
     setEnhancing(true);
     setEnhanceError(null);
     try {
@@ -623,6 +668,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         s.chatProviderId || undefined,
         s.chatModelId || undefined,
       );
+      // A project/conversation switch during this round-trip must not insert
+      // the enhanced text (based on the OLD project's settings/context) into
+      // whatever conversation is now showing.
+      if (projectIdRef.current !== startProjectId || activeConversationIdRef.current !== startConversationId) {
+        return;
+      }
       if (result.enhanced) {
         setValue(result.enhanced);
         onInputChange?.(result.enhanced);
@@ -633,7 +684,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }
     setEnhancing(false);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [value, enhancing, projectId, onInputChange]);
+  }, [value, enhancing, projectId, activeConversationId, onInputChange]);
 
   const isQueueFull = queuedMessages.length >= MESSAGE_QUEUE_MAX;
   const canEnhance = value.trim().length >= 25 && !isStreaming && !disabled && inputMode === "normal" && !compacting;

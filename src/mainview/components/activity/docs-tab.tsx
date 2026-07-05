@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { FileText, ExternalLink, FolderOpen, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -53,6 +53,16 @@ export const DocsTab = forwardRef<DocsTabHandle, DocsTabProps>(function DocsTab(
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<SelectedDoc | null>(null);
 
+  // This component lives inside ChatLayout/ContextPanel, which stays mounted
+  // across a project switch when the user lands on the Chat tab (ProjectPage
+  // always force-selects "chat" on a project change) — unlike the other
+  // project tabs, there's no unmount to reset stale in-flight fetches. Track
+  // the latest projectId in a ref so an async callback can tell, after its
+  // await, whether it's still relevant. Assigned in an effect (not during
+  // render) per react-hooks/refs.
+  const projectIdRef = useRef(projectId);
+  useEffect(() => { projectIdRef.current = projectId; });
+
   const loadDocs = useCallback(async () => {
     if (!projectId) return;
     setIsLoading(true);
@@ -61,12 +71,15 @@ export const DocsTab = forwardRef<DocsTabHandle, DocsTabProps>(function DocsTab(
         rpc.getProjectNotes(projectId),
         rpc.getWorkspacePlans(projectId),
       ]);
+      // A rapid project switch (A -> B) before this resolves must not let A's
+      // stale response overwrite B's already-loaded docs.
+      if (projectIdRef.current !== projectId) return;
       setNotes(notesResult as Note[]);
       setPlans(plansResult as Plan[]);
     } catch {
       // Silently fail — empty state shown
     } finally {
-      setIsLoading(false);
+      if (projectIdRef.current === projectId) setIsLoading(false);
     }
   }, [projectId]);
 

@@ -108,9 +108,16 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     set({ isLoading: true, activeProjectId: projectId });
     try {
       const tasks = await rpc.getKanbanTasks(projectId);
+      // Drop the result unless the user is still viewing this project — a
+      // slower fetch from a project switched away from (rapid clicking across
+      // projects while multiple fetches are in flight) must never overwrite
+      // the board for whichever project is actually being viewed now.
+      // Whichever fetch resolves last for the CURRENT activeProjectId is the
+      // one that gets applied, regardless of call order.
+      if (get().activeProjectId !== projectId) return;
       set({ tasks: tasks as KanbanTask[], isLoading: false });
     } catch {
-      set({ isLoading: false });
+      if (get().activeProjectId === projectId) set({ isLoading: false });
     }
   },
 
@@ -120,7 +127,11 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     const state = get();
     if (state.activeProjectId) {
       const tasks = await rpc.getKanbanTasks(state.activeProjectId);
-      set({ tasks: tasks as KanbanTask[] });
+      // Same staleness guard as loadTasks — the user may have switched
+      // projects while this follow-up fetch was in flight.
+      if (get().activeProjectId === state.activeProjectId) {
+        set({ tasks: tasks as KanbanTask[] });
+      }
     }
     return result.id;
   },

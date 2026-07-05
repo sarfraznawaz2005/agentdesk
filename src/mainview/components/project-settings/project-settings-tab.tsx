@@ -462,11 +462,29 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
   const handleDelete = useCallback(async () => {
     await rpc.deleteProjectCascade(project.id);
     toast("success", "Project deleted.");
-    navigate({ to: "/" });
+    // The confirmation dialog can be closed (Escape / click-outside) while
+    // this await is in flight, letting the user switch to a different,
+    // still-valid project before the delete resolves — only force-navigate
+    // away if they're still looking at the project that was just deleted.
+    if (useChatStore.getState().activeProjectId === project.id) {
+      navigate({ to: "/" });
+    }
   }, [project.id, navigate]);
 
   const handleReset = useCallback(async () => {
     await rpc.resetProjectData(project.id);
+
+    // Same reasoning as handleDelete: the confirm dialog can be closed mid-await,
+    // letting the user switch to a different project before this resolves. The
+    // backend reset for project.id already succeeded either way — but the
+    // frontend follow-up (clearing GLOBAL chat/kanban stores, creating a
+    // conversation, forcing navigation) must not run against whatever project
+    // is now active, or it corrupts that project's live chat state and yanks
+    // the user back to the one they just reset.
+    if (useChatStore.getState().activeProjectId !== project.id) {
+      toast("success", "Project data reset.");
+      return;
+    }
 
     // Clear both Zustand stores immediately — ProjectPage stays mounted for the
     // same projectId so navigate() alone won't trigger their reload effects.
@@ -478,6 +496,11 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
     // ProjectPage won't toggle (projectId didn't change), so its auto-create
     // useEffect won't re-run.
     const newConvId = await useChatStore.getState().createConversation(project.id);
+    // Re-check after this second await for the same reason.
+    if (useChatStore.getState().activeProjectId !== project.id) {
+      toast("success", "Project data reset.");
+      return;
+    }
     useChatStore.getState().setActiveConversation(newConvId);
 
     toast("success", "Project data reset. All conversations and tasks have been cleared.");

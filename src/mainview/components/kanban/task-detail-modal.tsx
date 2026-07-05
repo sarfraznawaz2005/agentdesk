@@ -159,6 +159,15 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
   const [ghIssueNumber, setGhIssueNumber] = useState<number | null>(null);
   const [ghBusy, setGhBusy] = useState(false);
 
+  // TaskDetailModal is mounted unconditionally at the ProjectPage level (not
+  // inside any tab conditional), so it never unmounts when the user picks a
+  // different task or navigates away — clicking task A then quickly clicking
+  // task B is a live prop change, not a fresh mount. Track the task actually
+  // being displayed so an async result can tell, after its await, whether
+  // it's still relevant.
+  const taskIdRef = useRef(task?.id);
+  useEffect(() => { taskIdRef.current = task?.id; });
+
   // Sync local state whenever the task changes (different task opened)
   useEffect(() => {
     if (!task) return;
@@ -170,10 +179,14 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
     // Surface any GitHub issue already linked to this task (best-effort; silently
     // ignored when GitHub isn't configured for the project).
     setGhIssueNumber(null);
+    const taskId = task.id;
     rpc
       .getGithubIssues(task.projectId)
       .then((issues) => {
-        const linked = issues.find((i) => i.taskId === task.id);
+        // The user may have already opened a different task by the time this
+        // resolves — don't stamp its result onto whatever's showing now.
+        if (taskIdRef.current !== taskId) return;
+        const linked = issues.find((i) => i.taskId === taskId);
         setGhIssueNumber(linked ? linked.githubIssueNumber : null);
       })
       .catch(() => {});
@@ -258,9 +271,13 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
   }
 
   async function createGithubIssue() {
+    const taskId = t.id;
     setGhBusy(true);
     try {
-      const res = await rpc.createGithubIssueFromTask(t.id, t.projectId);
+      const res = await rpc.createGithubIssueFromTask(taskId, t.projectId);
+      // The user may have switched to a different task while this was in
+      // flight — its result belongs to `taskId`, not whatever's open now.
+      if (taskIdRef.current !== taskId) return;
       if (res.success && res.issueNumber) {
         setGhIssueNumber(res.issueNumber);
         toast("success", `GitHub issue #${res.issueNumber} created from this task.`);
@@ -268,7 +285,7 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
         toast("error", res.error ?? "Failed to create GitHub issue.");
       }
     } finally {
-      setGhBusy(false);
+      if (taskIdRef.current === taskId) setGhBusy(false);
     }
   }
 

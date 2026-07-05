@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { MessageSquare } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Message } from "../../stores/chat-store";
@@ -35,6 +35,13 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
   // (auto-compaction fires at 100% of this on the next turn).
   const [contextLimit, setContextLimit] = useState(DEFAULT_CONTEXT_LIMIT);
   const liveContextTokens = useChatStore((s) => s.liveContextTokens);
+  // This component lives inside ChatLayout, which stays mounted across a
+  // project switch (ProjectPage always force-selects the Chat tab on a
+  // project change) — track the latest projectId so a rapid switch can't let
+  // a stale fetch for the OLD project overwrite the limit shown for the NEW one.
+  // Assigned in an effect (not during render) per react-hooks/refs.
+  const projectIdRef = useRef(projectId);
+  useEffect(() => { projectIdRef.current = projectId; });
 
   // Load the project's context window limit; refresh when settings change.
   useEffect(() => {
@@ -42,6 +49,7 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
       rpc
         .getSetting(`project:${projectId}:contextWindowLimit`)
         .then((val: string | null) => {
+          if (projectIdRef.current !== projectId) return;
           const parsed = parseInt(val ?? "", 10);
           if (!Number.isNaN(parsed) && parsed >= 1000) setContextLimit(parsed);
         })
