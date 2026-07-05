@@ -110,17 +110,25 @@ export type ShellApprovalHandler = (
 	command: string,
 	agentId: string,
 	agentName: string,
+	projectId: string,
+	conversationId: string,
 ) => Promise<"allow" | "deny" | "always">;
 
 let approvalHandler: ShellApprovalHandler | null = null;
-let sessionAutoApproved = false;
+/**
+ * Projects for which the user has clicked "Always allow" this session.
+ * MUST stay per-project (not a single shared boolean) — otherwise approving
+ * one shell command in project A silently disables the approval prompt for
+ * every OTHER project's agents too, bypassing their own shellApprovalMode.
+ */
+const sessionAutoApprovedProjects = new Set<string>();
 
 export function setShellApprovalHandler(handler: ShellApprovalHandler | null): void {
 	approvalHandler = handler;
 }
 
-export function resetShellAutoApprove(): void {
-	sessionAutoApproved = false;
+export function resetShellAutoApprove(projectId: string): void {
+	sessionAutoApprovedProjects.delete(projectId);
 }
 
 // ---------------------------------------------------------------------------
@@ -175,21 +183,29 @@ function makeShellTool(autoApprove: boolean) {
 	return tool({
 		description: SHELL_DESCRIPTION,
 		inputSchema: SHELL_INPUT_SCHEMA,
-		execute: async ({ command, workingDirectory, timeout = 300_000 }, { abortSignal }): Promise<string> => {
+		execute: async (rawArgs, { abortSignal }): Promise<string> => {
+			const { command, workingDirectory, timeout = 300_000 } = rawArgs as z.infer<typeof SHELL_INPUT_SCHEMA>;
+			// Stamped by agent-loop.ts's run_shell wrapper (hidden from the model —
+			// not part of SHELL_INPUT_SCHEMA) so the approval gate below resolves
+			// THIS agent's actual project/conversation, not whichever project's
+			// engine the backend happened to touch most recently.
+			const projectId = (rawArgs as Record<string, unknown>).__projectId as string | undefined ?? "";
+			const conversationId = (rawArgs as Record<string, unknown>).__conversationId as string | undefined ?? "";
+
 			// --- Safety check ---------------------------------------------------
 			if (isBlockedCommand(command)) {
 				return "Blocked: command matches dangerous pattern";
 			}
 
 			// --- Approval gate (skipped for freelance/auto-approved contexts) ----
-			if (!autoApprove && approvalHandler && !sessionAutoApproved) {
+			if (!autoApprove && approvalHandler && !sessionAutoApprovedProjects.has(projectId)) {
 				try {
-					const decision = await approvalHandler(command, "sub-agent", "Sub-Agent");
+					const decision = await approvalHandler(command, "sub-agent", "Sub-Agent", projectId, conversationId);
 					if (decision === "deny") {
 						return JSON.stringify({ exitCode: null, stdout: "", stderr: "Command denied by user" });
 					}
 					if (decision === "always") {
-						sessionAutoApproved = true;
+						sessionAutoApprovedProjects.add(projectId);
 					}
 				} catch {
 					return JSON.stringify({ exitCode: null, stdout: "", stderr: "Shell approval check failed — command blocked" });

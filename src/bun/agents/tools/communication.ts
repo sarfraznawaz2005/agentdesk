@@ -32,7 +32,14 @@ export function createCommunicationTools(agentName: string, displayName: string)
 						.optional()
 						.describe("Selectable choices to present. Omit for a free-text answer."),
 				}),
-				execute: async ({ question, context, options }): Promise<string> => {
+				execute: async (rawArgs): Promise<string> => {
+					const { question, context, options } = rawArgs as { question: string; context?: string; options?: string[] };
+					// Stamped by agent-loop.ts's request_human_input wrapper (hidden from
+					// the model — not part of the schema above) so this question is
+					// attributed to and pending-approval-tracked-under the agent's ACTUAL
+					// project, not whichever project's engine the backend happened to
+					// touch most recently.
+					const projectId = (rawArgs as Record<string, unknown>).__projectId as string | undefined ?? "";
 					try {
 						// Lazy import avoids a static cycle (engine-manager → engine → tools).
 						const { askUserQuestion } = await import("../../engine-manager");
@@ -42,6 +49,7 @@ export function createCommunicationTools(agentName: string, displayName: string)
 							inputType: hasOptions ? "choice" : "text",
 							options: hasOptions ? options : undefined,
 							context,
+							projectId,
 							agentId: agentName,
 							agentName: displayName || agentName,
 						});

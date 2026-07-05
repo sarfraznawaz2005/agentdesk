@@ -931,22 +931,48 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		if (tools.search_files) tools.search_files = wrapDirTool(tools.search_files, "directory");
 		if (tools.directory_tree) tools.directory_tree = wrapDirTool(tools.directory_tree, "path");
 		if (tools.search_content) tools.search_content = wrapDirTool(tools.search_content, "directory");
-		// Shell wrapper: default to workspace, resolve relative paths against workspace
-		if (tools.run_shell) {
-			const origShell = tools.run_shell as Tool & { execute: (args: Record<string, unknown>, opts: unknown) => Promise<unknown> };
-			tools.run_shell = {
-				...tools.run_shell,
-				execute: async (args: Record<string, unknown>, execOpts: unknown) => {
+	}
+
+	// Shell wrapper: default to workspace, resolve relative paths against workspace,
+	// and stamp this agent's actual projectId/conversationId (hidden from the
+	// model — not part of its input schema). Unconditional on workspacePath
+	// (unlike the dir-tool wrappers above) because the stamp must always
+	// happen — without it, the approval gate falls back to guessing which
+	// project is asking, and its pending-approval card can't deep-link to a
+	// specific conversation. See shell.ts's ShellApprovalHandler /
+	// sessionAutoApprovedProjects.
+	if (tools.run_shell) {
+		const origShell = tools.run_shell as Tool & { execute: (args: Record<string, unknown>, opts: unknown) => Promise<unknown> };
+		tools.run_shell = {
+			...tools.run_shell,
+			execute: async (args: Record<string, unknown>, execOpts: unknown) => {
+				if (workspacePath) {
 					const wd = args.workingDirectory as string | undefined;
 					if (!wd) {
 						args.workingDirectory = workspacePath;
 					} else if (!isAbsolute(wd)) {
-						args.workingDirectory = join(workspacePath ?? "", wd);
+						args.workingDirectory = join(workspacePath, wd);
 					}
-					return origShell.execute(args, execOpts);
-				},
-			} as Tool;
-		}
+				}
+				args.__projectId = projectId;
+				args.__conversationId = conversationId;
+				return origShell.execute(args, execOpts);
+			},
+		} as Tool;
+	}
+
+	// request_human_input wrapper: same reasoning as run_shell above — stamp this
+	// agent's actual projectId so a question it raises is attributed to (and its
+	// pending-approval record tagged with) the right project, not a guess.
+	if (tools.request_human_input && projectId) {
+		const origAsk = tools.request_human_input as Tool & { execute: (args: Record<string, unknown>, opts: unknown) => Promise<unknown> };
+		tools.request_human_input = {
+			...tools.request_human_input,
+			execute: async (args: Record<string, unknown>, execOpts: unknown) => {
+				args.__projectId = projectId;
+				return origAsk.execute(args, execOpts);
+			},
+		} as Tool;
 	}
 
 	if (opts.readOnly) {
