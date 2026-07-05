@@ -154,6 +154,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       inboxMessageReceived: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:inbox-message-received", { detail: payload }));
       },
+      inboxResponseUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:inbox-response-updated", { detail: payload }));
+      },
       conversationTitleChanged: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:conversation-title-changed", { detail: payload }));
       },

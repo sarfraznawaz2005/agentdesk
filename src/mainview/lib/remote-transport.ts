@@ -82,6 +82,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   whatsappQR: "agentdesk:whatsapp-qr",
   whatsappStatus: "agentdesk:whatsapp-status",
   inboxMessageReceived: "agentdesk:inbox-message-received",
+  inboxResponseUpdated: "agentdesk:inbox-response-updated",
   conversationTitleChanged: "agentdesk:conversation-title-changed",
   conversationUpdated: "agentdesk:conversation-updated",
   switchToConversation: "agentdesk:switch-to-conversation",

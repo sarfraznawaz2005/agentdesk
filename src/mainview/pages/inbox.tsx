@@ -20,6 +20,10 @@ import {
   CheckSquare,
   Square,
   X,
+  ChevronRight,
+  ChevronDown,
+  Copy,
+  Check,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -168,6 +172,55 @@ function MessageRowSkeleton() {
   );
 }
 
+/**
+ * Collapsible original-prompt block — collapsed by default, toggled by the user.
+ * Mirrors the PM-thinking collapse pattern used in the main project chat (see
+ * `ThinkingBlock` in chat/message-parts.tsx): chevron toggle + italic content.
+ */
+function PromptBlock({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors leading-none"
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        Prompt
+      </button>
+      {expanded && (
+        <p className="mt-2 text-sm italic leading-relaxed whitespace-pre-wrap break-words">
+          {content}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Copy-to-clipboard button for the agent response only (not the prompt). */
+function CopyResponseButton({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Tip content={copied ? "Copied!" : "Copy response"} side="top">
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        aria-label={copied ? "Copied" : "Copy response"}
+      >
+        {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+      </button>
+    </Tip>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Message Detail Pane (right side of the master-detail split)
 // ---------------------------------------------------------------------------
@@ -291,17 +344,18 @@ function MessageDetailPane({
           </span>
         </div>
 
-        {/* Message content */}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-          {message.content}
-        </p>
+        {/* Message content — collapsed by default, user can toggle to view */}
+        <PromptBlock key={message.id} content={message.content} />
 
         {/* Agent response */}
         {message.agentResponse && (
           <>
             <Separator />
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent Response</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent Response</p>
+                <CopyResponseButton key={message.id} content={message.agentResponse} />
+              </div>
               <div className="text-sm leading-relaxed break-words bg-muted/50 rounded-md p-3">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -498,6 +552,22 @@ export function InboxPage() {
     window.addEventListener("agentdesk:inbox-message-received", handler);
     return () => window.removeEventListener("agentdesk:inbox-message-received", handler);
   }, [loadMessages, loadUnreadCount]);
+
+  // Live-patch a message's agentResponse as soon as an agent replies — this is
+  // the only way a reply becomes visible without leaving the tab and coming
+  // back, since replying never inserts a new inbox row (loadMessages alone
+  // wouldn't pick it up on its own schedule).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { messageId, response } = (e as CustomEvent).detail as { messageId: string; response: string };
+      const patch = (prev: InboxMessage[]) =>
+        prev.map((m) => (m.id === messageId ? { ...m, agentResponse: response } : m));
+      setMessages(patch);
+      setSearchResults((prev) => (prev ? patch(prev) : prev));
+    };
+    window.addEventListener("agentdesk:inbox-response-updated", handler);
+    return () => window.removeEventListener("agentdesk:inbox-response-updated", handler);
+  }, []);
 
   // Debounced search
   useEffect(() => {

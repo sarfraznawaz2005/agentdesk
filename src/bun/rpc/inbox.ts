@@ -152,7 +152,19 @@ export async function replyToInboxMessage(id: string, content: string) {
 }
 
 export async function updateAgentResponse(messageId: string, response: string) {
-  await db.update(inboxMessages).set({ agentResponse: response }).where(eq(inboxMessages.id, messageId));
+  const [row] = await db
+    .update(inboxMessages)
+    .set({ agentResponse: response })
+    .where(eq(inboxMessages.id, messageId))
+    .returning({ projectId: inboxMessages.projectId });
+
+  // Broadcast so an open Inbox tab updates the message in place, live —
+  // without this, the reply only appears after a manual reload/re-navigate.
+  broadcastToWebview("inboxResponseUpdated", {
+    messageId,
+    projectId: row?.projectId ?? null,
+    response,
+  });
 }
 
 export async function writeInboxMessage(params: {

@@ -97,6 +97,14 @@ export type WebviewSchema = RPCSchema<{
       sender: string;
       platform: string;
     };
+    // An agent finished replying to an existing inbox message — lets an open
+    // Inbox tab update the message in place (list badge + detail pane) without
+    // a manual refresh or navigating away and back.
+    inboxResponseUpdated: {
+      messageId: string;
+      projectId: string | null;
+      response: string;
+    };
 
     // Kanban real-time updates
     kanbanTaskUpdated: {

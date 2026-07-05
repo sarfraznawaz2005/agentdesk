@@ -2,7 +2,7 @@
 title: RPC Client (Frontend)
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/mainview/lib/rpc.ts
   - src/shared/rpc/index.ts
@@ -78,6 +78,11 @@ completions toast. An earlier version of this toast fired per kanban task
 reaching "done" (`taskCompleted`) — retired in favor of the session-level
 signal, since a task can pass through several review rounds before it's truly
 done.
+Another example: `inboxResponseUpdated` → `agentdesk:inbox-response-updated`
+lets the Inbox tab (`pages/inbox.tsx`) patch a message's `agentResponse` in
+place as soon as `updateAgentResponse` (`bun/rpc/inbox.ts`) persists it —
+before this existed, a reply only became visible after leaving and
+re-entering the tab (which forced a fresh `getInboxMessages` fetch).
 The flip side is the gotcha below: a broadcast needs **both** a `webview.ts`
 schema entry and a re-emit handler here, or it silently does nothing.
 
