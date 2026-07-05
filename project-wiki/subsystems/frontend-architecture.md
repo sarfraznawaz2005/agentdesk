@@ -2,12 +2,14 @@
 title: Frontend Architecture
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/mainview/main.tsx
   - src/mainview/App.tsx
   - src/mainview/router.tsx
   - src/mainview/components/layout/app-shell.tsx
+  - src/mainview/components/layout/agent-session-toast.tsx
+  - src/mainview/components/layout/cross-project-approval-toast.tsx
   - src/mainview/components/layout/sidebar.tsx
   - src/mainview/components/layout/topnav.tsx
   - src/mainview/lib/header-context.tsx
@@ -100,13 +102,20 @@ What the shell owns (and why it lives here, above the router outlet):
   can suppress desktop notifications while the app is focused
   (`app-shell.tsx:251-300`).
 - **Always-mounted singletons** that must outlive page changes: the Auto-Earn
-  background engine `<AlwaysMountedInbox>` (`app-shell.tsx:377`), the floating
-  PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:385-386`),
-  `<AgentSessionToast>` (`app-shell.tsx:357`) — a render-nothing listener that
+  background engine `<AlwaysMountedInbox>` (`app-shell.tsx:379`), the floating
+  PM / custom-agent chat widgets (only visible on `/`, `app-shell.tsx:387-388`),
+  `<AgentSessionToast>` (`app-shell.tsx:358`) — a render-nothing listener that
   toasts `agentdesk:agent-session-complete` events for projects the user is
   *not* viewing (gated on the chat store's `activeProjectId`,
-  `agent-session-toast.tsx:27`) — and side-effect store imports for the
-  issue-fixer and unread stores (`app-shell.tsx:28-33`).
+  `agent-session-toast.tsx:27`) — `<CrossProjectApprovalToast>`
+  (`app-shell.tsx:359`) — same pattern but for *blocking* events: it toasts
+  `agentdesk:shell-approval-request`/`agentdesk:plan-presented` broadcasts from
+  a project other than `activeProjectId`, since neither the shell-approval nor
+  plan-approval card renders outside its own project's chat
+  (`cross-project-approval-toast.tsx:6-24`); its "Open" button sets
+  `pendingConversationTarget` and navigates, landing on the exact conversation
+  awaiting approval — and side-effect store imports for the issue-fixer and
+  unread stores (`app-shell.tsx:29-34`).
 
 ### Top-nav action slot (header context)
 
@@ -162,7 +171,9 @@ on unmount at `project.tsx:139`), and store-side handlers ignore broadcasts whos
 `AgentSessionToast` inverts the same signal to toast a finished agent-dispatch
 session from *other* projects — the broadcast itself only fires once a
 project's PM and all its agents have gone idle (`engine-manager.ts`), not once
-per kanban task. See [[agent-engine]].
+per kanban task. `CrossProjectApprovalToast` applies the identical inversion to
+the two approval-gated broadcasts (shell command, plan) instead of the
+idle-completion one. See [[agent-engine]].
 
 ## RPC bridge
 

@@ -2,7 +2,7 @@
 title: Issue Fixer
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/issue-fixer/poller.ts
   - src/bun/issue-fixer/triggers.ts
@@ -155,7 +155,7 @@ flowchart TD
 
 ### 5. The "never merge" enforcement (three layers)
 
-1. **System prompt** (`seed.ts:1207-1211`): explicit absolute rules — never merge,
+1. **System prompt** (`seed.ts:1210-1214`): explicit absolute rules — never merge,
    never push, never use `gh`, never force-push, no human input.
 2. **Toolset**: `git_push`/`git_pr` and branch-mutating git tools are in
    `excludeTools` (`orchestrator.ts:326-339`); there is no merge tool in the
@@ -187,7 +187,7 @@ branch. A user-initiated Stop surfaces as an `AbortError` and is recorded as
 | `src/bun/issue-fixer/github.ts` | Outbound GitHub REST client (issues/comments/PR create/comment) |
 | `src/bun/issue-fixer/config.ts` | `issue_fixer_config` + `issue_fix_runs` persistence |
 | `src/bun/issue-fixer/notify.ts` | Success/failure summary to all connected channels |
-| `src/bun/db/seed.ts:1196-1221` | Hidden `issue-fixer` agent definition + system prompt |
+| `src/bun/db/seed.ts:1198-1224` | Hidden `issue-fixer` agent definition + system prompt |
 | `src/bun/db/schema.ts:582,614` | `issueFixerConfig` / `issueFixRuns` tables |
 
 ## Gotchas / Constraints
@@ -211,6 +211,17 @@ branch. A user-initiated Stop surfaces as an `AbortError` and is recorded as
 - **Token auth uses an inline header with the credential helper disabled** — never
   embed the token in the remote URL (would trigger Git Credential Manager account
   prompts on the user's own pushes). See [[github-token-auth|GitHub token auth]].
+- **The shared `constitution` setting is NOT injected into issue-fixer's prompt.**
+  `getAgentSystemPrompt` special-cases `playground-agent` and `issue-fixer`
+  (`prompts.ts:1165-1180`) to skip the constitution, PM/kanban protocol, and
+  cross-agent doc-sharing guidance entirely — it gets only its base prompt +
+  user profile + skills list + MCP/browser sections. So edits to the seeded
+  `constitution` text or `CONSTITUTION_VERSION` (`seed.ts`), and edits to the
+  worker-prompt "Cross-Agent Knowledge Sharing" doc tools list (`prompts.ts`,
+  e.g. the `delete_doc` addition), do not change issue-fixer's actual behavior —
+  it never had `create_doc`/`update_doc`/`delete_doc` guidance to begin with. It
+  does keep the full tool registry (no `agent_tools` rows), so `delete_doc` is
+  callable, just undocumented in its prompt.
 
 ## Related
 - [[playground]] — the hidden-agent / `runInlineAgent` pattern this mirrors

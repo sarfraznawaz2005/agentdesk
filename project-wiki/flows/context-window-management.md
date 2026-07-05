@@ -2,7 +2,7 @@
 title: Context Window Management
 type: flow
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/agents/context.ts
   - src/bun/agents/summarizer.ts
@@ -162,22 +162,22 @@ path can fire.
 ### Layer 2 — Inline sub-agent (in-memory, progressive tiers)
 
 This is the **60/70/85/90** ladder, and it lives entirely inside the
-`generateText` call in `runInlineAgent` (`agent-loop.ts:1119`; one call per
+`generateText` call in `runInlineAgent` (`agent-loop.ts:1145`; one call per
 attempt of the transient-failure `retry:` loop, `MAX_RETRIES=2`,
-`agent-loop.ts:1080-1083` — a retry resumes from the compacted in-memory
+`agent-loop.ts:1106-1109` — a retry resumes from the compacted in-memory
 history). Termination is handled by `stopWhen` (no more tool calls, or a
-`stopReason` is set — `agent-loop.ts:1130-1139`); there is **no max-step /
+`stopReason` is set — `agent-loop.ts:1156-1165`); there is **no max-step /
 iteration cap**.
 
 `lastPromptTokens` is updated in `onStepFinish` from the provider's *real*
 `step.usage.inputTokens` (falling back to v5 `promptTokens`),
 **not** accumulated — it is the current context size each step
-(`agent-loop.ts:1224-1231`). `CONTEXT_LIMIT = getContextLimit(modelId, projectId)`
-(`agent-loop.ts:1071`).
+(`agent-loop.ts:1250-1256`). `CONTEXT_LIMIT = getContextLimit(modelId, projectId)`
+(`agent-loop.ts:1097`).
 
-Each step, `prepareStep` (`agent-loop.ts:1142`) computes
-`contextRatio = lastPromptTokens / CONTEXT_LIMIT` (`agent-loop.ts:1156`) and
-picks a tier (`agent-loop.ts:1162-1209`):
+Each step, `prepareStep` (`agent-loop.ts:1168`) computes
+`contextRatio = lastPromptTokens / CONTEXT_LIMIT` (`agent-loop.ts:1182`) and
+picks a tier (`agent-loop.ts:1188-1235`):
 
 | Ratio | Condition | Action |
 |---|---|---|
@@ -197,7 +197,7 @@ last 2 assistant messages intact.
 The 0.70 tier is one-shot (gated by `!aiCompactionDone`): the heavy
 summary-and-replace happens once; after that, 0.85/0.90 only do cheap stripping
 or stop. On a fatal full context the agent ends with a "context window full"
-summary (`agent-loop.ts:1448`) rather than crashing.
+summary (`agent-loop.ts:1474`) rather than crashing.
 
 ## Why two systems / tradeoffs
 

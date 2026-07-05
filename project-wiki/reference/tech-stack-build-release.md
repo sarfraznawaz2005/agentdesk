@@ -2,7 +2,7 @@
 title: Tech Stack, Build & Release
 type: reference
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - package.json
   - electrobun.config.ts
@@ -87,6 +87,7 @@ double-watch would clobber HMR.
 | `bun run build` / `build:canary` | production / canary bundle | |
 | `bun run typecheck` / `lint` / `format` | `tsc --noEmit` / ESLint / Prettier | `package.json:19-23` |
 | `bun run db:generate` / `db:migrate` / `db:studio` | Drizzle Kit | see [[database]] |
+| `bun run test` | `bun test` | convenience alias, added `package.json:19` |
 
 Dev port `5173` is `strictPort` (`vite.config.ts:18-21`) so a stale process fails loudly
 instead of silently shifting ports.

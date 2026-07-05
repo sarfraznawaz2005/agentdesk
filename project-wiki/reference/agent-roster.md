@@ -2,7 +2,7 @@
 title: Agent Roster Reference
 type: reference
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/db/seed.ts
   - src/bun/agents/agent-loop.ts

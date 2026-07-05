@@ -2,7 +2,7 @@
 title: AgentDesk — Architecture Overview
 type: overview
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - CLAUDE.md
   - docs/workflow.md

@@ -2,7 +2,7 @@
 title: Remote Access (Web App)
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - relay/src/index.ts
   - src/bun/remote/
@@ -184,3 +184,12 @@ button is web-only and works regardless.)
   don't exist in a plain browser — gated by `IS_REMOTE` (see `docs/web-app-prd.md`
   §9; native-gating work tracked separately).
 - `*.pages.dev` subdomains are globally unique → the project is `agentdeskweb`.
+- **Every broadcast needs a remote-transport mirror** — `BROADCAST_EVENTS` in
+  `remote-transport.ts` maps each backend broadcast method to its
+  `agentdesk:*` DOM event; a method missing from this table just falls back
+  to a kebab-cased guess (`fallbackEventName`), which usually still works but
+  isn't guaranteed to match what native listeners expect. When adding a new
+  broadcast, add its entry here in the same change (e.g. `agentStatus`,
+  `messageQueueUpdated`, `inboxResponseUpdated` were added alongside their
+  features) — otherwise it can silently behave differently for web/remote
+  sessions than for the desktop app.

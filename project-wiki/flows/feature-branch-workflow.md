@@ -2,7 +2,7 @@
 title: Feature Branch Workflow
 type: flow
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/review-cycle.ts
@@ -89,31 +89,31 @@ branch, so they should not manage it themselves.
 
 ### 2. `set_feature_branch` — AI branch naming
 
-Defined at `pm-tools.ts:2706`. It takes **no arguments**. Steps:
+Defined at `pm-tools.ts:2781`. It takes **no arguments**. Steps:
 
-1. Read the last 5 user messages of the conversation (`pm-tools.ts:2714-2725`)
+1. Read the last 5 user messages of the conversation (`pm-tools.ts:2789-2800`)
    as the naming context.
 2. Collect every existing git branch plus every PR source branch and keep the
-   `feature/` ones as the "taken" set (`pm-tools.ts:2731-2742`) — so the model
+   `feature/` ones as the "taken" set (`pm-tools.ts:2806-2817`) — so the model
    does not reuse a name already in flight.
 3. Ask the configured provider model to emit a single `feature/<slug>` name,
    lowercase/hyphens/≤40 chars, explicitly forbidding the taken names
-   (`pm-tools.ts:2747-2763`).
+   (`pm-tools.ts:2819-2838`).
 4. Sanitize the output (strip quotes, first line only) and validate it starts
-   with `feature/` and is ≥10 chars (`pm-tools.ts:2765-2768`); otherwise it
+   with `feature/` and is ≥10 chars (`pm-tools.ts:2840-2843`); otherwise it
    asks the PM to retry.
 5. If the model still produced a taken name, append `-2`, `-3`, … as a
-   collision suffix (`pm-tools.ts:2770-2775`).
+   collision suffix (`pm-tools.ts:2845-2850`).
 6. Persist to `currentFeatureBranch:<projectId>` in category `git`
-   (`pm-tools.ts:2777`).
+   (`pm-tools.ts:2852`).
 
 Crucially this tool does **not** touch git at all — it only generates and stores
 a name. No branch is created here.
 
 ### 3. `clear_feature_branch`
 
-Defined at `pm-tools.ts:2785`. Takes `project_id` and writes an empty string to
-`currentFeatureBranch:<projectId>` (`pm-tools.ts:2793`). The prompt tells the PM
+Defined at `pm-tools.ts:2860`. Takes `project_id` and writes an empty string to
+`currentFeatureBranch:<projectId>` (`pm-tools.ts:2868`). The prompt tells the PM
 to call this *after* the feature is done and before dispatching an agent to push
 and open the PR.
 
@@ -147,8 +147,8 @@ errors — branch/commit failures are logged, never thrown
 
 | File | Role |
 |---|---|
-| `src/bun/agents/tools/pm-tools.ts:2706` | `set_feature_branch` — AI-generates and stores the branch name (no git ops) |
-| `src/bun/agents/tools/pm-tools.ts:2785` | `clear_feature_branch` — empties the stored name |
+| `src/bun/agents/tools/pm-tools.ts:2781` | `set_feature_branch` — AI-generates and stores the branch name (no git ops) |
+| `src/bun/agents/tools/pm-tools.ts:2860` | `clear_feature_branch` — empties the stored name |
 | `src/bun/agents/review-cycle.ts:374` | `autoCommitTask` — checks out / creates the feature branch, then commits |
 | `src/bun/agents/prompts.ts:869` | `FEATURE_BRANCH_SECTION` — PM instructions (set once → dispatch → clear) |
 | `src/bun/agents/prompts.ts:855` | `isFeatureBranchWorkflowEnabled` — reads the per-project toggle |

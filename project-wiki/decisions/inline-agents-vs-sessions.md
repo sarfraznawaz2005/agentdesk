@@ -2,7 +2,7 @@
 title: Inline Agents vs Persistent Sessions
 type: decision
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - docs/agent-sessions-proposal.md
   - src/bun/db/migrations/v3_agent-sessions.ts

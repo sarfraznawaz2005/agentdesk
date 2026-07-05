@@ -2,7 +2,7 @@
 title: Skills System
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/skills/loader.ts
   - src/bun/skills/registry.ts

@@ -2,7 +2,7 @@
 title: Glossary
 type: glossary
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - CLAUDE.md
   - src/bun/agents/engine.ts
@@ -73,6 +73,14 @@ engine and relays PM replies plus task-done broadcasts back out. See
 **Claude Subscription provider** — A provider that reuses Claude Code's stored
 OAuth token, impersonates the CLI's headers, refreshes by spawning the `claude`
 CLI on a 401, and is gated by a local marker file. See [[claude-subscription]].
+
+**Constitution** — The single global `constitution` setting (seeded text,
+re-published on a `CONSTITUTION_VERSION` bump so existing users get updates)
+appended as a `## Constitution` section to the PM's and every sub-agent's
+system prompt, filtered per role by `filterConstitution` (PM loses code-quality
+rules, read-only agents lose write-autonomy rules). Not to be confused with
+`CLAUDE.md`'s own "Constitution" section, which governs *this* project's coding
+agents, not the in-app agent roster. See [[database]], [[agent-engine]].
 
 **Context compaction** — How a long inline sub-agent conversation is shrunk in
 place as context fills, via a progressive 60/70/85/90% compaction ladder (with

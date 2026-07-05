@@ -2,7 +2,7 @@
 title: PM is the Sole Orchestrator
 type: decision
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/tools/pm-tools.ts

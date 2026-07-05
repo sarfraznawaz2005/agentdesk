@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts
@@ -32,7 +32,7 @@ One `AgentEngine` instance per project (`src/bun/agents/engine.ts:47`, cached by
 `EngineManager`) streams the PM's response, and the PM dispatches specialist
 sub-agents **inline in the same conversation** via tools. Sub-agents get a
 *fresh* context (system prompt + task only) and stream their own tool calls into
-the chat as message parts (`src/bun/agents/agent-loop.ts:784`). The single most
+the chat as message parts (`src/bun/agents/agent-loop.ts:801`). The single most
 important invariant: **the PM never re-enters while it is already running, and
 only one write-agent runs at a time** — everything else (approval gate, review
 cycle, handoffs, compaction) is built around keeping that serialization correct.
@@ -162,33 +162,43 @@ spawned — while the LLM-context path (`context.ts`, `summarizer.ts`) orders by
 `createdAt`, which is also bumped to the finish time (`engine.ts:900`). Both
 views stay chronological.
 
-## Inline sub-agent execution (`agent-loop.ts:784`)
+## Inline sub-agent execution (`agent-loop.ts:801`)
 
 `runInlineAgent` is a single `generateText` call (not a manual loop) whose
 behaviour is shaped by `prepareStep`/`onStepFinish`/`stopWhen`:
 
 - **Fresh context**: the agent message array is just the task (plus optional
   `priorMessages` for the Playground) — it never sees the parent conversation
-  (`agent-loop.ts:1055`). The PM's task description is therefore the agent's
+  (`agent-loop.ts:1090`). The PM's task description is therefore the agent's
   *entire* context, which is why `run_agent`'s schema demands a comprehensive
   task (`pm-tools.ts:256`).
-- **Tool assembly** (`agent-loop.ts:856`–`agent-loop.ts:954`): role tools from
+- **Tool assembly** (`agent-loop.ts:884`–`agent-loop.ts:1005`): role tools from
   `getToolsForAgent` + tracked file tools + plugin + MCP + decisions tool, then
   workspace-cwd wrappers, optional read-only filter (`WRITE_TOOLS`,
-  `agent-loop.ts:225`), `excludeTools`, and `git_commit` removal when auto-commit
-  is on (the review cycle commits instead).
+  `agent-loop.ts:231`), `excludeTools`, and `git_commit` removal when auto-commit
+  is on (the review cycle commits instead). The `run_shell` and
+  `request_human_input` wrappers additionally stamp hidden `args.__projectId`/
+  `args.__conversationId` fields (not part of either tool's public schema, so
+  the model never sees them) before calling the original `execute()`
+  (`agent-loop.ts:944`–`agent-loop.ts:976`). This runs unconditionally (not
+  gated on `workspacePath`) so the shell-approval gate and
+  `request_human_input`'s pending-question card always resolve the agent's
+  *actual* project/conversation instead of falling back to a guess — the fix
+  for a bug where a module-level "most recently touched engine" cache in
+  `engine-manager.ts` could leak one project's "Always allow" shell approval
+  into suppressing another project's prompt.
 - **Progressive compaction** in `prepareStep` keyed on `lastPromptTokens /
   getContextLimit`: >0.60 aggressive tool-result pruning, >0.70 rule-based
-  compaction (zero-token deterministic summary, `agent-loop.ts:446`) escalating
+  compaction (zero-token deterministic summary, `agent-loop.ts:463`) escalating
   to AI compaction if the summary is large, >0.85 strip, >0.90 hard stop
-  (`agent-loop.ts:1146`–`agent-loop.ts:1199`). There is **no iteration cap** —
+  (`agent-loop.ts:1188`–`agent-loop.ts:1237`). There is **no iteration cap** —
   only context, a 30-min timeout, stuck-loop detection (MCP tools repeated 15×,
-  `agent-loop.ts:1230`), or abort can stop it.
+  `agent-loop.ts:1274`), or abort can stop it.
 - **Persistence toggle**: `persistToDb:false` skips all DB writes (Playground)
-  while still firing callbacks (`agent-loop.ts:791`).
+  while still firing callbacks (`agent-loop.ts:808`).
 
 `READ_ONLY_AGENTS` = `{code-explorer, research-expert, task-planner}`
-(`agent-loop.ts:239`) is the canonical list of agents safe to run in parallel.
+(`agent-loop.ts:246`) is the canonical list of agents safe to run in parallel.
 
 ## The sequential write-agent guard
 
@@ -263,7 +273,7 @@ Two distinct mechanisms:
   estimate) reach the project's Context Window Limit (`getContextLimit`, default
   1M, `engine.ts:279`) and post-turn when context ≥80% (`context.ts:90`).
 - **Between-task tool-output pruning** (`pruneAgentToolResults`,
-  `agent-loop.ts:319`): when context ≥60% after an agent finishes, verbose tool
+  `agent-loop.ts:336`): when context ≥60% after an agent finishes, verbose tool
   outputs are replaced with short placeholders (`pm-tools.ts:659`), preserving
   `read_file`/edit results which the agent needs as working memory.
 

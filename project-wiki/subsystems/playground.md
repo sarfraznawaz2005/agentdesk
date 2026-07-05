@@ -2,7 +2,7 @@
 title: Playground
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/playground/orchestrator.ts
   - src/bun/playground/server.ts
@@ -33,7 +33,7 @@ three options (`src/bun/agents/agent-loop.ts:165`, `:171`, `:176`, plus
 extra-tooled run:
 
 - **`priorMessages`** — prior turns prepended before the current task
-  (`agent-loop.ts:1066`). The Playground keeps its history in a temp JSON file,
+  (`agent-loop.ts:1091`). The Playground keeps its history in a temp JSON file,
   not the DB, and threads it here. Note: once rule-based compaction fires
   (>70% context) these fold into a summary.
 - **`persistToDb: false`** — skip ALL `messages` / `message_parts` /
@@ -44,7 +44,7 @@ extra-tooled run:
   (`agent-loop.ts:900`). The Playground injects its preview/reject tools plus an
   auto-approved `run_shell`.
 - **`excludeTools`** (supports trailing-`*` prefix matching,
-  `agent-loop.ts:958-963`) — removes tools that would dead-lock with no UI to satisfy
+  `agent-loop.ts:982-990`) — removes tools that would dead-lock with no UI to satisfy
   them: `request_human_input`, `chrome-devtools_*`, `verify_implementation`
   (`orchestrator.ts:322`).
 
@@ -82,10 +82,14 @@ sequenceDiagram
    (`buildWorkspaceContext`, `:132`), and assembles `extraTools` =
    `createPlaygroundTools()` + the auto-approved `run_shell` (`:265`).
 3. **Execute.** `runInlineAgent` runs with `workspacePath = PLAYGROUND_FILES_DIR`
-   and `projectId = "playground"` (`orchestrator.ts:305`). The agent-loop's
-   cwd-wrapper scopes `run_shell` and the directory tools to that folder
-   (`agent-loop.ts:914-949`), so even the auto-approved shell can't escape the
-   sandbox. Activity streams via `agentdesk:playground-*` broadcasts mirrored
+   and `projectId = "playground"` (`orchestrator.ts:305`, `conversationId = "playground"`
+   too — both are fixed constants, not `undefined`). The agent-loop's cwd-wrapper
+   scopes `run_shell` and the directory tools to that folder (`agent-loop.ts:914-962`),
+   so even the auto-approved shell can't escape the sandbox. Since a3cfa75, the same
+   `run_shell` wrapper unconditionally stamps hidden `args.__projectId`/`__conversationId`
+   (used by the shell-approval gate to resolve the right project) — harmless here since
+   both are always the fixed `"playground"` string, never blank. Activity streams via
+   `agentdesk:playground-*` broadcasts mirrored
    into an in-memory `activityParts` buffer so navigating away and back restores
    the log within a session (`orchestrator.ts:201`, `bufferPart` `:167`).
 4. **Render.** When the artifact is ready the agent calls

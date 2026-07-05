@@ -2,7 +2,7 @@
 title: Electrobun Artifact Folder Layout
 type: gotcha
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - .github/workflows/release.yml
   - node_modules/electrobun/src/cli/index.ts
