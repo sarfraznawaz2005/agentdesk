@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { useMessageQueueStore } from "@/stores/message-queue";
+import { useMessageQueueStore, type QueuedMessage } from "@/stores/message-queue";
 import { PanelLeft, PanelRight, Upload, Search, Download, SquarePen, FoldHorizontal, UnfoldHorizontal, ZoomIn, ZoomOut } from "lucide-react";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { cn } from "../../lib/utils";
@@ -119,7 +119,18 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
   const branchConversation = useChatStore((s) => s.branchConversation);
   const renameConversation = useChatStore((s) => s.renameConversation);
   const pinConversation = useChatStore((s) => s.pinConversation);
-  const shellApprovalRequests = useChatStore((s) => s.shellApprovalRequests);
+  // The store holds pending shell approvals for EVERY project (broadcasts are
+  // global) so switching to a project with a pending approval still shows it
+  // without a reload — but this view must only render the ones for ITS OWN
+  // project, or a background project's request would appear blended into
+  // whichever project's chat is currently open. Filtered in a memo (not
+  // inline in the selector) so an unrelated store update elsewhere doesn't
+  // force a re-render via a fresh array reference every time.
+  const allShellApprovalRequests = useChatStore((s) => s.shellApprovalRequests);
+  const shellApprovalRequests = useMemo(
+    () => allShellApprovalRequests.filter((r) => r.projectId === projectId),
+    [allShellApprovalRequests, projectId],
+  );
   const runningAgentCount = useChatStore((s) => s.runningAgentCount);
   const messagesLoading = useChatStore((s) => s.messagesLoading);
 
@@ -127,12 +138,22 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
   const isCompacting = useChatStore((s) => s.isCompacting);
   const isBusy = isStreaming || runningAgentCount > 0 || pmPending || isCompacting;
 
-  // ---- Message queue --------------------------------------------------------
+  // ---- Message queue ----------------------------------------------------
+  // Held server-side (see message-queue-manager.ts) and drained from the
+  // backend's own idle-check — NOT from an effect here — so a queued message
+  // reaches the right project+conversation once idle even if the user has
+  // since switched away from it. This store is just a staleness-guarded
+  // mirror of whichever project+conversation is currently displayed.
   const enqueue = useMessageQueueStore((s) => s.enqueue);
-  const dequeue = useMessageQueueStore((s) => s.dequeue);
-  const removeQueued = useMessageQueueStore((s) => s.remove);
-  const clearQueue = useMessageQueueStore((s) => s.clear);
+  const removeQueuedRaw = useMessageQueueStore((s) => s.remove);
+  const clearQueueRaw = useMessageQueueStore((s) => s.clear);
+  const loadQueue = useMessageQueueStore((s) => s.loadQueue);
+  const applyQueueBroadcast = useMessageQueueStore((s) => s.applyBroadcast);
   const queuedMessages = useMessageQueueStore((s) => s.queue);
+  const removeQueued = useCallback(
+    (id: string) => { void removeQueuedRaw(projectId, activeConversationId ?? "", id); },
+    [removeQueuedRaw, projectId, activeConversationId],
+  );
 
   // Context utilization estimate for /compact visibility (same logic as ContextIndicator)
   const contextUtilization = useMemo(() => {
@@ -177,7 +198,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
 
       // Queue plain-text messages when the PM is busy (no attachments, not shell)
       if (isBusy && !attachments?.length && !content.startsWith("__shell__")) {
-        const added = enqueue(content);
+        const added = await enqueue(projectId, activeConversationId, content);
         if (!added) {
           toast("error", "Message queue is full — wait for the PM to respond before sending more.");
         }
@@ -206,9 +227,20 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
             hasParts: 0,
             createdAt: new Date().toISOString(),
           };
-          useChatStore.setState((prev) => ({
-            messages: [...prev.messages, shellMsg],
-          }));
+          useChatStore.setState((prev) => {
+            // The shell command's own execution already completed via
+            // rpc.executeShellCommand (in ChatInput) before this fires — but
+            // if the user switched conversations while it was running, `prev`
+            // now holds a DIFFERENT conversation's messages. shellMsg is
+            // frozen with the conversationId active when the command was
+            // submitted; appending it here regardless would mix a stray
+            // bubble from the old conversation into the new one's view. The
+            // result is ephemeral/client-only (never sent to the AI or
+            // persisted), so dropping it is a silent, acceptable no-op —
+            // nothing is lost except a bit of now-irrelevant visual feedback.
+            if (prev.activeConversationId !== shellMsg.conversationId) return prev;
+            return { messages: [...prev.messages, shellMsg] };
+          });
         } catch { /* malformed shell result */ }
         return;
       }
@@ -280,7 +312,13 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
         ? `${implicitContext}\n${content}`
         : content;
 
-      // Add user message to local state immediately (show visible content)
+      // Add user message to local state immediately (show visible content).
+      // The attachment-saving loop above awaits per-file, so the user could
+      // have switched conversations by the time we get here — the backend
+      // send below still correctly targets the conversation the user actually
+      // meant (frozen `activeConversationId`, this closure), but the OPTIMISTIC
+      // append must only apply if that's still what's on screen, or it would
+      // show up mixed into whatever conversation is now active.
       const userMsg = {
         id: `temp-${Date.now()}`,
         conversationId: activeConversationId,
@@ -293,45 +331,48 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
         hasParts: 0,
         createdAt: new Date().toISOString(),
       };
-      useChatStore.setState((prev) => ({
-        messages: [...prev.messages, userMsg],
-      }));
+      useChatStore.setState((prev) =>
+        prev.activeConversationId === userMsg.conversationId
+          ? { messages: [...prev.messages, userMsg] }
+          : prev,
+      );
 
       sendMessage(projectId, activeConversationId, fullContent);
     },
     [projectId, activeConversationId, sendMessage, isBusy, enqueue],
   );
 
-  // Drain one queued message when the PM transitions from busy → idle.
-  const prevBusyRef = useRef(isBusy);
+  // Load (and re-load on every project/conversation switch) the queue that's
+  // actually held server-side for whatever's now displayed. Delivery itself —
+  // draining a queued message once idle — happens entirely in the backend's
+  // idle-check (engine-manager.ts), not here, so it's correct regardless of
+  // what the frontend switches to in the meantime.
   useEffect(() => {
-    const wasBusy = prevBusyRef.current;
-    prevBusyRef.current = isBusy;
-    if (wasBusy && !isBusy) {
-      const msg = dequeue();
-      if (msg && activeConversationId) {
-        handleSend(msg.content);
-      }
-    }
-  }, [isBusy, dequeue, handleSend, activeConversationId]);
+    loadQueue(projectId, activeConversationId);
+  }, [projectId, activeConversationId, loadQueue]);
 
-  // Clear the queue only on a genuine conversation switch — not on every
-  // ChatLayout mount, so navigating away and back preserves the queue.
-  // The "did it actually change" check lives in the store (not a component
-  // ref) because the store survives this component unmounting.
-  const syncActiveConversation = useMessageQueueStore((s) => s.syncActiveConversation);
+  // Live-update the queue display when the backend drains/changes it — e.g.
+  // a queued message just got auto-sent, or another window enqueued one.
   useEffect(() => {
-    syncActiveConversation(activeConversationId);
-  }, [activeConversationId, syncActiveConversation]);
+    function onQueueUpdated(e: Event) {
+      const { projectId: pid, conversationId: cid, queue } = (e as CustomEvent<{
+        projectId: string; conversationId: string; queue: QueuedMessage[];
+      }>).detail;
+      applyQueueBroadcast(pid, cid, queue);
+    }
+    window.addEventListener("agentdesk:message-queue-updated", onQueueUpdated);
+    return () => window.removeEventListener("agentdesk:message-queue-updated", onQueueUpdated);
+  }, [applyQueueBroadcast]);
 
   const handleStop = useCallback(() => {
+    if (!activeConversationId) { stopGeneration(projectId); return; }
     const count = useMessageQueueStore.getState().queue.length;
     if (count > 0) {
-      clearQueue();
+      void clearQueueRaw(projectId, activeConversationId);
       toast("info", `Queue cleared — ${count} message${count !== 1 ? "s" : ""} discarded.`);
     }
     stopGeneration(projectId);
-  }, [projectId, stopGeneration, clearQueue]);
+  }, [projectId, activeConversationId, stopGeneration, clearQueueRaw]);
 
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

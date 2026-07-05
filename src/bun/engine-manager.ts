@@ -17,6 +17,7 @@ import {
 	loadStaleInteractiveApprovals,
 	deleteAllInteractiveApprovals,
 } from "./db/pending-approvals";
+import { dequeueMessage, getQueuedMessages, clearQueueForProject } from "./message-queue-manager";
 
 // ---------------------------------------------------------------------------
 // Engine management — one AgentEngine instance per project.
@@ -136,6 +137,9 @@ let appFocused = true;
 export function setAppFocused(focused: boolean): void {
 	appFocused = focused;
 }
+export function isAppFocused(): boolean {
+	return appFocused;
+}
 
 /**
  * Build a markdown system-status report for the /info slash command.
@@ -220,7 +224,8 @@ export function removeEngine(projectId: string): void {
 		engine.stopAll();
 		abortAllAgents(projectId);
 		engines.delete(projectId);
-		resetShellAutoApprove();
+		resetShellAutoApprove(projectId);
+		clearQueueForProject(projectId);
 	}
 }
 
@@ -333,9 +338,6 @@ const pendingShellApprovals = new Map<string, {
 /** Auto-deny a shell approval after this long with no response. */
 const SHELL_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** Cache for the active project ID — set when getOrCreateEngine is called */
-let activeProjectId: string | null = null;
-
 /**
  * Resolve a pending shell approval request. Called by the RPC handler when
  * the user clicks Allow/Deny/Always in the UI.
@@ -376,17 +378,16 @@ async function getShellApprovalMode(projectId: string): Promise<string> {
  * mode is "ask".
  */
 function installShellApprovalHandler(): void {
-	setShellApprovalHandler(async (command, agentId, agentName) => {
-		if (!activeProjectId) return "allow";
+	setShellApprovalHandler(async (command, agentId, agentName, projectId, conversationId) => {
+		if (!projectId) return "allow";
 
-		const mode = await getShellApprovalMode(activeProjectId);
+		const mode = await getShellApprovalMode(projectId);
 		if (mode === "auto") return "allow";
 
 		// Mode is "ask" — broadcast approval request and wait
 		const requestId = crypto.randomUUID();
-		const projectId = activeProjectId;
 		const timestamp = new Date().toISOString();
-		const payload = { requestId, projectId, agentId, agentName, command, timestamp };
+		const payload = { requestId, projectId, conversationId, agentId, agentName, command, timestamp };
 
 		broadcastToWebview("shellApprovalRequest", payload);
 
@@ -476,14 +477,21 @@ export function askUserQuestion(payload: {
 	placeholder?: string;
 	defaultValue?: string;
 	context?: string;
-	projectId?: string;
+	// Required — the caller MUST know which project's agent is asking. Previously
+	// fell back to a module-level "most recently touched engine" cache
+	// (activeProjectId), which could mistag a question from project A as
+	// belonging to whichever project's engine happened to be touched last by
+	// unrelated backend activity. Removed; every caller now threads its own
+	// projectId through explicitly (see engine.ts's PMToolsDeps.askUserQuestion
+	// wrapper and communication.ts's request_human_input tool).
+	projectId: string;
 	agentId: string;
 	agentName: string;
 	timeoutMs?: number;
 }): Promise<string> {
 	const requestId = crypto.randomUUID();
 	const timeoutMs = payload.timeoutMs ?? DEFAULT_USER_QUESTION_TIMEOUT_MS;
-	const projectId = payload.projectId ?? activeProjectId ?? "";
+	const projectId = payload.projectId || "";
 	const requestPayload = {
 		requestId,
 		...payload,
@@ -580,7 +588,6 @@ export function reconcilePendingApprovalsOnStartup(): void {
 }
 
 export function getOrCreateEngine(projectId: string): AgentEngine {
-	activeProjectId = projectId;
 	let engine = engines.get(projectId);
 	if (!engine) {
 		evictOldestIdleEngine();
@@ -633,6 +640,18 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					const e = engines.get(projectId);
 					if (!e || e.isProcessing() || getRunningAgentCount(projectId) > 0 || e.getQueuedAgentsSnapshot().length > 0) return;
 
+					// If the user queued a message for THIS conversation while it was
+					// busy, send it now instead of treating this as "session complete" —
+					// the conversation is continuing, not finished. This fires from the
+					// engine's own completion callback, so it works regardless of which
+					// project the frontend is currently displaying.
+					const queued = dequeueMessage(projectId, cid);
+					if (queued) {
+						broadcastToWebview("messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
+						e.sendMessage(cid, queued.content, undefined);
+						return;
+					}
+
 					const hadAgentActivity = sessionHadAgentActivity.get(projectId) === true;
 					if (hadAgentActivity) sessionHadAgentActivity.set(projectId, false);
 
@@ -665,6 +684,19 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					conversationId: cid,
 					error,
 				});
+
+				// Mirrors the queued-message drain in onStreamComplete — an error also
+				// ends the PM's turn, so a message queued for this conversation should
+				// still get its chance to send once truly idle.
+				setTimeout(() => {
+					const e = engines.get(projectId);
+					if (!e || e.isProcessing() || getRunningAgentCount(projectId) > 0 || e.getQueuedAgentsSnapshot().length > 0) return;
+					const queued = dequeueMessage(projectId, cid);
+					if (queued) {
+						broadcastToWebview("messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
+						e.sendMessage(cid, queued.content, undefined);
+					}
+				}, 0);
 
 				// Desktop notification on agent error (errors shown in red in chat).
 				// Mirrors the session-complete gate: only when the app is not focused

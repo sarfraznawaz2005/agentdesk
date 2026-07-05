@@ -12,6 +12,7 @@ import { clearContextLimitCache } from "../providers/models";
 import { runGit } from "../lib/git-runner";
 import { gitAuthArgs, resolveGitHubToken } from "./github-api";
 import { encryptSecret } from "../lib/secret-crypto";
+import { clearQueueForProject } from "../message-queue-manager";
 
 /** Per-project setting keys whose values are secrets and must be encrypted at rest. */
 const PROJECT_SECRET_KEYS = new Set(["githubToken"]);
@@ -591,6 +592,9 @@ export async function deleteProjectCascade(id: string): Promise<{ success: boole
 		engines.get(id)?.stopAll();
 		abortAllAgents(id);
 	} catch { /* non-critical */ }
+	// Any message queued for this project's (about-to-be-deleted) conversations
+	// can never be delivered — drop it rather than leaking it in memory forever.
+	clearQueueForProject(id);
 
 	const s = getStmts();
 	const txn = sqlite.transaction((pid: string) => {
@@ -658,6 +662,10 @@ export async function resetProjectData(id: string): Promise<{ success: boolean }
 	// previous session don't trigger a premature approval card on the next plan.
 	const { drainTaskDefinitions } = await import("../agents/tools/planning");
 	drainTaskDefinitions(id);
+
+	// All conversations were just deleted (new ones get created after reset) —
+	// any message queued under an old conversationId can never be delivered.
+	clearQueueForProject(id);
 
 	logAudit({ action: "project.reset", entityType: "project", entityId: id });
 	return { success: true };
