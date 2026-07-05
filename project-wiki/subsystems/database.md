@@ -2,7 +2,7 @@
 title: Database Layer
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/db/connection.ts
   - src/bun/db/index.ts
