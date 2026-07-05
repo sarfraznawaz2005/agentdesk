@@ -2,13 +2,14 @@
 title: Notifications
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/notifications/desktop.ts
   - src/bun/notifications/native.ts
   - src/bun/rpc/notifications.ts
   - src/bun/db/schema.ts
   - src/bun/engine-manager.ts
+  - src/bun/agents/tools/pm-tools.ts
   - src/bun/channels/manager.ts
   - src/shared/rpc/inbox.ts
   - src/mainview/pages/settings/notification-settings.tsx
@@ -102,6 +103,15 @@ Because `sendDesktopNotification` is ungated, several features add their own
   trigger point.
 - **Shell approval required**: always fired so the user can approve while away
   (`engine-manager.ts:393-398`).
+- **Plan approval required**: `request_plan_approval` (`pm-tools.ts:1709-1735`)
+  fires a desktop notification at both its call sites (PM-driven and the
+  code-enforced task-planner-completion path) — gated by `isAppFocused()`
+  (exported from `engine-manager.ts:140`, the app-focus flag `notifications`
+  and `agent-engine` both read) and the `plan_approval_notification` setting
+  (default enabled, mirrors `session_complete_notification`'s boolean-string
+  parsing). Previously plan approval had **no** desktop notification at all —
+  a plan waiting for approval in a background/minimised project gave zero
+  signal that anything needed the user.
 - **Agent needs input**: `request_human_input` (`engine-manager.ts:499`).
 - **Task done**: kanban move to done (`src/bun/rpc/kanban.ts:213`). This is
   OS-notification-only now — there is no in-app toast keyed on a single kanban
@@ -160,6 +170,7 @@ single gate.
 ## Related
 - [[channels]] — only consumer of the preference-gated path
 - [[agent-engine]] — fires session-complete / approval / human-input toasts
+- [[plan-approve-execute]] — the plan-approval desktop notification and its `plan_approval_notification` setting
 - [[database]] — `notification_preferences` schema
 - [[rpc-layer]] — preference CRUD registered via the inbox group
 

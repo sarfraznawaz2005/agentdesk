@@ -2,11 +2,13 @@
 title: Plan -> Approve -> Execute Flow
 type: flow
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/engine.ts
   - src/bun/agents/tools/planning.ts
+  - src/bun/engine-manager.ts
+  - src/shared/rpc/webview.ts
   - docs/workflow.md
 tags: [agents, workflow]
 ---
@@ -93,6 +95,25 @@ There are **two** ways the approval card appears, and the code-level path is the
 A guard at `pm-tools.ts:712-717` suppresses the card if any non-`done` kanban task already exists
 (plan was already approved) so a stray re-plan can't interrupt in-progress work.
 
+Both paths also fire a desktop notification when the app window isn't focused
+(`isAppFocused()`, exported from `engine-manager.ts`), gated by the
+`plan_approval_notification` setting (default enabled) — mirroring the
+existing shell-approval notification pattern. This is a new addition: plan
+approval previously had no desktop notification at all, so a plan waiting for
+approval in a background/minimised project gave zero out-of-app signal. See
+[[notifications]].
+
+**A real pre-existing bug was found and fixed while adding that notification**:
+both `broadcastToWebview("planPresented", …)` call sites in `pm-tools.ts` used
+a name that does **not** match the actual schema entry — `presentPlan`
+(`src/shared/rpc/webview.ts`). Because `broadcastToWebview` resolves `method`
+as a bare string against Electrobun's generated RPC object
+(`mainWindowRef.webview.rpc.send[method]?.(…)`), the mismatched name silently
+no-op'd — this broadcast had never actually reached the frontend. Both call
+sites are now fixed to `"presentPlan"` (`pm-tools.ts:753,1709`). See
+[[broadcast-method-name-mismatch]] for the general footgun this is an instance
+of.
+
 Crucially, the task-planner completion handler **returns without calling `onAgentDone`**
 (`pm-tools.ts:781`) — it only inserts an assistant "context" message recording the plan
 note_id. Calling `onAgentDone` would immediately restart the PM and (in production) trigger a
@@ -164,6 +185,8 @@ hints are untouched.
 - [[agent-engine]]
 - [[agent-tools]]
 - [[kanban-review-cycle]]
+- [[notifications]] — the plan-approval desktop notification
+- [[broadcast-method-name-mismatch]] — the `presentPlan`/`planPresented` naming bug fixed alongside the notification
 
 ## Open questions
 - Is the engine's "soft approval gate" keyword fast-path (the comment at `engine.ts:176`) still

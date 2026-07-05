@@ -2,9 +2,13 @@
 title: Conventions & Constraints
 type: reference
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - CLAUDE.md
+  - tests/helpers/db.ts
+  - tests/helpers/dom-shim.ts
+  - tests/rpc/broadcast-method-names.test.ts
+  - docs/cross-project-issues.md
   - src/bun/rpc/github-api.ts
   - src/bun/db/migrate.ts
   - src/bun/db/seed.ts
@@ -217,12 +221,52 @@ dispatches the task-planner.
   omits it by construction.
 - **`frontend_engineer` is the one underscore agent name** — don't "fix" it.
 
+## Automated tests (`tests/`, `bun run test`)
+
+A `tests/` directory (mirroring `src/bun/`'s subfolder structure, e.g.
+`tests/agents/`, `tests/rpc/`, `tests/tools/`) holds `bun:test` suites, run via
+`bun run test` (or `bun test` directly — Bun's runner auto-discovers
+`*.test.ts`). Conventions, established across ~40 files:
+
+- **Mock, don't hit real infra.** `mock.module("electrobun/bun", () => ({...}))`
+  stubs Electrobun's native module before any transitive import pulls it in;
+  `tests/helpers/db.ts`'s `createTestDb()` gives an in-memory SQLite +
+  Drizzle instance with the full schema applied (extracted from the migration
+  files) for anything that touches the DB; heavy modules like
+  `engine-manager.ts` get `mock.module`'d with minimal stub implementations
+  rather than imported for real (see `tests/rpc/conversations.test.ts`,
+  `tests/agents/agent-loop.test.ts` for the reference recipes).
+- **Frontend Zustand stores are tested directly** (no React Testing Library /
+  DOM-rendering harness exists yet) — `tests/helpers/dom-shim.ts` shims
+  `window` (aliased to `globalThis`, which already implements `EventTarget`/
+  `CustomEvent`/`addEventListener` natively in Bun — no jsdom/happy-dom
+  dependency) and `localStorage` (in-memory), since some stores reference
+  these at import time (e.g. `kanban-store.ts` registers a top-level
+  `window.addEventListener`). `rpc` itself is mocked per-test via
+  `mock.module("../../src/mainview/lib/rpc", () => ({ rpc: {...} }))`.
+- **Prefer testing the underlying pure/mockable unit over driving the full
+  engine/agent-loop stack.** E.g. the shell-approval security fix is tested by
+  calling the tool's real `execute()` directly with a stub approval handler,
+  not by driving `runInlineAgent` through the whole AI SDK call chain.
+- **`tests/rpc/broadcast-method-names.test.ts`** is a structural/static test
+  worth knowing about: it parses `WebviewSchema`'s `messages` block and
+  asserts every string-literal `broadcastToWebview("name", ...)` call site in
+  `src/bun` uses a declared name. `broadcastToWebview` does a literal string
+  lookup against Electrobun's generated RPC object — a typo'd name doesn't
+  throw, it silently no-ops (the broadcast never reaches the frontend). This
+  test caught two real, previously-undetected instances of that bug
+  (`presentPlan`/`planPresented`, and a fully-undeclared `agentStatus`) — see
+  `docs/cross-project-issues.md` and the `broadcast-method-name-mismatch` gotcha.
+
 ## Related
 - [[directory-map]]
 - [[agent-engine]]
 - [[kanban-review-cycle]]
 - [[database-tables]]
 - [[github-token-auth]]
+- `docs/cross-project-issues.md` — the full narrative log of every
+  cross-project state-leak bug found and fixed, plus what the automated test
+  suite above does and doesn't cover.
 
 ## Open questions
 - Is there an ESLint/Prettier-enforced naming lint, or are conventions purely

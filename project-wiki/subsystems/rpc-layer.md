@@ -2,17 +2,20 @@
 title: RPC Layer
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/shared/rpc/index.ts
   - src/bun/rpc-registration.ts
   - src/bun/rpc-groups/agents-kanban-notes.ts
   - src/bun/rpc-groups/setting-callbacks.ts
+  - src/bun/rpc-groups/conversations-control.ts
   - src/bun/rpc/notes.ts
   - src/shared/rpc/notes.ts
+  - src/shared/rpc/conversations.ts
   - src/shared/rpc/webview.ts
   - src/mainview/lib/rpc.ts
   - src/bun/engine-manager.ts
+  - src/bun/message-queue-manager.ts
   - src/bun/index.ts
 tags: [rpc, ipc]
 ---
@@ -94,6 +97,20 @@ sequenceDiagram
    that delegates to the real implementation modules in `src/bun/rpc/*`
    (`notesRpc.createNote` → `src/bun/rpc/notes.ts:26`). Implementations do the DB
    work via Drizzle / raw SQLite and return the response shape.
+
+## Example: adding a queue-mutation RPC + its broadcast
+
+The message-queue redesign (see [[frontend-stores]], [[message-streaming-broadcasts]])
+is a clean recent example of the full add-an-RPC recipe below in one change:
+`enqueueMessage`/`removeQueuedMessage`/`getQueuedMessages`/`clearQueuedMessages`
+were added to `src/shared/rpc/conversations.ts` (`QueuedMessageRow` type),
+implemented as thin wrappers over `src/bun/message-queue-manager.ts` in
+`src/bun/rpc-groups/conversations-control.ts`, and each mutation also calls
+`broadcastToWebview("messageQueueUpdated", {projectId, conversationId, queue})`
+so every mounted frontend showing that conversation stays in sync without
+polling. The new broadcast entry lives in `WebviewSchema.messages`
+(`webview.ts`) alongside a `mainview/lib/rpc.ts` re-emit handler that turns it
+into `agentdesk:message-queue-updated`.
 
 ## How a broadcast flows (Bun → UI push)
 
@@ -180,6 +197,13 @@ the remote WS transport reuses it). The implementation modules in
 - **Broadcasts cross two indirections** (typed message → DOM CustomEvent → store
   listener). Adding a broadcast requires a `webview.ts` entry AND a re-emit
   handler in `mainview/lib/rpc.ts`, or it silently does nothing.
+- **Even a fully-wired broadcast silently no-ops if the call site's method-name
+  string doesn't exactly match the schema key.** `broadcastToWebview` isn't
+  typed against `WebviewSchema.messages` — it takes a bare `string`. This
+  actually shipped a bug: `request_plan_approval` called
+  `broadcastToWebview("planPresented", …)` when the real key is `presentPlan`,
+  so the plan-approval card broadcast silently never reached the frontend. See
+  [[broadcast-method-name-mismatch]].
 - **The `rpc` wrapper is hand-maintained**, not generated — it can drift from the
   contract. A wrapper can lag behind a new contract method until someone adds it.
 - **Never bypass this boundary** with direct DB access from the frontend
@@ -192,6 +216,8 @@ the remote WS transport reuses it). The implementation modules in
 
 - [[agent-engine]]
 - [[message-streaming-broadcasts]]
+- [[frontend-stores]] — the message-queue RPC's consumer (`useMessageQueueStore`)
+- [[broadcast-method-name-mismatch]]
 - [[directory-map]]
 
 ## Open questions

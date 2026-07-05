@@ -2,14 +2,19 @@
 title: Frontend Components Map
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/mainview/components/layout/app-shell.tsx
   - src/mainview/components/layout/agent-session-toast.tsx
+  - src/mainview/components/layout/cross-project-approval-toast.tsx
   - src/mainview/components/layout/sidebar.tsx
   - src/mainview/pages/project.tsx
   - src/mainview/components/chat/chat-layout.tsx
   - src/mainview/components/activity/context-panel.tsx
+  - src/mainview/components/activity/files-tab.tsx
+  - src/mainview/components/activity/docs-tab.tsx
+  - src/mainview/components/chat/model-selector.tsx
+  - src/mainview/components/chat/context-indicator.tsx
   - src/mainview/components/git/git-tab.tsx
   - src/mainview/components/issues/issue-tracker-tab.tsx
   - src/mainview/components/ui/button.tsx
@@ -40,9 +45,17 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
    `ErrorBoundary` around the router `<Outlet />`, plus app-lifetime singletons
    that live *outside* the page tree: `CommandPalette`, `StartupHealthDialog`,
    `UserQuestionDialog`, `WhatsNewDialog`, the `Toaster`,
-   `AgentSessionToast` (`app-shell.tsx:357` — render-nothing listener that
+   `AgentSessionToast` (`app-shell.tsx:358` — render-nothing listener that
    toasts `agentdesk:agent-session-complete` for projects the user is not
-   viewing, `layout/agent-session-toast.tsx`), and two dashboard-only floating widgets
+   viewing, `layout/agent-session-toast.tsx`), `CrossProjectApprovalToast`
+   (`app-shell.tsx:359` — render-nothing listener that toasts a **sticky**
+   (non-auto-dismiss) warning/info when a `shellApprovalRequest` or
+   `presentPlan` broadcast arrives for a project other than the one currently
+   viewed, `layout/cross-project-approval-toast.tsx`; its "Open" button calls
+   `useChatStore.getState().setPendingConversationTarget({projectId,
+   conversationId})` then navigates, so it lands on the *exact* conversation
+   waiting for approval, not just the project — see [[frontend-stores]] and
+   [[frontend-pages]]), and two dashboard-only floating widgets
    (`PmChatWidget`, `CustomAgentChatLauncher`, `app-shell.tsx:385-386`).
    `AlwaysMountedInbox` (`app-shell.tsx:377`) is the
    freelance Auto-Earn background engine — mounted here so it survives every
@@ -65,7 +78,7 @@ The mount chain is `AppShell → <Outlet /> → page → feature-tab → compone
 
 | Folder | Root component (entry) | What it is |
 |---|---|---|
-| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:344`), `agent-session-toast.tsx` (cross-project agent-session-completion toasts), `maintenance-overlay.tsx` |
+| `layout/` | `app-shell.tsx` | App chrome: `sidebar.tsx`, `topnav.tsx`, `project-switcher.tsx`, `project-branch-badge.tsx` (live branch indicator next to the project title, `app-shell.tsx:344`), `agent-session-toast.tsx` (informational cross-project agent-session-completion toasts), `cross-project-approval-toast.tsx` (sticky cross-project shell-/plan-approval "needs your attention" toasts that deep-link to the exact conversation), `maintenance-overlay.tsx` |
 | `chat/` | `chat-layout.tsx` | The Chat tab: 3-pane layout (conv sidebar + message area + activity pane). See "Chat subtree" below. |
 | `activity/` | `context-panel.tsx` | The right-hand activity pane inside Chat. Two inner tabs `files`/`docs` (`context-panel.tsx:8,21-24`) → `files-tab.tsx`, `docs-tab.tsx`. |
 | `kanban/` | `kanban-board.tsx` | Kanban tab: `kanban-column.tsx`, `kanban-card.tsx`, `kanban-filters.tsx`, `kanban-stats-bar.tsx`. `task-detail-modal.tsx` is mounted at the page level (`project.tsx:393`), not inside the board. |
@@ -103,7 +116,37 @@ parts to `MessageParts`, which dispatches to `tool-call-card.tsx`,
 shared `AGENT_BADGE_COLORS` map that `project.tsx:20,313` reuses for the running-
 agent badge — a small but load-bearing cross-folder dependency. Shell approval
 prompts surface as `ShellApprovalCard` stacked above the input
-(`chat-layout.tsx:720-732`).
+(`chat-layout.tsx:720-732`) — filtered to `projectId` via a `useMemo` before
+rendering, since the underlying store array holds every project's pending
+approvals (see [[frontend-stores]]).
+
+### The Chat-tab components with no unmount safety net
+
+`ContextPanel` (`activity/context-panel.tsx`) and everything it hosts —
+`FilesTab`, `DocsTab` (`activity/files-tab.tsx`, `activity/docs-tab.tsx`) — plus
+`ModelSelector` and `ContextIndicator` (`chat/model-selector.tsx`,
+`chat/context-indicator.tsx`) are all mounted from within `ChatLayout`, which
+is the Chat *tab's* content. Every OTHER project tab (Git, Deploy, Notes,
+Remote-sync, Issue Tracker, Settings) gets a free pass on stale-fetch races
+during a rapid project switch, because `ProjectPage` force-selects the Chat tab
+on every project change (`project.tsx:107`) — that unmounts whatever non-chat
+tab was showing, and React silently drops a stale setter call on a dead
+component. Chat itself doesn't get this: if the user was already on the Chat
+tab (the common case), a project switch is a **live `projectId` prop change
+with no unmount** for `ChatLayout` and everything nested inside it. Four
+components had exactly this gap (a `useCallback`/`useEffect` fetch keyed on
+`projectId` but applying its result unconditionally, with no check that the
+project hadn't changed again before the promise resolved) — `FilesTab`'s
+`loadRoot`, `DocsTab`'s `loadDocs`, `ModelSelector`'s project-settings load, and
+`ContextIndicator`'s context-limit load. Each now holds a `projectIdRef` (kept
+current on every render) and bails if it no longer matches the closure's own
+`projectId` once the `await` resolves. `ModelSelector`'s was the highest
+severity of the four: a stale resolution didn't just show a wrong model name,
+it left the wrong project's `chatProviderId`/`chatModelId`/
+`chatThinkingLevel`/`shellApprovalMode`/`planMode` selected — and any save
+action taken against that stale-looking state would still target the
+*current* `projectId` correctly, just starting from a misleading displayed
+value. See [[frontend-pages]] for the broader "which tabs need this" rule.
 
 ## The `ui/` primitive layer
 
@@ -148,6 +191,8 @@ for a `ui/` primitive before hand-rolling chrome; the chat header buttons in
 
 - [[frontend-architecture]] — the shell/router/store/event-bus mental model this map sits on top of
 - [[rpc-layer]] — how these components call the backend
+- [[message-streaming-broadcasts]] — the `shellApprovalRequest`/`presentPlan` broadcasts `CrossProjectApprovalToast` listens for
+- [[frontend-stores]] — `pendingConversationTarget`, the deep-link target this toast sets
 - [[freelance-autoearn]] — the `freelance/` + `always-mounted-inbox` subtree
 - [[scheduler-automation]] — the `scheduler/` forms
 - [[issue-fixer]] — the backend behind the `issue-fixer/` tab

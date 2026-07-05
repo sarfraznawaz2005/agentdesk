@@ -2,7 +2,7 @@
 title: Directory Map (Structural Index)
 type: reference
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/index.ts
   - src/bun/rpc-registration.ts
@@ -52,7 +52,8 @@ compile against. See [[rpc-layer]] and [[rpc-client]].
 | Path | Role |
 |---|---|
 | `src/bun/index.ts` | Main entry / lifecycle (see anchors). |
-| `src/bun/engine-manager.ts` | One `AgentEngine` per project, cached in memory (`getOrCreateEngine` at `engine-manager.ts:572`, instantiation at `:755`); global abort registry; `broadcastToWebview`. See [[agent-engine]]. |
+| `src/bun/engine-manager.ts` | One `AgentEngine` per project, cached in memory (`getOrCreateEngine` at `engine-manager.ts:590`, instantiation at `:594`); global abort registry; `broadcastToWebview`. See [[agent-engine]]. |
+| `src/bun/message-queue-manager.ts` | In-memory `projectId → conversationId → QueuedMessage[]` store for messages sent while busy; drained from `engine-manager.ts`'s own idle-check, not from any frontend component. See [[frontend-stores]]. |
 | `src/bun/rpc-registration.ts` | Wires all RPC handlers (see anchors). |
 | `src/bun/windows-registry.ts` | Registers the Windows uninstaller entry. |
 
@@ -180,7 +181,10 @@ branch-strategy), `activity/` (context panel + docs/files tabs), `notes/`,
 `inbox/`, `dashboard/`, `analytics/`, `project-settings/`, `layout/` (app-shell,
 sidebar, topnav, project-branch-badge, project-switcher, maintenance-overlay,
 agent-session-toast — a global listener mounted in AppShell that toasts an
-agent-dispatch session finishing in a background project), `modals/`, and `ui/`
+agent-dispatch session finishing in a background project — and
+cross-project-approval-toast, a global listener that toasts a sticky
+shell-/plan-approval request pending in a background project and deep-links
+back to the exact conversation), `modals/`, and `ui/`
 (~35 Radix-based primitives + `mermaid-diagram`, `unified-diff`, `password-input`).
 See [[frontend-components]].
 

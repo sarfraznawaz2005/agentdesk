@@ -2,10 +2,14 @@
 title: Backend Core & Entry
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/index.ts
   - src/bun/engine-manager.ts
+  - src/bun/message-queue-manager.ts
+  - src/bun/agents/tools/shell.ts
+  - src/bun/agents/tools/communication.ts
+  - src/bun/agents/agent-loop.ts
   - src/bun/db/maintenance.ts
   - src/bun/db/maintenance-state.ts
   - src/bun/lib/git-runner.ts
@@ -167,19 +171,67 @@ widget.
 Two near-identical "broadcast a request, return a Promise, resolve from an RPC"
 patterns live here:
 - **Shell approval** (`engine-manager.ts:333` `resolveShellApproval`):
-  `installShellApprovalHandler` (`engine-manager.ts:368`, called at module load
-  `engine-manager.ts:417`) wires the shell tool. It reads the project's
-  `shellApprovalMode` setting via `getShellApprovalMode` (`engine-manager.ts:350`);
+  `installShellApprovalHandler` (`engine-manager.ts:380`, called at module load
+  `engine-manager.ts:428`) wires the shell tool's `ShellApprovalHandler`
+  callback, which now receives `(command, agentId, agentName, projectId,
+  conversationId)` as explicit parameters and uses them directly — see the
+  "was a real cross-project bug" note below. It reads the project's
+  `shellApprovalMode` setting via `getShellApprovalMode` (`engine-manager.ts:362`);
   `"auto"` returns `"allow"` immediately, `"ask"` broadcasts `shellApprovalRequest`
   + an OS toast and returns a Promise that the RPC `resolveShellApproval`
   (`engine-manager.ts:333`) settles. **Auto-denies after 5 minutes**
-  (`SHELL_APPROVAL_TIMEOUT_MS`, `engine-manager.ts:324`, timeout fires at
-  `engine-manager.ts:402`) so a missed prompt never deadlocks an agent.
-- **User questions** (`askUserQuestion`, `engine-manager.ts:462`): same shape for
-  the PM/agent `request_human_input` modal. `timeoutMs` is tunable — autonomous
-  background agents (freelance, issue-fixer) pass a short window so an absent user
-  doesn't stall the run; on timeout it broadcasts `userQuestionCancel` to close the
-  stale dialog and resolves with a "timed out" string.
+  (`SHELL_APPROVAL_TIMEOUT_MS`, `engine-manager.ts:339`, timeout fires inside
+  `installShellApprovalHandler`) so a missed prompt never deadlocks an agent.
+- **User questions** (`askUserQuestion`, `engine-manager.ts:473`): same shape for
+  the PM/agent `request_human_input` modal — `projectId` is now a **required**
+  field on the payload (previously optional with a buggy fallback, see below).
+  `timeoutMs` is tunable — autonomous background agents (freelance, issue-fixer)
+  pass a short window so an absent user doesn't stall the run; on timeout it
+  broadcasts `userQuestionCancel` to close the stale dialog and resolves with a
+  "timed out" string.
+
+#### Fixed: shell approval / user questions could resolve against the WRONG project
+
+Both paths used to fall back to a module-level `activeProjectId` cache —
+overwritten on **every** `getOrCreateEngine()` call, which fires from many
+unrelated code paths across *all* projects — to figure out whose
+`shellApprovalMode`/identity to use. That made it possible for a project's
+shell-approval prompt (or `askUserQuestion` payload) to resolve using a
+*different* project's settings if that other project's engine had simply been
+touched more recently by unrelated backend activity. Worse, `src/bun/agents/tools/shell.ts`
+had a single global `let sessionAutoApproved = false;` — clicking "Always
+allow" for one project's shell command silently disabled the approval prompt
+for **every other project's agents too**, bypassing their own configured
+`shellApprovalMode` entirely.
+
+Fixed by threading real identity through explicitly instead of guessing from a
+cache:
+- `ShellApprovalHandler`'s type now requires `projectId`/`conversationId` as
+  explicit trailing parameters (`shell.ts`). `sessionAutoApproved` (boolean) is
+  now `sessionAutoApprovedProjects` (a `Set<string>` of project IDs), and
+  `resetShellAutoApprove(projectId)` takes and uses the id (previously took
+  nothing and cleared globally).
+- `makeShellTool`'s `execute` reads `projectId`/`conversationId` off **hidden**
+  fields (`__projectId`, `__conversationId`) stamped onto the tool-call args —
+  not part of `SHELL_INPUT_SCHEMA`, so the LLM never sees them. The stamping
+  happens in `agents/agent-loop.ts`'s `run_shell` tool wrapper (now
+  unconditional, previously gated behind `if (workspacePath)`), which sets
+  `args.__projectId = projectId; args.__conversationId = conversationId;`
+  before delegating to the underlying `execute` — this is how the real
+  project/conversation identity actually reaches the approval gate. A parallel
+  wrapper does the same for `request_human_input` (stamps `args.__projectId`
+  only), consumed by `communication.ts`'s tool to call `askUserQuestion` with
+  the correct `projectId` — previously it called `askUserQuestion` with **no**
+  `projectId` at all, always hitting the (now-removed) buggy fallback. (The
+  PM's own `ask_user_question` tool in `pm-tools.ts` was already correctly
+  scoped via `engine.ts`'s wrapper, which explicitly injects
+  `projectId: this.projectId` — that path never needed fixing.)
+- The module-level `activeProjectId` cache and its setter (inside
+  `getOrCreateEngine`) were **removed entirely** — nothing reads it anymore.
+  A new exported `isAppFocused(): boolean` getter (`engine-manager.ts:140`,
+  paired with the existing `setAppFocused`) was added for callers (like the
+  new plan-approval notification, see [[notifications]]) that need to check
+  app focus without their own state.
 - **Durability (TASK-478, `engine-manager.ts:519`–`engine-manager.ts:565`).** Both
   paths now write the pending request through to the DB via `savePendingApproval`
   before waiting (shell: `engine-manager.ts:385`; question: `engine-manager.ts:489`),
@@ -190,20 +242,25 @@ patterns live here:
   previous process instead of leaving a stuck spinner.
 
 ### Channel relay + activity (in the `onStreamComplete` callback)
-When a PM turn completes, the callback (`engine-manager.ts:592`) records chat
+When a PM turn completes, the callback (`engine-manager.ts:609`) records chat
 activity, and if the originating message came from a channel (`meta.source !==
 "app"`) it chunks the reply and relays it back via `sendChannelMessage`, then
-`linkAgentResponseToInbox` (`engine-manager.ts:299`, called at
-`engine-manager.ts:616`) attaches the reply to the latest unanswered inbox row
-using raw SQL. A `setTimeout(0)` desktop notification fires only when everything
-is idle **and the app is not focused** (`appFocused`, `engine-manager.ts:125`,
-toggled by the `setAppFocused` RPC) and the `session_complete_notification`
-setting is on.
-
-> `activeProjectId` (`engine-manager.ts:327`) is set on every `getOrCreateEngine`
-> call (`engine-manager.ts:573`) and is what the shell-approval handler keys off.
-> It is a single global, so it reflects whichever project most recently
-> created/fetched an engine.
+`linkAgentResponseToInbox` (`engine-manager.ts:299`) attaches the reply to the
+latest unanswered inbox row using raw SQL. A `setTimeout(0)` block then runs the
+project's idle-check: only once `!e.isProcessing() && getRunningAgentCount(projectId)===0
+&& e.getQueuedAgentsSnapshot().length===0` does it proceed. It checks the
+**message queue** first (`dequeueMessage(projectId, cid)` from
+`src/bun/message-queue-manager.ts`, see [[message-streaming-broadcasts]]) — if
+the user queued a message for this conversation while it was busy, that
+message is sent now (`e.sendMessage`) and a `messageQueueUpdated` broadcast
+fires, and the rest of the idle-check (session-complete toast/notification) is
+skipped, since the session is continuing, not ending. Only when nothing is
+queued does it fall through to the in-app `agentSessionComplete` toast and the
+desktop notification — the latter fires only when the app is **not focused**
+(`isAppFocused()`, `engine-manager.ts:140`, toggled by the `setAppFocused` RPC)
+and `session_complete_notification` is on. `onStreamError`
+(`engine-manager.ts:682`) mirrors the same queue-drain step for the error path,
+since an error also ends the PM's turn.
 
 ## Shared lib utilities (`lib/*`)
 
@@ -265,10 +322,15 @@ replacement for chrome-devtools MCP previews.
   must encrypt after seed but before any reader, and cron must start after the DB
   exists. Anything network/disk-heavy belongs in the `dom-ready` block, not the
   synchronous path.
-- **`activeProjectId` is a single global.** The shell-approval handler keys off
-  whichever project last called `getOrCreateEngine` (`engine-manager.ts:573`). With
-  concurrent multi-project agent runs this is the project to suspect for a
-  mis-routed approval prompt.
+- **(Fixed) There is no more `activeProjectId` cache to mis-route approvals.**
+  It used to be a single global set on every `getOrCreateEngine` call, and both
+  the shell-approval handler and `askUserQuestion` could fall back to it —
+  meaning a background project's engine activity could make an approval
+  resolve against the wrong project's settings/identity. It's been removed;
+  every caller now threads its own `projectId`/`conversationId` through
+  explicitly (see the fix write-up above). If a future refactor reintroduces a
+  "last touched project" cache as a convenience shortcut for a human-in-the-loop
+  path, treat that as a regression of this exact bug class.
 - **Approvals + user questions auto-resolve.** Shell approval auto-*denies* after
   5 min (`engine-manager.ts:402`); user questions auto-resolve with a timeout
   message. Nothing waits forever — but a "denied" shell or "no answer" string can
@@ -302,6 +364,8 @@ replacement for chrome-devtools MCP previews.
 - [[rpc-layer]]
 - [[providers]]
 - [[github-token-auth]]
+- [[message-streaming-broadcasts]] — the queued-message drain inside `onStreamComplete`/`onStreamError`
+- [[notifications]] — `isAppFocused()` consumer for the plan-approval notification
 
 ## Global error & AI-SDK-warning logging (`db/error-logger.ts`)
 `logError()` appends structured entries to `<userData>/logs/error.log`

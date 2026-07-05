@@ -2,7 +2,7 @@
 title: Frontend Pages & Routing
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/mainview/router.tsx
   - src/mainview/components/layout/app-shell.tsx
@@ -12,6 +12,7 @@ sources:
   - src/mainview/pages/dashboard.tsx
   - src/mainview/pages/onboarding.tsx
   - src/mainview/pages/inbox.tsx
+  - src/mainview/stores/chat-store.ts
 tags: [frontend, routing]
 ---
 
@@ -74,6 +75,19 @@ flowchart TD
 
 **`ProjectPage`** (`project.tsx:31`) is the heart of the app. It is a tab host (chat, kanban, docs, git, issue-tracker, remote, deploy, settings, plus plugin tabs) where `activeTab` is local state (`project.tsx:33`), and each tab lazily renders a heavy component (`project.tsx:360-375`). Its hard part is *data lifecycle on project switch*: a project-scoped `conversationsLoadedForProject` marker (not a boolean) guards a chained pair of effects so a late-resolving `loadConversations` from the previous project can't auto-select the wrong conversation (`project.tsx:99-170`). The same load effect also declares the chat store's `activeProjectId` via `setActiveProject` on mount/project change and nulls it on unmount — the gate that keeps background-project broadcasts from replacing the sidebar (see [[frontend-stores]], project-scoping guard). It coordinates the chat store and kanban store, resets both on unmount, and defers kanban load to idle time so chat is the critical path (`project.tsx:120-124`). It also bridges `agentdesk:switch-tab` window events from child components into tab changes (`project.tsx:77-84`) and manages per-tab unread dots via the unread store (`project.tsx:37-97`).
 
+The conversation auto-select effect (`project.tsx:148-170`) now checks the
+chat store's `pendingConversationTarget` **first**, before its normal
+fallback logic (most-recent conversation, or create a new one): if a target
+is set and matches the current `projectId`, it's consumed (cleared, whether
+or not its conversation is actually found in the loaded list, so a
+stale/mismatched target can't leak into a later switch) and, if found,
+`setActiveConversation`/`loadMessages` jump straight to it. This is how the
+`CrossProjectApprovalToast` (see [[frontend-components]]) deep-links: it sets
+`pendingConversationTarget` then navigates to `/project/$projectId`, and by
+the time this effect runs (after that project's conversations finish
+loading) it lands on the exact conversation waiting for shell/plan approval
+instead of whatever conversation would otherwise have been auto-selected.
+
 **`SettingsPage`** (`settings.tsx:47`) is a two-level tab hub: top-level Radix `Tabs` (General / AI / Channels / Integrations / Notifications / System / Plugins) each containing a hand-rolled `SubTabs` component (`settings.tsx:22-45`) that fans out to the leaf editors under `pages/settings/*`. The Plugins top-level tab simply embeds the `PluginsPage` component (`settings.tsx:106-108`). All of this is local state — no settings sub-page has its own route. The **AI** tab's sub-tabs are `Providers` (credentials/connection) and `Models` (`pages/settings/models.tsx`) — the latter manages global per-model enable/disable + favourite via the `model_preferences` table; favourites and disabled state are mirrored by the chat model picker (`components/chat/model-selector.tsx`, which adds top-pinned `Latest` + `Favorites` sections). See [[database-tables]].
 
 **`OnboardingPage`** (`onboarding.tsx`) is a six-step provider wizard (`onboarding.tsx:30,52`) that the shell force-routes to on first launch; on completion the user navigates back to `/`.
@@ -99,6 +113,9 @@ flowchart TD
 - **First-launch redirect runs on every navigation.** The `isFirstLaunch` check fires in an effect keyed on pathname (`app-shell.tsx:234-249`); a slow RPC briefly shows a "Loading…" gate (`app-shell.tsx:312-318`).
 - **Sidebar items are partly dynamic.** Plugin sidebar items and the Freelance entry are injected at runtime (`sidebar.tsx:328-333`); the Freelance entry only appears when the feature flag RPC returns enabled (`sidebar.tsx:212-224`).
 - **Project-switch race is deliberately guarded.** The `conversationsLoadedForProject` string marker (not a boolean) exists specifically to stop stale async loads from clobbering the new project's chat state (`project.tsx:44-46,146-170`) — don't "simplify" it to a boolean.
+- **`setActiveTab("chat")` fires unconditionally on every project switch** (inside the project-load effect, `project.tsx:107`, before `loadConversations`). This is *the* load-bearing fact for staleness bugs across every non-chat tab: since each tab is conditionally rendered (`{activeTab === "git" && <GitTab .../>}`, no `key={projectId}` anywhere), forcing `activeTab` back to `"chat"` on any project change **unmounts** whatever non-chat tab was showing. React discards that component's local `useState` on unmount, and a late-resolving stale fetch calling a setter on a dead component instance is a silent no-op (no warning as of React 18) — so a missing staleness guard in Git/Issues/Deploy/Notes/Remote-sync/Kanban-adjacent **tab-local `useState`** is a latent code smell, not a currently-reachable bug. This was verified by three independent audits (Git, Issue-tracker/issue-fixer, Remote-sync subtrees) that each found real-looking async races in tab-local state — all neutralized by this exact mechanism.
+  The escape hatch: components that live **inside the Chat tab itself** (`ChatLayout` → `ContextPanel` → `FilesTab`/`DocsTab`, and `ModelSelector`/`ContextIndicator`) do *not* get this protection, because Chat is the tab that's always force-selected — if the user was already on Chat (the common case), switching projects gives these components a **live `projectId` prop change with no unmount**. This is exactly the class of bug fixed in `files-tab.tsx`'s `loadRoot`, `docs-tab.tsx`'s `loadDocs`, `model-selector.tsx`'s settings load, and `context-indicator.tsx`'s context-limit load — each now tracks the latest `projectId` in a `useRef` and re-checks it after every `await` before applying the result. See [[frontend-components]].
+  The other exception is **global Zustand store state** (`chat-store.ts`, `kanban-store.ts`), which was never protected by unmount to begin with — it outlives every component and persists for the app's lifetime, hence the separate `activeProjectId`/staleness-guard fixes documented in [[frontend-stores]].
 
 ## Related
 - [[frontend-architecture]]
@@ -109,6 +126,8 @@ flowchart TD
 - [[plugins]]
 - [[issue-sources]]
 - [[notifications]]
+- [[frontend-components]] — `CrossProjectApprovalToast`, the consumer that sets `pendingConversationTarget`
+- [[frontend-stores]] — `pendingConversationTarget` field on the chat store
 
 ## Open questions
 - The dashboard floating PM chat widgets and `CustomAgentChatLauncher` are visibility-gated to `/` (`app-shell.tsx:356-357`) but always mounted — their internal state behavior across navigation is not documented here.

@@ -72,10 +72,12 @@ for the architecture narrative.
 - [[electrobun-artifact-layout]] — `electrobun build` deliverables land in project-root `artifacts/`, not `build/`; the leftover bundle is the self-extractor (broke Linux portable pre-v2.0.8).
 - [[webview2-preview]] — iframe→localhost works; native PDF nav is blocked (use PDF.js route); `Utils.paths.downloads` ignores a relocated Downloads folder.
 - [[electrobun-webview-overlay]] — the native `<electrobun-webview>` overlay orphans per-mount; fix is a single app-lifetime singleton rect-synced over a placeholder.
+- [[broadcast-method-name-mismatch]] — `broadcastToWebview("wrongName", …)` silently no-ops (no error, no log) when the string doesn't match a `WebviewSchema.messages` key; bit `request_plan_approval`'s `presentPlan` broadcast in production.
 
 ## Reference
 - [[directory-map]] — navigable where-is-it map of the whole repo, anchored on the wiring seams. **The authoritative structural index.**
 - [[database-tables]] — every SQLite table (Drizzle vs raw-SQL) with purpose, key columns, deprecated/dropped status.
 - [[agent-roster]] — every built-in agent (name, display, read-only?, role) + the read-only/PM-visibility/Agents-page-hiding mechanisms.
 - [[tech-stack-build-release]] — two-stage Vite+Electrobun build, cross-platform CI release, updater artifact contract, dev commands.
-- [[conventions-constraints]] — project invariants: RPC contract boundary, idempotent migrations, prompts-in-seed, kanban enforcement, existing-users compatibility.
+- [[conventions-constraints]] — project invariants: RPC contract boundary, idempotent migrations, prompts-in-seed, kanban enforcement, existing-users compatibility. Also documents the `tests/` suite (`bun run test`) conventions.
+- `docs/cross-project-issues.md` — narrative log of every cross-project/cross-conversation state-leak bug found and fixed (multi-session), the recurring architectural patterns behind them, and what the automated test suite does/doesn't cover. Not a wiki page (lives in `docs/`, no frontmatter) — linked here for discoverability.
