@@ -8,6 +8,13 @@ type ConversationRow = {
   updatedAt: string;
 };
 
+export type QueuedMessageRow = {
+  id: string;
+  conversationId: string;
+  content: string;
+  queuedAt: number;
+};
+
 export type ConversationsRequests = {
   // Conversations
   getConversations: {
@@ -105,6 +112,27 @@ export type ConversationsRequests = {
   setAppFocused: {
     params: { focused: boolean };
     response: { success: boolean };
+  };
+
+  // Message queue — messages typed while the PM/agents are busy on a
+  // conversation. Held server-side (keyed by projectId+conversationId) so
+  // they still get delivered to the right project/conversation once idle,
+  // regardless of what the user is currently viewing in the frontend.
+  enqueueMessage: {
+    params: { projectId: string; conversationId: string; content: string };
+    response: { success: boolean; queue: QueuedMessageRow[] };
+  };
+  removeQueuedMessage: {
+    params: { projectId: string; conversationId: string; messageId: string };
+    response: { success: boolean; queue: QueuedMessageRow[] };
+  };
+  clearQueuedMessages: {
+    params: { projectId: string; conversationId: string };
+    response: { success: boolean };
+  };
+  getQueuedMessages: {
+    params: { projectId: string; conversationId: string };
+    response: QueuedMessageRow[];
   };
 
   branchConversation: {

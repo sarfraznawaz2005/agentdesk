@@ -2,6 +2,7 @@ import * as conversationsRpc from "../rpc/conversations";
 import * as dashboardRpc from "../rpc/dashboard";
 import * as dashboardAgentRpc from "../rpc/dashboard-agent";
 import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentByName, getRunningAgentCount, getRunningAgentNames, getAllRunningAgents } from "../engine-manager";
+import { enqueueMessage, removeQueuedMessage, getQueuedMessages, clearQueueForConversation } from "../message-queue-manager";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { eq } from "drizzle-orm";
@@ -46,6 +47,30 @@ export const handlers: Record<string, (params: any) => any> = {
 	stopGeneration: (params) => {
 		engines.get(params.projectId)?.stopAll();
 		abortAllAgents(params.projectId);
+		return { success: true };
+	},
+
+	// Message queue — held server-side (see message-queue-manager.ts) so a
+	// queued message reaches the right project+conversation once idle, even if
+	// the frontend has since switched away from it.
+	enqueueMessage: (params) => {
+		const msg = enqueueMessage(params.projectId, params.conversationId, params.content);
+		const queue = getQueuedMessages(params.projectId, params.conversationId);
+		if (!msg) return { success: false, queue };
+		broadcastToWebview("messageQueueUpdated", { projectId: params.projectId, conversationId: params.conversationId, queue });
+		return { success: true, queue };
+	},
+	removeQueuedMessage: (params) => {
+		removeQueuedMessage(params.projectId, params.conversationId, params.messageId);
+		const queue = getQueuedMessages(params.projectId, params.conversationId);
+		broadcastToWebview("messageQueueUpdated", { projectId: params.projectId, conversationId: params.conversationId, queue });
+		return { success: true, queue };
+	},
+	getQueuedMessages: (params) =>
+		getQueuedMessages(params.projectId, params.conversationId),
+	clearQueuedMessages: (params) => {
+		clearQueueForConversation(params.projectId, params.conversationId);
+		broadcastToWebview("messageQueueUpdated", { projectId: params.projectId, conversationId: params.conversationId, queue: [] });
 		return { success: true };
 	},
 	retryAgent: async (params: { projectId: string; conversationId: string; agentName: string; task: string }) => {
