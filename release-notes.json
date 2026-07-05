@@ -1,5 +1,15 @@
 [
     {
+        "version":  "2.5.0",
+        "title":  "Enhancements in Cross-Project Functionality",
+        "changes":  [
+                        "New cross-project \u0027needs your attention\u0027 toast for shell and plan approvals",
+                        "Improved plan-approval notifications and resolved related bugs",
+                        "Backend-driven message queue for better cross-conversation delivery",
+                        "Added staleness guards to enhance cross-project UI audits"
+                    ]
+    },
+    {
         "version":  "2.4.8",
         "title":  "Improved Chat Component",
         "changes":  [
