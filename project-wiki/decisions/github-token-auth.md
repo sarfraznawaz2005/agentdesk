@@ -2,13 +2,14 @@
 title: GitHub Token Auth Without Credential Helper
 type: decision
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/rpc/github-api.ts
   - src/bun/rpc/git.ts
   - src/bun/agents/tools/git.ts
   - src/bun/rpc/projects.ts
   - src/bun/issue-fixer/orchestrator.ts
+  - tests/rpc/github-api.test.ts
 tags: [git, security]
 ---
 
@@ -120,6 +121,7 @@ helper-disabling concern applies **only** to the `git`-subprocess path.
 | `src/bun/agents/tools/git.ts` | Agent `git_pull`/`git_fetch` tools that prefix `githubAuthPrefix` |
 | `src/bun/rpc/projects.ts` | Project clone path using `gitAuthArgs` for private GitHub repos |
 | `src/bun/issue-fixer/orchestrator.ts` | Autonomous fetch/checkout (`gitAuthArgs`) + push (`pushBranchAuthenticated`) |
+| `tests/rpc/github-api.test.ts` | `resolveGitHubToken` fallback-chain + back-compat inference, `gitAuthArgs`' credential-helper-disabling shape, `githubAuthPrefix`'s HTTPS-github-only gating, `pushBranchAuthenticated`'s exact-refspec/no-URL-embedding/redaction safety contract |
 
 ## Gotchas / Constraints
 

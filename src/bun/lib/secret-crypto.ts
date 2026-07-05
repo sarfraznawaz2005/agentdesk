@@ -20,13 +20,16 @@ import { Utils } from "electrobun/bun";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "fs";
 import { join } from "path";
 
-const KEY_FILE = join(Utils.paths.userData, "remote-sync.key");
 const PREFIX = "enc:v1:";
 
 let cachedKey: Buffer | null = null;
 
 function getKey(): Buffer {
 	if (cachedKey) return cachedKey;
+
+	// Resolved lazily (not as a module-level constant) so Utils.paths.userData
+	// is read fresh on first use rather than baked in at import time.
+	const KEY_FILE = join(Utils.paths.userData, "remote-sync.key");
 
 	if (existsSync(KEY_FILE)) {
 		try {

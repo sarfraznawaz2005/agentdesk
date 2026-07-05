@@ -2,13 +2,14 @@
 title: Remote Sync
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-06
 sources:
   - src/bun/remote-sync/engine.ts
   - src/bun/remote-sync/client.ts
   - src/bun/remote-sync/config.ts
   - src/bun/remote-sync/crypto.ts
   - src/bun/lib/secret-crypto.ts
+  - tests/lib/secret-crypto.test.ts
   - src/bun/rpc/remote-sync.ts
   - src/bun/db/schema.ts
 tags: [sftp, ftp, sync]
@@ -54,14 +55,14 @@ so the next browse reconnects with the new host/creds.
 Secrets are encrypted via `encryptSecret`, which `crypto.ts` re-exports from the
 shared `lib/secret-crypto.ts` (`crypto.ts:10`). The scheme is AES-256-GCM with a
 12-byte IV and the layout `[12-byte IV][16-byte tag][ciphertext]`, base64'd
-behind the prefix `enc:v1:` (`secret-crypto.ts:62`). The 32-byte master key
+behind the prefix `enc:v1:` (`secret-crypto.ts:65`). The 32-byte master key
 lives in a file named `remote-sync.key` under `userData` —
 **separate from `agentdesk.db`** so a DB leak alone does not expose secrets
-(`secret-crypto.ts:23`, `:44`). The filename is historical: Remote Sync shipped
+(`secret-crypto.ts:32`, `:47`). The filename is historical: Remote Sync shipped
 this scheme first, so the whole app now reuses that key to keep already-encrypted
 values readable. `decryptSecret` is tolerant — non-`enc:v1:` values pass through
 unchanged (legacy plaintext) and it only throws on an authentication failure
-(`secret-crypto.ts:77`). `resolveRemoteConfig` wraps that throw into an
+(`secret-crypto.ts:80`). `resolveRemoteConfig` wraps that throw into an
 actionable "the encryption key has changed or is missing — re-enter the
 password" message (`config.ts:179`), the symptom when app data is moved without
 the key file.
@@ -174,6 +175,7 @@ phantom in-progress sync after a crash.
 | `src/bun/remote-sync/config.ts` | Config + manifest + run-history persistence; DTO mapping (secrets→booleans); `resolveRemoteConfig` (decrypts); `failInterruptedRuns` |
 | `src/bun/remote-sync/crypto.ts` | Thin re-export shim → `lib/secret-crypto` (kept for import stability) |
 | `src/bun/lib/secret-crypto.ts` | App-wide AES-256-GCM secret encryption; `remote-sync.key` master key under userData |
+| `tests/lib/secret-crypto.test.ts` | Round-trip/tamper/legacy-plaintext-passthrough tests for the shared encryption module |
 | `src/bun/rpc/remote-sync.ts` | RPC handlers; evicts browse cache on save; `revealRemoteSyncSecret` round-trips the decrypted password to the UI |
 | `src/bun/db/schema.ts` | `remote_sync_config` (`:955`), `remote_sync_items` manifest (`:993`), `remote_sync_runs` (`:1021`) |
 
@@ -182,7 +184,7 @@ phantom in-progress sync after a crash.
   of the DB.** Move/restore app data without it and *all* encrypted secrets
   (Remote Sync, GitHub tokens, issue-tracker keys) become undecryptable —
   surfaced as the "re-enter the password" error (`config.ts:179`). Key perms are
-  `0o600` but advisory on Windows (`secret-crypto.ts:49`).
+  `0o600` but advisory on Windows (`secret-crypto.ts:52`).
 - **Deletions are never propagated.** A locally-deleted tracked file shows as
   `deleted` in the diff but Remote Sync will not remove it from the server
   (`engine.ts:563`).

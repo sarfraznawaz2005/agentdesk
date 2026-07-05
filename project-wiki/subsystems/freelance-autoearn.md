@@ -2,9 +2,10 @@
 title: Freelance Auto-Earn
 type: subsystem
 status: verified
-verified_at: 2026-06-22
+verified_at: 2026-07-06
 sources:
   - src/bun/freelance/session/governor.ts
+  - tests/freelance/governor.test.ts
   - src/bun/freelance/session/ingest.ts
   - src/bun/freelance/session/normalizer.ts
   - src/bun/freelance/session/humanize.ts
@@ -207,6 +208,7 @@ filter depends on that cache.
 | `src/bun/freelance/watchdog.ts` | Bun-side timer: recover stuck sends, engine heartbeat / stuck-queue escalation |
 | `src/bun/freelance/description.ts` | `ensureFullDescription` — fetch + AI-extract + cache full listing text |
 | `src/bun/freelance/auto-earn-settings.ts` | Master switch + governor knobs in `settings` (category `freelance`); full-auto ack enforcement |
+| `tests/freelance/governor.test.ts` | Behavior Governor unit tests — pause/active-hours/min-gap/hourly-cap/daily-bid-budget/in-flight-send gates, `getGovernorState` snapshot consistency; the first test coverage anywhere in `freelance/` |
 | `src/bun/freelance/feature-flag.ts` | `autoearn` flag-file gate (preserved across updates) |
 | `src/bun/rpc/freelance-outbox.ts` | Approval queue: draft/update/approveSend(gate)/markResult/killSwitch/pause/anomaly; `getSentBid`/`getSentReply` read back the submitted body (final_body) for the "Bid Placed" / "View sent reply" viewers |
 | `src/bun/rpc/freelance-inbox.ts` | `ingest` entry, account status (cookie presence), autonomy mode, thread/message reads |

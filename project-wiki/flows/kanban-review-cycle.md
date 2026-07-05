@@ -2,7 +2,7 @@
 title: Kanban & Auto Review Cycle
 type: flow
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-06
 sources:
   - src/bun/agents/review-cycle.ts
   - src/bun/agents/tools/kanban.ts
@@ -10,6 +10,7 @@ sources:
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/engine.ts
   - src/bun/rpc/projects.ts
+  - tests/tools/kanban-enforcement.test.ts
 tags: [kanban, review]
 ---
 
@@ -211,6 +212,7 @@ the PM that the agent skipped verification (`pm-tools.ts:653`).
 | `src/bun/rpc/kanban.ts` | `moveKanbanTask` DB write + activity log + `task:moved` event + done side effects: desktop notification, channel notify, issue auto-close (`kanban.ts:179`) |
 | `src/bun/agents/tools/pm-tools.ts` | `run_agent` post-run move-to-review path (`pm-tools.ts:634`) |
 | `tests/agents/review-cycle.test.ts` | Unit tests for the verdict heuristics |
+| `tests/tools/kanban-enforcement.test.ts` | `move_task` column-transition guards (no backlog→review skip, no move out of done, criteria+verification gate before review), `verify_implementation`'s checklist-dishonesty rejection, `submit_review`'s review-column requirement, `check_criteria`'s concurrent-call lock — mocks `rpc/kanban.ts` with an in-memory task map |
 
 ## Gotchas / Constraints
 

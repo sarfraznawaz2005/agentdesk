@@ -2,7 +2,7 @@
 title: Backend Core & Entry
 type: subsystem
 status: verified
-verified_at: 2026-07-05
+verified_at: 2026-07-06
 sources:
   - src/bun/index.ts
   - src/bun/engine-manager.ts
@@ -15,6 +15,7 @@ sources:
   - src/bun/lib/git-runner.ts
   - src/bun/lib/install-mode.ts
   - src/bun/lib/secret-crypto.ts
+  - tests/lib/secret-crypto.test.ts
   - src/bun/lib/encrypt-existing-secrets.ts
   - src/bun/lib/path-utils.ts
   - src/bun/annotations/server.ts
@@ -267,7 +268,7 @@ since an error also ends the PM's turn.
 | Module | What it does (and the non-obvious bit) |
 |---|---|
 | `git-runner.ts` | `runGit(args, cwd, signal)` — the canonical `Bun.spawn(["git", …])` wrapper used by both RPC handlers and agent git tools. Reads stdout/stderr/exit in parallel and kills the process on abort (`git-runner.ts:11`). Does **not** add token auth — callers prefix `gitAuthArgs`/`githubAuthPrefix` themselves (see [[github-token-auth|github-auth]]). |
-| `secret-crypto.ts` | App-wide AES-256-GCM encryption at rest. The 32-byte master key lives in `<userData>/remote-sync.key` (mode `0o600`) — **separate from the DB** so leaking `agentdesk.db` alone exposes nothing. Blob layout `[12-IV][16-tag][ciphertext]` with `enc:v1:` prefix (`secret-crypto.ts:69`). `decryptSecret` passes plaintext through unchanged so legacy/manual values still read (`secret-crypto.ts:79`). The key file is named for Remote Sync only for historical continuity (`secret-crypto.ts:11`). |
+| `secret-crypto.ts` | App-wide AES-256-GCM encryption at rest. The 32-byte master key lives in `<userData>/remote-sync.key` (mode `0o600`) — **separate from the DB** so leaking `agentdesk.db` alone exposes nothing. Blob layout `[12-IV][16-tag][ciphertext]` with `enc:v1:` prefix (`secret-crypto.ts:72`). `decryptSecret` passes plaintext through unchanged so legacy/manual values still read (`secret-crypto.ts:82`). The key file is named for Remote Sync only for historical continuity (`secret-crypto.ts:11`). |
 | `encrypt-existing-secrets.ts` | One-time, idempotent startup migration that encrypts any plaintext per-project GitHub tokens (`project:%:githubToken`) and issue-source configs (`issueSource:%`) still in the `settings` table (`encrypt-existing-secrets.ts:18`). Skips already-`enc:v1:` rows; best-effort, never blocks startup. |
 | `install-mode.ts` | Classifies the Windows build. Setup.exe and the portable zip are byte-identical app bundles, so the **only** distinguishing signal is location: an installed build runs from `<userData>\app\` (`install-mode.ts:24`). Non-Windows always counts as "installed" (single distribution form) so the Electrobun update path is used. |
 | `path-utils.ts` | `isPathAccessible(path, retries=2)` — `statSync` with retry/backoff for cloud-synced/NAS paths (OneDrive/Dropbox) that may be momentarily unavailable at startup (`path-utils.ts:15`). Uses `statSync` (readability) not `existsSync` (placeholder may exist). |

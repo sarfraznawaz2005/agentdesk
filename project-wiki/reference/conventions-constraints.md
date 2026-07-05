@@ -2,7 +2,7 @@
 title: Conventions & Constraints
 type: reference
 status: verified
-verified_at: 2026-07-05
+verified_at: 2026-07-06
 sources:
   - CLAUDE.md
   - tests/helpers/db.ts
@@ -15,8 +15,14 @@ sources:
   - src/bun/db/schema.ts
   - src/bun/agents/tools/kanban.ts
   - src/bun/agents/tools/create-task-policy.ts
+  - src/bun/lib/secret-crypto.ts
+  - src/bun/freelance/session/governor.ts
   - src/bun/rpc-registration.ts
   - src/shared/rpc/index.ts
+  - tests/tools/kanban-enforcement.test.ts
+  - tests/lib/secret-crypto.test.ts
+  - tests/rpc/github-api.test.ts
+  - tests/freelance/governor.test.ts
 tags: [conventions, rules]
 ---
 
@@ -257,6 +263,32 @@ A `tests/` directory (mirroring `src/bun/`'s subfolder structure, e.g.
   test caught two real, previously-undetected instances of that bug
   (`presentPlan`/`planPresented`, and a fully-undeclared `agentStatus`) — see
   `docs/cross-project-issues.md` and the `broadcast-method-name-mismatch` gotcha.
+- **Gotcha: a module-level constant derived from a mocked import is baked in
+  at first load, for the whole `bun test` process.** `src/bun/lib/secret-crypto.ts`
+  used to compute `const KEY_FILE = join(Utils.paths.userData, ...)` at module
+  scope. Because `bun test` runs all files in one process and ES modules are
+  cached singletons, whichever test file's `mock.module("electrobun/bun", ...)`
+  happened to be active the *first* time any test transitively imported
+  `secret-crypto.ts` won that constant for every other test file afterward —
+  a real cross-file leak discovered writing `tests/rpc/github-api.test.ts` and
+  `tests/lib/secret-crypto.test.ts` together. Fixed by resolving `KEY_FILE`
+  lazily inside `getKey()` instead of at import time (`secret-crypto.ts:32`).
+  When a module under test reads a mocked value (`Utils.paths.userData`,
+  or anything from a `mock.module`'d dependency), resolve it lazily inside the
+  function that needs it, not in a module-level `const` — otherwise the value
+  is only as fresh as whichever test file happened to import it first.
+- **Newer additions, same conventions**: `tests/tools/kanban-enforcement.test.ts`
+  (the `move_task`/`verify_implementation`/`submit_review`/`check_criteria`
+  column-transition and checklist-gating logic in
+  `src/bun/agents/tools/kanban.ts` — previously only the underlying CRUD RPCs
+  were tested, not the state-machine guards themselves; mocks `rpc/kanban.ts`
+  with an in-memory task map rather than a real DB), `tests/lib/secret-crypto.test.ts`
+  (the AES-256-GCM encrypt-at-rest module shared by every stored credential),
+  `tests/rpc/github-api.test.ts` (the `resolveGitHubToken` fallback chain and
+  the credential-helper-free git auth contract — see [[github-token-auth]]),
+  and `tests/freelance/governor.test.ts` (the Auto-Earn Behavior Governor —
+  rate/gap/active-hours/pause gates — the first test coverage anywhere in the
+  `freelance/` subsystem).
 
 ## Related
 - [[directory-map]]
