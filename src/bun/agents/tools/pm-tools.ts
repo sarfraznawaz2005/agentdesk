@@ -1737,6 +1737,33 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						/* best-effort — never block plan presentation on notification failure */
 					}
 
+					// Also push a heads-up to connected channels — independent of app
+					// focus (channel notify is for "away from the computer entirely",
+					// mirroring task_done_channel_notify), gated by its own
+					// "plan_approval_channel_notify" setting (default: on). One-way only:
+					// this in-app plan waits for the next message in THIS conversation, not
+					// the channel's own conversation, so replying from the channel does NOT
+					// approve it — the user must approve from the app.
+					try {
+						const planChannelSetting = await db.select({ value: settings.value }).from(settings)
+							.where(eq(settings.key, "plan_approval_channel_notify")).limit(1);
+						const planChannelEnabled = planChannelSetting.length > 0
+							? planChannelSetting[0].value !== "\"false\"" && planChannelSetting[0].value !== "false"
+							: true;
+						if (planChannelEnabled) {
+							const projRow = await db.select({ name: projectsTable.name }).from(projectsTable)
+								.where(eq(projectsTable.id, deps.projectId)).limit(1);
+							const projName = projRow[0]?.name ?? "Project";
+							const { broadcastSchedulerResult } = await import("../../channels/manager");
+							await broadcastSchedulerResult(
+								`${projName} — Plan Ready for Approval`,
+								`📋 *${title}*\n\nOpen AgentDesk to approve or reject — replies here won't apply the decision.`,
+							).catch(() => {});
+						}
+					} catch {
+						/* best-effort — never block plan presentation on channel push failure */
+					}
+
 					// Stop PM stream — wait for user's approve/reject
 					deps.stopPMStream?.();
 

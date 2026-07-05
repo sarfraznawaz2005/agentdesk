@@ -15,7 +15,7 @@ import { writeInboxMessage } from "../rpc/inbox";
 import { sendNativeNotification } from "../notifications/native";
 import { getSetting } from "../rpc/settings";
 import { eventBus } from "../scheduler";
-import { broadcastToWebview } from "../engine-manager";
+import { broadcastToWebview, resolveUserQuestion, resolveShellApproval, getPendingChannelInteraction } from "../engine-manager";
 import type { AgentEngine } from "../agents/engine";
 import type {
 	ChannelAdapter,
@@ -466,6 +466,19 @@ export async function shutdownChannelManager(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Interpret a free-text channel reply as a shell-approval decision. Returns
+ * null on unrecognized input so the caller can re-prompt instead of guessing
+ * (never silently denies on an ambiguous reply).
+ */
+function parseShellDecision(text: string): "allow" | "deny" | "always" | null {
+	const normalized = text.trim().toLowerCase();
+	if (normalized === "always") return "always";
+	if (["allow", "approve", "yes", "y", "ok", "okay"].includes(normalized)) return "allow";
+	if (["deny", "reject", "no", "n", "cancel"].includes(normalized)) return "deny";
+	return null;
+}
+
+/**
  * Convert a raw Baileys QR string to a base64 PNG data URL and broadcast it.
  */
 async function broadcastQR(channelId: string, qr: string): Promise<void> {
@@ -553,6 +566,37 @@ async function handleIncomingMessage(
 	}
 
 	if (!routingProjectId) return;
+
+	// If a question or shell-approval request was pushed to channels for this
+	// project (see engine-manager.ts's askUserQuestion / installShellApprovalHandler),
+	// treat this reply as the answer instead of routing it into a fresh PM turn —
+	// the original tool call is still blocked awaiting exactly this response.
+	const questionChannelSetting = await getSetting("question_channel_notify", "notifications");
+	const questionChannelEnabled = questionChannelSetting === null || String(questionChannelSetting) !== "false";
+	if (questionChannelEnabled) {
+		const pending = getPendingChannelInteraction(routingProjectId);
+		if (pending) {
+			if (pending.kind === "question") {
+				resolveUserQuestion(pending.requestId, msg.content.trim());
+				await sendChannelMessage(config.id, "✅ Got it — forwarded your answer to the agent.").catch(() => {});
+			} else {
+				const decision = parseShellDecision(msg.content);
+				if (decision) {
+					resolveShellApproval(pending.requestId, decision);
+					await sendChannelMessage(
+						config.id,
+						decision === "deny" ? "🚫 Shell command denied." : "✅ Shell command approved.",
+					).catch(() => {});
+				} else {
+					await sendChannelMessage(
+						config.id,
+						"Reply *allow*, *deny*, or *always* to respond to the pending shell approval request.",
+					).catch(() => {});
+				}
+			}
+			return;
+		}
+	}
 
 	const engine = engineResolver(routingProjectId);
 

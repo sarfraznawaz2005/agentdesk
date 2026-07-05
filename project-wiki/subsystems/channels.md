@@ -2,7 +2,7 @@
 title: External Channels
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/channels/manager.ts
   - src/bun/channels/types.ts
@@ -87,6 +87,23 @@ platforms:
    channels (`getOrCreateGlobalChannelProject`, created on first use + reused), with a
    first-project safety net only if that project can't be created (`manager.ts:521-555`).
    This is why channels "just work" out of the box.
+3.5. **Pending-interaction interception** (before any engine forwarding):
+   `getPendingChannelInteraction(routingProjectId)` (from [[notifications]],
+   `engine-manager.ts`) checks whether an `askUserQuestion` or shell-approval
+   request is currently blocked awaiting a human answer for this project — both
+   were proactively pushed to every connected channel when raised, gated by the
+   `question_channel_notify` setting. If one is pending (and the setting is
+   still on), this inbound message is treated as the answer instead of a new
+   chat turn: a question resolves via `resolveUserQuestion(requestId,
+   msg.content.trim())`; a shell approval is parsed by `parseShellDecision`
+   (keywords `allow`/`approve`/`yes` → allow, `deny`/`reject`/`no` → deny,
+   `always` → always; unrecognized text re-prompts instead of guessing) and
+   resolved via `resolveShellApproval`. Either way a short confirmation is sent
+   back via `sendChannelMessage` and the function returns early — the message
+   never reaches step 4/5 below. This is the **only** channel-reply round trip
+   in the system; a reply to an in-app plan-approval channel push, by
+   contrast, is NOT intercepted here (see [[notifications]]'s Gotchas) and
+   falls through to the normal engine-forwarding path.
 4. Ensure a **daily conversation** exists (`getOrCreateChannelConversation`,
    `manager.ts:653`) titled `Platform - YYYY-MM-DD` with a `channel:`-prefixed
    composite ID (`channel:{channelId}:{projectId}:{date}`) so the backend can
@@ -196,11 +213,21 @@ uses `getDefaultRecipient()` (self JID) and Email needs a prior inbound context
   messages.
 - **`task_done_channel_notify` setting** gates done notifications (default on;
   only `"false"` disables) — `manager.ts:210`.
+- **A channel with a pending question/shell-approval can't have a normal chat
+  turn until it's answered.** While `getPendingChannelInteraction` returns a
+  match for a project, every inbound message on any channel routing to that
+  project is consumed as the answer (or re-prompted for a shell approval),
+  never reaching the PM — see step 3.5 above. This only affects
+  `question_channel_notify`-pushed requests, not plain chat.
 
 ## Related
 - [[agent-engine]]
 - [[backend-core]]
 - [[scheduler-automation]]
+- [[notifications]] — the three channel-push toggles (`error_channel_notify`,
+  `question_channel_notify`, `plan_approval_channel_notify`) and the
+  `getPendingChannelInteraction`/`resolveUserQuestion`/`resolveShellApproval`
+  reply-resolution mechanism this page's step 3.5 consumes
 
 ## Open questions
 - WhatsApp `threadId` is captured but `SendOptions` threading is ignored by the

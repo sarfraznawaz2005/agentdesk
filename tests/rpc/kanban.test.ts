@@ -26,6 +26,9 @@ mock.module("../../src/bun/engine-manager", () => ({
 	unregisterAgentController: () => {},
 	getRunningAgentCount: () => 0,
 	getRunningAgentNames: () => [],
+	resolveUserQuestion: () => false,
+	resolveShellApproval: () => false,
+	getPendingChannelInteraction: () => null,
 }));
 mock.module("../../src/bun/scheduler", () => ({
 	eventBus: { emit: () => {} },

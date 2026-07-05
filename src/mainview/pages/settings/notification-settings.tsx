@@ -285,11 +285,25 @@ export function NotificationSettings() {
   const [errorNotifDirty, setErrorNotifDirty] = useState(false);
   const [taskDoneChannelNotify, setTaskDoneChannelNotify] = useState(true);
   const [taskDoneChannelNotifyDirty, setTaskDoneChannelNotifyDirty] = useState(false);
+  const [errorChannelNotify, setErrorChannelNotify] = useState(true);
+  const [errorChannelNotifyDirty, setErrorChannelNotifyDirty] = useState(false);
+  const [questionChannelNotify, setQuestionChannelNotify] = useState(true);
+  const [questionChannelNotifyDirty, setQuestionChannelNotifyDirty] = useState(false);
+  const [planApprovalChannelNotify, setPlanApprovalChannelNotify] = useState(true);
+  const [planApprovalChannelNotifyDirty, setPlanApprovalChannelNotifyDirty] = useState(false);
   const [freelanceEnabled, setFreelanceEnabled] = useState(false);
   const [freelanceNewListingsNotif, setFreelanceNewListingsNotif] = useState(true);
   const [freelanceNewListingsNotifDirty, setFreelanceNewListingsNotifDirty] = useState(false);
 
-  const anyDirty = Object.values(dirty).some(Boolean) || sessionCompleteNotifDirty || errorNotifDirty || taskDoneChannelNotifyDirty || freelanceNewListingsNotifDirty;
+  const anyDirty =
+    Object.values(dirty).some(Boolean) ||
+    sessionCompleteNotifDirty ||
+    errorNotifDirty ||
+    taskDoneChannelNotifyDirty ||
+    errorChannelNotifyDirty ||
+    questionChannelNotifyDirty ||
+    planApprovalChannelNotifyDirty ||
+    freelanceNewListingsNotifDirty;
 
   // ---- Load on mount -------------------------------------------------------
 
@@ -328,6 +342,15 @@ export function NotificationSettings() {
 
         const taskDoneStored = await rpc.getSetting("task_done_channel_notify", "notifications");
         setTaskDoneChannelNotify(taskDoneStored === null ? true : String(taskDoneStored) !== "false");
+
+        const errorChannelStored = await rpc.getSetting("error_channel_notify", "notifications");
+        setErrorChannelNotify(errorChannelStored === null ? true : String(errorChannelStored) !== "false");
+
+        const questionChannelStored = await rpc.getSetting("question_channel_notify", "notifications");
+        setQuestionChannelNotify(questionChannelStored === null ? true : String(questionChannelStored) !== "false");
+
+        const planApprovalChannelStored = await rpc.getSetting("plan_approval_channel_notify", "notifications");
+        setPlanApprovalChannelNotify(planApprovalChannelStored === null ? true : String(planApprovalChannelStored) !== "false");
 
         const [freelanceFeature, freelanceNotifStored] = await Promise.all([
           rpc.freelanceGetFeatureEnabled(),
@@ -411,6 +434,15 @@ export function NotificationSettings() {
         ...(taskDoneChannelNotifyDirty
           ? [rpc.saveSetting("task_done_channel_notify", String(taskDoneChannelNotify), "notifications")]
           : []),
+        ...(errorChannelNotifyDirty
+          ? [rpc.saveSetting("error_channel_notify", String(errorChannelNotify), "notifications")]
+          : []),
+        ...(questionChannelNotifyDirty
+          ? [rpc.saveSetting("question_channel_notify", String(questionChannelNotify), "notifications")]
+          : []),
+        ...(planApprovalChannelNotifyDirty
+          ? [rpc.saveSetting("plan_approval_channel_notify", String(planApprovalChannelNotify), "notifications")]
+          : []),
         ...(freelanceNewListingsNotifDirty
           ? [rpc.saveSetting("freelance_new_listings_notification", String(freelanceNewListingsNotif), "notifications")]
           : []),
@@ -435,6 +467,9 @@ export function NotificationSettings() {
       setSessionCompleteNotifDirty(false);
       setErrorNotifDirty(false);
       setTaskDoneChannelNotifyDirty(false);
+      setErrorChannelNotifyDirty(false);
+      setQuestionChannelNotifyDirty(false);
+      setPlanApprovalChannelNotifyDirty(false);
       setFreelanceNewListingsNotifDirty(false);
       toast("success", "Notification preferences saved.");
     } catch {
@@ -442,7 +477,24 @@ export function NotificationSettings() {
     } finally {
       setSaving(false);
     }
-  }, [prefs, dirty, sessionCompleteNotif, sessionCompleteNotifDirty, errorNotif, errorNotifDirty, taskDoneChannelNotify, taskDoneChannelNotifyDirty, freelanceNewListingsNotif, freelanceNewListingsNotifDirty]);
+  }, [
+    prefs,
+    dirty,
+    sessionCompleteNotif,
+    sessionCompleteNotifDirty,
+    errorNotif,
+    errorNotifDirty,
+    taskDoneChannelNotify,
+    taskDoneChannelNotifyDirty,
+    errorChannelNotify,
+    errorChannelNotifyDirty,
+    questionChannelNotify,
+    questionChannelNotifyDirty,
+    planApprovalChannelNotify,
+    planApprovalChannelNotifyDirty,
+    freelanceNewListingsNotif,
+    freelanceNewListingsNotifDirty,
+  ]);
 
   // ---- Loading skeleton -----------------------------------------------------
 
@@ -535,6 +587,39 @@ export function NotificationSettings() {
               onToggle={() => {
                 setTaskDoneChannelNotify((v) => !v);
                 setTaskDoneChannelNotifyDirty(true);
+              }}
+            />
+            <Separator />
+            <ToggleRow
+              id="error-channel-notify"
+              label="Error message"
+              description="Send a message to all connected channels when an agent hits an error or a chat session stops on an error"
+              value={errorChannelNotify}
+              onToggle={() => {
+                setErrorChannelNotify((v) => !v);
+                setErrorChannelNotifyDirty(true);
+              }}
+            />
+            <Separator />
+            <ToggleRow
+              id="question-channel-notify"
+              label="Agent questions & shell approvals"
+              description="Forward an agent's question or shell-command approval request to all connected channels, and let a reply from there resolve it"
+              value={questionChannelNotify}
+              onToggle={() => {
+                setQuestionChannelNotify((v) => !v);
+                setQuestionChannelNotifyDirty(true);
+              }}
+            />
+            <Separator />
+            <ToggleRow
+              id="plan-approval-channel-notify"
+              label="Plan ready for approval"
+              description="Send a heads-up message to all connected channels when a plan is waiting for approval in an in-app conversation (approve/reject still happens in the app)"
+              value={planApprovalChannelNotify}
+              onToggle={() => {
+                setPlanApprovalChannelNotify((v) => !v);
+                setPlanApprovalChannelNotifyDirty(true);
               }}
             />
           </CardContent>

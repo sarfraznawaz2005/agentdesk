@@ -3,7 +3,7 @@ import type { AgentEngineCallbacks } from "./agents/engine";
 import { db } from "./db";
 import { projects, settings, kanbanTasks } from "./db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { sendChannelMessage } from "./channels/manager";
+import { sendChannelMessage, broadcastSchedulerResult } from "./channels/manager";
 import { chunkMessage } from "./channels/chunker";
 import { setShellApprovalHandler, resetShellAutoApprove } from "./agents/tools/shell";
 import { sqlite } from "./db/connection";
@@ -333,10 +333,23 @@ function linkAgentResponseToInbox(channelId: string, responseContent: string): v
 const pendingShellApprovals = new Map<string, {
 	resolve: (decision: "allow" | "deny" | "always") => void;
 	timer: ReturnType<typeof setTimeout>;
+	projectId: string;
 }>();
 
 /** Auto-deny a shell approval after this long with no response. */
 const SHELL_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
+ * Whether pending questions/shell-approvals should be pushed to connected
+ * channels (and channel replies allowed to resolve them). Shared by
+ * askUserQuestion and installShellApprovalHandler. Fail-open (no row ⇒
+ * enabled), matching every other channel-notify toggle in this codebase.
+ */
+function isQuestionChannelNotifyEnabled(): boolean {
+	const row = db.select({ value: settings.value }).from(settings)
+		.where(eq(settings.key, "question_channel_notify")).get();
+	return row ? row.value !== "\"false\"" && row.value !== "false" : true;
+}
 
 /**
  * Resolve a pending shell approval request. Called by the RPC handler when
@@ -408,6 +421,20 @@ function installShellApprovalHandler(): void {
 			command.length > 100 ? command.slice(0, 97) + "..." : command,
 		).catch(() => {});
 
+		// Also push to connected channels (Discord/WhatsApp/Email) so a reply of
+		// allow/deny/always can resolve this from a phone — mirrors the desktop
+		// toast above and is not gated by app focus (channel notify is meant for
+		// "away from the computer entirely", same precedent as task_done_channel_notify).
+		// Shares the question_channel_notify setting with AskUserQuestion since both
+		// are the same "blocking, needs a human decision" shape.
+		if (isQuestionChannelNotifyEnabled()) {
+			const truncated = command.length > 300 ? command.slice(0, 297) + "..." : command;
+			broadcastSchedulerResult(
+				`${agentName} — Shell Approval Needed`,
+				`\`${truncated}\`\n\nReply *allow*, *deny*, or *always* to respond.`,
+			).catch(() => {});
+		}
+
 		return new Promise<"allow" | "deny" | "always">((resolve) => {
 			// Auto-deny after the timeout if no response
 			const timer = setTimeout(() => {
@@ -419,7 +446,7 @@ function installShellApprovalHandler(): void {
 				resolve("deny");
 			}, SHELL_APPROVAL_TIMEOUT_MS);
 
-			pendingShellApprovals.set(requestId, { resolve, timer });
+			pendingShellApprovals.set(requestId, { resolve, timer, projectId });
 		});
 	});
 }
@@ -435,6 +462,7 @@ installShellApprovalHandler();
 const pendingUserQuestions = new Map<string, {
 	resolve: (answer: string) => void;
 	timer: ReturnType<typeof setTimeout>;
+	projectId: string;
 }>();
 
 /**
@@ -452,6 +480,26 @@ export function resolveUserQuestion(
 	deletePendingApproval(requestId);
 	pending.resolve(answer);
 	return true;
+}
+
+/**
+ * Find a pending channel-forwardable interactive request (AskUserQuestion or
+ * shell approval) for a project, so an inbound channel reply can resolve it
+ * directly instead of starting a fresh PM turn — see channels/manager.ts's
+ * handleIncomingMessage. Returns the first match found; in practice at most
+ * one such request is open per project at a time (sequential single-agent
+ * model — see agent-engine.ts).
+ */
+export function getPendingChannelInteraction(
+	projectId: string,
+): { kind: "question"; requestId: string } | { kind: "shell"; requestId: string } | null {
+	for (const [requestId, entry] of pendingUserQuestions) {
+		if (entry.projectId === projectId) return { kind: "question", requestId };
+	}
+	for (const [requestId, entry] of pendingShellApprovals) {
+		if (entry.projectId === projectId) return { kind: "shell", requestId };
+	}
+	return null;
 }
 
 /** Default wait before a user-question auto-resolves with a timeout message. */
@@ -516,6 +564,18 @@ export function askUserQuestion(payload: {
 	const snippet = payload.question.length > 140 ? `${payload.question.slice(0, 140)}…` : payload.question;
 	sendDesktopNotification(`${payload.agentName} needs your input`, snippet).catch(() => {});
 
+	// Also push to connected channels so the question can be answered from a
+	// phone — a reply on the same channel/project resolves this request (see
+	// handleIncomingMessage's pending-interaction check in channels/manager.ts).
+	if (isQuestionChannelNotifyEnabled()) {
+		const optionsText = payload.options && payload.options.length > 0 ? `\n\nOptions: ${payload.options.join(", ")}` : "";
+		const contextText = payload.context ? `\n\n${payload.context}` : "";
+		broadcastSchedulerResult(
+			`${payload.agentName} needs your input`,
+			`${payload.question}${contextText}${optionsText}\n\nReply to this message with your answer.`,
+		).catch(() => {});
+	}
+
 	return new Promise<string>((resolve) => {
 		const timer = setTimeout(() => {
 			pendingUserQuestions.delete(requestId);
@@ -530,7 +590,7 @@ export function askUserQuestion(payload: {
 			);
 		}, timeoutMs);
 
-		pendingUserQuestions.set(requestId, { resolve, timer });
+		pendingUserQuestions.set(requestId, { resolve, timer, projectId });
 	});
 }
 
@@ -697,6 +757,25 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 						e.sendMessage(cid, queued.content, undefined);
 					}
 				}, 0);
+
+				// Push to connected channels — independent of app focus (mirrors the
+				// existing task_done_channel_notify precedent: channel notify is for
+				// "away from the computer entirely", not just "window unfocused"),
+				// gated by its own "error_channel_notify" setting (default: on) so it
+				// can be turned off separately from the desktop toast below.
+				{
+					const channelSettingRow = db.select({ value: settings.value }).from(settings)
+						.where(eq(settings.key, "error_channel_notify")).get();
+					const channelEnabled = channelSettingRow ? channelSettingRow.value !== "\"false\"" && channelSettingRow.value !== "false" : true;
+					if (channelEnabled) {
+						const row = db.select({ name: projects.name }).from(projects).where(eq(projects.id, projectId)).get();
+						const name = row?.name ?? "Project";
+						broadcastSchedulerResult(
+							`${name} — Error`,
+							`⚠️ ${(error || "An error occurred while the agent was working.").slice(0, 300)}`,
+						).catch(() => {});
+					}
+				}
 
 				// Desktop notification on agent error (errors shown in red in chat).
 				// Mirrors the session-complete gate: only when the app is not focused

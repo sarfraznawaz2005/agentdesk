@@ -36,6 +36,9 @@ mock.module("../../src/bun/engine-manager", () => ({
 	getRunningAgentNames: () => [],
 	abortAllAgents: () => {},
 	engines: new Map(),
+	resolveUserQuestion: () => false,
+	resolveShellApproval: () => false,
+	getPendingChannelInteraction: () => null,
 }));
 // Mock scheduler so rpc/kanban can be used without a real event bus.
 mock.module("../../src/bun/scheduler", () => ({
