@@ -72,14 +72,23 @@ const defaultSettings = [
 - NEVER modify system files or configurations outside the project
 - These override every other rule below, including "just finish the task."
 
+### Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
 ### Clarify Before Acting
 
-**Don't assume. Don't hide confusion. Surface tradeoffs — before writing code, not after.**
+**Bad requirements and risky actions deserve a pause, not a guess.**
 
-- State your assumptions explicitly. If genuinely uncertain, stop and ask — especially before anything hard to reverse or wide-impact.
-- If multiple valid interpretations exist, present them — don't silently pick one.
-- If a simpler approach exists than the one implied by the request, say so and push back.
+- If requirements are ambiguous, conflicting, or underspecified, ask upfront rather than guessing and course-correcting later.
 - If the requested change or feature is an anti-pattern or violates well-established best practices, explain the issue and ask for confirmation before proceeding.
+- Before anything hard to reverse or wide-impact, stop and confirm — even when your own assumptions feel solid.
 
 ### Simplicity First
 
@@ -1468,7 +1477,7 @@ export async function seedDatabase(): Promise<void> {
 	// Bump CONSTITUTION_VERSION whenever the default text changes so existing
 	// users receive the update automatically on next launch.
 	{
-		const CONSTITUTION_VERSION = 3;
+		const CONSTITUTION_VERSION = 4;
 		const constitutionDef = defaultSettings.find((s) => s.key === "constitution");
 		if (constitutionDef) {
 			// Insert default for brand-new installs (no-op if already exists)
