@@ -18,6 +18,7 @@ import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-cha
 import { ChatFab } from "@/components/dashboard/chat-fab";
 import { MaintenanceOverlay } from "@/components/layout/maintenance-overlay";
 import { AgentSessionToast } from "@/components/layout/agent-session-toast";
+import { CrossProjectApprovalToast } from "@/components/layout/cross-project-approval-toast";
 import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { ProjectAvatar } from "@/components/project-avatar";
@@ -355,6 +356,7 @@ function AppShellContent() {
       </main>
       <Toaster />
       <AgentSessionToast />
+      <CrossProjectApprovalToast />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
 
       <StartupHealthDialog />
