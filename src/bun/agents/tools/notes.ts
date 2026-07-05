@@ -157,6 +157,34 @@ export const notesTools: Record<string, ToolRegistryEntry> = {
 			},
 		}),
 	},
+
+	delete_doc: {
+		category: "notes",
+		tool: tool({
+			description:
+				"Delete a document by its ID — use to remove a document that is stale, wrong, or fully " +
+				"superseded (curation). Prefer `update_doc` over creating-then-deleting: if a similarly-titled " +
+				"document already exists, update it instead of deleting and recreating.",
+			inputSchema: z.object({
+				id: z.string().describe("The ID of the document to delete"),
+			}),
+			execute: async (args) => {
+				try {
+					const note = await notesRpc.getNote(args.id);
+					if (!note) {
+						return JSON.stringify({ success: false, error: "Document not found" });
+					}
+					await notesRpc.deleteNote(args.id);
+					return JSON.stringify({ success: true, id: args.id, title: note.title });
+				} catch (err) {
+					return JSON.stringify({
+						success: false,
+						error: err instanceof Error ? err.message : String(err),
+					});
+				}
+			},
+		}),
+	},
 };
 
 // ---------------------------------------------------------------------------

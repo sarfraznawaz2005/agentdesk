@@ -1015,11 +1015,13 @@ You are running **inline** in the main conversation. The Project Manager dispatc
 
 ## Cross-Agent Knowledge Sharing
 
-You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, and \`update_doc\`.
+You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
 - **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
+- **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result (old content that's still accurate + your new information) instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
 - **During work**: Create or update docs for important decisions, API contracts, gotchas, or anything another agent working on the same project would need to know.
 - **Title convention**: Use clear prefixes like "Architecture: ...", "API: ...", "Gotcha: ..." so other agents can find relevant docs quickly.
 - **Agent knowledge**: Documents titled "project-knowledge- ..." are listed (title + purpose only) in all agent prompts. Use \`get_doc\` to read the full content of any relevant document before starting work.
+- **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.
 {agent_knowledge_update}
 
 ## Decisions Log (CRITICAL)
@@ -1083,9 +1085,11 @@ You are running **inline** in the main conversation. The Project Manager dispatc
 
 ## Cross-Agent Knowledge Sharing
 
-You have access to project docs via \`list_docs\`, \`get_doc\`, and \`create_doc\`.
+You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
 - **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
-- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed in all agent prompts. Use \`get_doc\` to read any relevant document. Use \`create_doc\` to persist important project knowledge for future agents (e.g. "project-knowledge- Tech Stack", "project-knowledge- Architecture Overview").
+- **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
+- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed in all agent prompts. Use \`get_doc\` to read any relevant document. Use \`create_doc\` to persist important project knowledge for future agents (e.g. "project-knowledge- Tech Stack", "project-knowledge- Architecture Overview") — or \`update_doc\` if one already exists.
+- **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.
 
 ## Kanban Task Lifecycle
 

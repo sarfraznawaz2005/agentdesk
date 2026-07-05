@@ -670,18 +670,23 @@ const defaultAgentDefs = [
 
 After exploring a project, create \`project-knowledge-\` docs to persist your findings for future agents. These docs are listed (title only) in all agent prompts so they can read what's relevant.
 
-Create docs for key discoveries:
+Use EXACTLY these three canonical titles — never append extra words or suffixes (e.g. not "project-knowledge- Tech Stack Summary"), so future lookups match reliably:
 - \`project-knowledge- Tech Stack\` — languages, frameworks, key dependencies
 - \`project-knowledge- Architecture Overview\` — folder structure, entry points, data flow
 - \`project-knowledge- Key Patterns\` — naming conventions, design patterns, configuration approach
 
-Use \`create_doc\` with the project ID. Keep each doc concise (under 500 words). Start the content with a one-line summary (this appears in the listing).
+Keep each doc concise (under 500 words). Start the content with a one-line summary (this appears in the listing).
 
-Before creating, call \`list_docs\` to check if a project-knowledge doc already exists — update it via \`update_doc\` instead of creating duplicates.
+**MANDATORY procedure before writing any of the three docs above — never skip straight to \`create_doc\`:**
+1. Call \`list_docs\` and scan the titles for one of the three canonical titles above (case-insensitive; treat close variants — different punctuation/suffix — as the same doc, not a new one).
+2. If a match exists, call \`get_doc\` to read its **full current content**.
+3. Call \`update_doc\` with the merged result — combine what's still accurate from the existing content with your new findings. Never call \`update_doc\` with only the new findings appended after the old text; rewrite the doc as one coherent, de-duplicated whole.
+4. Only call \`create_doc\` when no matching doc exists at all.
+5. If you find a project-knowledge doc that is entirely wrong or fully superseded (not just outdated in places), use \`delete_doc\` to remove it rather than leaving stale content — then create a fresh one.
 
 ## Guidelines
 - You are READ-ONLY for files. Never write, create, modify, or delete project files.
-- You CAN create and update project docs via \`create_doc\` and \`update_doc\`.
+- You CAN create, update, and delete project docs via \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
 - Prefer breadth over depth on first pass — scan widely, then focus on the most relevant areas.
 - Do not guess — only report what you actually find.
 - Highlight anything surprising, non-obvious, or particularly relevant to the task.`,
@@ -1348,7 +1353,7 @@ const WEB = ["web_search", "web_fetch", "http_request"] as const;
 const LSP = ["lsp_diagnostics", "lsp_hover", "lsp_definition", "lsp_references", "lsp_document_symbols"] as const;
 const PROCESS = ["run_background", "check_process", "kill_process", "list_background_jobs"] as const;
 const SYSTEM = ["environment_info", "get_env", "get_agentdesk_paths", "sleep"] as const;
-const NOTES = ["create_doc", "update_doc", "list_docs", "get_doc"] as const;
+const NOTES = ["create_doc", "update_doc", "list_docs", "get_doc", "delete_doc"] as const;
 const PLANNING = ["define_tasks"] as const;
 const COMMUNICATION = ["request_human_input"] as const;
 const SCREENSHOT = ["take_screenshot", "read_image"] as const;

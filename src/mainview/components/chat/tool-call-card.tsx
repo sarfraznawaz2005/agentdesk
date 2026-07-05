@@ -123,6 +123,7 @@ const TOOL_META: Record<string, { Icon: React.ElementType; summary: (input: Reco
 	get_doc: { Icon: FileText, summary: (a) => `get_doc ${truncate(String(a.id ?? a.title ?? ""), 30)}` },
 	create_doc: { Icon: Pencil, summary: (a) => `create_doc ${truncate(String(a.title ?? ""), 30)}` },
 	update_doc: { Icon: Pencil, summary: (a) => `update_doc ${truncate(String(a.title ?? a.id ?? ""), 30)}` },
+	delete_doc: { Icon: Trash2, summary: (a) => `delete_doc ${truncate(String(a.id ?? a.doc_id ?? ""), 30)}` },
 	create_note: { Icon: Pencil, summary: (a) => `create_note ${truncate(String(a.title ?? ""), 30)}` },
 	update_note: { Icon: Pencil, summary: (a) => `update_note ${truncate(String(a.title ?? a.id ?? ""), 30)}` },
 

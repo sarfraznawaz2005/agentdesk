@@ -30,7 +30,7 @@ import { getConversations, createConversation, deleteConversation, getMessages }
 import { getInboxMessages, searchInboxMessages } from "../../rpc/inbox";
 import { getSettings, getSetting, saveSetting } from "../../rpc/settings";
 import { createProviderAdapter } from "../../providers";
-import { getProjectNotes, getNote, searchNotes, createNote, updateNote } from "../../rpc/notes";
+import { getProjectNotes, getNote, searchNotes, createNote, updateNote, deleteNote } from "../../rpc/notes";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1519,6 +1519,26 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 				try {
 					await updateNote({ id: args.doc_id, title: args.title, content: args.content });
 					return JSON.stringify({ success: true });
+				} catch (err) {
+					return JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) });
+				}
+			},
+		}),
+
+		delete_doc: tool({
+			description:
+				"Delete a document by its ID — use to remove one that is stale, wrong, or fully superseded " +
+				"(curation). Prefer update_doc over creating-then-deleting: if a similarly-titled document " +
+				"already exists, update it instead of deleting and recreating.",
+			inputSchema: z.object({
+				doc_id: z.string().describe("The document ID to delete."),
+			}),
+			execute: async (args) => {
+				try {
+					const note = await getNote(args.doc_id);
+					if (!note) return JSON.stringify({ success: false, error: "Document not found." });
+					await deleteNote(args.doc_id);
+					return JSON.stringify({ success: true, id: args.doc_id, title: note.title });
 				} catch (err) {
 					return JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) });
 				}

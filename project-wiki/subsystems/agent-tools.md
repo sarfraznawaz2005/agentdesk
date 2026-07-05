@@ -2,7 +2,7 @@
 title: Agent Tools
 type: subsystem
 status: verified
-verified_at: 2026-07-04
+verified_at: 2026-07-05
 sources:
   - src/bun/agents/tools/index.ts
   - src/bun/agents/tools/memory.ts
@@ -156,9 +156,9 @@ is on (`agent-loop.ts:974-981`) since the [[kanban-review-cycle|review-cycle]] c
 | `shell.ts:286` | `run_shell` (denylist + approval gate) | `shell` |
 | `git.ts:728` | `git_status/diff/commit/branch/push/pull/fetch/log/pr/stash/reset/cherry_pick` | `git` |
 | `kanban.ts` | `create_task`, `move_task`, `check_criteria`, `verify_implementation`, `submit_review`, `list_tasks`, `get_task` | `kanban` |
-| `pm-tools.ts:246` (factory) | `run_agent`, `run_agents_parallel`, `create_project`, doc/conversation/inbox read tools, `verify_project` | mixed |
+| `pm-tools.ts:246` (factory) | `run_agent`, `run_agents_parallel`, `create_project`, doc/conversation/inbox read tools (`list_docs`/`get_doc`/`search_docs`/`create_doc`/`update_doc`/`delete_doc`), `verify_project` | mixed |
 | `planning.ts:118` | `define_tasks` (pre-approval definitions) | `kanban` |
-| `notes.ts:42` | `create_note`, `update_note`, `delete_note` (+ run-scoped decisions tool) | `notes` |
+| `notes.ts:42` | `create_doc`, `update_doc`, `list_docs`, `get_doc`, `delete_doc` (+ run-scoped decisions tool) | `notes` |
 | `web.ts:337` | `web_search` (Tavily key → Tavily, else DuckDuckGo), `web_fetch`, `http_request` | `web` |
 | `lsp.ts:275` | `lsp_diagnostics/hover/definition/references/document_symbols` | `file` |
 | `skills.ts:38` | `read_skill`, `find_skills` | `skills` |
@@ -291,6 +291,20 @@ hard cap 100 with cold-memory LRU eviction). Defaults wired in `seed.ts`
 - **`define_tasks` does not touch the board.** Definitions sit in an in-memory
   map keyed by project id (`planning.ts:69`) until the PM drains them after
   approval — they are lost on restart.
+- **Doc create/update/delete is check-then-act, not atomic.** `create_doc` has
+  no unique constraint on `(project_id, title)` — nothing at the tool or DB
+  layer stops two agents from both calling `list_docs` (seeing no match),
+  then both calling `create_doc` for the same title. This has been observed
+  in practice with parallel `code-explorer` runs (`READ_ONLY_AGENTS`, run via
+  `run_agents_parallel`) both writing `project-knowledge- Tech Stack` at
+  once, producing duplicates. The current mitigation is prompt-level only
+  (`agent-loop.ts`'s `AGENT_COMMUNICATION_PROTOCOL`/`READONLY_AGENT_COMMUNICATION_PROTOCOL`
+  in `prompts.ts`, and `code-explorer`'s own instructions in `seed.ts`, all
+  say: `list_docs` → `get_doc` the match → merge via `update_doc`; only
+  `create_doc` when nothing matches). `delete_doc` (`notes.ts`, `pm-tools.ts`)
+  exists for curating stale/duplicate/wrong docs but is not itself a race fix.
+  A durable fix would need a DB-level upsert-by-title or unique index — not
+  yet implemented.
 
 ## Related
 - [[agent-engine]]
