@@ -169,6 +169,82 @@ bun run db:studio    # Open Drizzle Studio (DB browser)
 
 ---
 
+## Constitution
+
+These are rules you must ALWAYS follow. They govern *how* you work; the
+**Critical Rules** section below covers AgentDesk-specific technical
+contracts. Where the two would otherwise overlap, only one copy is kept
+(here).
+
+### 1. Safety (non-negotiable)
+- NEVER run destructive commands (`rm -rf /`, `format`, `DROP DATABASE`, force-push, etc.) without explicit human approval.
+- NEVER access files outside the project workspace directory.
+- NEVER expose API keys, secrets, or credentials in code, logs, commits, or chat.
+- NEVER make network requests to unknown or unauthorized endpoints.
+- NEVER modify system files or configs outside the project.
+- These override every other rule below, including "just finish the task."
+
+### 2. Clarify Before Acting
+Don't assume. Don't hide confusion. Surface tradeoffs — before writing code, not after.
+- State assumptions explicitly. If genuinely uncertain, stop and ask — especially before anything hard to reverse or wide-impact.
+- If multiple valid interpretations exist, present them; don't silently pick one.
+- If a simpler approach exists than the one implied by the request, say so and push back.
+- If requirements are ambiguous, conflicting, or underspecified, ask upfront rather than guessing and course-correcting later.
+- If a requested change or feature is an anti-pattern or violates well-established best practices, explain the issue and ask for confirmation before proceeding.
+
+### 3. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+- No features beyond what was asked. No abstractions for single-use code. No unrequested "flexibility" or "configurability."
+- Prefer simple, boring solutions over clever ones.
+- SOLID, KISS, DRY, YAGNI, separation of concerns, composition over inheritance.
+- Small, single-responsibility classes/functions with clear boundaries. No god-files, no circular references. A method doing two jobs gets split.
+- Self-test: if you wrote 200 lines that could be 50, rewrite it. Ask "would a senior engineer call this overcomplicated?" — if yes, simplify.
+
+### 4. Surgical Changes
+Touch only what you must. Clean up only your own mess.
+- Don't "improve" adjacent code, comments, or formatting. Don't refactor what isn't broken. Match existing style even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it unless it's dead code *your own change* just orphaned (unused imports/vars/functions you caused).
+- Test: every changed line should trace directly to the request.
+
+### 5. Code Quality
+- Follow the project's existing conventions.
+- **Error handling policy:** handle errors at real boundaries — I/O, network calls, parsing, user input. Do NOT add defensive checks/handling for states that cannot occur given the code's own invariants. Every error that IS handled must be surfaced (logged/thrown to the global handler) — never swallowed silently.
+- Strict typing & null-safety (nullable-reference checks on, warnings as errors). No `dynamic` to dodge the type system, no null-forgiving `!`, no cast-then-ignore. Make illegal states unrepresentable (sealed types, enums, records).
+- No blocking UI (desktop apps).
+- Comments: only for non-obvious logic (hidden constraints, workarounds, surprising behavior). No docstrings/JSDoc on obvious methods, constructors, getters, simple utilities — self-documenting code over comment noise.
+- Don't introduce known security vulnerabilities (OWASP Top 10).
+- Don't reinvent solved problems: use a free, permissively-licensed, well-maintained, popular library when one correctly does the job. Conversely, don't pull in a heavy dependency for something trivial — weigh every dependency against startup time, RAM, and bundle size.
+- Always use Context7 MCP when library/API documentation, code generation, or setup/configuration steps are needed, without waiting to be explicitly asked.
+
+### 6. Completeness
+- Finish to the real end-to-end Definition of Done. No stubs, no `// later`, no TODO placeholders standing in for the actual implementation.
+
+### 7. Goal-Driven Execution
+Turn tasks into verifiable goals and loop until they're met, rather than stopping at "looks right."
+- "Add validation" → write tests for invalid inputs, then make them pass.
+- "Fix the bug" → write a test that reproduces it, then make it pass.
+- "Refactor X" → confirm tests pass before and after.
+- For multi-step tasks, state a brief plan first (create todos before implementing):
+  1. [Step] → verify: [check]
+  2. [Step] → verify: [check]
+- Weak success criteria ("make it work") force constant back-and-forth — define strong ones so you can work independently.
+
+### 8. Reporting & Honesty
+- Be honest about state: if tests fail, show the output; if a step was skipped, say so. Never report a task as done when a quality gate hasn't actually passed.
+- At the end of every task, give one combined wrap-up covering: (a) any flaws/gaps in the original requirements or risky assumptions you made, (b) anywhere the requested approach was suboptimal plus a concrete alternative with tradeoffs, and (c) other suggestions/improvements worth considering. One critique, not a checklist repeated in two places.
+
+### 9. Resource Limits
+- Respect token/context budgets. Don't create unnecessary files or bloat the codebase.
+- Clean up temporary files and temporary processes you created once you're done, after verifying they're no longer needed.
+
+### 10. Project-Specific Rules
+- Email restriction (see global `~/.claude/CLAUDE.md` for the full rule): never use `eteamid@gmail.com`, `sarfraz@onsupport.com`, or any "eteam" address; ask which email to use whenever a task requires one.
+- Commits follow Conventional Commits style. Never commit without user confirmation unless the user or project scope has already explicitly authorized it.
+- This app has **existing users** — every feature or change must keep working for existing users, not just new ones.
+- Keep `CLAUDE.md`, the `project-wiki/` pages, and `docs/workflow.md` updated whenever they deviate from current code (see the wiki protocol at the top of this file).
+
+---
+
 ## Critical Rules
 
 - **PM is the sole orchestrator.** It handles planning, approval, task creation, and agent dispatch directly — no separate workflow engine.
@@ -191,19 +267,6 @@ bun run db:studio    # Open Drizzle Studio (DB browser)
 - **Follow the task workflow**: `Plan → Approve → Execute → Done`.
    Use `aitasks` CLI for all task tracking (see Task Management section below)
 - Use `electrobun` skill for `electrobun` development.
-- If you are unsure about any requirement, behavior, or implementation detail, ask clarifying questions **before** writing code.
-- At every step, provide a **high-level explanation** of what changes were made and why.
-- After implementing changes or new features, always provide a list of **suggestions or improvements**, even if they differ from the user's original request.
-- If the user requests a change or feature that is an **anti-pattern** or violates well-established best practices, clearly explain the issue and ask for confirmation before proceeding.
-- Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
-- Always follow established best practices in your implementations.
-- Simplicity is key. If something can be done in easy way without complexity, prefer that.
-- Follow established principles such as DRY, KISS, SOLID, etc. for coding tasks.
-- Always create todos before implementations.
-- Always keep `CLAUDE.md`, the `project-wiki/` pages, and `docs/workflow.md` updated if they deviate from current code.
-- **Keep the wiki fresh as you code** — this is the **MANDATORY LAST ACTION** at the top of this file, restated as a rule: when you change code, update the affected `project-wiki/` page(s) in the SAME change and bump their `verified_at`, then run `bun run wiki:check` until it reports no stale/missing references. The `.githooks/pre-commit` hook lists which pages your staged change touches (non-blocking); the hook only *detects* drift — repairing the prose is your job (see `project-wiki/WIKI.md`). Bumping `verified_at` without actually re-reading the code against the page is forbidden — the date asserts you verified it.
-- Always ask questions if you have any confusion or better suggestions even if they differ with user.
-- This app has EXISTING users, so any features implemented or changes need to ensure it works not only for new users but also existing users.
 
 ---
 
