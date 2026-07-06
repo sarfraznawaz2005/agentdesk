@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.5.2",
+        "title":  "Enhanced Installation and Discovery",
+        "changes":  [
+                        "Added a one-line installer script for Windows to simplify installation.",
+                        "Added ability to cleanup all freelance entries from its settings."
+                    ]
+    },
+    {
         "version":  "2.5.1",
         "title":  "New Features and Bug Fixes",
         "changes":  [
