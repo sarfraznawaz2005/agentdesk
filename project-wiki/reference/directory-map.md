@@ -2,7 +2,7 @@
 title: Directory Map (Structural Index)
 type: reference
 status: verified
-verified_at: 2026-07-05
+verified_at: 2026-07-06
 sources:
   - src/bun/index.ts
   - src/bun/rpc-registration.ts
@@ -215,6 +215,7 @@ pairing, WS/relay RPC clients — see [[remote-access]]).
 | `assets/` | App icons (`icon.ico/png`, `tray-icon.png`) + `uninstall.ps1`. |
 | `.github/workflows/release.yml` | The only CI workflow (release). |
 | `packaging/msix/` | Windows MSIX packaging. |
+| `install.ps1` | Windows one-line installer (`irm ... \| iex`) — fetches the Setup zip via `Invoke-WebRequest` to skip the browser-download Mark-of-the-Web tag and avoid a SmartScreen prompt. See [[tech-stack-build-release]]. |
 | `tests/` | Bun tests mirroring backend dirs (`agents/`, `channels/`, `db/`, `frontend/`, `issue-fixer/`, `playground/`, `rpc/`, `scheduler/`, `tools/`, + `helpers/`). |
 | `build/` · `dist/` · `node_modules/` | Generated/installed — not source. |
 | `electrobun.config.ts` | App bundle config (entry points, build). |

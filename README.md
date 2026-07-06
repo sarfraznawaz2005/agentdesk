@@ -65,6 +65,24 @@ AgentDesk manages software development projects through a team of specialized AI
 
 ## Installation
 
+### Prebuilt release (Windows)
+
+1. Click **Start**, type `PowerShell`, and open **Windows PowerShell**.
+2. Paste the command below and press **Enter**:
+   ```powershell
+   irm https://raw.githubusercontent.com/sarfraznawaz2005/agentdesk/main/install.ps1 | iex
+   ```
+3. The script downloads the latest AgentDesk Setup build and launches the installer — follow
+   the on-screen installer steps as normal.
+
+AgentDesk isn't code-signed yet, so a browser-downloaded copy of the installer will trigger a
+Windows SmartScreen warning ("unrecognized publisher") — running it this way via PowerShell
+avoids that prompt. You can still download the Setup/portable zip directly from the
+[Releases page](https://github.com/sarfraznawaz2005/agentdesk/releases/latest) if you prefer;
+you'll just see SmartScreen on first run.
+
+### From source
+
 ```bash
 git clone <repo-url>
 cd agentdesk

@@ -9,6 +9,7 @@ sources:
   - vite.config.ts
   - build.ps1
   - release.ps1
+  - install.ps1
   - .github/workflows/release.yml
   - src/bun/rpc/updater.ts
   - src/bun/rpc/updater-portable.ts
@@ -241,6 +242,15 @@ don't get a popup (`whats-new.ts:37-40`).
   a macOS-style self-extractor that fails on Linux (`release.yml:292-308`).
 - **No code signing** — `build.ps1:32-33` notes Windows users will see SmartScreen
   warnings; an EV cert + `signtool` is the documented remedy but is not wired up.
+- **`install.ps1` (repo root) is a secondary Windows install path**, not a signing
+  substitute: it fetches `AgentDesk-win-x64-Setup.zip` via `Invoke-WebRequest` and launches
+  the extracted `AgentDesk-Setup.exe`. Windows only stamps Mark-of-the-Web (the
+  Zone.Identifier ADS that triggers SmartScreen's reputation check) on files fetched by a
+  zone-aware client (browsers, Outlook); `Invoke-WebRequest` isn't one, so this path skips
+  the SmartScreen prompt entirely — the same mechanism used by Bun/Rustup/Deno/Chocolatey's
+  own installers. Users who instead download the zip directly from the Releases page in a
+  browser still get MOTW-tagged and still see SmartScreen. README.md documents the
+  `irm ... | iex` one-liner under Installation.
 - **CLAUDE.md tech-stack table lists Electrobun 1.16.0** but the real pin is 1.18.1 —
   trust `package.json`.
 
