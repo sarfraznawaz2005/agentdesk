@@ -2,7 +2,7 @@
 title: Freelance Discovery (fetch → analyze → shortlist)
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-06
 sources:
   - src/bun/freelance/fetcher.ts
   - src/bun/freelance/settings.ts
@@ -12,6 +12,7 @@ sources:
   - src/shared/rpc/freelance.ts
   - src/mainview/components/freelance/find-workable-modal.tsx
   - src/mainview/components/freelance/listing-card.tsx
+  - src/mainview/components/freelance/settings-tab.tsx
 tags: [freelance, discovery, shortlist, wizard]
 ---
 
@@ -53,6 +54,7 @@ stateDiagram-v2
 | → `approved` | `approveListing` (`rpc/freelance.ts:384`) | also spins up a project + PM conversation |
 | → `closed` | `markListingDone` (`rpc/freelance.ts:265`) | guarded: only `new`/`shortlisted`/`approved` may close (`:275`) |
 | → soft-deleted | `deleteListing` (`:293`) / `deleteListings` (`:320`) | batch delete works on any status |
+| any → hard-deleted (all rows) | `cleanUpAllListings` (`:352`, wired to Settings tab → Danger Zone → "Clean Up") | real `DELETE`, not `is_deleted=1`; no WHERE clause at all, so it also sweeps up rows already soft-deleted by `deleteListing(s)`/`trimListingsToMax`/`purgeBlockedCountryListings` that haven't hit the 30-day purge yet — the one bulk action that clears every freelance entry, not just a status tab's worth; deletes `freelance_chat_messages` first in the same `sqlite.transaction` so the FK to `freelance_listings` (`PRAGMA foreign_keys = ON`) doesn't reject the parent delete; irreversible |
 
 ## Stage 1 — Fetch (the poller)
 
@@ -63,15 +65,18 @@ so the synchronous `bun:sqlite` insert burst doesn't stall the launch/navigation
 window. Each run, in order:
 
 1. `purgeOldDeletedListings` — hard-delete soft-deleted rows older than 30 days (`:51`).
+   Deletes their `freelance_chat_messages` first (`:59`) — those never got cleaned up
+   at soft-delete time (steps 2/4 below only flip `is_deleted=1`), so skipping this
+   would trip the `freelance_chat_messages -> freelance_listings` FK.
 2. `purgeBlockedCountryListings` — soft-delete `new`/`shortlisted` rows from blocked
    countries (only those two statuses; committed work is never touched, `:34`).
 3. Per enabled RSS source: fetch → `normalizeRssItem` → insert `new` with
    `onConflictDoNothing` (`:167`, soft-deleted rows are never re-imported).
 4. `trimListingsToMax` — reclaim room by soft-deleting **only `new`-column** rows,
    *junk-first* (`wizard_verdict='not_workable'` / gated) then oldest-first; a row
-   with a sent bid is never trimmed (`:79`).
+   with a sent bid is never trimmed (`:88`).
 5. **Only for non-manual fetches** (`scheduled`/`startup`), fire-and-forget
-   `runAutoShortlist` (`:223`). A manual fetch never auto-shortlists.
+   `runAutoShortlist` (`:233`). A manual fetch never auto-shortlists.
 
 ## Stage 2 — Analyze (workability verdict)
 

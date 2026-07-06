@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { KeywordInput } from "./keyword-input";
 import { AutoEarnSettings } from "./auto-earn-settings";
 import type { FreelanceAutoEarnSettingsDto } from "../../../shared/rpc/freelance";
@@ -217,6 +218,66 @@ function CurrencyCombobox({
         </div>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CleanUpListingsCard — danger zone
+// ---------------------------------------------------------------------------
+
+function CleanUpListingsCard() {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const handleCleanUp = useCallback(async () => {
+    try {
+      const result = await rpc.freelanceCleanUpAllListings();
+      toast(
+        "success",
+        result.deleted > 0
+          ? `Deleted ${result.deleted} listing${result.deleted !== 1 ? "s" : ""}.`
+          : "No listings to delete.",
+      );
+    } catch {
+      toast("error", "Failed to clean up listings. Please try again.");
+    }
+  }, []);
+
+  return (
+    <Card className="border-destructive/50">
+      <CardHeader>
+        <CardTitle className="text-destructive">Danger Zone</CardTitle>
+        <CardDescription>
+          Irreversible actions that affect your freelance data.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Clean Up Listings</p>
+            <p className="text-xs text-muted-foreground">
+              Permanently delete every freelance listing — New, Shortlisted, Approved, and Done, including any already removed — along with their chat history.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+          >
+            Clean Up
+          </Button>
+        </div>
+      </CardContent>
+
+      <ConfirmationDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Clean Up Listings"
+        description="This will permanently delete every freelance entry in the database — New, Shortlisted, Approved, and Done/Closed listings, plus any you already removed individually — and their chat history. Approved listings' linked projects are not affected. This action cannot be undone."
+        confirmLabel="Yes, delete all listings"
+        variant="destructive"
+        onConfirm={handleCleanUp}
+      />
+    </Card>
   );
 }
 
@@ -752,6 +813,9 @@ export function SettingsTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* ---- Danger Zone ---------------------------------------------------- */}
+      <CleanUpListingsCard />
 
       {/* ---- Footer actions (bottom of everything) ------------------------- */}
       {/* This single Save persists ALL freelance settings AND the Auto-Earn options above. */}

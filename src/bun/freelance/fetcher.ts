@@ -1,7 +1,7 @@
 import { and, eq, lt, asc, isNotNull, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
-import { freelanceListings, settings as settingsTable } from "../db/schema";
+import { freelanceListings, freelanceChatMessages, settings as settingsTable } from "../db/schema";
 import { getFreelanceSettings } from "./settings";
 import { getAutoEarnSettings } from "./auto-earn-settings";
 import { fetchRssFeed } from "./rss-fetcher";
@@ -50,9 +50,18 @@ async function purgeBlockedCountryListings(): Promise<void> {
 
 async function purgeOldDeletedListings(): Promise<void> {
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  await db
-    .delete(freelanceListings)
+  const rows = await db
+    .select({ id: freelanceListings.id })
+    .from(freelanceListings)
     .where(and(eq(freelanceListings.isDeleted, 1), lt(freelanceListings.createdAt, cutoff)));
+  if (rows.length === 0) return;
+  const ids = rows.map((r) => r.id);
+
+  // purgeBlockedCountryListings / trimListingsToMax only flip is_deleted=1 — they never
+  // clean up freelance_chat_messages. Delete those first or the hard-delete below trips
+  // the freelance_chat_messages -> freelance_listings FK (PRAGMA foreign_keys = ON).
+  await db.delete(freelanceChatMessages).where(inArray(freelanceChatMessages.listingId, ids));
+  await db.delete(freelanceListings).where(inArray(freelanceListings.id, ids));
 }
 
 // Reclaims room for new RSS entries by soft-deleting old "new"-column listings

@@ -478,6 +478,10 @@ export type FreelanceRequests = {
     params: { ids: string[] };
     response: { success: boolean; deleted: number };
   };
+  "freelance.cleanUpAllListings": {
+    params: Record<string, never>;
+    response: { success: boolean; deleted: number };
+  };
   "freelance.chat.getMessages": {
     params: { listingId: string };
     response: { messages: FreelanceChatMessageDto[] };

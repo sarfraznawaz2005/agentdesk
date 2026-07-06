@@ -338,6 +338,29 @@ export async function deleteListings(params: { ids: string[] }): Promise<{ succe
   return { success: true, deleted: ids.length };
 }
 
+// ─── cleanUpAllListings (Danger Zone — hard delete) ─────────────────────────
+// Wipes every freelance listing from the DB, full stop — no WHERE clause on
+// status or is_deleted. That means it also removes listings already
+// soft-deleted (deleteListing/deleteListings, trimListingsToMax,
+// purgeBlockedCountryListings) that haven't hit the 30-day hard-purge yet;
+// this is the one place that cleans up ALL freelance entries in one shot,
+// not just the ones currently visible in a status tab. Unlike deleteListing(s)
+// this is a real DELETE and cannot be undone. Chat messages are removed first,
+// in the same transaction, so the freelance_chat_messages -> freelance_listings
+// FK (PRAGMA foreign_keys = ON, see db/connection.ts) never rejects the listing
+// row deletion.
+export async function cleanUpAllListings(): Promise<{ success: boolean; deleted: number }> {
+  const [{ count: total }] = await db.select({ count: count() }).from(freelanceListings);
+
+  sqlite.transaction(() => {
+    sqlite.exec("DELETE FROM freelance_chat_messages");
+    sqlite.exec("DELETE FROM freelance_listings");
+  })();
+
+  broadcastToWebview(FREELANCE_EVENTS.LISTINGS_UPDATED, { count: 0 });
+  return { success: true, deleted: total };
+}
+
 // ─── refreshListingDescription ───────────────────────────────────────────────
 // Clears the cached fullDescription for a listing and re-fetches it immediately.
 // Used by the "Re-fetch description" button in the full-description modal.

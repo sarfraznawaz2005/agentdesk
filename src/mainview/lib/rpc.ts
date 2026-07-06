@@ -1561,6 +1561,10 @@ export const rpc = {
   freelanceDeleteListings: (ids: string[]) =>
     electroviewRpc.request["freelance.deleteListings"]({ ids }),
 
+  /** Danger Zone — permanently delete EVERY freelance listing (any status) and their chat messages. Cannot be undone. */
+  freelanceCleanUpAllListings: () =>
+    electroviewRpc.request["freelance.cleanUpAllListings"]({}),
+
   /** Fetch all chat messages for a listing. */
   freelanceChatGetMessages: (listingId: string) =>
     electroviewRpc.request["freelance.chat.getMessages"]({ listingId }),

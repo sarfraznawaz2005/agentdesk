@@ -83,6 +83,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	"freelance.deleteListing": (params) => freelanceRpc.deleteListing(params),
 	"freelance.triggerFetch": () => freelanceRpc.triggerFetch(),
 	"freelance.deleteListings": (params) => freelanceRpc.deleteListings(params),
+	"freelance.cleanUpAllListings": () => freelanceRpc.cleanUpAllListings(),
 	"freelance.chat.getMessages": (params) => freelanceChatRpc.getMessages(params),
 	"freelance.chat.sendMessage": (params) => freelanceChatRpc.sendMessage(params),
 	"freelance.chat.regenerate": (params) => freelanceChatRpc.regenerate(params),
