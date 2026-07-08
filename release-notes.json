@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.5.3",
+        "title":  "Improved Observability Features",
+        "changes":  [
+                        "New tool-call logging enhances visibility in agent subsystems."
+                    ]
+    },
+    {
         "version":  "2.5.2",
         "title":  "Enhanced Installation and Discovery",
         "changes":  [
