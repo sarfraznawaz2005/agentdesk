@@ -2,7 +2,7 @@
 title: Agent Tools
 type: subsystem
 status: verified
-verified_at: 2026-07-05
+verified_at: 2026-07-08
 sources:
   - src/bun/agents/tools/index.ts
   - src/bun/agents/tools/memory.ts
@@ -18,6 +18,8 @@ sources:
   - src/bun/agents/tools/planning.ts
   - src/bun/agents/tools/ignore.ts
   - src/bun/agents/agent-loop.ts
+  - src/bun/agents/engine.ts
+  - src/bun/agents/tool-call-logging.ts
 tags: [agents, tools]
 ---
 
@@ -269,6 +271,29 @@ hard cap 100 with cold-memory LRU eviction). Defaults wired in `seed.ts`
 | `src/bun/agents/tools/communication.ts` | `request_human_input` (identity-bound factory) |
 | `src/bun/agents/tools/planning.ts` | `define_tasks` pre-approval store (`peek/drain/restore`) |
 | `src/bun/agents/tools/ignore.ts` | Shared `.gitignore` + always-ignore filter for discovery tools |
+
+## Tool-call logging (observability)
+
+Two `console.log`-based wraps make every tool invocation auditable from the
+terminal, independent of the chat UI — the same shape as the existing
+pre/post `wrapToolsWithHooks` but unconditional (always on, not gated on a
+project hook setting):
+- Sub-agent tools: the per-run `toolTimings` wrap in `runInlineAgent`
+  (`agent-loop.ts:1031`) now also prints `[TOOLCALL]` on call and
+  `[TOOLCALL DONE]`/`[TOOLCALL ERROR]` on return, tagged `agent=<agentName>`.
+  Applies to every family in the table above, for every sub-agent run
+  regardless of caller (PM `run_agent`, `run_agents_parallel`, or the review
+  cycle's `spawnReviewAgent`), since they all go through `runInlineAgent`.
+- PM's own tools: `wrapToolsWithCallLogging()` (`tool-call-logging.ts`, a
+  shared helper) wraps the assembled `pmTools` object at construction
+  (`engine.ts:365`), tagged `agent=project-manager` — this also covers
+  `run_agent`/`run_agents_parallel` themselves as tool calls, on top of their
+  own dedicated `[PM→DISPATCH]` / `[PM→DISPATCH PARALLEL]` logs (see
+  [[agent-engine]]). The same helper wraps the project-less `agent_task_simple`
+  tool set in `task-executor.ts` — that mode's `getToolsForAgent(agentId)`
+  never includes `run_agent` (a pm-tools.ts factory, not in the static
+  registry), so a scheduled prompt relying on real dispatch must instead use
+  the `agent_task` ("Agent Project Task") type — see [[scheduler-automation]].
 
 ## Gotchas / Constraints
 

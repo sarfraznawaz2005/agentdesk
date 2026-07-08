@@ -1028,8 +1028,14 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			execute: async (args: unknown, execOpts: { toolCallId?: string }) => {
 				const id = execOpts?.toolCallId;
 				const start = Date.now();
+				console.log(`[TOOLCALL] agent=${agentName} tool=${name} args=${JSON.stringify(args ?? {}).slice(0, 300)}`);
 				try {
-					return await orig(args, execOpts);
+					const result = await orig(args, execOpts);
+					console.log(`[TOOLCALL DONE] agent=${agentName} tool=${name} durationMs=${Date.now() - start}`);
+					return result;
+				} catch (err) {
+					console.log(`[TOOLCALL ERROR] agent=${agentName} tool=${name} durationMs=${Date.now() - start} error=${err instanceof Error ? err.message : String(err)}`);
+					throw err;
 				} finally {
 					if (id) toolTimings.set(id, { start, end: Date.now() });
 				}

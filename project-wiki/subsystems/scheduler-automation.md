@@ -2,7 +2,7 @@
 title: Scheduler & Automation
 type: subsystem
 status: verified
-verified_at: 2026-06-27
+verified_at: 2026-07-08
 sources:
   - src/bun/scheduler/cron-scheduler.ts
   - src/bun/scheduler/automation-engine.ts
@@ -11,6 +11,8 @@ sources:
   - src/bun/scheduler/index.ts
   - src/bun/index.ts
   - src/bun/db/schema.ts
+  - src/bun/agents/tool-call-logging.ts
+  - src/mainview/components/scheduler/cron-job-form.tsx
 tags: [cron, automation]
 ---
 
@@ -133,6 +135,10 @@ flowchart TD
 - `pm_prompt` / `agent_task` route through the injected `engineResolver` (the PM engine)
   when targeting `project-manager`, creating a fresh conversation and broadcasting
   `conversationUpdated` so it appears in the sidebar (`task-executor.ts:40-52,122-134`).
+  The `agent_task`/`project-manager` branch prints `[SCHEDULER→PM]` right before
+  calling `engineResolver(projectId).sendMessage(...)` (`task-executor.ts:134`) —
+  the first line in tracing a scheduled run through the console, followed by the
+  PM's own `[TOOLCALL]`/`[PM→DISPATCH]` logs (see [[agent-engine]]).
 - `agent_task` with a **non-PM** agent runs that agent directly via `runInlineAgent`, with
   full broadcast callbacks mirroring `engine-manager.ts` so the UI streams parts, and an
   `AbortController` registered so the stop button + "N agents working" badge work
@@ -159,6 +165,23 @@ flowchart TD
 | `src/bun/db/schema.ts:419-471` | `cron_jobs`, `cron_job_history`, `automation_rules` tables |
 
 ## Gotchas / Constraints
+
+- **`agent_task_simple` ("Agent Task" in the UI) cannot dispatch sub-agents,
+  even when `agentId` is `project-manager`.** It runs a single project-less
+  `generateText` call (`task-executor.ts:336`) with tools from
+  `getToolsForAgent(agentId)` (`tools/index.ts:103`) + plugin/MCP tools —
+  `run_agent`/`run_agents_parallel` are pm-tools.ts **factory** tools, never
+  spread into the static registry (see [[agent-tools]]), so they are wired
+  only into the real PM engine's `pmTools` (`engine.ts`, used by the
+  `agent_task`/"Agent Project Task" branch, `task-executor.ts:128-134`). A
+  scheduled prompt that instructs "dispatch X via run_agent" run under
+  `agent_task_simple` has no such tool available — the model can only
+  fabricate the multi-stage dispatch as prose in one completion, with no
+  real sub-agent spawned and no `[PM→DISPATCH]`/`agent_start` message parts.
+  Diagnosed via the `[SCHEDULER→AGENT_SIMPLE]` log line the branch now prints
+  (`task-executor.ts`, next to `wrapToolsWithCallLogging`). **Fix: pick "Agent
+  Project Task" (`agent_task`) with a project selected**, which creates a real
+  conversation and routes through `engineResolver` → the full PM engine.
 
 - **In-memory only.** Active croner instances live in a module-level `Map`; nothing about a
   running timer survives a restart. Restart-safety comes entirely from `initCronScheduler`

@@ -131,6 +131,7 @@ export async function executeTask(
 					const { id: convId } = await createConversation(projectId, "Scheduled agent task");
 					// Notify frontend so the new conversation appears in the sidebar
 					broadcastToWebview("conversationUpdated", { conversationId: convId, updatedAt: new Date().toISOString(), projectId });
+					console.log(`[SCHEDULER→PM] Dispatching agent_task to PM project=${projectId} conversation=${convId} instructionsPreview="${instructions.slice(0, 150).replace(/\n/g, " ")}"`);
 					await engineResolver(projectId).sendMessage(convId, instructions);
 				} else {
 					// Run the specified agent directly via runInlineAgent
@@ -286,16 +287,43 @@ export async function executeTask(
 				if (providerRows.length === 0) throw new Error("No AI providers configured");
 				const providerRow = providerRows[0];
 				const modelId = providerRow.defaultModel ?? getDefaultModel(providerRow.providerType);
+				const providerConfig = {
+					id: providerRow.id,
+					name: providerRow.name,
+					providerType: providerRow.providerType,
+					apiKey: providerRow.apiKey,
+					baseUrl: providerRow.baseUrl,
+					defaultModel: providerRow.defaultModel,
+				};
 
-				// Resolve agent system prompt, then append skills + MCP context
-				// so the agent knows what skills are available (same as project agents)
-				const agentRows = await db.select({ systemPrompt: agentsTable.systemPrompt })
-					.from(agentsTable).where(eq(agentsTable.name, agentId)).limit(1);
-				const baseSystemPrompt = agentRows[0]?.systemPrompt ?? "";
-				const { buildSkillsDescriptionSection, buildAgentMcpSection } = await import("../agents/prompts");
-				const skillsSection = buildSkillsDescriptionSection();
-				const mcpSection = await buildAgentMcpSection();
-				const systemPrompt = [baseSystemPrompt, skillsSection, mcpSection].filter(Boolean).join("\n\n---\n\n");
+				// Resolve the base system prompt. "project-manager" has no row in the
+				// agents table (it's virtual — see project-wiki/reference/agent-roster.md)
+				// so it gets the REAL PM prompt via getPMSystemPrompt instead, which also
+				// yields working run_agent/run_agents_parallel dispatch tools below —
+				// getPMSystemPrompt already appends its own skills + MCP sections, so
+				// skip the separate build for this branch to avoid duplicating them.
+				// This mode is always project-less (project-scoped dispatch already
+				// exists via the "Agent Project Task" / agent_task type above) — dispatched
+				// sub-agents run without a workspace, so file/shell-dependent agents
+				// (e.g. code-explorer, backend-engineer) are not meaningfully usable here.
+				let pmAgentNames: readonly string[] = [];
+				let systemPrompt: string;
+				if (agentId === "project-manager") {
+					const { getPMSystemPrompt } = await import("../agents/prompts");
+					const pmPrompt = await getPMSystemPrompt({}, [], "app");
+					systemPrompt = pmPrompt.prompt;
+					pmAgentNames = pmPrompt.agentNames;
+				} else {
+					// Resolve agent system prompt, then append skills + MCP context
+					// so the agent knows what skills are available (same as project agents)
+					const agentRows = await db.select({ systemPrompt: agentsTable.systemPrompt })
+						.from(agentsTable).where(eq(agentsTable.name, agentId)).limit(1);
+					const baseSystemPrompt = agentRows[0]?.systemPrompt ?? "";
+					const { buildSkillsDescriptionSection, buildAgentMcpSection } = await import("../agents/prompts");
+					const skillsSection = buildSkillsDescriptionSection();
+					const mcpSection = await buildAgentMcpSection();
+					systemPrompt = [baseSystemPrompt, skillsSection, mcpSection].filter(Boolean).join("\n\n---\n\n");
+				}
 
 				// Write user instruction to inbox
 				const threadId = crypto.randomUUID();
@@ -315,22 +343,29 @@ export async function executeTask(
 					const { getPluginTools } = await import("../agents/engine-types");
 					const { getMcpTools } = await import("../mcp/client");
 
-					const adapter = createProviderAdapter({
-						id: providerRow.id,
-						name: providerRow.name,
-						providerType: providerRow.providerType,
-						apiKey: providerRow.apiKey,
-						baseUrl: providerRow.baseUrl,
-						defaultModel: providerRow.defaultModel,
-					});
+					const adapter = createProviderAdapter(providerConfig);
 
 					// Assemble the same tool set runInlineAgent uses: agent-specific tools +
 					// plugin tools + MCP tools. Skills (read_skill, find_skills) are included
 					// in getToolsForAgent so the agent can call skills like it would in a project.
+					const { wrapToolsWithCallLogging } = await import("../agents/tool-call-logging");
 					const baseTools = await getToolsForAgent(agentId);
 					const pluginTools = await getPluginTools();
 					const mcpTools = getMcpTools();
-					const allTools = { ...baseTools, ...pluginTools, ...mcpTools };
+					let allTools = { ...baseTools, ...pluginTools, ...mcpTools };
+
+					// PM gets real dispatch tools too — blocking run_agent/run_agents_parallel
+					// (see agents/tools/simple-dispatch.ts for why dispatch must be blocking
+					// here, unlike the real engine's fire-and-forget run_agent).
+					if (agentId === "project-manager") {
+						const { createSimpleDispatchTools } = await import("../agents/tools/simple-dispatch");
+						allTools = {
+							...allTools,
+							...createSimpleDispatchTools({ providerConfig, agentNames: pmAgentNames }),
+						};
+					}
+					allTools = wrapToolsWithCallLogging(allTools, agentId);
+					console.log(`[SCHEDULER→AGENT_SIMPLE] Running project-less agent=${agentId} job="${jobName}" toolCount=${Object.keys(allTools).length}`);
 
 					const result = await generateText({
 						model: adapter.createModel(modelId),

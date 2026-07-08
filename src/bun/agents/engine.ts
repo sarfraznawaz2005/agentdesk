@@ -27,6 +27,7 @@ import { logPrompt } from "./prompt-logger";
 import { eventBus } from "../scheduler";
 import type { AgentActivityEvent } from "./types";
 import { toolResultIsError, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
+import { wrapToolsWithCallLogging } from "./tool-call-logging";
 import {
 	getPluginTools,
 	THINKING_BUDGET_TOKENS,
@@ -361,7 +362,7 @@ export class AgentEngine {
 				defaultModel: providerRow.defaultModel,
 			};
 
-			const pmTools = {
+			const pmTools = wrapToolsWithCallLogging({
 				...createPMTools({
 					projectId: this.projectId,
 					conversationId,
@@ -536,7 +537,7 @@ export class AgentEngine {
 				// Preview tool
 				preview_project: createPreviewTool(this.projectId, workspacePath ?? "", conversationId, providerConfig),
 				...await getPluginTools(),
-			};
+			}, "project-manager");
 
 			// 8. Stream Project Manager response
 			let fullText = "";

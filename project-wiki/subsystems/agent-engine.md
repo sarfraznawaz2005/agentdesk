@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-07-06
+verified_at: 2026-07-08
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts
@@ -14,6 +14,7 @@ sources:
   - src/bun/agents/safety.ts
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/kanban-integration.ts
+  - src/bun/agents/tool-call-logging.ts
   - src/bun/rpc-groups/conversations-control.ts
   - src/shared/rpc/conversations.ts
   - src/mainview/components/chat/message-parts.tsx
@@ -311,6 +312,37 @@ button alongside the red error text.
 - `task` comes from `seg.start.content` — the exact string `run_agent` received as the task parameter.
 - The retry message goes through `engine.sendMessage` (not a direct `runInlineAgent` call) so the PM applies judgment: if a write-agent is already running it will queue correctly; if the task's kanban item moved to review it will not re-dispatch prematurely.
 - The `AgentEndBlock` `onRetry` prop is only wired for grouped agent blocks (where `seg.start` is available). Orphaned `agent_end` parts (rare, from old sessions) render the error text without the button since there is no task context to retry.
+
+## Dispatch / tool-call console logging (observability)
+
+Every PM tool call and every `run_agent`/`run_agents_parallel` dispatch emits a
+`console.log` line so scheduled/automation runs (which have no chat UI to watch
+live) can be audited from the terminal for what actually happened, not just what
+the PM's text claims:
+- `wrapToolsWithCallLogging()` (`tool-call-logging.ts`, shared helper) wraps
+  every tool in `pmTools` (applied at construction, `engine.ts:365`) and
+  prints `[TOOLCALL]` before each `execute()` and `[TOOLCALL DONE]`/
+  `[TOOLCALL ERROR]` after — this fires for the PM's own reads *and* for its
+  `run_agent`/`run_agents_parallel` calls, since those are tools in the same
+  set. The same helper also wraps the project-less `agent_task_simple` tool
+  set (`task-executor.ts`) — see the gotcha in [[scheduler-automation]] about
+  that mode having no `run_agent` tool at all.
+- `run_agent`'s handler prints `[PM→DISPATCH]` right before launching
+  `runInlineAgent` and `[PM→DISPATCH RESULT]` in its `.then()` (`pm-tools.ts:604`,
+  `pm-tools.ts:606`) — confirms a sub-agent was actually spawned (agent name,
+  project, kanban task, task preview) versus merely claimed in PM prose.
+  `run_agents_parallel` has the equivalent `[PM→DISPATCH PARALLEL]` /
+  `[PM→DISPATCH PARALLEL RESULT]` pair (`pm-tools.ts:898`, `pm-tools.ts:913`).
+- Sub-agent tool calls get the same `[TOOLCALL]`/`[TOOLCALL DONE]`/
+  `[TOOLCALL ERROR]` lines from the per-run `toolTimings` wrap in
+  `runInlineAgent` (`agent-loop.ts:1031`, tagged with `agent=<agentName>`) —
+  this fires regardless of whether the sub-agent was launched by the PM, a
+  parallel dispatch, or the review cycle, since they all funnel through
+  `runInlineAgent`.
+- The scheduler's entry point into the PM also logs: `[SCHEDULER→PM]`
+  (`task-executor.ts:134`) fires when a cron/automation `agent_task` targeting
+  `project-manager` calls `engineResolver(projectId).sendMessage(...)` — the
+  first hop in tracing a scheduled run end-to-end through the logs.
 
 ## Gotchas / Constraints
 
