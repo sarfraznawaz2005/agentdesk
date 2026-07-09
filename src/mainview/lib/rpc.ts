@@ -849,7 +849,7 @@ export const rpc = {
     electroviewRpc.request.globalSearch({ query }),
 
   // ---- Inbox ---------------------------------------------------------------
-  getInboxMessages: (filters?: { projectId?: string; isRead?: boolean; isArchived?: boolean; limit?: number }) =>
+  getInboxMessages: (filters?: { projectId?: string; isRead?: boolean; isArchived?: boolean; isFavorite?: boolean; limit?: number }) =>
     electroviewRpc.request.getInboxMessages(filters ?? {}),
   markAsRead: (id: string) =>
     electroviewRpc.request.markAsRead({ id }),
@@ -861,12 +861,16 @@ export const rpc = {
     electroviewRpc.request.deleteInboxMessage({ id }),
   getUnreadCount: (projectId?: string) =>
     electroviewRpc.request.getUnreadCount({ projectId }),
-  searchInboxMessages: (query: string, projectId?: string) =>
-    electroviewRpc.request.searchInboxMessages({ query, projectId }),
+  searchInboxMessages: (query: string, projectId?: string, isFavorite?: boolean) =>
+    electroviewRpc.request.searchInboxMessages({ query, projectId, isFavorite }),
   archiveInboxMessage: (id: string) =>
     electroviewRpc.request.archiveInboxMessage({ id }),
   unarchiveInboxMessage: (id: string) =>
     electroviewRpc.request.unarchiveInboxMessage({ id }),
+  favoriteInboxMessage: (id: string) =>
+    electroviewRpc.request.favoriteInboxMessage({ id }),
+  unfavoriteInboxMessage: (id: string) =>
+    electroviewRpc.request.unfavoriteInboxMessage({ id }),
   bulkArchiveInboxMessages: (ids: string[]) =>
     electroviewRpc.request.bulkArchiveInboxMessages({ ids }),
   bulkDeleteInboxMessages: (ids: string[]) =>

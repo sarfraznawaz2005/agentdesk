@@ -2,7 +2,7 @@
 title: Database Tables Reference
 type: reference
 status: verified
-verified_at: 2026-07-06
+verified_at: 2026-07-10
 sources:
   - src/bun/db/schema.ts
   - src/bun/db/migrate.ts
@@ -12,6 +12,7 @@ sources:
   - src/bun/db/migrations/v33_external-issues.ts
   - src/bun/db/migrations/v49_agent-memories.ts
   - src/bun/db/migrations/v52_model-preferences.ts
+  - src/bun/db/migrations/v55_inbox-favorites.ts
 tags: [database]
 ---
 
@@ -35,7 +36,7 @@ into existence, and the distinction matters when you change schema:
 The runner in `src/bun/db/migrate.ts:137` tracks applied migrations via
 `PRAGMA user_version`, applies the pending `migrations[]` array
 (`migrate.ts:79`) inside a transaction each, auto-backing-up first on an existing
-DB. The latest version is **v53** (`migrate.ts`).
+DB. The latest version is **v55** (`migrate.ts`).
 
 Two consequences for anyone editing the DB:
 
@@ -75,7 +76,7 @@ every column — read the cited line for the full definition.
 | `deploy_environments` | `:329` | Named deploy targets per project. | `projectId` (FK), `command`, `branch`, `url` |
 | `deploy_history` | `:340` | Deploy run log. | `environmentId` (FK), `status`, `triggeredBy`, `durationMs` |
 | `prompts` | `:355` | Reusable chat prompt templates (`builtin`/`custom`). | `name`, `content`, `category` |
-| `inbox_messages` | `:368` | Unified inbox messages from channels. | `sender`, `content`, `isRead`, `threadId`, `platform`, `category` |
+| `inbox_messages` | `:368` | Unified inbox messages from channels. `isFavorite` (v55) is orthogonal to `isArchived` — a message can be starred while active or after archiving; the frontend's Favorites view filters on it alone, ignoring archive state. | `sender`, `content`, `isRead`, `threadId`, `platform`, `category`, `isArchived`, `isFavorite` |
 | `whatsapp_sessions` | `:388` | Baileys auth state per channel (`creds`+`keys` JSON). | `channelId`, `creds`, `keys` |
 | `notification_preferences` | `:396` | Per-platform/project notification toggles. | `platform`, `soundEnabled`/`badgeEnabled`/`bannerEnabled`, `muteUntil` |
 | `inbox_rules` | `:407` | Conditional inbox automation (conditions→actions JSON). | `conditions`, `actions`, `enabled`, `priority` |

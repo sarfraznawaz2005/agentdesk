@@ -24,6 +24,8 @@ import {
   ChevronDown,
   Copy,
   Check,
+  Star,
+  Download,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,7 @@ import { toast } from "@/components/ui/toast";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
 import { InboxRulesEditor } from "@/components/inbox/inbox-rules-editor";
+import { downloadMarkdown } from "@/lib/export-markdown";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,6 +65,7 @@ interface InboxMessage {
   category: string;    // "chat" | "work" | "status" | "reminder" | "other"
   platform: string;    // "chat" | "discord" | "whatsapp" | "email"
   isArchived: number;  // 0 = active, 1 = archived
+  isFavorite: number;  // 0 = not favorited, 1 = favorited (independent of isArchived)
 }
 
 interface Project {
@@ -72,7 +76,10 @@ interface Project {
 type ChannelFilter = "all" | "chat" | "discord" | "whatsapp" | "email";
 type CategoryFilter = "all" | "work" | "chat" | "status" | "reminder" | "other";
 type ReadFilter = "all" | "unread" | "read";
-type ArchiveFilter = "inbox" | "archived";
+// The primary view selector. "favorites" is a cross-cutting view (like Gmail's
+// Starred) — it shows favorited messages regardless of archive state, so it is
+// NOT combined with isArchived the way "inbox"/"archived" are.
+type ViewFilter = "inbox" | "favorites" | "archived";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -230,6 +237,7 @@ interface MessageDetailPaneProps {
   threadMessages: InboxMessage[];
   onDelete: (id: string) => void;
   onArchive: (id: string) => void;
+  onFavorite: (id: string) => void;
   onBack: () => void;
   projectName?: string;
 }
@@ -239,12 +247,20 @@ function MessageDetailPane({
   threadMessages,
   onDelete,
   onArchive,
+  onFavorite,
   onBack,
   projectName,
 }: MessageDetailPaneProps) {
   const source = getChannelSource(message);
   const senderLabel = message.sender || "Unknown";
   const hasThread = threadMessages.length > 1;
+
+  function handleExportResponse() {
+    if (!message.agentResponse) return;
+    const date = new Date(message.createdAt).toISOString().slice(0, 10);
+    downloadMarkdown(`${senderLabel} response ${date}`, message.agentResponse);
+    toast("success", "Response exported as markdown.");
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -276,6 +292,27 @@ function MessageDetailPane({
         />
         <h2 className="text-base font-semibold text-foreground truncate">{senderLabel}</h2>
         <div className="ml-auto flex items-center gap-1 shrink-0">
+          <Tip content={message.agentResponse ? "Export response as markdown" : "No agent response to export"} side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              onClick={handleExportResponse}
+              disabled={!message.agentResponse}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          </Tip>
+          <Tip content={message.isFavorite ? "Remove from favorites" : "Add to favorites (hides from Inbox)"} side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => onFavorite(message.id)}
+            >
+              <Star className={cn("h-3.5 w-3.5", message.isFavorite && "fill-amber-400 text-amber-500")} />
+            </Button>
+          </Tip>
           <Tip content={message.isArchived ? "Unarchive" : "Archive"} side="top">
             <Button
               variant="ghost"
@@ -419,13 +456,23 @@ function MessageDetailPane({
 
 interface BulkActionBarProps {
   selectedCount: number;
+  totalFilteredCount: number;
   onMarkRead: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onClearSelection: () => void;
+  onSelectAllFiltered: () => void;
 }
 
-function BulkActionBar({ selectedCount, onMarkRead, onArchive, onDelete, onClearSelection }: BulkActionBarProps) {
+function BulkActionBar({
+  selectedCount,
+  totalFilteredCount,
+  onMarkRead,
+  onArchive,
+  onDelete,
+  onClearSelection,
+  onSelectAllFiltered,
+}: BulkActionBarProps) {
   if (selectedCount === 0) return null;
 
   return (
@@ -433,6 +480,15 @@ function BulkActionBar({ selectedCount, onMarkRead, onArchive, onDelete, onClear
       <span className="text-sm font-medium text-indigo-700">
         {selectedCount} selected
       </span>
+      {selectedCount < totalFilteredCount && (
+        <button
+          type="button"
+          onClick={onSelectAllFiltered}
+          className="text-xs font-medium text-indigo-700 underline hover:no-underline"
+        >
+          Select all {totalFilteredCount} messages
+        </button>
+      )}
       <div className="flex items-center gap-1">
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onMarkRead}>
           <CheckCheck className="h-3 w-3 mr-1" /> Mark Read
@@ -469,7 +525,7 @@ export function InboxPage() {
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
-  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>("inbox");
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("inbox");
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -513,11 +569,16 @@ export function InboxPage() {
   const loadMessages = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: { projectId?: string; isRead?: boolean; isArchived?: boolean; limit?: number } = {};
+      const filters: { projectId?: string; isRead?: boolean; isArchived?: boolean; isFavorite?: boolean; limit?: number } = {};
       if (projectFilter !== "all") filters.projectId = projectFilter;
       if (readFilter === "unread") filters.isRead = false;
       if (readFilter === "read") filters.isRead = true;
-      filters.isArchived = archiveFilter === "archived";
+      if (viewFilter === "favorites") {
+        // Favorites spans both active and archived messages — leave isArchived unset.
+        filters.isFavorite = true;
+      } else {
+        filters.isArchived = viewFilter === "archived";
+      }
 
       const [msgResult, projectsResult] = await Promise.all([
         rpc.getInboxMessages(filters),
@@ -537,7 +598,7 @@ export function InboxPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectFilter, readFilter, archiveFilter, loadUnreadCount]);
+  }, [projectFilter, readFilter, viewFilter, loadUnreadCount]);
 
   useEffect(() => {
     loadMessages();
@@ -581,7 +642,10 @@ export function InboxPage() {
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const projectId = projectFilter !== "all" ? projectFilter : undefined;
-        const results = await rpc.searchInboxMessages(searchQuery.trim(), projectId);
+        // Search must respect the same favorite-exclusivity as the list view —
+        // otherwise a favorited message could surface in an Inbox/Archived
+        // search and get bulk-deleted from there.
+        const results = await rpc.searchInboxMessages(searchQuery.trim(), projectId, viewFilter === "favorites");
         setSearchResults(results as unknown as InboxMessage[]);
       } catch {
         // fall back to client-side filter
@@ -592,12 +656,12 @@ export function InboxPage() {
     return () => {
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
-  }, [searchQuery, projectFilter]);
+  }, [searchQuery, projectFilter, viewFilter]);
 
   // Reset to page 1 whenever any filter or search changes
   useEffect(() => {
     setPage(1);
-  }, [projectFilter, channelFilter, categoryFilter, readFilter, archiveFilter, searchQuery]);
+  }, [projectFilter, channelFilter, categoryFilter, readFilter, viewFilter, searchQuery]);
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -640,9 +704,15 @@ export function InboxPage() {
     const msg = messages.find((m) => m.id === id);
     if (!msg) return;
     const isCurrentlyArchived = msg.isArchived === 1;
-    // Optimistic: remove from current view
-    setMessages((prev) => prev.filter((m) => m.id !== id));
-    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    if (viewFilter === "favorites") {
+      // Favorites spans both archive states — flip the flag in place instead
+      // of removing the message, since it should stay visible either way.
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, isArchived: isCurrentlyArchived ? 0 : 1 } : m)));
+    } else {
+      // Optimistic: remove from current view
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
     try {
       if (isCurrentlyArchived) {
         await rpc.unarchiveInboxMessage(id);
@@ -653,6 +723,32 @@ export function InboxPage() {
       }
     } catch {
       toast("error", "Failed to archive/restore message.");
+      loadMessages();
+    }
+  }
+
+  async function handleToggleFavorite(id: string) {
+    const msg = messages.find((m) => m.id === id);
+    if (!msg) return;
+    const wasFavorite = msg.isFavorite === 1;
+    // Favoriting/unfavoriting always removes the message from whatever view
+    // it's currently shown in: Inbox/Archived only ever show isFavorite=0
+    // rows (favoriting pulls a message out of them, into Favorites-only, so
+    // it can't be caught by a bulk action performed elsewhere), and
+    // Favorites only ever shows isFavorite=1 rows (unfavoriting removes it).
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    try {
+      if (wasFavorite) {
+        await rpc.unfavoriteInboxMessage(id);
+        toast("success", "Removed from favorites.");
+      } else {
+        await rpc.favoriteInboxMessage(id);
+        toast("success", "Added to favorites — hidden from Inbox until unstarred.");
+      }
+      loadUnreadCount();
+    } catch {
+      toast("error", "Failed to update favorite.");
       loadMessages();
     }
   }
@@ -694,6 +790,14 @@ export function InboxPage() {
     } else {
       setSelectedIds((prev) => new Set([...prev, ...pageIds]));
     }
+  }
+
+  // Selects every message matching the current filters, not just the visible
+  // page — bypasses the PAGE_SIZE cap that otherwise limits bulk actions to 25
+  // items at a time. displayMessages is computed later in this render but is
+  // in scope by the time this closure actually runs (on click).
+  function selectAllFiltered() {
+    setSelectedIds(new Set(displayMessages.map((m) => m.id)));
   }
 
   async function handleBulkMarkRead() {
@@ -832,7 +936,7 @@ export function InboxPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-0 min-h-0">
+    <div className="flex h-full flex-col gap-0 min-h-0">
       {/* Sub-header: unread count + archive toggle */}
       <div className="flex items-center justify-between px-6 pt-4 pb-4 shrink-0">
         <div>
@@ -845,21 +949,29 @@ export function InboxPage() {
           )}
         </div>
 
-        {/* Archive filter toggle */}
-        <div className="flex items-center gap-1" role="group" aria-label="Archive filter">
+        {/* View toggle: Inbox / Favorites / Archived */}
+        <div className="flex items-center gap-1" role="group" aria-label="View filter">
           <Button
-            variant={archiveFilter === "inbox" ? "default" : "outline"}
+            variant={viewFilter === "inbox" ? "default" : "outline"}
             size="sm"
             className="h-8 px-3 text-xs"
-            onClick={() => setArchiveFilter("inbox")}
+            onClick={() => setViewFilter("inbox")}
           >
             <Inbox className="h-3 w-3 mr-1" /> Inbox
           </Button>
           <Button
-            variant={archiveFilter === "archived" ? "default" : "outline"}
+            variant={viewFilter === "favorites" ? "default" : "outline"}
             size="sm"
             className="h-8 px-3 text-xs"
-            onClick={() => setArchiveFilter("archived")}
+            onClick={() => setViewFilter("favorites")}
+          >
+            <Star className="h-3 w-3 mr-1" /> Favorites
+          </Button>
+          <Button
+            variant={viewFilter === "archived" ? "default" : "outline"}
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setViewFilter("archived")}
           >
             <Archive className="h-3 w-3 mr-1" /> Archived
           </Button>
@@ -990,10 +1102,12 @@ export function InboxPage() {
       {/* Bulk action bar */}
       <BulkActionBar
         selectedCount={selectedIds.size}
+        totalFilteredCount={displayMessages.length}
         onMarkRead={handleBulkMarkRead}
         onArchive={handleBulkArchive}
         onDelete={handleBulkDelete}
         onClearSelection={() => setSelectedIds(new Set())}
+        onSelectAllFiltered={selectAllFiltered}
       />
 
       {/* Master-detail split: message list (left) | detail pane (right) */}
@@ -1019,8 +1133,10 @@ export function InboxPage() {
               icon={
                 readFilter === "unread" ? (
                   <Mail className="h-6 w-6" aria-hidden="true" />
-                ) : archiveFilter === "archived" ? (
+                ) : viewFilter === "archived" ? (
                   <Archive className="h-6 w-6" aria-hidden="true" />
+                ) : viewFilter === "favorites" ? (
+                  <Star className="h-6 w-6" aria-hidden="true" />
                 ) : (
                   <MailOpen className="h-6 w-6" aria-hidden="true" />
                 )
@@ -1030,18 +1146,22 @@ export function InboxPage() {
                   ? "No messages match your search"
                   : readFilter === "unread"
                     ? "No unread messages"
-                    : archiveFilter === "archived"
+                    : viewFilter === "archived"
                       ? "No archived messages"
-                      : hasActiveFilter
-                        ? "No messages match your filters"
-                        : "Your inbox is empty"
+                      : viewFilter === "favorites"
+                        ? "No favorites yet"
+                        : hasActiveFilter
+                          ? "No messages match your filters"
+                          : "Your inbox is empty"
               }
               description={
                 searchResults
                   ? "Try a different search term."
-                  : hasActiveFilter
-                    ? "Try adjusting your filters to see more messages."
-                    : "Messages from Chat, Discord, WhatsApp, and Email channels will appear here."
+                  : viewFilter === "favorites"
+                    ? "Star a message to pin it here — it's hidden from Inbox and Archived until you unstar it."
+                    : hasActiveFilter
+                      ? "Try adjusting your filters to see more messages."
+                      : "Messages from Chat, Discord, WhatsApp, and Email channels will appear here."
               }
               action={
                 hasActiveFilter && (
@@ -1100,6 +1220,16 @@ export function InboxPage() {
                       ) : (
                         <Square className="h-4 w-4" />
                       )}
+                    </button>
+
+                    {/* Favorite toggle */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleToggleFavorite(msg.id); }}
+                      className="mt-1 text-muted-foreground hover:text-amber-500 flex-shrink-0"
+                      aria-label={msg.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      <Star className={cn("h-4 w-4", msg.isFavorite && "fill-amber-400 text-amber-500")} />
                     </button>
 
                     {/* Clickable message content area */}
@@ -1258,6 +1388,7 @@ export function InboxPage() {
               }
               onDelete={handleDeleteMessage}
               onArchive={handleArchiveMessage}
+              onFavorite={handleToggleFavorite}
               onBack={() => {
                 suppressAutoSelectRef.current = true;
                 setSelectedId(null);

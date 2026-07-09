@@ -380,6 +380,7 @@ export const inboxMessages = sqliteTable("inbox_messages", {
 	category: text("category").notNull().default("chat"),
 	platform: text("platform").notNull().default("chat"),
 	isArchived: integer("is_archived").notNull().default(0),
+	isFavorite: integer("is_favorite").notNull().default(0),
   createdAt: text("created_at")
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

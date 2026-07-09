@@ -1,7 +1,7 @@
 export type InboxRequests = {
   // Inbox messages
   getInboxMessages: {
-    params: { projectId?: string; isRead?: boolean; limit?: number; isArchived?: boolean };
+    params: { projectId?: string; isRead?: boolean; limit?: number; isArchived?: boolean; isFavorite?: boolean };
     response: Array<{
       id: string;
       projectId: string | null;
@@ -16,6 +16,7 @@ export type InboxRequests = {
       category: string;
       platform: string;
       isArchived: number;
+      isFavorite: number;
     }>;
   };
   markAsRead: {
@@ -39,7 +40,7 @@ export type InboxRequests = {
     response: { success: boolean };
   };
   searchInboxMessages: {
-    params: { query: string; projectId?: string };
+    params: { query: string; projectId?: string; isFavorite?: boolean };
     response: Array<{
       id: string;
       projectId: string | null;
@@ -54,6 +55,7 @@ export type InboxRequests = {
       category: string;
       platform: string;
       isArchived: number;
+      isFavorite: number;
     }>;
   };
   archiveInboxMessage: {
@@ -61,6 +63,14 @@ export type InboxRequests = {
     response: { success: boolean };
   };
   unarchiveInboxMessage: {
+    params: { id: string };
+    response: { success: boolean };
+  };
+  favoriteInboxMessage: {
+    params: { id: string };
+    response: { success: boolean };
+  };
+  unfavoriteInboxMessage: {
     params: { id: string };
     response: { success: boolean };
   };
