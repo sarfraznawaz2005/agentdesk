@@ -262,7 +262,7 @@ describe("verify_implementation — checklist gate", () => {
 			checklist: { ...passingChecklist, no_lsp_errors: false },
 		});
 		expect(result.verdict).toBe("fail");
-		expect(result.issues).toContain("LSP errors remain in modified files");
+		expect(result.issues).toContain("LSP errors remain — including any pre-existing ones you noticed but didn't fix");
 		// The dishonest "pass" claim must not be trusted — status flips to failed.
 		expect(store.get("v2")!.verificationStatus).toBe("failed");
 	});

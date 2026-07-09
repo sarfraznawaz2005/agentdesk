@@ -2,7 +2,7 @@
 title: Agent Engine
 type: subsystem
 status: verified
-verified_at: 2026-07-08
+verified_at: 2026-07-09
 sources:
   - src/bun/agents/engine.ts
   - src/bun/agents/engine-types.ts
@@ -258,12 +258,30 @@ so the reviewer can `git show` the diff — `review-cycle.ts:349`) then
 ## Handoffs between sequential tasks (`handoff.ts`)
 
 After a write agent finishes a kanban task, `generateHandoffSummary`
-(`handoff.ts:14`) summarizes the modified files — deterministic regex extraction
+(`handoff.ts`) summarizes the modified files — deterministic regex extraction
 for small changes (≤3 files, <200 lines: exports, CSS classes, DOM IDs/selectors),
-AI summary for larger ones. It is stored as the task's `importantNotes`
-(`pm-tools.ts:609`) and surfaced to the next agent via `get_next_task`'s
-`priorWork`, so file/class/ID names stay consistent across files — the exact
-problem `docs/sequential-agent-model.md` was written to solve.
+AI summary for larger ones (though no caller currently passes the `aiSummarise`
+callback, so in practice this path is dead and always falls through to the
+deterministic summary — a pre-existing gap, not something this note's redaction
+work changed). Before any file content is quoted into the summary or an AI
+prompt, `redactSecrets` strips credential-shaped substrings (API keys, tokens,
+private-key blocks, `KEY=value` assignments) and `SENSITIVE_FILE_RE` skips
+reading `.env`/`.pem`/`.key`/credential files entirely, recording only the
+filename.
+
+This is **appended** to the task's `importantNotes` as a `## Handoff Summary`
+section (`pm-tools.ts`, `run_agent`'s completion handler) — never overwriting
+what's already there. `verify_implementation` (`tools/kanban.ts`) writes a
+`## Completion Report` (summary, decisions, API contracts, follow-up issues,
+verification evidence) to `importantNotes` *before* the agent even finishes;
+an earlier version of the handoff-note write clobbered that report wholesale.
+A `## Suggested Next Steps` section is also appended when the Completion Report
+listed `follow_up_issues` (`extractFollowUpIssues`, `handoff.ts`). The combined
+notes are surfaced to the next agent via `get_next_task`'s `priorWork`, so
+decisions, file/class/ID names, and open follow-ups all stay consistent across
+sequential tasks — the exact problem `docs/sequential-agent-model.md` was
+written to solve. See [[kanban-review-cycle]] for the full write/merge sequence
+and the plan-level Final Recap doc generated when an entire plan's tasks finish.
 
 ## Conversation compaction
 

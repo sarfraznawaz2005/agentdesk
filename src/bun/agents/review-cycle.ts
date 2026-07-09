@@ -466,6 +466,59 @@ export async function autoCommitTask(projectId: string, taskId: string, taskTitl
 }
 
 // ---------------------------------------------------------------------------
+// Plan completion recap
+// ---------------------------------------------------------------------------
+
+/**
+ * When the last task of an approved plan batch (see tools/planning.ts) reaches
+ * "done", synthesize a Final Recap doc from each task's accumulated
+ * importantNotes (Completion Report + Handoff Summary) so the user has one
+ * closing artifact instead of reconstructing the story from N separate kanban
+ * tasks. Best-effort and silent: batch tracking is in-memory, so this simply
+ * no-ops for a plan whose batch was lost to an app restart.
+ */
+async function maybeGeneratePlanRecap(projectId: string): Promise<void> {
+	try {
+		const { findCompletedPlanBatch, markPlanBatchRecapped } = await import("./tools/planning");
+		const allTasks = await db
+			.select({ id: kanbanTasks.id, column: kanbanTasks.column })
+			.from(kanbanTasks)
+			.where(eq(kanbanTasks.projectId, projectId));
+		const doneTaskIds = new Set(allTasks.filter((t) => t.column === "done").map((t) => t.id));
+
+		const batch = findCompletedPlanBatch(projectId, doneTaskIds);
+		if (!batch) return;
+
+		const { extractCompletionReport } = await import("./handoff");
+		const sections: string[] = [];
+		for (const taskId of batch.taskIds) {
+			const task = await getKanbanTask(taskId);
+			if (!task) continue;
+			const report = extractCompletionReport(task.importantNotes);
+			const body = report?.summary || task.importantNotes?.trim() || "No completion summary recorded.";
+			sections.push(`### ${task.title}\n${body}`);
+		}
+
+		const { createNote } = await import("../rpc/notes");
+		await createNote({
+			projectId,
+			title: `Plan Completion Recap — ${new Date().toISOString().slice(0, 10)}`,
+			content: [
+				`All ${batch.taskIds.length} tasks from this approved plan are now done.`,
+				``,
+				...sections,
+			].join("\n\n"),
+			authorAgentId: "review-cycle",
+		});
+
+		markPlanBatchRecapped(batch);
+		console.log(`[ReviewCycle] Generated plan completion recap for project ${projectId} (${batch.taskIds.length} tasks)`);
+	} catch (err) {
+		console.error(`[ReviewCycle] maybeGeneratePlanRecap failed for project ${projectId}:`, err);
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -649,6 +702,7 @@ export function notifyTaskInReview(projectId: string, taskId: string): void {
 					reviewRounds.delete(taskId);
 					taskCommitHashes.delete(taskId);
 					taskConversations.delete(taskId);
+					await maybeGeneratePlanRecap(projectId);
 				}
 			} catch { /* non-critical */ }
 		}

@@ -633,13 +633,31 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							} catch { /* non-fatal */ }
 						}
 
-						// Store handoff as kanban task note
+						// Store handoff as kanban task note — APPENDED to, never overwriting,
+						// whatever is already there. verify_implementation (tools/kanban.ts)
+						// writes a "## Completion Report" note (summary, decisions_made,
+						// api_contracts, follow_up_issues, verification_evidence) before the
+						// agent even finishes; clobbering it here would silently discard all of
+						// that in favour of this file-diff-only summary. Also surface any
+						// follow_up_issues as a "Suggested Next Steps" section so the next agent
+						// (via get_next_task's priorWork) sees them without re-parsing the report.
 						if (args.kanban_task_id && handoffSummary) {
 							try {
-								const { updateKanbanTask } = await import("../../rpc/kanban");
+								const { updateKanbanTask, getKanbanTask } = await import("../../rpc/kanban");
+								const { extractFollowUpIssues } = await import("../handoff");
+								const existingTask = await getKanbanTask(args.kanban_task_id);
+								const existingNotes = existingTask?.importantNotes?.trim() || "";
+								const followUps = extractFollowUpIssues(existingNotes);
+								const sections = [
+									existingNotes,
+									`## Handoff Summary\n${handoffSummary}`,
+									followUps.length > 0
+										? `## Suggested Next Steps\n${followUps.map(f => `- ${f}`).join("\n")}`
+										: "",
+								].filter(Boolean);
 								await updateKanbanTask({
 									id: args.kanban_task_id,
-									importantNotes: `## Handoff Summary\n${handoffSummary}`,
+									importantNotes: sections.join("\n\n"),
 								});
 							} catch { /* non-fatal */ }
 						}
@@ -1859,6 +1877,11 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						createdIds.push(result.id);
 						broadcastToWebview("kanbanTaskUpdated", { projectId: effectiveProjId, taskId: result.id, action: "created" });
 					}
+
+					// Track this batch so review-cycle can detect when the whole approved
+					// plan is done and generate a Final Recap doc (see recordPlanBatch).
+					const { recordPlanBatch } = await import("./planning");
+					recordPlanBatch(effectiveProjId, createdIds);
 
 					return JSON.stringify({
 						success: true,

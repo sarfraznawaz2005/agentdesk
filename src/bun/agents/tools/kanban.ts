@@ -674,11 +674,12 @@ function createKanbanToolsImpl(actorId: string): Record<string, ToolRegistryEntr
 				decisions_made: z.array(z.string()).optional().describe("Key decisions made during implementation (e.g. 'Used fetch API instead of axios', 'Added error boundary component')"),
 				api_contracts: z.array(z.string()).optional().describe("API endpoints, interfaces, or contracts created/modified (e.g. 'POST /api/auth/login', 'interface UserProfile')"),
 				follow_up_issues: z.array(z.string()).optional().describe("Issues discovered that need follow-up (e.g. 'Need to add rate limiting', 'Mobile responsive not tested')"),
+				verification_evidence: z.string().optional().describe("The concrete command(s) you ran to verify this work and their output confirming the pass — e.g. 'bun test src/foo.test.ts -> 12 passed', 'curl -X POST /api/login -> 200 {token:...}'. Strongly recommended for non-trivial changes: the reviewer and the next agent see this as proof, not just a self-reported checklist."),
 				checklist: z.object({
 					all_acceptance_criteria_met: z.boolean().describe("Did you verify EVERY acceptance criterion is implemented and working?"),
 					ui_reflects_logic: z.boolean().describe("If you added backend/logic code, does the UI expose it so the user can see and interact with it?"),
 					logic_supports_ui: z.boolean().describe("If you added UI elements, is the underlying logic wired up and functional?"),
-					no_lsp_errors: z.boolean().describe("Did you check and fix all LSP errors in modified files?"),
+					no_lsp_errors: z.boolean().describe("Did you check and fix all LSP errors in files relevant to your task — including pre-existing ones you didn't cause? 'Not from my work' does not excuse leaving it: the reviewer will flag it and bounce the task back anyway."),
 					feature_is_user_accessible: z.boolean().describe("Can the end user actually use this feature from the app's interface?"),
 				}).describe("Completeness checklist — answer each honestly"),
 				issues: z.array(z.string()).optional().describe("If verdict is fail, describe what still needs fixing"),
@@ -704,7 +705,7 @@ function createKanbanToolsImpl(actorId: string): Record<string, ToolRegistryEntr
 					if (!args.checklist.all_acceptance_criteria_met) failedChecks.push("Not all acceptance criteria are met");
 					if (!args.checklist.ui_reflects_logic) failedChecks.push("UI does not reflect the logic you added — users cannot see or interact with the feature");
 					if (!args.checklist.logic_supports_ui) failedChecks.push("UI elements lack underlying logic/wiring");
-					if (!args.checklist.no_lsp_errors) failedChecks.push("LSP errors remain in modified files");
+					if (!args.checklist.no_lsp_errors) failedChecks.push("LSP errors remain — including any pre-existing ones you noticed but didn't fix");
 					if (!args.checklist.feature_is_user_accessible) failedChecks.push("Feature is not accessible to the end user from the app interface");
 
 					if (failedChecks.length > 0) {
@@ -718,18 +719,29 @@ function createKanbanToolsImpl(actorId: string): Record<string, ToolRegistryEntr
 						});
 					}
 
-					// All checks pass — store structured report and auto-move to review
+					// All checks pass — store structured report and auto-move to review.
+					// APPEND, never overwrite: on a review-rejected task's 2nd+ round, the
+					// prior round's Completion Report and the reviewer's "[Review CHANGES
+					// REQUESTED]" feedback (appended by submit_review) are still in
+					// importantNotes at this point — clobbering them would erase the audit
+					// trail of what was wrong and how it got fixed, exactly the bug already
+					// fixed on the pm-tools.ts handoff-note write path.
+					const priorReports = (task.importantNotes?.match(/## Completion Report/g) ?? []).length;
+					const roundLabel = priorReports > 0 ? ` (round ${priorReports + 1})` : "";
 					const report = JSON.stringify({
 						summary: args.summary,
 						files_changed: args.files_changed,
 						decisions_made: args.decisions_made ?? [],
 						api_contracts: args.api_contracts ?? [],
 						follow_up_issues: args.follow_up_issues ?? [],
+						verification_evidence: args.verification_evidence ?? "",
 					});
+					const newReport = `## Completion Report${roundLabel}\n\`\`\`json\n${report}\n\`\`\``;
+					const existingNotes = task.importantNotes?.trim() || "";
 					await kanbanRpc.updateKanbanTask({
 						id: args.task_id,
 						verificationStatus: "passed",
-						importantNotes: `## Completion Report\n\`\`\`json\n${report}\n\`\`\``,
+						importantNotes: existingNotes ? `${existingNotes}\n\n${newReport}` : newReport,
 						actorId,
 					});
 					// Auto-commit before review so reviewer can see git diff

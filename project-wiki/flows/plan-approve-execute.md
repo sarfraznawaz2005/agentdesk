@@ -2,7 +2,7 @@
 title: Plan -> Approve -> Execute Flow
 type: flow
 status: verified
-verified_at: 2026-07-05
+verified_at: 2026-07-09
 sources:
   - src/bun/agents/tools/pm-tools.ts
   - src/bun/agents/engine.ts
@@ -139,6 +139,10 @@ this branch before committing. `clear_feature_branch` wipes it after the PR (`pm
 `create_tasks_from_plan` (`pm-tools.ts:1726`) drains the stored definitions and creates one
 kanban task per def in the `backlog` column, resolving each def's `blocked_by` *indices* into
 real task IDs by position (`pm-tools.ts:1765-1767`). No LLM runs here — it is a pure replay.
+It also calls `recordPlanBatch(projectId, createdIds)` (`tools/planning.ts`) — an in-memory
+record of exactly which task IDs this plan produced, consumed later by the review cycle to
+generate a Final Recap doc once every task in the batch reaches `done`. See
+[[kanban-review-cycle]]'s *Plan completion recap* section.
 
 ### 6. Execute (sequential)
 The PM dispatches agents via `run_agent` with `kanban_task_id`. A re-entrancy guard enforces

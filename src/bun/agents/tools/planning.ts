@@ -112,6 +112,44 @@ export function restoreTaskDefinitions(projectId: string, defs: TaskDefinition[]
 }
 
 // ---------------------------------------------------------------------------
+// Plan batch tracking
+//
+// Links the kanban tasks created together by one create_tasks_from_plan call
+// so review-cycle.ts can detect when an entire approved plan has finished and
+// generate a Final Recap doc. In-memory only, reset on app restart — the same
+// trade-off already made for review-cycle.ts's reviewRounds/taskCommitHashes;
+// a restart mid-plan just means that plan silently never gets a recap doc.
+// ---------------------------------------------------------------------------
+
+export interface PlanBatch {
+	taskIds: string[];
+	recapGenerated: boolean;
+	createdAt: string;
+}
+
+const planBatches = new Map<string, PlanBatch[]>();
+
+/** Record a batch of kanban task IDs created from one approved plan. */
+export function recordPlanBatch(projectId: string, taskIds: string[]): void {
+	if (taskIds.length === 0) return;
+	const list = planBatches.get(projectId) ?? [];
+	list.push({ taskIds, recapGenerated: false, createdAt: new Date().toISOString() });
+	planBatches.set(projectId, list);
+}
+
+/** Returns the first not-yet-recapped batch whose every task is in `doneTaskIds`, or null. */
+export function findCompletedPlanBatch(projectId: string, doneTaskIds: Set<string>): PlanBatch | null {
+	const list = planBatches.get(projectId);
+	if (!list) return null;
+	return list.find((b) => !b.recapGenerated && b.taskIds.every((id) => doneTaskIds.has(id))) ?? null;
+}
+
+/** Mark a batch as recapped so it is never recapped twice. */
+export function markPlanBatchRecapped(batch: PlanBatch): void {
+	batch.recapGenerated = true;
+}
+
+// ---------------------------------------------------------------------------
 // Tool definition
 // ---------------------------------------------------------------------------
 

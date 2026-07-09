@@ -36,7 +36,7 @@ import { notesTools } from "../agents/tools/notes";
 import { systemTools } from "../agents/tools/system";
 import { skillRegistry } from "../skills/registry";
 import { broadcastToWebview } from "../engine-manager";
-import { buildUserProfileSection, loadUserTimezone } from "../agents/prompts";
+import { buildUserProfileSection, loadUserTimezone, SECURITY_RULES_SECTION } from "../agents/prompts";
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -86,7 +86,9 @@ For relative time requests ("remind me in 5 minutes", "alert me at 3pm"):
 
 For \`taskType: "pm_prompt"\` or \`"agent_task"\`, a projectId is required — ask the user which project if not specified.
 
-Be concise and helpful. Use tools to get accurate data rather than guessing.`;
+Be concise and helpful. Use tools to get accurate data rather than guessing.
+
+${SECURITY_RULES_SECTION}`;
 
 	// User profile (name + email + timezone-derived city) — same block the PM uses
 	const userSection = await buildUserProfileSection();

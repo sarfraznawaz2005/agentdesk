@@ -2,12 +2,15 @@
 title: Kanban & Auto Review Cycle
 type: flow
 status: verified
-verified_at: 2026-07-06
+verified_at: 2026-07-09
 sources:
   - src/bun/agents/review-cycle.ts
   - src/bun/agents/tools/kanban.ts
   - src/bun/rpc/kanban.ts
   - src/bun/agents/tools/pm-tools.ts
+  - src/bun/agents/tools/planning.ts
+  - src/bun/agents/handoff.ts
+  - src/bun/rpc/notes.ts
   - src/bun/agents/engine.ts
   - src/bun/rpc/projects.ts
   - tests/tools/kanban-enforcement.test.ts
@@ -71,7 +74,25 @@ honesty checklist (all criteria met, UI/logic wired, no LSP errors,
 user-accessible — `kanban.ts:677`). A `pass` verdict whose checklist still has
 `false` items is rejected as a `fail` (`kanban.ts:710`). On a genuine pass it:
 
-1. Stores a JSON completion report into `importantNotes` (`kanban.ts:722`).
+1. Stores a JSON completion report into `importantNotes` as
+   `## Completion Report\n\`\`\`json\n{...}\n\`\`\`` (`kanban.ts:722`) — `summary`,
+   `files_changed`, `decisions_made`, `api_contracts`, `follow_up_issues`, and
+   `verification_evidence` (the agent's free-text account of the concrete
+   command(s) it ran and their output — optional but strongly encouraged; the
+   checklist above is a self-reported boolean, this is the closest thing to
+   proof). **Appended, never overwritten**: on a re-verification (task kicked
+   back to `working` after a `changes_requested` review, then re-verified) the
+   new block is titled `## Completion Report (round N)` and added after
+   whatever is already in `importantNotes` — the prior round's report and the
+   reviewer's `[Review CHANGES REQUESTED]` feedback (appended by
+   `submit_review`, see below) survive instead of being wiped. `N` is derived
+   by counting existing `## Completion Report` occurrences in the current
+   notes — no cross-module round counter needed.
+   `extractCompletionReport`/`extractFollowUpIssues` (`handoff.ts`) parse the
+   **last** such block (current truth, not a stale round-1 state) back out —
+   resilient to further sections (Handoff Summary, Suggested Next Steps)
+   being appended below it later (see the Handoff-merge note under Entry
+   points).
 2. **Auto-commits** the work via `autoCommitTask` (`kanban.ts:738`) so the
    reviewer can `git show` the diff.
 3. Moves the task to `review` itself (`kanban.ts:742`) and fires
@@ -79,7 +100,10 @@ user-accessible — `kanban.ts:677`). A `pass` verdict whose checklist still has
 
 This means `verify_implementation` is the normal path into review; the raw
 `move_task("review")` path is a fallback that re-checks the same
-`verificationStatus` guard.
+`verificationStatus` guard. Because `get_task` returns the full task row, the
+code-reviewer's mandated first action (`get_task(id=...)`, see below) already
+surfaces this report — including `verification_evidence` — with no extra
+wiring.
 
 ### 3. Acceptance-criteria gate
 
@@ -203,26 +227,91 @@ The PM-tools path also auto-commits and moves to `review` if the agent verified
 but the task was still in `working` (`pm-tools.ts:642`), and otherwise re-prompts
 the PM that the agent skipped verification (`pm-tools.ts:653`).
 
+### Handoff notes are merged, never overwritten
+
+After `runInlineAgent` resolves, `run_agent`'s `.then()` handler
+(`pm-tools.ts`, the "Store handoff as kanban task note" block) generates a
+file-diff-based summary via `generateHandoffSummary` (`handoff.ts`) and used to
+**overwrite** `importantNotes` with it wholesale — silently discarding the
+`## Completion Report` that `verify_implementation` had just written a moment
+earlier in the same task's lifecycle (decisions, API contracts, follow-up
+issues, verification evidence, all gone). This is fixed: the handler now fetches
+the current `importantNotes`, and **appends** `## Handoff Summary` below
+whatever is already there, plus a `## Suggested Next Steps` section built from
+`extractFollowUpIssues` (`handoff.ts`) when the Completion Report listed any.
+The combined string still contains the `## Handoff Summary` substring, so
+`get_next_task`'s `priorWork` detection (`pm-tools.ts:1902`) is unaffected — the
+next agent now sees the Completion Report, the Handoff Summary, *and* the
+Suggested Next Steps in one `priorWork` string instead of only the last section
+written. `generateHandoffSummary` also redacts credential-shaped substrings
+(`redactSecrets`, `handoff.ts`) and never reads `.env`/`.pem`/`.key`/credential
+files at all (`SENSITIVE_FILE_RE`) before quoting file content into a note that
+flows into chat/channel-relayed messages.
+
+## Plan completion recap
+
+When an approved plan's *entire* batch of kanban tasks reaches `done`, the
+review cycle synthesizes a **Final Recap** doc — one closing artifact instead
+of the user having to reconstruct the story from N separate tasks' notes.
+
+- `create_tasks_from_plan` (`pm-tools.ts`) calls `recordPlanBatch(projectId,
+  createdIds)` (`tools/planning.ts`) right after creating the batch — an
+  in-memory `Map<projectId, PlanBatch[]>`, the same ephemeral-state pattern
+  already used for `reviewRounds`/`taskCommitHashes` below. A batch is just the
+  list of task IDs created by one `create_tasks_from_plan` call; tasks added to
+  the board later (manually, or from a second plan) are never part of it.
+- `notifyTaskInReview`'s `finally` block — the single choke point that already
+  detects "this task just reached `done`" across every path (approved, fix
+  agent failed/errored, max rounds exceeded) — now also calls
+  `maybeGeneratePlanRecap(projectId)` (`review-cycle.ts`).
+- `maybeGeneratePlanRecap` re-reads all of the project's kanban tasks, calls
+  `findCompletedPlanBatch(projectId, doneTaskIds)` (`tools/planning.ts`) to find
+  the first not-yet-recapped batch whose every task ID is now done, and if
+  found: pulls each task's `summary` via `extractCompletionReport` (falling
+  back to raw `importantNotes`), and writes one doc via `notesRpc.createNote`
+  titled `Plan Completion Recap — <date>`. `markPlanBatchRecapped` then prevents
+  it firing twice for the same batch.
+- **Best-effort, not a guarantee.** Batch tracking is in-memory only (no
+  migration, no new table) — an app restart between plan-approval and the last
+  task finishing silently drops that plan's recap. This mirrors the existing
+  trade-off for `reviewRounds`/`taskCommitHashes`/`taskConversations` below, not
+  a new risk class.
+
 ## Key files
 
 | File | Role |
 |---|---|
-| `src/bun/agents/review-cycle.ts` | The whole auto-review cycle: spawn reviewer, read verdict, round logic, force-complete, `autoCommitTask`, PM auto-continue |
+| `src/bun/agents/review-cycle.ts` | The whole auto-review cycle: spawn reviewer, read verdict, round logic, force-complete, `autoCommitTask`, PM auto-continue, `maybeGeneratePlanRecap` |
 | `src/bun/agents/tools/kanban.ts` | `move_task` transition enforcement, `verify_implementation` gate, `submit_review`, `check_criteria` |
 | `src/bun/rpc/kanban.ts` | `moveKanbanTask` DB write + activity log + `task:moved` event + done side effects: desktop notification, channel notify, issue auto-close (`kanban.ts:179`) |
-| `src/bun/agents/tools/pm-tools.ts` | `run_agent` post-run move-to-review path (`pm-tools.ts:634`) |
+| `src/bun/agents/tools/pm-tools.ts` | `run_agent` post-run move-to-review path (`pm-tools.ts:634`); handoff-note merge; `recordPlanBatch` call in `create_tasks_from_plan` |
+| `src/bun/agents/tools/planning.ts` | `recordPlanBatch`/`findCompletedPlanBatch`/`markPlanBatchRecapped` — in-memory plan-batch tracking |
+| `src/bun/agents/handoff.ts` | `generateHandoffSummary` (+ `redactSecrets`, `SENSITIVE_FILE_RE`), `extractCompletionReport`/`extractFollowUpIssues` |
 | `tests/agents/review-cycle.test.ts` | Unit tests for the verdict heuristics |
 | `tests/tools/kanban-enforcement.test.ts` | `move_task` column-transition guards (no backlog→review skip, no move out of done, criteria+verification gate before review), `verify_implementation`'s checklist-dishonesty rejection, `submit_review`'s review-column requirement, `check_criteria`'s concurrent-call lock — mocks `rpc/kanban.ts` with an in-memory task map |
 
 ## Gotchas / Constraints
 
 - **In-memory state is volatile.** `activeReviews`, `reviewRounds`,
-  `taskCommitHashes`, and `taskConversations` (`review-cycle.ts:42-56`) are
-  plain in-process maps — they reset on app restart. A restart mid-review loses
-  the round count (review starts fresh at round 0), the commit hash (reviewer
-  falls back to `git log`/`git diff`, `review-cycle.ts:484`), and the recorded
-  task→conversation mapping (reviewer falls back to the PM's active
-  conversation, see below).
+  `taskCommitHashes`, `taskConversations` (`review-cycle.ts:42-56`), and
+  `planning.ts`'s `planBatches` are plain in-process maps — they reset on app
+  restart. A restart mid-review loses the round count (review starts fresh at
+  round 0), the commit hash (reviewer falls back to `git log`/`git diff`,
+  `review-cycle.ts:484`), the recorded task→conversation mapping (reviewer
+  falls back to the PM's active conversation, see below), and any in-flight
+  plan batch (that plan simply never gets a Final Recap doc — see *Plan
+  completion recap*).
+- **`importantNotes` can accumulate multiple `## Completion Report` blocks.**
+  Bounded naturally by `maxReviewRounds` (default 2, so at most 2-3 blocks in
+  practice) — not a runaway-growth risk, but any code reading `importantNotes`
+  for the "current" report must use `extractCompletionReport` (which takes the
+  **last** block), never a naive first-match regex or raw string search.
+- **`redactSecrets` (`handoff.ts`) only targets credential-shaped strings**
+  (API keys, tokens, private-key blocks, `KEY=value`-style assignments) — it
+  deliberately does *not* attempt general PII redaction (email/phone), which
+  would false-positive heavily on ordinary source (license headers, author
+  fields). A handoff note is not a guaranteed-clean artifact for arbitrary PII,
+  only for common secret shapes.
 - **Review activity is routed to the task's own conversation, not always the
   PM's.** `spawnReviewAgent` resolves its `conversationId` as
   `taskConversations.get(kanbanTaskId) || eng.getActiveConversationId() || ""`
