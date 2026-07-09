@@ -4,12 +4,12 @@
 #
 # Downloads the latest AgentDesk Setup build via PowerShell's own HTTP client (Invoke-WebRequest)
 # instead of a browser Save-As. Windows only tags a downloaded file with Mark-of-the-Web /
-# Zone.Identifier when a zone-aware client (browser, Outlook, etc.) fetches it — Invoke-WebRequest
-# does not — so the extracted installer never triggers the SmartScreen "unrecognized publisher"
+# Zone.Identifier when a zone-aware client (browser, Outlook, etc.) fetches it - Invoke-WebRequest
+# does not - so the extracted installer never triggers the SmartScreen "unrecognized publisher"
 # prompt that a browser-downloaded copy of our currently-unsigned installer would show. See
 # project-wiki/reference/tech-stack-build-release.md ("No code signing" gotcha) for why AgentDesk
 # isn't Authenticode-signed yet. Users who instead click the Setup zip directly on the GitHub
-# Releases page in a browser will still see SmartScreen — this script is an additional install
+# Releases page in a browser will still see SmartScreen - this script is an additional install
 # path, not a replacement for signing.
 #
 # Usage (run in PowerShell):

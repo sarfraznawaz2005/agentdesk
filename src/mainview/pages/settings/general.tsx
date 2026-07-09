@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -35,6 +36,8 @@ interface UserProfile {
 interface ApplicationSettings {
   timezone: string;
   globalWorkspacePath: string;
+  preventSystemSleep: boolean;
+  launchAtStartup: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +52,8 @@ const USER_DEFAULTS: UserProfile = {
 const APPLICATION_DEFAULTS: ApplicationSettings = {
   timezone: "UTC",
   globalWorkspacePath: "",
+  preventSystemSleep: false,
+  launchAtStartup: false,
 };
 
 function isValidEmail(v: string): boolean {
@@ -246,6 +251,14 @@ export function GeneralSettings() {
             typeof appData.global_workspace_path === "string"
               ? appData.global_workspace_path
               : APPLICATION_DEFAULTS.globalWorkspacePath,
+          preventSystemSleep:
+            appData.prevent_system_sleep !== undefined
+              ? appData.prevent_system_sleep !== false && appData.prevent_system_sleep !== "false"
+              : APPLICATION_DEFAULTS.preventSystemSleep,
+          launchAtStartup:
+            appData.launch_at_startup !== undefined
+              ? appData.launch_at_startup !== false && appData.launch_at_startup !== "false"
+              : APPLICATION_DEFAULTS.launchAtStartup,
         });
       } catch {
         if (!cancelled) {
@@ -296,6 +309,8 @@ export function GeneralSettings() {
         rpc.saveSetting("user_email", userProfile.userEmail, "user"),
         rpc.saveSetting("timezone", application.timezone, "general"),
         rpc.saveSetting("global_workspace_path", application.globalWorkspacePath, "general"),
+        rpc.saveSetting("prevent_system_sleep", application.preventSystemSleep, "general"),
+        rpc.saveSetting("launch_at_startup", application.launchAtStartup, "general"),
       ]);
       setDirty(false);
       toast("success", "Settings saved.");
@@ -446,6 +461,38 @@ export function GeneralSettings() {
               </SelectContent>
             </Select>
           </FieldRow>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="prevent-sleep-toggle">Prevent System Sleep While Running</Label>
+              <p className="text-xs text-muted-foreground">
+                Keep your computer and display awake while AgentDesk is open.
+              </p>
+            </div>
+            <Switch
+              id="prevent-sleep-toggle"
+              checked={application.preventSystemSleep}
+              onCheckedChange={(val) => handleApplicationChange("preventSystemSleep", val)}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="launch-at-startup-toggle">Launch at Startup</Label>
+              <p className="text-xs text-muted-foreground">
+                Automatically start AgentDesk when you log in.
+              </p>
+            </div>
+            <Switch
+              id="launch-at-startup-toggle"
+              checked={application.launchAtStartup}
+              onCheckedChange={(val) => handleApplicationChange("launchAtStartup", val)}
+            />
+          </div>
 
         </CardContent>
       </Card>

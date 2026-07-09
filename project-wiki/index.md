@@ -2,7 +2,7 @@
 title: Project Wiki Index
 type: overview
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-07-09
 sources: [project-wiki/WIKI.md]
 tags: [index, catalog]
 ---
@@ -45,6 +45,7 @@ for the architecture narrative.
 - [[notifications]] — OS desktop notifications via ungated + preference-gated paths, backed by `notification_preferences`.
 - [[claude-subscription]] — reuse Claude Code's stored OAuth token, impersonate CLI headers, refresh via spawning the CLI on 401, gated by a marker file.
 - [[backend-core]] — Bun boot ordering, `EngineManager` per-project cache + global abort/approval registry, shared `lib/` utilities, annotation/preview server.
+- [[system-integration]] — "Prevent System Sleep" + "Launch at Startup" General-settings toggles; custom per-platform native calls since Electrobun has no built-in equivalent.
 
 ## Subsystems — frontend
 - [[frontend-architecture]] — React 19 SPA in the Electrobun webview: hash-routed TanStack Router under a persistent AppShell; Zustand fed by `agentdesk:*` window events.

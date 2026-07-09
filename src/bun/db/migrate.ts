@@ -53,6 +53,7 @@ import * as v50 from "./migrations/v50_freelance-listings-indexes";
 import * as v51 from "./migrations/v51_unique-name-indexes";
 import * as v52 from "./migrations/v52_model-preferences";
 import * as v53 from "./migrations/v53_remove-enhanced-web-search";
+import * as v54 from "./migrations/v54_research-expert-tool-cleanup";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -130,6 +131,7 @@ const migrations: Migration[] = [
 	{ version: 51, name: v51.name, run: v51.run },
 	{ version: 52, name: v52.name, run: v52.run },
 	{ version: 53, name: v53.name, run: v53.run },
+	{ version: 54, name: v54.name, run: v54.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;

@@ -1,7 +1,7 @@
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
-# ─── Configuration ─────────────────────────────────────────────────────────────
+# --- Configuration -------------------------------------------------------------
 $MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
 $AI_MODEL   = "gpt-4o-mini"
 
@@ -9,7 +9,7 @@ Write-Host ""
 Write-Host "=== AgentDesk Release ===" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Read current version from package.json ──────────────────────────────────
+# -- Read current version from package.json ----------------------------------
 $pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
 $currentVersion = $pkg.version
 
@@ -17,11 +17,11 @@ Write-Host "Current version: " -NoNewline
 Write-Host "v$currentVersion" -ForegroundColor Yellow
 Write-Host ""
 
-# ── Ask for new version ──────────────────────────────────────────────────────
+# -- Ask for new version ------------------------------------------------------
 $newVersion = Read-Host "Enter new version (e.g. 1.0.1)"
 
 if ([string]::IsNullOrWhiteSpace($newVersion)) {
-    Write-Host "Aborted — no version entered." -ForegroundColor Red
+    Write-Host "Aborted - no version entered." -ForegroundColor Red
     exit 1
 }
 
@@ -35,14 +35,14 @@ if ($newVersion -notmatch '^\d+\.\d+\.\d+$') {
 }
 
 if ($newVersion -eq $currentVersion) {
-    Write-Host "Version is already $currentVersion — nothing to do." -ForegroundColor Red
+    Write-Host "Version is already $currentVersion - nothing to do." -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
 Write-Host "Releasing: " -NoNewline
 Write-Host "v$currentVersion" -ForegroundColor Yellow -NoNewline
-Write-Host " → " -NoNewline
+Write-Host " -> " -NoNewline
 Write-Host "v$newVersion" -ForegroundColor Green
 Write-Host ""
 $confirm = Read-Host "Confirm? (y/N)"
@@ -53,7 +53,7 @@ if ($confirm -notmatch '^[Yy]$') {
 
 Write-Host ""
 
-# ── Check for uncommitted changes ────────────────────────────────────────────
+# -- Check for uncommitted changes --------------------------------------------
 $gitStatus = git status --porcelain
 if ($gitStatus) {
     Write-Host "Warning: you have uncommitted changes:" -ForegroundColor Yellow
@@ -66,7 +66,7 @@ if ($gitStatus) {
     }
 }
 
-# ── Generate release notes via GitHub Models API ─────────────────────────────
+# -- Generate release notes via GitHub Models API -----------------------------
 Write-Host ""
 Write-Host "Generating release notes..." -ForegroundColor Cyan
 
@@ -80,7 +80,7 @@ $commitRange = if ($lastTag) { "$lastTag..HEAD" } else { "HEAD" }
 $commits = @(git log $commitRange --pretty=format:"%s" 2>$null | Where-Object { $_ -ne "" })
 
 if ($commits.Count -eq 0) {
-    Write-Host "  No commits found since last tag — skipping AI notes." -ForegroundColor Yellow
+    Write-Host "  No commits found since last tag - skipping AI notes." -ForegroundColor Yellow
     $skipNotes = $true
 }
 
@@ -90,14 +90,14 @@ if (-not $skipNotes) {
     if (-not $token) { $token = [Environment]::GetEnvironmentVariable("GITHUB_TOKEN", "User") }
 
     if (-not $token) {
-        Write-Host "  GITHUB_TOKEN not set — skipping AI notes. Edit release-notes.json manually." -ForegroundColor Yellow
+        Write-Host "  GITHUB_TOKEN not set - skipping AI notes. Edit release-notes.json manually." -ForegroundColor Yellow
         $skipNotes = $true
     }
 }
 
 if (-not $skipNotes) {
     $rangeLabel = if ($lastTag) { "since $lastTag" } else { "all commits" }
-    Write-Host "  $($commits.Count) commit(s) $rangeLabel → asking AI..." -ForegroundColor DarkGray
+    Write-Host "  $($commits.Count) commit(s) $rangeLabel -> asking AI..." -ForegroundColor DarkGray
 
     $commitList = $commits -join "`n"
 
@@ -107,10 +107,10 @@ You are writing release notes for AgentDesk, an AI-powered desktop development p
 Given a list of git commit messages, produce a concise release notes entry for end users.
 
 INCLUDE (user-facing):
-- feat: / feature: — new features or capabilities
-- fix: / bugfix: — bug fixes that affect users
-- perf: — performance improvements users notice
-- ui: / ux: — interface and experience improvements
+- feat: / feature: - new features or capabilities
+- fix: / bugfix: - bug fixes that affect users
+- perf: - performance improvements users notice
+- ui: / ux: - interface and experience improvements
 
 DISCARD (dev-internal, never mention to users):
 - chore:, ci:, build:, test:, refactor:, style:, revert: commits
@@ -120,14 +120,14 @@ DISCARD (dev-internal, never mention to users):
 - Internal refactors with no user-visible effect
 
 RULES:
-1. Group related commits into a single bullet — do not repeat nearly-identical items
+1. Group related commits into a single bullet - do not repeat nearly-identical items
 2. Write from the USER's perspective: what they can DO or what WORKS BETTER now
 3. Use plain English. No commit hashes, PR numbers, file names, or technical jargon
 4. Maximum 8 bullet points
-5. Write a short title (3–7 words) capturing the overall theme of the release
+5. Write a short title (3-7 words) capturing the overall theme of the release
 6. If there are NO user-facing changes at all, return {"title":null,"changes":[]}
 
-Return ONLY valid JSON — no markdown, no explanation:
+Return ONLY valid JSON - no markdown, no explanation:
 {"title":"...","changes":["...","..."]}
 "@
 
@@ -168,14 +168,14 @@ Return ONLY valid JSON — no markdown, no explanation:
             $attempt++
             $status = $_.Exception.Response.StatusCode.value__
             if ($status -eq 401 -or $status -eq 403) {
-                Write-Host "  API auth error ($status) — check GITHUB_TOKEN. Skipping AI notes." -ForegroundColor Red
+                Write-Host "  API auth error ($status) - check GITHUB_TOKEN. Skipping AI notes." -ForegroundColor Red
                 $skipNotes = $true
                 break
             }
             if ($attempt -lt $maxTries) {
                 $wait = $backoff[$attempt - 1]
                 if ($status -eq 429) { $wait *= 2 }
-                Write-Host "  API error (attempt $attempt) — retrying in ${wait}s..." -ForegroundColor Yellow
+                Write-Host "  API error (attempt $attempt) - retrying in ${wait}s..." -ForegroundColor Yellow
                 Start-Sleep -Seconds $wait
             } else {
                 Write-Host "  AI notes failed after $maxTries attempts. Skipping. Edit release-notes.json manually." -ForegroundColor Yellow
@@ -191,7 +191,7 @@ if ($aiEntry) {
     Write-Host "  Draft release notes for v$newVersion" -ForegroundColor Green
     Write-Host "  Title  : $($aiEntry.title)" -ForegroundColor White
     foreach ($c in $aiEntry.changes) {
-        Write-Host "    • $c" -ForegroundColor DarkGray
+        Write-Host "    * $c" -ForegroundColor DarkGray
     }
     Write-Host ""
 
@@ -229,29 +229,29 @@ if ($aiEntry) {
 
 Write-Host ""
 
-# ── Update version in package.json ──────────────────────────────────────────
+# -- Update version in package.json ------------------------------------------
 Write-Host "Updating package.json..." -ForegroundColor Cyan
 $pkgRaw = Get-Content "package.json" -Raw
 $pkgNew = $pkgRaw -replace '("version":\s*")\d+\.\d+\.\d+', ('${1}' + $newVersion)
 if ($pkgNew -eq $pkgRaw) {
-    Write-Host "Failed to update version in package.json — no `"version`" field matched." -ForegroundColor Red
+    Write-Host "Failed to update version in package.json - no `"version`" field matched." -ForegroundColor Red
     exit 1
 }
 Set-Content "package.json" $pkgNew -NoNewline
 Write-Host "  package.json updated to v$newVersion" -ForegroundColor Green
 
-# ── Update version in electrobun.config.ts ───────────────────────────────────
+# -- Update version in electrobun.config.ts -----------------------------------
 Write-Host "Updating electrobun.config.ts..." -ForegroundColor Cyan
 $cfgRaw = Get-Content "electrobun.config.ts" -Raw
 $cfgNew = $cfgRaw -replace '(version:\s*")\d+\.\d+\.\d+', ('${1}' + $newVersion)
 if ($cfgNew -eq $cfgRaw) {
-    Write-Host "Failed to update version in electrobun.config.ts — no version field matched." -ForegroundColor Red
+    Write-Host "Failed to update version in electrobun.config.ts - no version field matched." -ForegroundColor Red
     exit 1
 }
 Set-Content "electrobun.config.ts" $cfgNew -NoNewline
 Write-Host "  electrobun.config.ts updated to v$newVersion" -ForegroundColor Green
 
-# ── Git commit ───────────────────────────────────────────────────────────────
+# -- Git commit ---------------------------------------------------------------
 Write-Host ""
 Write-Host "Committing..." -ForegroundColor Cyan
 git add package.json electrobun.config.ts release-notes.json
@@ -264,7 +264,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ── Git tag ──────────────────────────────────────────────────────────────────
+# -- Git tag ------------------------------------------------------------------
 Write-Host ""
 Write-Host "Creating tag v$newVersion..." -ForegroundColor Cyan
 git tag "v$newVersion"
@@ -273,7 +273,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ── Push commit + tag ────────────────────────────────────────────────────────
+# -- Push commit + tag --------------------------------------------------------
 Write-Host ""
 Write-Host "Pushing to origin..." -ForegroundColor Cyan
 git push origin main
@@ -287,7 +287,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ── Deploy web app to Cloudflare Pages ───────────────────────────────────────
+# -- Deploy web app to Cloudflare Pages ---------------------------------------
 # The DESKTOP app builds on GitHub Actions (triggered by the tag push above).
 # The WEB app (Remote Access, https://agentdeskweb.pages.dev) is a SEPARATE
 # Cloudflare Pages deploy and must be published from here so the hosted web
@@ -299,7 +299,7 @@ if ($deployWeb -notmatch '^[Nn]$') {
     Write-Host "Building web app (bun run build:web)..." -ForegroundColor Cyan
     bun run build:web
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  Web build FAILED — skipping deploy. Run 'bun run build:web; bun run deploy:web' manually." -ForegroundColor Yellow
+        Write-Host "  Web build FAILED - skipping deploy. Run 'bun run build:web; bun run deploy:web' manually." -ForegroundColor Yellow
     } else {
         Write-Host "Deploying web app (bun run deploy:web)..." -ForegroundColor Cyan
         bun run deploy:web
@@ -313,7 +313,7 @@ if ($deployWeb -notmatch '^[Nn]$') {
     Write-Host "  Skipped web deploy. Run 'bun run build:web; bun run deploy:web' later if the frontend changed." -ForegroundColor DarkGray
 }
 
-# ── Done ─────────────────────────────────────────────────────────────────────
+# -- Done ---------------------------------------------------------------------
 Write-Host ""
 Write-Host "Released v$newVersion!" -ForegroundColor Green
 Write-Host ""

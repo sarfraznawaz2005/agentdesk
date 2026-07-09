@@ -37,6 +37,9 @@ import { shutdownPlayground } from "./playground/orchestrator";
 import { isFreelanceEnabled } from "./freelance/feature-flag";
 import { loadCustomEnvVarsIntoProcess } from "./rpc/env-vars";
 import { encryptExistingSecrets } from "./lib/encrypt-existing-secrets";
+import { getSetting } from "./rpc/settings";
+import { startSleepBlock, stopSleepBlock } from "./system/power-save-blocker";
+import { enableLaunchAtStartup, disableLaunchAtStartup } from "./system/login-item";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -166,6 +169,32 @@ if (FREELANCE_ENABLED) {
 
 // Register Windows uninstaller entry (no-op on non-Windows / dev builds)
 registerWindowsUninstaller().catch(() => {});
+
+// Prevent System Sleep + Launch at Startup — both off by default, no Electrobun
+// equivalent exists, so each is a custom per-platform native call (see
+// src/bun/system/power-save-blocker.ts and src/bun/system/login-item.ts).
+// Re-applied on every boot (self-heals a moved/updated install / a sleep block
+// that was never released) and kept live via onSettingChange below.
+const [preventSystemSleepSetting, launchAtStartupSetting] = await Promise.all([
+	getSetting("prevent_system_sleep", "general"),
+	getSetting("launch_at_startup", "general"),
+]);
+// getSetting JSON-parses the stored value, so a boolean true comes back as an
+// actual boolean despite the string | null return type (see prompt-logger.ts).
+console.log(`[startup] prevent_system_sleep=${JSON.stringify(preventSystemSleepSetting)} launch_at_startup=${JSON.stringify(launchAtStartupSetting)}`);
+if ((preventSystemSleepSetting as unknown) === true) startSleepBlock();
+if ((launchAtStartupSetting as unknown) === true) await enableLaunchAtStartup().catch(() => {});
+
+onSettingChange("prevent_system_sleep", (value) => {
+	console.log(`[settings] prevent_system_sleep changed to ${JSON.stringify(value)}`);
+	if (value === true) startSleepBlock();
+	else stopSleepBlock();
+});
+
+onSettingChange("launch_at_startup", (value) => {
+	if (value === true) enableLaunchAtStartup().catch(() => {});
+	else disableLaunchAtStartup().catch(() => {});
+});
 
 // Periodic WAL checkpoint timer — cheap to schedule. The one-shot incremental optimize
 // already ran above (pre-window); the rare full VACUUM, workspace sync, and one-off
@@ -391,6 +420,7 @@ Electrobun.events.on("before-quit", () => {
 			console.error("Failed to save window state on quit");
 		}
 
+		stopSleepBlock();
 		await shutdownChannelManager();
 		shutdownCronScheduler();
 		shutdownAutomationEngine();

@@ -2,7 +2,7 @@
 title: Agent Roster Reference
 type: reference
 status: verified
-verified_at: 2026-07-06
+verified_at: 2026-07-09
 sources:
   - src/bun/db/seed.ts
   - src/bun/agents/agent-loop.ts
@@ -11,6 +11,7 @@ sources:
   - src/bun/agents/tools/create-task-policy.ts
   - src/bun/rpc/agents.ts
   - src/bun/db/migrations/v26_remove-legacy-general-agent.ts
+  - src/bun/db/migrations/v54_research-expert-tool-cleanup.ts
 tags: [agents]
 ---
 
@@ -78,7 +79,7 @@ sees in its sub-agent table.
 |---|---|---|---|
 | `task-planner` | Task Planner | **Yes** | Task breakdown, PRD creation; sole holder of `create_task` (`seed.ts:838`) |
 | `code-explorer` | Code Explorer | **Yes** | Codebase exploration, dependency mapping (`seed.ts:633`) |
-| `research-expert` | Research Expert | **Yes** | Web search, library comparisons (`seed.ts:690`) |
+| `research-expert` | Research Expert | **Yes** | Web search, library comparisons, plus internal codebase research (`seed.ts:690`) — explicit allowlist: original set (`FILE_READ`, `WEB`, `NOTES`, `SYSTEM`, `KANBAN_READ`, `SKILLS`) plus `PROCESS` and `SCREENSHOT`, added 2026-07-09. Deliberately no write-capable families — `filterReadOnlyTools` would strip them at dispatch time anyway, and a curated allowlist stays curated rather than granting everything just because the runtime filter would catch the excess. `v54_research-expert-tool-cleanup.ts` cleans up existing installs that briefly had a much broader (write-inclusive) set from a same-day over-correction. |
 | `software-architect` | Software Architect | No | System design, architecture decisions (`seed.ts:160`) |
 | `backend-engineer` | Backend Engineer | No | Server-side logic, APIs, database (`seed.ts:223`) |
 | `frontend_engineer` | Frontend Engineer | No | UI components, React/TypeScript, styling (`seed.ts:191`) |
@@ -113,7 +114,17 @@ orchestrated.
 > (`v26_remove-legacy-general-agent.ts:11`) both claim `playground-agent` has *no*
 > `agent_tools` rows (full registry). That is **stale** — the current `seed.ts:1401`
 > gives it a focused ~37-tool set. Only `issue-fixer` and `freelance-expert` get
-> the full registry today (minus `create_task`, stripped by `restrictCreateTask`).
+> the true zero-rows full registry today (minus `create_task`, stripped by
+> `restrictCreateTask`) — that treatment is reserved for these two
+> autonomous/hidden agents, not used as a shortcut to broaden an orchestrated
+> agent's access. `research-expert`'s `defaultAgentTools` entry was briefly
+> expanded to every family constant on 2026-07-09 (including write-capable
+> ones), then corrected the same day back to its original set plus only
+> `PROCESS` and `SCREENSHOT` — the two families actually requested, keeping
+> the curated-allowlist convention every other built-in agent follows rather
+> than a maximal grant. `v54_research-expert-tool-cleanup.ts` deletes any
+> stray rows an install that already restarted during the over-broad window
+> would otherwise be stuck with. See `[[agent-tools]]` for the mechanism.
 
 ## The three mechanisms that classify an agent
 

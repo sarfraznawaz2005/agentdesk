@@ -2,7 +2,7 @@
 title: Plugin System
 type: subsystem
 status: verified
-verified_at: 2026-06-14
+verified_at: 2026-07-09
 sources:
   - src/bun/plugins/index.ts
   - src/bun/plugins/loader.ts
@@ -13,7 +13,12 @@ sources:
   - src/bun/plugins/types.ts
   - src/bun/plugins/lsp-manager/index.ts
   - src/bun/plugins/lsp-manager/manifest.json
-tags: [plugins, lsp]
+  - plugins/db-viewer/index.ts
+  - plugins/db-viewer/manifest.json
+  - electrobun.config.ts
+  - src/bun/skills/registry.ts
+  - src/bun/rpc/plugins.ts
+tags: [plugins, lsp, db-viewer]
 ---
 
 # Plugin System
@@ -25,10 +30,13 @@ agent **prompt snippet**, **file-change callbacks**, and **UI extension points**
 (sidebar items, project tabs, settings sections, chat commands, themes).
 Everything runs in the main Bun process — there is no sandbox or sub-process
 isolation; the `permissions` field in the manifest is currently descriptive
-metadata, not an enforced boundary. The one shipped plugin is **LSP Manager**,
-and the whole subsystem exists primarily to host it: language-server
-intelligence for agents is delivered as a plugin rather than a hard-wired tool
-group so it can be toggled off and configured per-language.
+metadata, not an enforced boundary. Two plugins ship today: **LSP Manager**
+(bundled in-code, see below — the reason the subsystem exists) and
+**Database Viewer** (`plugins/db-viewer/` at the **project root**, filesystem-
+scanned — a thin plugin whose `activate()` just calls
+`api.registerSidebarItem()` to add a "DB Viewer" nav link when enabled; the
+actual table-browsing RPC logic in `src/bun/rpc/db-viewer.ts` is independent
+of the plugin API entirely).
 
 ## How it works
 
@@ -54,7 +62,19 @@ It assembles plugins from three sources:
    (`index.ts:8`) rather than filesystem-scanned, so its `import()` works inside
    the bundled production app where the loose `lsp-manager/` source tree is not
    on disk. Its `manifest.json` is imported as JSON (`index.ts:9`).
-2. **Built-in scanned** — `scanPluginDirectory(builtinDir)` over `src/bun/plugins`.
+2. **Built-in scanned** — `scanPluginDirectory(getBuiltinPluginsDir())`, where
+   the directory is the **project-root** `plugins/` folder (currently just
+   `plugins/db-viewer/`), not `src/bun/plugins/`. `getBuiltinPluginsDir()`
+   mirrors `skills/registry.ts`'s `bundledDir` getter exactly: in a packaged
+   build, `resolve(import.meta.dir, "../plugins")` reaches the directory
+   Electrobun copies there via `electrobun.config.ts`'s copy section
+   (`"plugins": "plugins"`), but in dev mode this file runs from its real
+   source path (`src/bun/plugins/`), where `"../plugins"` resolves back to
+   itself — so it prefers `process.cwd()/plugins` (the real project root, since
+   `run.ps1` launches bun from there) whenever that exists and differs from the
+   build-resolved path. **This dev-mode fallback was missing until 2026-07-09**
+   — before the fix, `db-viewer` was never discovered in dev mode at all (see
+   "Database Viewer" and the Gotchas below).
 3. **User scanned** — `scanPluginDirectory(<userData>/plugins)`.
 
 All three lists are concatenated and each is run through `activatePlugin`.
@@ -176,11 +196,53 @@ flowchart TD
   SFX --> A[Agent sees errors inline]
 ```
 
+## Database Viewer — the other shipped plugin
+
+`plugins/db-viewer/index.ts` (project root, **not** `src/bun/plugins/`) is
+about as thin as a plugin can be: `activate(api)` calls
+`api.registerSidebarItem({ id: "db-viewer", label: "DB Viewer", icon:
+"Database", href: "/plugin/db-viewer" })` and nothing else. `deactivate()` is a
+no-op. `defaultEnabled: false` (`manifest.json:9`) — off by default, since it
+can delete rows from user-managed tables.
+
+The actual feature — browsing/deleting rows — is **not** built through the
+plugin API at all. It's a regular RPC surface: `src/bun/rpc/db-viewer.ts`
+defines a hardcoded `ALLOWED_TABLES` allowlist (deletable vs. read-only) and
+`dbViewerGetTables`/`dbViewerGetRows`/`dbViewerDeleteRow`, registered in
+`src/bun/rpc-groups/plugins-tools.ts` and rendered by the standalone
+`src/mainview/pages/plugin-db-viewer.tsx` page (route `/plugin/db-viewer`,
+`router.tsx:92`). So "the plugin" here exists solely to (a) gate the feature
+behind an enable/disable toggle in Settings → Plugins and (b) contribute the
+sidebar nav link when enabled — the RPC handlers themselves have no enabled
+check of their own.
+
+**Why this needed fixing (2026-07-09):** the `plugins` table already had a
+`db-viewer` row (created by a real, historical `activatePlugin()` call), and
+two migrations (`v10`, `v25`) exist specifically to force it back to
+`enabled = 0` for installs that got it stuck on. But `initPlugins()`'s
+`builtinDir` computation had no dev-mode fallback (see above), so in this
+environment the manifest was never (re)discovered — the Plugins page showed a
+`db-viewer` card with blank `displayName`/`description`/`author` (falling back
+to the bare row name and empty strings). Fixed by the `getBuiltinPluginsDir()`
+change above. A second, independent bug would have kept it broken even after
+that fix: `getPluginsList()` (`src/bun/rpc/plugins.ts`) only sourced manifest
+metadata from `getPluginInstances()`, which — by design (`registry.ts:46`) —
+never contains a **disabled** plugin's instance. Since `db-viewer` defaults to
+disabled, its card would still have shown blank metadata even with a correctly
+discovered manifest. Fixed by adding `getLoadedPluginManifest(name)`
+(`registry.ts`, reads the `loadedPlugins` map, which — unlike `instances` — is
+populated for every discovered plugin regardless of enabled state) as a
+fallback in `getPluginsList()`. This second bug affects **any** plugin while
+disabled, not just db-viewer — toggling LSP Manager off would show the same
+blank-metadata symptom before this fix.
+
 ## Key files
 
 | File | Role |
 |---|---|
-| `src/bun/plugins/index.ts` | `initPlugins()` — three load paths; LSP imported in-code |
+| `src/bun/plugins/index.ts` | `initPlugins()` — three load paths; LSP imported in-code; `getBuiltinPluginsDir()` dev/prod path resolution |
+| `plugins/db-viewer/index.ts` | Database Viewer plugin — `registerSidebarItem` only, no tools |
+| `plugins/db-viewer/manifest.json` | `displayName: "Database Viewer"`, `defaultEnabled: false` |
 | `src/bun/plugins/loader.ts` | `scanPluginDirectory` — manifest+index validation |
 | `src/bun/plugins/registry.ts` | Activate/deactivate/enable/disable lifecycle + DB reconcile; `notifyFileChange` fan-out |
 | `src/bun/plugins/manifest.ts` | zod manifest schema + `validateManifest` |
@@ -209,7 +271,17 @@ flowchart TD
   unknown keys, which has silently broken these before (`manifest.ts:21-23`).
 - **DB row vs. live instance** are separate states. A disabled plugin still has
   a cached `LoadedPlugin` (so it can be re-enabled without rescanning) but no
-  `PluginInstance` and no contributed tools/extensions.
+  `PluginInstance` and no contributed tools/extensions. `getPluginsList()` must
+  use `getLoadedPluginManifest()` (reads `loadedPlugins`) as a fallback for
+  metadata, not just `getPluginInstances()` (`instances`, enabled-only) — see
+  "Database Viewer" above for the bug this caused.
+- **The project-root `plugins/` folder is not `src/bun/plugins/`.** They look
+  similar but serve different purposes: `src/bun/plugins/` holds in-code
+  built-ins (LSP Manager) that are directly `import()`-ed; `plugins/` at the
+  repo root is the filesystem-scanned, `electrobun.config.ts`-bundled location
+  (mirrors `skills/` at the root). `getBuiltinPluginsDir()` must special-case
+  dev mode (prefer `process.cwd()/plugins`) the same way `skills/registry.ts`'s
+  `bundledDir` does, or the project-root folder is silently never scanned.
 - **LSP diagnostics on write only fire for already-running servers.** A passive
   write never spawns a server (`lsp-manager/index.ts:117`); the server starts on
   first explicit `lsp_*` tool call for that language/workspace.
@@ -227,7 +299,13 @@ flowchart TD
 
 ## Open questions
 - Are there any user-installed plugins in the wild, or is the user-dir scan path
-  effectively dead code today? (Only LSP Manager ships built-in.)
+  effectively dead code today? (Only LSP Manager and Database Viewer ship
+  built-in.)
+- Should the Plugins settings page enforce the `db-viewer` enable toggle inside
+  `src/bun/rpc/db-viewer.ts`'s RPC handlers themselves (defense in depth), given
+  today the toggle only gates the sidebar nav link — a user who already knows
+  the `/plugin/db-viewer` route could reach the page without ever enabling the
+  plugin, since the RPC handlers have no enabled check of their own?
 - The LSP `client.ts`/`servers.ts`/`installer.ts` internals (binary resolution,
   install methods) are referenced but not documented here — candidate for an
   [[lsp|lsp-internals]] page.

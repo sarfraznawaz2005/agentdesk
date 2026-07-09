@@ -1,4 +1,4 @@
-import type { PluginInstance } from "./types";
+import type { PluginInstance, PluginManifest } from "./types";
 import type { LoadedPlugin } from "./loader";
 import { createPluginAPI } from "./api";
 import { clearPluginExtensions } from "./extensions";
@@ -133,6 +133,17 @@ export function getPluginInstances(): PluginInstance[] {
 
 export function getPluginInstance(name: string): PluginInstance | undefined {
 	return instances.get(name);
+}
+
+/**
+ * A plugin's manifest whether or not it's currently enabled. `instances` only
+ * holds enabled plugins (activatePlugin returns before populating it for a
+ * disabled one), but `loadedPlugins` is populated for every discovered plugin
+ * regardless — this is what lets the Plugins settings page show a disabled
+ * plugin's real name/description/author instead of blank fallbacks.
+ */
+export function getLoadedPluginManifest(name: string): PluginManifest | undefined {
+	return loadedPlugins.get(name)?.manifest;
 }
 
 /** Notify all active plugins that a file has been written/edited. Returns any diagnostics. */

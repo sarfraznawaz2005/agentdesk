@@ -2,7 +2,7 @@
 title: Directory Map (Structural Index)
 type: reference
 status: verified
-verified_at: 2026-07-06
+verified_at: 2026-07-09
 sources:
   - src/bun/index.ts
   - src/bun/rpc-registration.ts
@@ -210,7 +210,7 @@ pairing, WS/relay RPC clients — see [[remote-access]]).
 | Path | Role |
 |---|---|
 | `docs/` | Design docs: `prd.md`, `workflow.md`, `auto-earn-plan.md`, `issue-fixer-plan.md`, `sequential-agent-model.md`, `skills.md`, `freelance.md`, plus proposals. |
-| `plugins/db-viewer/` | The one bundled plugin (manifest + index). [[plugins]] |
+| `plugins/db-viewer/` | Project-root, filesystem-scanned bundled plugin (manifest + index) — **not** the same location as `src/bun/plugins/` (in-code built-ins like LSP Manager). [[plugins]] |
 | `skills/` | Bundled SKILL.md skills: `agentdesk-guide`, `docx/xlsx/pptx/pdf` (with `scripts/`), `frontend-design`, `humanizer`, `freelance-writing`, `live-browser`, `remotion-video`, `screenshot`, `skill-creator`, `weather`. [[skills]] |
 | `assets/` | App icons (`icon.ico/png`, `tray-icon.png`) + `uninstall.ps1`. |
 | `.github/workflows/release.yml` | The only CI workflow (release). |

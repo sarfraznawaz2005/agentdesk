@@ -2,7 +2,7 @@
 title: Agent Tools
 type: subsystem
 status: verified
-verified_at: 2026-07-08
+verified_at: 2026-07-09
 sources:
   - src/bun/agents/tools/index.ts
   - src/bun/agents/tools/memory.ts
@@ -20,6 +20,8 @@ sources:
   - src/bun/agents/agent-loop.ts
   - src/bun/agents/engine.ts
   - src/bun/agents/tool-call-logging.ts
+  - src/bun/db/seed.ts
+  - src/bun/db/migrations/v54_research-expert-tool-cleanup.ts
 tags: [agents, tools]
 ---
 
@@ -85,9 +87,22 @@ agent row, then queries `agent_tools` for that agent id (`index.ts:144-147`):
 - **If the agent has rows**, only tools where `isEnabled === 1` survive
   (`index.ts:150-166`).
 - **If the agent has zero `agent_tools` rows**, it gets the *entire* registry
-  (`index.ts:172-176`). This is the documented "full registry" rule that makes
-  `playground-agent` and `issue-fixer` all-powerful — they intentionally have no
-  `agent_tools` rows. (Confirmed in `[[agent-roster]]`.)
+  (`index.ts:172-176`). This is the documented "full registry" rule. Only
+  `issue-fixer` and `freelance-expert` actually have zero rows — **not**
+  `playground-agent`, despite an earlier version of this page claiming
+  otherwise: it has its own curated ~37-tool allowlist in `defaultAgentTools`
+  (`seed.ts`). Every PM-orchestrated built-in agent (including read-only ones
+  like `research-expert`) follows the same explicit-allowlist convention —
+  "zero rows" is reserved for the two autonomous/hidden agents, never used as
+  a shortcut to broaden an orchestrated agent's access, and a curated allowlist
+  is kept curated even for a "give it more tools" request — expand the array
+  with only the specific families actually needed, not every family that
+  exists. (`research-expert`'s tool set was briefly over-broadened to every
+  family constant, including write-capable ones, on 2026-07-09 — reverted the
+  same day back to its original set plus only `PROCESS` and `SCREENSHOT`, the
+  two families actually requested; see `v54_research-expert-tool-cleanup.ts`
+  for the migration that cleaned up the extra rows an already-restarted
+  install would have picked up via the backfill below in the interim.)
 
 The agent-bound kanban and communication tools are always overlaid regardless of
 filtering (`index.ts:160`, `index.ts:173`). Results are memoised in
@@ -302,9 +317,14 @@ project hook setting):
   audit correctly — only the per-run overlays do (`index.ts:111-139`,
   `agent-loop.ts:885`).
 - **Zero `agent_tools` rows = full registry, not no tools.** This is intentional
-  (custom agents, `playground-agent`, `issue-fixer`) but surprising
-  (`index.ts:172-176`). Adding a single `agent_tools` row flips the agent into
-  allowlist mode and may strip everything else.
+  (custom agents with no rows yet, `issue-fixer`, `freelance-expert`) but
+  surprising (`index.ts:172-176`). Adding a single `agent_tools` row flips the
+  agent into allowlist mode and may strip everything else — this is exactly
+  why `seedAgentTools()` must never insert a single row for an agent meant to
+  stay full-registry (see the guard comment in
+  `v42_request-human-input-backfill.ts`), and why expanding an *already-listed*
+  agent's tool set (e.g. `research-expert`) is done by adding more entries to
+  its array in `defaultAgentTools`, not by removing it from the map.
 - **Tool cache is manual.** Changing `agent_tools` requires `clearToolCache()`
   or assignments appear stale within a session (`index.ts:82`).
 - **Read-only filtering is name-based.** `filterReadOnlyTools` keys off the

@@ -33,9 +33,9 @@ if (-not $ready) {
 # them in the bin dir after every Electrobun build (initial or hot-rebuild) which wipes that folder.
 $watcher = $null
 if ($freelanceEnabled -or $claudeEnabled -or $autoearnEnabled) {
-    if ($freelanceEnabled) { Write-Host "Freelance feature flag detected — preserving it across rebuilds." }
-    if ($claudeEnabled)    { Write-Host "Claude subscription flag detected — preserving it across rebuilds." }
-    if ($autoearnEnabled)  { Write-Host "Auto-Earn feature flag detected — preserving it across rebuilds." }
+    if ($freelanceEnabled) { Write-Host "Freelance feature flag detected - preserving it across rebuilds." }
+    if ($claudeEnabled)    { Write-Host "Claude subscription flag detected - preserving it across rebuilds." }
+    if ($autoearnEnabled)  { Write-Host "Auto-Earn feature flag detected - preserving it across rebuilds." }
     $watcher = Start-Job -ScriptBlock {
         param($dir, $freelance, $claude, $autoearn)
         while ($true) {
@@ -56,7 +56,7 @@ if ($freelanceEnabled -or $claudeEnabled -or $autoearnEnabled) {
 }
 
 # Start Electrobun (blocks until app closes or Ctrl+C).
-# Note: --watch was tried but fails on Windows with EACCES when rebuilding —
+# Note: --watch was tried but fails on Windows with EACCES when rebuilding -
 # the killed app's bun.exe / native DLLs stay locked briefly after exit, and
 # Electrobun's rmSync(buildFolder) races with that. Vite HMR still works for
 # src/mainview/* via the dev server above. Bun-side edits require manual restart.

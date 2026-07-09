@@ -1,4 +1,5 @@
-import { join } from "path";
+import { join, resolve } from "path";
+import { existsSync } from "fs";
 import { Utils } from "electrobun/bun";
 import { scanPluginDirectory } from "./loader";
 import { activatePlugin } from "./registry";
@@ -8,12 +9,31 @@ import type { LoadedPlugin } from "./loader";
 import * as lspManagerModule from "./lsp-manager/index";
 import lspManagerManifestJson from "./lsp-manager/manifest.json";
 
-export { getPluginInstances, enablePlugin, disablePlugin, uninstallPlugin, notifyFileChange } from "./registry";
+export { getPluginInstances, getLoadedPluginManifest, enablePlugin, disablePlugin, uninstallPlugin, notifyFileChange } from "./registry";
 export type { PluginManifest, PluginInstance, PluginAPI } from "./types";
+
+/**
+ * Absolute path to the project-root `plugins/` directory (e.g. `plugins/db-viewer/`),
+ * bundled into the packaged app via `electrobun.config.ts`'s copy section
+ * (`"plugins": "plugins"`) — mirrors `skills/registry.ts`'s `bundledDir` getter
+ * exactly, for the same reason: `join(import.meta.dir, "../plugins")` reaches the
+ * copied directory once Electrobun flattens `src/bun/*` under `Resources/app/bun/`,
+ * but in dev mode this file still runs from its real source location
+ * (`src/bun/plugins/`), where `../plugins` just resolves back to itself. Preferring
+ * `process.cwd()/plugins` in dev also means a plugin edit doesn't need a rebuild.
+ */
+function getBuiltinPluginsDir(): string {
+	const buildResolved = resolve(import.meta.dir, "../plugins");
+	const projectRoot = join(process.cwd(), "plugins");
+	if (existsSync(projectRoot) && resolve(projectRoot) !== resolve(buildResolved)) {
+		return projectRoot;
+	}
+	return buildResolved;
+}
 
 /** Initialize the plugin system — call once at startup after DB is ready */
 export async function initPlugins(): Promise<void> {
-	const builtinDir = join(import.meta.dir, "../plugins");
+	const builtinDir = getBuiltinPluginsDir();
 	const userDir = join(Utils.paths.userData, "plugins");
 
 	console.log("[plugins] Scanning for plugins...");

@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { plugins } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { getPluginInstances, enablePlugin, disablePlugin } from "../plugins";
+import { getPluginInstances, getLoadedPluginManifest, enablePlugin, disablePlugin } from "../plugins";
 
 export async function getPluginsList() {
 	const rows = await db.select().from(plugins);
@@ -9,22 +9,26 @@ export async function getPluginsList() {
 
 	return rows.map((row) => {
 		const instance = instances.find((i) => i.manifest.name === row.name);
+		// Disabled plugins have no live `instance` (activatePlugin returns before
+		// registering one), but their manifest is still known — fall back to it
+		// so a disabled plugin's card shows real metadata instead of blanks.
+		const manifest = instance?.manifest ?? getLoadedPluginManifest(row.name);
 		return {
 			id: row.id,
 			name: row.name,
-			displayName: instance?.manifest.displayName ?? row.name,
+			displayName: manifest?.displayName ?? row.name,
 			version: row.version,
-			description: instance?.manifest.description ?? "",
-			author: instance?.manifest.author ?? "",
-			permissions: instance?.manifest.permissions ?? [],
+			description: manifest?.description ?? "",
+			author: manifest?.author ?? "",
+			permissions: manifest?.permissions ?? [],
 			enabled: row.enabled === 1,
 			settings: JSON.parse(row.settings ?? "{}"),
 			toolCount: instance?.registeredTools.length ?? 0,
 			isLoaded: !!instance,
 			prompt: row.prompt ?? null,
-			defaultPrompt: instance?.manifest.prompt ?? null,
-			manifest: instance?.manifest ? {
-				settings: instance.manifest.settings,
+			defaultPrompt: manifest?.prompt ?? null,
+			manifest: manifest ? {
+				settings: manifest.settings,
 			} : undefined,
 		};
 	});

@@ -5,7 +5,7 @@
 # - Validates the commit message matches conventional commit format before using it
 # - Handles 401 (bad token), 429 (rate limit), and general network failures separately
 
-# ─── Configuration ────────────────────────────────────────────────────────────
+# --- Configuration ---
 $MODELS_URL     = "https://models.inference.ai.azure.com/chat/completions"
 $AI_MODEL       = "gpt-4o-mini"
 $MAX_RETRIES    = 3
@@ -13,23 +13,23 @@ $BACKOFF_SEC    = @(5, 15, 30)      # wait seconds before retry 1, 2, 3
 $MAX_DIFF_CHARS = 8000              # truncate large diffs to stay within token budget
 $COMMIT_PATTERN = '^(feat|fix|docs|chore|refactor|test|perf|ci|build|style|revert)(\(.+\))?: .{3,97}$'
 
-# ─── Output helpers ───────────────────────────────────────────────────────────
+# --- Output helpers ---
 function Write-Section { param([string]$m); Write-Host; Write-Host "`e[30;46m $m `e[0m"; Write-Host }
 function Write-Ok      { param([string]$m); Write-Host; Write-Host "`e[30;42m $m `e[0m"; Write-Host }
 function Write-Warn    { param([string]$m); Write-Host; Write-Host "`e[30;43m $m `e[0m"; Write-Host }
 function Write-Fail    { param([string]$m); Write-Host; Write-Host "`e[37;41m $m `e[0m"; Write-Host }
 
-# ─── Repository sanity checks ─────────────────────────────────────────────────
+# --- Repository sanity checks ---
 Write-Section "Checking Repository..."
 git rev-parse --git-dir 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { Write-Fail "Not inside a git repository."; exit 1 }
 
 $conflicts = git status --porcelain | Select-String "^UU"
-if ($conflicts) { Write-Fail "Merge conflicts detected — resolve them first."; exit 1 }
+if ($conflicts) { Write-Fail "Merge conflicts detected - resolve them first."; exit 1 }
 
 git status -sb
 
-# ─── GITHUB_TOKEN check ───────────────────────────────────────────────────────
+# --- GITHUB_TOKEN check ---
 if (-not $env:GITHUB_TOKEN) {
     Write-Fail "GITHUB_TOKEN is not set."
     Write-Host "  Set it in your session:  `$env:GITHUB_TOKEN = 'ghp_...'"
@@ -38,7 +38,7 @@ if (-not $env:GITHUB_TOKEN) {
     exit 1
 }
 
-# ─── Branch & upstream ────────────────────────────────────────────────────────
+# --- Branch and upstream ---
 $branch = git rev-parse --abbrev-ref HEAD
 if ([string]::IsNullOrWhiteSpace($branch)) { Write-Fail "Cannot determine current branch."; exit 1 }
 
@@ -51,16 +51,16 @@ if ($hasUpstream) {
     if ($LASTEXITCODE -ne 0) { Write-Fail "git pull failed."; exit 1 }
 }
 
-# ─── Stage all changes ────────────────────────────────────────────────────────
+# --- Stage all changes ---
 git add . 2>$null | Out-Null
 
 $stagedFiles = git diff --cached --name-only
 if (-not $stagedFiles) {
-    Write-Warn "Nothing staged — skipping commit."
+    Write-Warn "Nothing staged - skipping commit."
 }
 else {
 
-    # ─── Build prompt ─────────────────────────────────────────────────────────
+    # --- Build prompt ---
     Write-Section "Generating Commit Message via GitHub Models ($AI_MODEL)..."
 
     $stats = git diff --cached --stat | Out-String
@@ -82,7 +82,7 @@ Rules:
 - Format: type: description
 - type must be one of: feat, fix, docs, chore, refactor, test, perf, ci, build, style, revert
 - description: lowercase, present tense, no period at end, max 80 characters
-- Return ONLY the single commit message line — no explanation, no quotes, no XML tags, no preamble.
+- Return ONLY the single commit message line - no explanation, no quotes, no XML tags, no preamble.
 "@
 
     $requestBody = @{
@@ -92,7 +92,7 @@ Rules:
         temperature = 0
     } | ConvertTo-Json -Depth 5
 
-    # ─── API call with retry & backoff ────────────────────────────────────────
+    # --- API call with retry and backoff ---
     $commitMsg = $null
     $attempt   = 0
 
@@ -100,7 +100,7 @@ Rules:
 
         if ($attempt -gt 0) {
             $wait = $BACKOFF_SEC[$attempt - 1]
-            Write-Warn "Attempt $attempt/$MAX_RETRIES failed — retrying in ${wait}s..."
+            Write-Warn "Attempt $attempt/$MAX_RETRIES failed - retrying in ${wait}s..."
             Start-Sleep -Seconds $wait
         }
 
@@ -118,13 +118,13 @@ Rules:
 
             $raw = $response.choices[0].message.content.Trim()
 
-            # Direct match — ideal case
+            # Direct match - ideal case
             if ($raw -match $COMMIT_PATTERN) {
                 $commitMsg = $raw
                 break
             }
 
-            # Model sometimes wraps the message — scan all lines
+            # Model sometimes wraps the message - scan all lines
             $found = ($raw -split "`n") |
                 ForEach-Object { $_.Trim() } |
                 Where-Object   { $_ -match $COMMIT_PATTERN } |
@@ -135,7 +135,7 @@ Rules:
                 break
             }
 
-            Write-Warn "AI returned unexpected format: '$($raw.Substring(0, [Math]::Min(80,$raw.Length)))' — retrying..."
+            Write-Warn "AI returned unexpected format: '$($raw.Substring(0, [Math]::Min(80,$raw.Length)))' - retrying..."
         }
         catch {
             # Try to get HTTP status code (works for both PS5 WebException and PS7 HttpResponseException)
@@ -152,9 +152,9 @@ Rules:
                     exit 1
                 }
                 429 {
-                    # Rate limited — double the normal backoff
+                    # Rate limited - double the normal backoff
                     $wait = if ($attempt -lt $MAX_RETRIES) { $BACKOFF_SEC[$attempt] * 2 } else { 0 }
-                    Write-Warn "Rate limited (429) — waiting ${wait}s before retry..."
+                    Write-Warn "Rate limited (429) - waiting ${wait}s before retry..."
                     if ($wait -gt 0) { Start-Sleep -Seconds $wait }
                 }
                 default {
@@ -167,11 +167,11 @@ Rules:
         $attempt++
     }
 
-    # ─── Abort if AI unavailable ──────────────────────────────────────────────
+    # --- Abort if AI unavailable ---
     if (-not $commitMsg) {
         Write-Fail "GitHub Models API unavailable after $MAX_RETRIES retries."
         Write-Host ""
-        Write-Host "  Your files are staged (git add . already ran) — nothing is lost."
+        Write-Host "  Your files are staged (git add . already ran) - nothing is lost."
         Write-Host "  Re-run push.bat once the API is available and it will pick up from here."
         Write-Host ""
         exit 1
@@ -182,7 +182,7 @@ Rules:
     if ($LASTEXITCODE -ne 0) { Write-Fail "git commit failed."; exit 1 }
 }
 
-# ─── Push ─────────────────────────────────────────────────────────────────────
+# --- Push ---
 $toPush = 0
 if ($hasUpstream) {
     $toPush = [int](git rev-list --count "@{u}..HEAD" 2>$null)
@@ -204,10 +204,10 @@ else {
     if ($LASTEXITCODE -ne 0) { Write-Fail "git push failed."; exit 1 }
 }
 
-# ─── Final state ──────────────────────────────────────────────────────────────
+# --- Final state ---
 $final = git status --porcelain
 if ([string]::IsNullOrWhiteSpace($final)) {
-    Write-Ok "CLEAN — All done!"
+    Write-Ok "CLEAN - All done!"
 }
 else {
     Write-Host ""
