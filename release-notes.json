@@ -1,5 +1,16 @@
 [
     {
+        "version":  "2.5.4",
+        "title":  "New Features and Enhancements",
+        "changes":  [
+                        "Discover skills easily with the new Search Remote Skills chat modal.",
+                        "Favorite messages independently with the new is_favorite feature in your inbox.",
+                        "Enhance your project management with the improved kanban review cycle, now featuring completion reports and plan recaps.",
+                        "Quickly find skills with the added online search-skills functionality.",
+                        "Keep your workflow uninterrupted with options to launch the app on startup and stay awake while running."
+                    ]
+    },
+    {
         "version":  "2.5.3",
         "title":  "Improved Observability Features",
         "changes":  [
