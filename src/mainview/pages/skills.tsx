@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Sparkles, RefreshCw, FolderOpen, Pencil, Info, Wrench, AlertTriangle, Trash2, Package } from "lucide-react";
+import { Sparkles, RefreshCw, FolderOpen, Pencil, Info, Wrench, AlertTriangle, Trash2, Package, Search } from "lucide-react";
 import { useHeaderActions } from "@/lib/header-context";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { SkillsSearchChatModal } from "@/components/skills/skills-search-chat-modal";
 
 interface SkillValidationError {
   field: string;
@@ -306,6 +307,7 @@ export function SkillsPage() {
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null);
   const [errorsSkill, setErrorsSkill] = useState<SkillSummary | null>(null);
   const [toolsRefOpen, setToolsRefOpen] = useState(false);
+  const [searchChatOpen, setSearchChatOpen] = useState(false);
 
   const filteredSkills = useMemo(() => {
     if (!search.trim()) return skills;
@@ -330,6 +332,14 @@ export function SkillsPage() {
 
   useEffect(() => {
     loadSkills();
+  }, [loadSkills]);
+
+  // Auto-refresh the grid whenever the Search Remote Skills chat installs or
+  // otherwise changes a skill — no manual Refresh click needed.
+  useEffect(() => {
+    const onRegistryRefreshed = () => { loadSkills(); };
+    window.addEventListener("agentdesk:skills-chat-registry-refreshed", onRegistryRefreshed);
+    return () => window.removeEventListener("agentdesk:skills-chat-registry-refreshed", onRegistryRefreshed);
   }, [loadSkills]);
 
   const handleRefresh = useCallback(async () => {
@@ -384,6 +394,10 @@ export function SkillsPage() {
   useHeaderActions(
     () => (
       <>
+        <Button variant="outline" size="sm" onClick={() => setSearchChatOpen(true)}>
+          <Search className="h-3.5 w-3.5 mr-1.5" />
+          Search Remote Skills
+        </Button>
         <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
@@ -500,6 +514,10 @@ export function SkillsPage() {
         variant="destructive"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteSkill(null)}
+      />
+      <SkillsSearchChatModal
+        open={searchChatOpen}
+        onClose={() => setSearchChatOpen(false)}
       />
     </div>
   );

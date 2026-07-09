@@ -296,7 +296,7 @@ function makeShellTool(autoApprove: boolean) {
 
 const runShellTool = makeShellTool(false);
 
-/** Auto-approved shell tool for freelance contexts — no approval gate. */
+/** Auto-approved shell tool for freelance and skills-search chat contexts — no approval gate. */
 export const autoApprovedShellTool = makeShellTool(true);
 
 export const shellTools: Record<string, ToolRegistryEntry> = {

@@ -337,6 +337,27 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       "freelance.chat.stopped": (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:freelance-chat-stopped", { detail: payload }));
       },
+      "skillsChat.toolStart": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-tool-start", { detail: payload }));
+      },
+      "skillsChat.toolDone": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-tool-done", { detail: payload }));
+      },
+      "skillsChat.token": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-token", { detail: payload }));
+      },
+      "skillsChat.complete": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-complete", { detail: payload }));
+      },
+      "skillsChat.error": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-error", { detail: payload }));
+      },
+      "skillsChat.stopped": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-stopped", { detail: payload }));
+      },
+      "skillsChat.registryRefreshed": (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:skills-chat-registry-refreshed", { detail: payload }));
+      },
       "freelance.wizard.progress": (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:freelance-wizard-progress", { detail: payload }));
       },
@@ -1588,6 +1609,26 @@ export const rpc = {
   /** Stop the in-flight chat stream for a listing. */
   freelanceChatStop: (listingId: string) =>
     electroviewRpc.request["freelance.chat.stop"]({ listingId }),
+
+  /** Fetch all messages in the (in-memory, single global) Skills Search chat. */
+  getSkillsChatMessages: () =>
+    electroviewRpc.request["skillsChat.getMessages"]({}),
+
+  /** Send a Skills Search chat message and start streaming the AI response. */
+  sendSkillsChatMessage: (content: string) =>
+    electroviewRpc.request["skillsChat.sendMessage"]({ content }),
+
+  /** Regenerate the last assistant message in the Skills Search chat. */
+  regenerateSkillsChat: () =>
+    electroviewRpc.request["skillsChat.regenerate"]({}),
+
+  /** Clear the Skills Search chat conversation. */
+  clearSkillsChatMessages: () =>
+    electroviewRpc.request["skillsChat.clearMessages"]({}),
+
+  /** Stop the in-flight Skills Search chat stream. */
+  stopSkillsChat: () =>
+    electroviewRpc.request["skillsChat.stop"]({}),
 
   /** Start the "Find Workable Projects" wizard (fire-and-forget).
    *  Pass { count } for a one-shot run or { hours } to repeat every hour. */

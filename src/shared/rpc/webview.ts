@@ -374,6 +374,15 @@ export type WebviewSchema = RPCSchema<{
     "freelance.chat.error": { listingId: string; error: string };
     "freelance.chat.stopped": { listingId: string };
 
+    // Skills Search chat streaming (single global conversation — no id)
+    "skillsChat.toolStart": { toolCallId: string; toolName: string; toolInput: string; timeStart: string };
+    "skillsChat.toolDone": { toolCallId: string; toolName: string; toolOutput: string; isError: boolean; timeStart: string | null; timeEnd: string };
+    "skillsChat.token": { messageId: string; token: string };
+    "skillsChat.complete": { messageId: string; content: string };
+    "skillsChat.error": { error: string };
+    "skillsChat.stopped": Record<string, never>;
+    "skillsChat.registryRefreshed": Record<string, never>;
+
     // ── Playground (Artifacts-style page) ──
     playgroundRunStarted: { message: string };
     playgroundPart: {

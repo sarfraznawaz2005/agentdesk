@@ -1,6 +1,7 @@
 import * as pluginsRpc from "../rpc/plugins";
 import * as pluginExtensionsRpc from "../rpc/plugin-extensions";
 import * as skillsRpc from "../rpc/skills";
+import * as skillsChatRpc from "../rpc/skills-search-chat";
 import * as lspRpc from "../rpc/lsp";
 import * as dbViewerRpc from "../rpc/db-viewer";
 import * as mcpRpc from "../rpc/mcp";
@@ -29,6 +30,13 @@ export const handlers: Record<string, (params: any) => any> = {
 	openSkillsFolder: () => skillsRpc.openSkillsFolder(),
 	getAvailableTools: () => skillsRpc.getAvailableTools(),
 	deleteSkill: (params) => skillsRpc.deleteSkill(params.name),
+
+	// Skills Search Chat (human-facing chat wrapping the search-skills skill)
+	"skillsChat.getMessages": () => skillsChatRpc.getMessages(),
+	"skillsChat.sendMessage": (params) => skillsChatRpc.sendMessage(params),
+	"skillsChat.regenerate": () => skillsChatRpc.regenerate(),
+	"skillsChat.clearMessages": () => skillsChatRpc.clearMessages(),
+	"skillsChat.stop": () => skillsChatRpc.stopChat(),
 
 	// LSP
 	getLspStatus: () => lspRpc.getLspStatus(),

@@ -340,7 +340,7 @@ utilities for managing the skills directory.
 
 ### Layout
 
-- **Header**: "Skills" title + skill count + search/filter input + "Refresh" button + "Open Skills Folder" button
+- **Header**: "Skills" title + skill count + search/filter input + "Search Remote Skills" button + "Refresh" button + "Open Skills Folder" button
 - **Info banner**: Brief guide on skill format, `read_skill` usage, and inline "click here" link to Available Tools Reference dialog
 - **Available Tools Reference**: Dialog listing all agent tools grouped by category — helps users know valid names for the `allowed-tools` frontmatter field
 - **Skills grid**: 2-column card grid. Each card has:
@@ -349,6 +349,7 @@ utilities for managing the skills directory.
   - Click card body → opens **Skill Detail Dialog**
 - **Skill Detail Dialog**: Shows skill name, agent badge, description, tools (with semi-bold names), and full SKILL.md content rendered as formatted markdown
 - **Empty state**: Guidance message + "Open Skills Folder" button
+- **Search Remote Skills modal**: A chat window (same UX as Freelance Chat — streaming tokens, tool-call cards, stop/regenerate/clear/export, error bubble with retry) that lets a human, not just an agent, ask things like "find a skill for X". See "Search Remote Skills Chat" below.
 
 ### User Actions
 
@@ -362,6 +363,48 @@ utilities for managing the skills directory.
 | Edit a skill | Click pencil icon on skill card header — opens SKILL.md in OS default editor |
 | Delete a skill | Open skills folder in OS, delete the directory |
 | Refresh discovery | Click "Refresh" button on Skills page — re-reads skills folder |
+| Find/install a skill from skills.sh | Click "Search Remote Skills" button — opens a chat that follows the `search-skills` skill's instructions and refreshes the grid automatically after install |
+
+---
+
+## Search Remote Skills Chat
+
+A dedicated chat modal (`src/mainview/components/skills/skills-search-chat-modal.tsx`)
+opened from the Skills page's **Search Remote Skills** button. It gives a human
+the same capability agents already have via the bundled `search-skills` skill —
+"find a skill for X" or "is there a skill to do Y" — without needing to go
+through an agent conversation.
+
+Architecture (`src/bun/rpc/skills-search-chat.ts`):
+- **Not DB-persisted.** History lives in a module-level in-memory array — resets
+  on app restart or when the user clicks Clear. There is no per-entity key (one
+  global conversation), unlike Freelance Chat which persists per listing.
+- **Ad-hoc `streamText` loop**, not a kanban/engine-dispatched agent — same
+  pattern as Freelance Chat (`freelance-chat.ts`) and the Dashboard PM chatbot
+  (`dashboard.ts`). No new row in `seed.ts`.
+- **Tool subset**: the same read/web/process tools Freelance Chat exposes,
+  plus all four skill tools (`read_skill`, `read_skill_file`, `find_skills`,
+  `validate_skill`) and an **auto-approved** `run_shell`
+  (`autoApprovedShellTool` from `src/bun/agents/tools/shell.ts`) — needed
+  because the `search-skills` skill's own instructions run `npx skills find/add`.
+  The shell command itself isn't gated by the usual approval popup, but the
+  skill's own instructions require an explicit "should I install this?"
+  confirmation in the chat before anything is actually installed — the risky
+  step is still gated, just conversationally rather than via the OS popup.
+- **System prompt** points the agent at `find_skills` first, then
+  `read_skill("search-skills")` for anything not already installed, and
+  appends the normal compact skills listing (`buildSkillsDescriptionSection`)
+  so `search-skills` and `skill-creator` are visible.
+- **Auto-refresh**: after every completed turn, the handler unconditionally
+  calls `skillRegistry.reload()` and broadcasts `skillsChat.registryRefreshed`
+  — the Skills page listens for this and re-fetches the grid, so an installed
+  skill appears without a manual Refresh click.
+- **Streaming events**: `skillsChat.toolStart` / `toolDone` / `token` /
+  `complete` / `error` / `stopped` / `registryRefreshed`, wired through both
+  `src/mainview/lib/rpc.ts` (Electrobun native mode) and
+  `src/mainview/lib/remote-transport.ts` (web/remote mode) as
+  `agentdesk:skills-chat-*` DOM events — same dual-wiring every other
+  broadcast in the app needs.
 
 ---
 
@@ -379,6 +422,13 @@ skills: {
   openSkillsFolder: { params: {}; response: { success: boolean } };
   deleteSkill: { params: { name: string }; response: { success: boolean; error?: string } };
   getAvailableTools: { params: {}; response: Array<{ name: string; category: string; description: string }> };
+
+  // Search Remote Skills chat (single global, in-memory conversation)
+  "skillsChat.getMessages": { params: {}; response: { messages: SkillsChatMessageDto[] } };
+  "skillsChat.sendMessage": { params: { content: string }; response: { success: boolean; messageId: string } };
+  "skillsChat.regenerate": { params: {}; response: { success: boolean; messageId: string } };
+  "skillsChat.clearMessages": { params: {}; response: { success: boolean } };
+  "skillsChat.stop": { params: {}; response: { success: boolean } };
 }
 ```
 
@@ -392,6 +442,14 @@ skills: {
 - `openSkillsFolder()` — ensures directory exists (mkdirSync), opens in OS explorer
 - `deleteSkill(name)` — deletes a user-installed skill's directory via `registry.deleteSkill`; refuses bundled skills (returns `{ success: false, error }`)
 - `getAvailableTools()` — returns all agent tool definitions (name, category, description) for the UI reference dialog
+
+### Handlers (`src/bun/rpc/skills-search-chat.ts`)
+
+- `getMessages()` — returns the in-memory conversation history (no DB, no params)
+- `sendMessage({ content })` — appends the user message, kicks off a streaming `streamText` turn (fire-and-forget), returns the new assistant `messageId` immediately
+- `regenerate()` — drops the last assistant message and re-streams
+- `clearMessages()` — resets the in-memory history to `[]`
+- `stopChat()` — aborts the in-flight stream via the module's `AbortController`
 
 ---
 
@@ -410,10 +468,14 @@ src/bun/agents/tools/
 ├── skills.ts          # read_skill, read_skill_file, find_skills, validate_skill tools (all agents)
 src/bun/rpc/
 ├── skills.ts          # RPC handlers
+├── skills-search-chat.ts # Search Remote Skills chat — in-memory streamText loop
 src/shared/rpc/
-├── skills.ts          # RPC contract types
+├── skills.ts          # RPC contract types (+ SkillsChatMessageDto, skillsChat.* requests)
+├── webview.ts         # + skillsChat.* broadcast message shapes
 src/mainview/pages/
-├── skills.tsx         # Skills page (read-only listing)
+├── skills.tsx         # Skills page (read-only listing) + Search Remote Skills button
+src/mainview/components/skills/
+├── skills-search-chat-modal.tsx # Search Remote Skills chat modal (mirrors freelance-chat-modal.tsx)
 src/bun/agents/prompts.ts        # Compact skills listing in system prompts
 src/bun/agents/engine.ts         # PM tools include read_skill, find_skills
 src/bun/agents/agent-loop.ts     # Sub-agents get skill tools via toolRegistry

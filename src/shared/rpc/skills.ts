@@ -3,6 +3,13 @@ export type SkillValidationError = {
   message: string;
 };
 
+export interface SkillsChatMessageDto {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
 export type SkillsRequests = {
   getSkills: {
     params: Record<string, never>;
@@ -54,5 +61,25 @@ export type SkillsRequests = {
   getAvailableTools: {
     params: Record<string, never>;
     response: Array<{ name: string; category: string; description: string }>;
+  };
+  "skillsChat.getMessages": {
+    params: Record<string, never>;
+    response: { messages: SkillsChatMessageDto[] };
+  };
+  "skillsChat.sendMessage": {
+    params: { content: string };
+    response: { success: boolean; messageId: string };
+  };
+  "skillsChat.regenerate": {
+    params: Record<string, never>;
+    response: { success: boolean; messageId: string };
+  };
+  "skillsChat.clearMessages": {
+    params: Record<string, never>;
+    response: { success: boolean };
+  };
+  "skillsChat.stop": {
+    params: Record<string, never>;
+    response: { success: boolean };
   };
 };

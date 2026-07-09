@@ -2,14 +2,17 @@
 title: Skills System
 type: subsystem
 status: verified
-verified_at: 2026-07-06
+verified_at: 2026-07-10
 sources:
   - src/bun/skills/loader.ts
   - src/bun/skills/registry.ts
   - src/bun/agents/tools/skills.ts
   - src/bun/rpc/skills.ts
+  - src/bun/rpc/skills-search-chat.ts
   - src/bun/agents/prompts.ts
   - src/bun/index.ts
+  - src/mainview/pages/skills.tsx
+  - src/mainview/components/skills/skills-search-chat-modal.tsx
   - docs/skills.md
 tags: [skills]
 ---
@@ -161,6 +164,41 @@ All four are category `skills` and available to every agent (`tools/skills.ts:38
   lint checks: ≤500 body lines, no hardcoded absolute paths, warns on bloat files
   (`package.json`, `README.md`, …). Used after creating/editing a skill.
 
+## Human-facing bridge: Search Remote Skills chat
+
+The bundled `search-skills` skill (which shells out to `npx skills find/add`
+against the skills.sh ecosystem) was previously reachable only inside an agent
+conversation. `src/bun/rpc/skills-search-chat.ts` exposes the same capability
+directly to a human via a **Search Remote Skills** button on the Skills page
+(`src/mainview/pages/skills.tsx`), which opens a chat modal
+(`src/mainview/components/skills/skills-search-chat-modal.tsx`) built on the
+same streaming UX as Freelance Chat (tool-call cards, stop/regenerate/clear/
+export, error bubble with retry).
+
+Key design points, distinct from every other agent-run chat in the app:
+
+- **No DB persistence** — history is a single module-level in-memory array,
+  not a table. There is no per-entity key (unlike Freelance Chat, which is
+  keyed by `listingId`) — it is one global conversation that resets on app
+  restart or Clear.
+- **Not a seeded agent.** Same as Freelance Chat and the Dashboard PM chatbot:
+  an ad-hoc `streamText` loop with a hand-picked tool subset, no `agents` row,
+  no kanban/engine dispatch.
+- **`run_shell` is auto-approved** (`autoApprovedShellTool`,
+  `agents/tools/shell.ts`) — required because `search-skills`'s own
+  instructions run `npx skills find/add`. The OS-level approval popup is
+  skipped, but the skill's own instructions still require an explicit
+  in-chat "should I install this?" confirmation before anything is actually
+  installed — the risky step is gated conversationally instead.
+- **Auto-refreshing registry**: after every completed turn, the handler
+  unconditionally calls `skillRegistry.reload()` and broadcasts
+  `skillsChat.registryRefreshed`; the Skills page listens for this DOM event
+  and re-fetches the grid, so a newly installed skill appears without the
+  user clicking Refresh.
+- Also appends `buildSkillsDescriptionSection(false)` to its system prompt —
+  a fifth call site alongside the ones listed in the "Two prompt variants"
+  gotcha below.
+
 ## Key files
 
 | File | Role |
@@ -170,6 +208,8 @@ All four are category `skills` and available to every agent (`tools/skills.ts:38
 | `src/bun/agents/tools/skills.ts` | The four agent tools: `read_skill`, `read_skill_file`, `find_skills`, `validate_skill` |
 | `src/bun/agents/prompts.ts` | `buildSkillsDescriptionSection` — compact `## Available Skills` prompt block |
 | `src/bun/rpc/skills.ts` | RPC handlers for the read-only Skills UI page + refresh/open-folder |
+| `src/bun/rpc/skills-search-chat.ts` | Search Remote Skills chat — in-memory `streamText` loop wrapping `search-skills` |
+| `src/mainview/components/skills/skills-search-chat-modal.tsx` | Chat modal UI (mirrors `freelance-chat-modal.tsx`) |
 | `src/bun/index.ts:282` | One-time `skillRegistry.loadAll()` on startup |
 | `docs/skills.md` | Long-form spec + Claude Code compatibility matrix |
 
@@ -194,7 +234,8 @@ All four are category `skills` and available to every agent (`tools/skills.ts:38
   includes routing+delegation rules (PM `prompts.ts:973`, standard sub-agents
   `prompts.ts:1240`, scheduler task executor); `(false)` is the bare listing for
   the standalone hidden agents and custom-prompt agents (`prompts.ts:1170,1210`)
-  plus the freelance chat/wizard — keep all call sites in mind when editing the
+  plus the freelance chat/wizard and the Search Remote Skills chat
+  (`rpc/skills-search-chat.ts`) — keep all call sites in mind when editing the
   prompt copy.
 - **Removed legacy fields.** `disable-model-invocation`, `user-invocable`,
   `_activeSkill`, and keyword `matchForAgent()` auto-matching no longer exist
