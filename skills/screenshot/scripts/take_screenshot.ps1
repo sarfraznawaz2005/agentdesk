@@ -56,7 +56,7 @@ function Resolve-OutputPath {
 
   if ($Mode -eq "temp") {
     $tmp = [System.IO.Path]::GetTempPath()
-    return Join-Path $tmp (New-DefaultFilename "codex-shot")
+    return Join-Path $tmp (New-DefaultFilename "agentdesk-shot")
   }
 
   $dest = Get-DefaultDirectory

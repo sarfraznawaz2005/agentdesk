@@ -695,7 +695,10 @@ export function buildSkillsDescriptionSection(includeAgentRules = true): string 
 		"2. The response includes a list of supporting files (docs, scripts, references) with full paths",
 		"3. When the skill instructions reference a file (e.g. markdown links like `[docx-js.md](docx-js.md)`), use `read_skill_file` with the matching full path from the supporting files list",
 		"4. Follow the loaded instructions for the task at hand",
-		"Use `find_skills` with a keyword if you need to search for skills.",
+		"Use `find_skills` with a keyword to search skills already installed above — it does NOT reach",
+		"any external catalog. An empty result means nothing installed matches, not that no skill exists",
+		"anywhere: before telling the user a capability isn't available, check whether one of the skills",
+		"listed above is itself for discovering/installing more skills from outside AgentDesk, and read it.",
 	];
 
 	const agentRules = includeAgentRules ? [

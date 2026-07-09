@@ -173,15 +173,22 @@ export const skillTools: Record<string, ToolRegistryEntry> = {
 		category: "skills",
 		tool: tool({
 			description:
-				"Search for skills by keyword. Returns matching skill names and descriptions. " +
-				"Use this to discover skills beyond the compact listing in your system prompt.",
+				"Search skills ALREADY INSTALLED in AgentDesk (bundled + user skills) by keyword. " +
+				"Returns matching skill names and descriptions. This does NOT search any external " +
+				"catalog or ecosystem — it only covers what's on this machine right now. If it returns " +
+				"nothing, that means no *installed* skill matches, not that no skill exists anywhere: " +
+				"check whether an installed skill's own job is discovering/installing more skills from " +
+				"outside AgentDesk before concluding the capability isn't available.",
 			inputSchema: z.object({
 				query: z.string().describe("Search keyword(s)"),
 			}),
 			execute: async (args) => {
 				const matches = skillRegistry.search(args.query);
 				if (matches.length === 0) {
-					return JSON.stringify({ results: [], message: `No skills found matching "${args.query}"` });
+					return JSON.stringify({
+						results: [],
+						message: `No installed skill matches "${args.query}". This only searched skills already installed in AgentDesk — it does not mean no skill exists. If this is a specialized/uncommon capability, check the Available Skills list for one whose job is finding and installing skills from outside AgentDesk.`,
+					});
 				}
 				return JSON.stringify({
 					results: matches.map((s) => ({

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-platform screenshot helper for Codex skills."""
+"""Cross-platform screenshot helper."""
 
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ MAC_PERM_SCRIPT = SCRIPT_DIR / "macos_permissions.swift"
 MAC_PERM_HELPER = SCRIPT_DIR / "ensure_macos_permissions.sh"
 MAC_WINDOW_SCRIPT = SCRIPT_DIR / "macos_window_info.swift"
 MAC_DISPLAY_SCRIPT = SCRIPT_DIR / "macos_display_info.swift"
-TEST_MODE_ENV = "CODEX_SCREENSHOT_TEST_MODE"
-TEST_PLATFORM_ENV = "CODEX_SCREENSHOT_TEST_PLATFORM"
-TEST_WINDOWS_ENV = "CODEX_SCREENSHOT_TEST_WINDOWS"
-TEST_DISPLAYS_ENV = "CODEX_SCREENSHOT_TEST_DISPLAYS"
+TEST_MODE_ENV = "AGENTDESK_SCREENSHOT_TEST_MODE"
+TEST_PLATFORM_ENV = "AGENTDESK_SCREENSHOT_TEST_PLATFORM"
+TEST_WINDOWS_ENV = "AGENTDESK_SCREENSHOT_TEST_WINDOWS"
+TEST_DISPLAYS_ENV = "AGENTDESK_SCREENSHOT_TEST_DISPLAYS"
 TEST_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
     b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0cIDAT\x08\xd7c"
@@ -167,7 +167,7 @@ def resolve_output_path(
 
     if mode == "temp":
         tmp_dir = Path(tempfile.gettempdir())
-        tmp_path = tmp_dir / default_filename(fmt, prefix="codex-shot")
+        tmp_path = tmp_dir / default_filename(fmt, prefix="agentdesk-shot")
         ensure_parent(tmp_path)
         return tmp_path
 
@@ -198,7 +198,7 @@ def run(cmd: list[str]) -> None:
 
 
 def swift_json(script: Path, extra_args: list[str] | None = None) -> dict:
-    module_cache = Path(tempfile.gettempdir()) / "codex-swift-module-cache"
+    module_cache = Path(tempfile.gettempdir()) / "agentdesk-swift-module-cache"
     module_cache.mkdir(parents=True, exist_ok=True)
     cmd = ["swift", "-module-cache-path", str(module_cache), str(script)]
     if extra_args:
@@ -228,10 +228,6 @@ def macos_screen_capture_granted(request: bool = False) -> bool:
 
 
 def ensure_macos_permissions() -> None:
-    if os.environ.get("CODEX_SANDBOX"):
-        raise SystemExit(
-            "screen capture checks are blocked in the sandbox; rerun with escalated permissions"
-        )
     if macos_screen_capture_granted():
         return
     subprocess.run(["bash", str(MAC_PERM_HELPER)], check=False)
