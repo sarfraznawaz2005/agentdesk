@@ -297,8 +297,8 @@ export async function executeTask(
 				};
 
 				// Resolve the base system prompt. "project-manager" has no row in the
-				// agents table (it's virtual — see project-wiki/reference/agent-roster.md)
-				// so it gets the REAL PM prompt via getPMSystemPrompt instead, which also
+				// agents table (it's virtual) so it gets the REAL PM prompt via
+				// getPMSystemPrompt instead, which also
 				// yields working run_agent/run_agents_parallel dispatch tools below —
 				// getPMSystemPrompt already appends its own skills + MCP sections, so
 				// skip the separate build for this branch to avoid duplicating them.

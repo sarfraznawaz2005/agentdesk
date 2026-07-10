@@ -3,7 +3,7 @@
 > ✅ **STATUS: IMPLEMENTED (as of 2026-06).** Shipped under `src/bun/issue-fixer/` (poller, triggers,
 > orchestrator, shell-guard, github, config, notify), UI in `src/mainview/components/issue-fixer/`, the
 > `issue_fixer_config`/`issue_fix_runs` tables, and the hidden `issue-fixer` agent. This is the original
-> plan; the code is the source of truth. See `project-wiki/subsystems/issue-fixer.md`.
+> plan; the code is the source of truth.
 > **Scope:** GitHub only (Phase 1 = everything described here; nothing is deferred unless marked *skip-if-infeasible*).
 
 ---

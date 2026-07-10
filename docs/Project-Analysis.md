@@ -4,7 +4,7 @@
 > (freelance/Auto-Earn, issue-fixer, multi-source issues, remote-sync, playground, mcp,
 > notifications, annotations, claude, lib, rpc-groups) and stops at migration ~v10 of 43.
 > The core architecture sections still hold, but counts and structure are out of date.
-> Current source of truth: `project-wiki/` (`overview.md` + `reference/directory-map.md`).
+> Check the current code for up-to-date structure.
 
 Comprehensive analysis of the AgentDesk AI-powered development platform.
 

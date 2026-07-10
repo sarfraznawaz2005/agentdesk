@@ -283,4 +283,4 @@ The **core works fully**; a bounded set of **native-desktop-bound features** mus
 
 ---
 
-*Related: [`mobile-app-prd.md`](./mobile-app-prd.md) (the alternative route) · `docs/prd.md` · `docs/workflow.md` · `project-wiki/subsystems/frontend-pages.md` · `project-wiki/subsystems/rpc-layer.md` · `project-wiki/flows/message-streaming-broadcasts.md`.*
+*Related: [`mobile-app-prd.md`](./mobile-app-prd.md) (the alternative route) · `docs/prd.md` · `docs/workflow.md`.*

@@ -274,4 +274,4 @@ The mobile app is **intentionally curated**, not full-parity. The following desk
 
 ---
 
-*Related: [`web-app-prd.md`](./web-app-prd.md) (the alternative route) · `docs/prd.md` · `docs/workflow.md` · `project-wiki/flows/message-streaming-broadcasts.md` · `project-wiki/flows/plan-approve-execute.md`.*
+*Related: [`web-app-prd.md`](./web-app-prd.md) (the alternative route) · `docs/prd.md` · `docs/workflow.md`.*

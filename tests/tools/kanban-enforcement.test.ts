@@ -5,9 +5,8 @@
  * enforced entirely inside src/bun/agents/tools/kanban.ts's tool execute()
  * bodies — not by convention, not by DB constraint. tests/rpc/kanban.test.ts
  * and tests/db/kanban.test.ts only exercise the underlying CRUD/move RPCs
- * (plain column writes with no guard), so the actual invariants documented in
- * project-wiki/reference/conventions-constraints.md ("Kanban flow
- * enforcement") had no dedicated test:
+ * (plain column writes with no guard), so the actual kanban-flow-enforcement
+ * invariants had no dedicated test:
  *
  *   - move_task cannot skip backlog -> review directly
  *   - move_task cannot move a task back out of "done"

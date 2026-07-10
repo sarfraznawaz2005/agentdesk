@@ -6,8 +6,7 @@
 > no longer describes the shipped system. Notably, the `WorkflowEngine` state machine
 > central to this document was **never built** (the PM is the sole orchestrator); the
 > DB schema, agent roster, provider list, tool names, and "single v1 migration" claims
-> are all out of date. For current architecture see `project-wiki/overview.md` +
-> `docs/workflow.md`; for the verified structure see `project-wiki/reference/directory-map.md`.
+> are all out of date. For current architecture see `docs/workflow.md`.
 > Kept for historical/product context only.
 
 ---

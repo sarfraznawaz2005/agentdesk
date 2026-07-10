@@ -22,8 +22,6 @@
 		"lint:fix": "eslint src/ --fix",
 		"format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
 		"format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-		"wiki:check": "bun scripts/wiki-check.mjs",
-		"wiki:mark-stale": "bun scripts/wiki-check.mjs --mark",
 		"prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
 	},
 	"dependencies": {

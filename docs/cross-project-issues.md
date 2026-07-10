@@ -11,8 +11,6 @@
 > This doc is a durable reference for every bug of this shape found and fixed
 > across two related work sessions (2026-07-04 → 2026-07-05), so future
 > agents recognize the pattern instead of rediscovering it from scratch.
-> See also [[frontend-stores]], [[backend-core]], [[message-streaming-broadcasts]],
-> and the `broadcast-method-name-mismatch` gotcha in the project wiki.
 
 ---
 

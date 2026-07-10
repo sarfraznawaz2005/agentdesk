@@ -1,29 +1,7 @@
 # AGENTS.md — AgentDesk
 
-> **MANDATORY FIRST ACTION — NO EXCEPTIONS**
-> Read `project-wiki/index.md` before ANY response to a coding task, question,
-> or request, then open the specific page(s) it points to. This is not optional.
-> The wiki is the project's knowledge base — it explains **how** subsystems work
-> and **why** they are built that way, with `file:line` anchors back to the code.
-> `project-wiki/reference/directory-map.md` is the "where does X live?" lookup.
-> See `project-wiki/WIKI.md` for the wiki's structure and the
-> **ingest / query / lint** protocol (query the wiki first; when you learn
-> something durable, write it back; flag/fix stale pages as code changes).
-
-> **MANDATORY LAST ACTION — AFTER ANY CODE CHANGE, NO EXCEPTIONS**
-> Before you consider a coding task done, update the `project-wiki/` page(s) that
-> document the code you touched — in the SAME change — and bump their `verified_at`
-> to today's date. Code and its wiki page travel together; a code change is not
-> complete until its page reflects reality. If you added a new subsystem/flow/
-> decision/gotcha, create the page and link it from `project-wiki/index.md`.
-> Then run `bun run wiki:check` and confirm it reports **no stale pages and no
-> missing sources** for what you changed. The `.githooks/pre-commit` hook lists
-> which pages your staged change touches — treat that list as your update checklist.
-> "I'll update the wiki later" is not acceptable: later never comes and the next
-> agent inherits a lie.
-
 > This file is the **map**, not the manual. It orients AI agents quickly and
-> points to the deeper sources of truth (chiefly the `project-wiki/`).
+> points to the deeper sources of truth (`docs/prd.md`, `docs/workflow.md`).
 > Keep it short and current.
 
 ---
@@ -43,8 +21,6 @@ Motto: **99% agent-driven. Humans approve, deploy, and communicate.**
 
 | Document | What It Contains |
 |---|---|
-| `project-wiki/index.md` | **The knowledge base** — catalog of subsystem/flow/decision/gotcha/reference pages. Start here. |
-| `project-wiki/overview.md` | 10,000-ft architecture narrative |
 | `docs/prd.md` | Full product requirements — features, DB schema overview, agent definitions, built-in tools and skills |
 | `docs/workflow.md` | End-to-end workflow architecture — message flow, approval gate, tool reference, key file map |
 
@@ -67,8 +43,7 @@ Motto: **99% agent-driven. Humans approve, deploy, and communicate.**
 
 ## Repository Layout
 
-> High-level map. The authoritative, file-by-file index (kept verified against
-> the code) lives in `project-wiki/reference/directory-map.md`.
+> High-level map. See `docs/workflow.md` for the verified key file map.
 
 ```
 src/
@@ -84,16 +59,13 @@ src/
 
 The four wiring anchors — trace any feature from here: `src/bun/index.ts` (lifecycle),
 `src/bun/rpc-registration.ts` (RPC server), `src/mainview/main.tsx` (webview root),
-`src/mainview/lib/rpc.ts` (the only React→Bun path). Full per-file detail:
-**`project-wiki/reference/directory-map.md`** + the relevant `project-wiki/subsystems/*` page.
+`src/mainview/lib/rpc.ts` (the only React→Bun path).
 
 ---
 
 ## Agent Orchestration
 
-> Operating-model summary (the agent needs this every turn). Mechanism detail:
-> `project-wiki/subsystems/agent-engine.md`, `project-wiki/flows/*`, and
-> `project-wiki/decisions/pm-sole-orchestrator.md`.
+> Operating-model summary (the agent needs this every turn). Mechanism detail: `docs/workflow.md`.
 
 - **PM is the sole orchestrator** — classifies requests, plans, dispatches agents, manages kanban directly. There is NO separate WorkflowEngine state machine. (`AgentEngine` in `src/bun/agents/engine.ts`; one engine per project via `EngineManager` in `src/bun/engine-manager.ts`.)
 - **Plan → Approve → Execute**: PM calls `request_plan_approval` (plan card in chat), user approves, PM calls `create_tasks_from_plan`, then dispatches via `run_agent`.
@@ -103,15 +75,11 @@ The four wiring anchors — trace any feature from here: `src/bun/index.ts` (lif
 - **Inline Agent Execution**: sub-agents run inline in the main conversation (fresh context = system prompt + task), tool calls visible as message parts; `handoff.ts` summaries chain sequential tasks.
 - **Feature Branch Workflow**: PM calls `set_feature_branch` (AI-named) before dispatch; `autoCommitTask` (in `review-cycle.ts`) switches/creates the branch before committing.
 - **Context & caching**: progressive compaction at 60/70/85/90% of `getContextLimit(modelId)`, no iteration cap; Anthropic/OpenRouter system prompts use cache-control metadata.
-- **Playground** (`src/bun/playground/`): isolated Artifacts-style live-preview builder driven by the `playground-agent`, fully decoupled from the PM/kanban/review paths. Detail: `project-wiki/subsystems/playground.md`.
+- **Playground** (`src/bun/playground/`): isolated Artifacts-style live-preview builder driven by the `playground-agent`, fully decoupled from the PM/kanban/review paths.
 
 ---
 
 ## Database Tables (schema: `src/bun/db/schema.ts`)
-
-> Full per-table reference (every table, purpose, key columns, deprecated/dropped status):
-> **`project-wiki/reference/database-tables.md`**. The Auto-Earn/freelance data model and
-> its bot-avoidance design are detailed in `project-wiki/subsystems/freelance-autoearn.md`.
 
 Operational essentials:
 
@@ -125,8 +93,7 @@ Operational essentials:
 
 ## Built-in Agent Roster (`src/bun/db/seed.ts`)
 
-> Full roster (every agent: name, display name, read-only?, role + the hidden/special
-> agents) is in **`project-wiki/reference/agent-roster.md`**. Operational essentials:
+Operational essentials:
 
 - **`project-manager`** is the orchestrator (talks to humans, dispatches sub-agents).
 - **Read-only agents** (parallelizable via `run_agents_parallel`): `code-explorer`, `research-expert`, `task-planner`. All other roles (architect, backend/frontend/mobile/ml engineer, db-expert, api-designer, qa, devops, code-reviewer, debugging/performance/security/refactoring specialists, ui-ux, data-engineer, documentation) are write agents that run sequentially.
@@ -241,7 +208,7 @@ Turn tasks into verifiable goals and loop until they're met, rather than stoppin
 - Email restriction (see global `~/.claude/CLAUDE.md` for the full rule): never use `eteamid@gmail.com`, `sarfraz@onsupport.com`, or any "eteam" address; ask which email to use whenever a task requires one.
 - Commits follow Conventional Commits style. Never commit without user confirmation unless the user or project scope has already explicitly authorized it.
 - This app has **existing users** — every feature or change must keep working for existing users, not just new ones.
-- Keep `CLAUDE.md`, the `project-wiki/` pages, and `docs/workflow.md` updated whenever they deviate from current code (see the wiki protocol at the top of this file).
+- Keep `CLAUDE.md` and `docs/workflow.md` updated whenever they deviate from current code.
 
 ---
 

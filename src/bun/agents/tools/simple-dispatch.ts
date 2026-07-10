@@ -7,7 +7,7 @@
 // here — a single generateText call runs once. So dispatch is BLOCKING:
 // execute() awaits runInlineAgent() to completion and returns the result
 // directly as the tool's output, letting the same generateText stopWhen loop
-// continue. See project-wiki/subsystems/agent-tools.md for the full writeup.
+// continue.
 import { tool, type Tool } from "ai";
 import { z } from "zod";
 import { eq } from "drizzle-orm";

@@ -5,7 +5,6 @@
 > RSS** (`src/bun/freelance/rss-fetcher.ts`) — NOT Upwork, and NOT the official platform APIs described
 > below. "Upwork" survives only as a vestigial label. Discovery/shortlist/per-listing chat are live; the
 > act layer (inbox sync, bidding, replies) is the **Auto-Earn** engine (`docs/auto-earn-plan.md`).
-> Current source of truth: `project-wiki/subsystems/freelance-autoearn.md`.
 
 ## 1. Overview
 

@@ -19,7 +19,7 @@ import type { Subprocess } from "bun";
 // was discarded. Fixed by passing the flag as an unambiguous positive decimal
 // literal (2147483651) instead of hex, cast to [uint32] explicitly. Verified
 // end-to-end: `powercfg /requests` shows powershell.exe under DISPLAY and
-// SYSTEM while this is running. See project-wiki/subsystems/system-integration.md.
+// SYSTEM while this is running.
 // Every branch is best-effort: failures are logged, never thrown, since this
 // is a nice-to-have toggle that must never block app boot or a settings save.
 // ---------------------------------------------------------------------------

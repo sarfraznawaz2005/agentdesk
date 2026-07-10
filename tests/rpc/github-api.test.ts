@@ -2,8 +2,7 @@
  * github-api.test.ts
  *
  * src/bun/rpc/github-api.ts is the single choke point for GitHub authentication
- * across the app (Git tab, Issue Fixer, PR tools). project-wiki's
- * conventions-constraints.md and the [[github-token-auth]] ADR document it as
+ * across the app (Git tab, Issue Fixer, PR tools). CLAUDE.md documents it as
  * a "hard-won rule": embedding a token in a git remote URL while Git Credential
  * Manager is active makes git STORE an account and pop an interactive
  * "Select an account" dialog on the user's own future pushes — fatal for
