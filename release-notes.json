@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.5.5",
+        "title":  "Enhanced Search Skills Documentation",
+        "changes":  [
+                        "Improved documentation for search skills to help users better utilize this feature.",
+                        "Updated the list of allowed tools for enhanced functionality."
+                    ]
+    },
+    {
         "version":  "2.5.4",
         "title":  "New Features and Enhancements",
         "changes":  [
