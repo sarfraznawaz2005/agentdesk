@@ -103,27 +103,10 @@ function stopJob(jobId: string): void {
 export async function initCronScheduler(): Promise<void> {
 	const jobs = await db.select().from(cronJobs).where(eq(cronJobs.enabled, 1));
 
+	// Missed schedules are intentionally NOT caught up — a schedule only fires
+	// while the app is running. If the app was closed at the scheduled time,
+	// that occurrence is simply skipped; only future fires from here on matter.
 	for (const job of jobs) {
-		// Missed task recovery: if the next scheduled fire after lastRunAt is in
-		// the past, at least one run was missed. previousRun() is unreliable on
-		// paused instances; using nextRun(lastRan) is always computable.
-		if (job.lastRunAt) {
-			try {
-				const checker = new Cron(job.cronExpression, { timezone: job.timezone, paused: true });
-				const lastRan = new Date(job.lastRunAt);
-				const nextAfterLast = checker.nextRun(lastRan);
-				checker.stop();
-				if (nextAfterLast && nextAfterLast < new Date()) {
-					console.log(`[CronScheduler] Missed run for "${job.name}", firing now`);
-					runJob(job.id).catch((err) => {
-						console.error(`[CronScheduler] Error on missed recovery for ${job.name}:`, err);
-					});
-				}
-			} catch {
-				// Skip recovery if expression is invalid
-			}
-		}
-
 		startJob(job);
 	}
 

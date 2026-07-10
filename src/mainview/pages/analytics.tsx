@@ -302,6 +302,93 @@ function TokenBarChart({
   );
 }
 
+// -- Conversation view for the Messages tab (parses the raw JSON messages
+// array into role-colored cards instead of a flat JSON dump) --
+
+type MessageContentPart = { type: string; [key: string]: unknown };
+interface ParsedMessage { role: string; content: string | MessageContentPart[]; }
+
+const ROLE_STYLES: Record<string, { label: string; badge: string; container: string }> = {
+  user: { label: "User", badge: "bg-indigo-600 text-white", container: "border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/20" },
+  assistant: { label: "Assistant", badge: "bg-emerald-600 text-white", container: "border-border bg-background" },
+  tool: { label: "Tool", badge: "bg-amber-500 text-white", container: "border-amber-200 dark:border-amber-700/50 bg-amber-50/40 dark:bg-amber-950/20" },
+  system: { label: "System", badge: "bg-gray-500 text-white", container: "border-border bg-muted/30" },
+};
+
+function roleStyle(role: string) {
+  return ROLE_STYLES[role] ?? { label: role, badge: "bg-gray-400 text-white", container: "border-border bg-muted/20" };
+}
+
+function stringifyValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+}
+
+function MessagePartView({ part }: { part: MessageContentPart }) {
+  switch (part.type) {
+    case "text":
+      return <p className="whitespace-pre-wrap break-words">{String(part.text ?? "")}</p>;
+    case "reasoning":
+      return <div className="italic text-muted-foreground whitespace-pre-wrap break-words">{String(part.text ?? stringifyValue(part))}</div>;
+    case "tool-call":
+      return (
+        <div className="rounded-md border border-border bg-muted/40 px-2.5 py-2 font-mono text-[11px]">
+          <div className="font-semibold text-foreground/80 mb-1">🔧 {String(part.toolName ?? "tool")}</div>
+          <pre className="whitespace-pre-wrap break-words">{stringifyValue(part.input ?? part.args)}</pre>
+        </div>
+      );
+    case "tool-result":
+      return (
+        <div className="rounded-md border border-border bg-muted/40 px-2.5 py-2 font-mono text-[11px]">
+          <div className="font-semibold text-foreground/80 mb-1">↩ {String(part.toolName ?? "result")}</div>
+          <pre className="whitespace-pre-wrap break-words">{stringifyValue(part.output ?? part.result)}</pre>
+        </div>
+      );
+    default:
+      return <pre className="whitespace-pre-wrap break-words font-mono text-[11px]">{stringifyValue(part)}</pre>;
+  }
+}
+
+function ConversationView({ raw }: { raw: string }) {
+  let parsed: ParsedMessage[] | null = null;
+  try {
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) parsed = data as ParsedMessage[];
+  } catch { /* fall back to raw below */ }
+
+  if (!parsed) {
+    return (
+      <pre className="text-xs font-mono whitespace-pre-wrap break-words p-3 bg-muted/30 rounded-md select-all leading-relaxed">
+        {raw}
+      </pre>
+    );
+  }
+
+  return (
+    <div className="space-y-3 p-3">
+      {parsed.map((msg, i) => {
+        const style = roleStyle(msg.role);
+        return (
+          <div key={i} className={`rounded-lg border p-3 ${style.container}`}>
+            <span className={`inline-block text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded mb-2 ${style.badge}`}>
+              {style.label}
+            </span>
+            <div className="text-xs leading-relaxed space-y-2">
+              {typeof msg.content === "string" ? (
+                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+              ) : Array.isArray(msg.content) ? (
+                msg.content.map((part, j) => <MessagePartView key={j} part={part} />)
+              ) : (
+                <pre className="whitespace-pre-wrap break-words font-mono text-[11px]">{stringifyValue(msg.content)}</pre>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // -- Prompt detail dialog --
 
 function PromptDetailDialog({
@@ -330,7 +417,7 @@ function PromptDetailDialog({
 
   return (
     <Dialog open={!!entry} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: entry ? agentColor(entry.agent) : DEFAULT_COLOR }} />
@@ -368,11 +455,9 @@ function PromptDetailDialog({
             <div className="flex items-center justify-center h-32"><p className="text-sm text-muted-foreground">Loading...</p></div>
           ) : full ? (
             tab === "messages" ? (
-              <pre className="text-xs font-mono whitespace-pre-wrap break-words p-3 bg-muted/30 rounded-md select-all leading-relaxed">
-                {full.messages}
-              </pre>
+              <ConversationView raw={full.messages} />
             ) : (
-              <pre className="text-xs font-mono whitespace-pre-wrap break-words p-3 bg-muted/30 rounded-md select-all leading-relaxed">
+              <pre className="text-xs font-mono whitespace-pre p-3 bg-muted/30 rounded-md select-all leading-relaxed">
                 {full.systemPrompt}
               </pre>
             )

@@ -1138,7 +1138,6 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		let pendingStuckWarning: string | null = null;
 
 	try {
-		await logPrompt(agentName, systemPrompt, agentMessages, effectiveModelId);
 		const toolCount = Object.keys(tools).length;
 		logAgent(`${agentName} START | model=${effectiveModelId} | contextLimit=${CONTEXT_LIMIT} | tools=${toolCount} | systemPromptChars=${systemPrompt.length} | task=${task.slice(0, 120)}`);
 
@@ -1409,6 +1408,10 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		const filesModified = fileTracker.getModifiedFiles();
 		const summary = result.text || "(completed via tool calls)";
 
+		// Log task + final answer together so Analytics' Messages tab shows the
+		// full exchange, not just what was asked.
+		await logPrompt(agentName, systemPrompt, [...agentMessages, { role: "assistant", content: summary }], effectiveModelId);
+
 		// --- 9. Insert agent_end part ---
 		const endTime = new Date().toISOString();
 		const endPart: MessagePart = {
@@ -1498,6 +1501,10 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			await new Promise(r => setTimeout(r, delay));
 			continue retry;
 		}
+
+		// Log task + failure reason together, same as the success path above —
+		// giving up for real (not retrying), so this is the terminal outcome.
+		await logPrompt(agentName, systemPrompt, [...agentMessages, { role: "assistant", content: summary }], effectiveModelId);
 
 		// Insert agent_end error part
 		const endPart: MessagePart = {

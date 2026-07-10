@@ -44,6 +44,7 @@ const {
 	shutdownCronScheduler,
 	getNextRuns,
 	refreshJob,
+	triggerJobNow,
 } = await import("../../src/bun/scheduler/cron-scheduler");
 
 // -------------------------------------------------------------------------
@@ -128,18 +129,20 @@ describe("getNextRuns", () => {
 	});
 });
 
-describe("initCronScheduler — missed run recovery", () => {
-	it("fires a job that missed its last scheduled run", async () => {
-		// Hourly job whose last run was 2 hours ago — it definitely missed a fire.
+describe("initCronScheduler — missed runs are not replayed", () => {
+	it("does NOT fire a job that missed its last scheduled run", async () => {
+		// Hourly job whose last run was 2 hours ago — it definitely missed a fire
+		// while the app was closed. Schedules only fire while the app is running,
+		// so a missed occurrence must stay missed, not be replayed on startup.
 		const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
 		const id = insertJob({ cronExpression: "0 * * * *", lastRunAt: twoHoursAgo });
 
 		await initCronScheduler();
 
-		// Allow the async runJob call to settle.
+		// Allow any (unexpected) async runJob call to settle.
 		await new Promise((r) => setTimeout(r, 100));
 
-		expect(mockExecuteTask.mock.calls.length).toBeGreaterThanOrEqual(1);
+		expect(mockExecuteTask.mock.calls.length).toBe(0);
 		shutdownCronScheduler();
 	});
 
@@ -192,12 +195,10 @@ describe("one-shot job deletion", () => {
 
 		const id = insertJob({ cronExpression: "* * * * *", oneShot: 1 });
 
-		// Directly invoke the internal runJob logic by triggering initCronScheduler
-		// and waiting for the missed-run recovery path (set lastRunAt to 2 hours ago).
-		// Use the missed-recovery path to synchronously run the job.
-		testSqlite.exec(`UPDATE cron_jobs SET last_run_at = '${new Date(Date.now() - 2 * 3600 * 1000).toISOString()}' WHERE id = '${id}'`);
-
 		await initCronScheduler();
+		// Startup no longer replays missed runs, so fire it directly via the same
+		// path the "run now" UI action uses.
+		await triggerJobNow(id);
 		await new Promise((r) => setTimeout(r, 200));
 
 		const job = getJob(id);
@@ -209,16 +210,16 @@ describe("one-shot job deletion", () => {
 
 describe("job history", () => {
 	it("creates a history entry for each job execution", async () => {
-		const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
-		const id = insertJob({ cronExpression: "0 * * * *", lastRunAt: twoHoursAgo });
+		const id = insertJob({ cronExpression: "0 * * * *" });
 
 		await initCronScheduler();
+		// Startup no longer replays missed runs, so fire it directly via the same
+		// path the "run now" UI action uses.
+		await triggerJobNow(id);
 		await new Promise((r) => setTimeout(r, 200));
 
-		// One-shot jobs delete their history. For regular jobs, history should exist.
-		// (history is only deleted for one-shot jobs).
-		// At least one execute call was made.
 		expect(mockExecuteTask.mock.calls.length).toBeGreaterThanOrEqual(1);
+		expect(getHistory(id).length).toBeGreaterThanOrEqual(1);
 		shutdownCronScheduler();
 	});
 });

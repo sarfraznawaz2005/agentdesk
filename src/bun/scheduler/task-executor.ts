@@ -9,6 +9,7 @@ import { getDefaultModel } from "../providers/models";
 import { createProviderAdapter } from "../providers";
 import { broadcastToWebview, registerAgentController, unregisterAgentController } from "../engine-manager";
 import type { MessagePart } from "../agents/agent-loop";
+import { logPrompt } from "../agents/prompt-logger";
 
 export type TaskType = "pm_prompt" | "reminder" | "shell" | "webhook" | "agent_task" | "agent_task_simple" | "send_channel_message";
 
@@ -131,7 +132,6 @@ export async function executeTask(
 					const { id: convId } = await createConversation(projectId, "Scheduled agent task");
 					// Notify frontend so the new conversation appears in the sidebar
 					broadcastToWebview("conversationUpdated", { conversationId: convId, updatedAt: new Date().toISOString(), projectId });
-					console.log(`[SCHEDULER→PM] Dispatching agent_task to PM project=${projectId} conversation=${convId} instructionsPreview="${instructions.slice(0, 150).replace(/\n/g, " ")}"`);
 					await engineResolver(projectId).sendMessage(convId, instructions);
 				} else {
 					// Run the specified agent directly via runInlineAgent
@@ -365,7 +365,6 @@ export async function executeTask(
 						};
 					}
 					allTools = wrapToolsWithCallLogging(allTools, agentId);
-					console.log(`[SCHEDULER→AGENT_SIMPLE] Running project-less agent=${agentId} job="${jobName}" toolCount=${Object.keys(allTools).length}`);
 
 					const result = await generateText({
 						model: adapter.createModel(modelId),
@@ -390,6 +389,15 @@ export async function executeTask(
 						unregisterAgentController(simpleProjectId, simpleAbortController);
 					}
 				}
+
+				// Log task + final answer together so Analytics' Messages tab shows the
+				// full exchange, not just what was asked.
+				await logPrompt(
+					`${agentId} (scheduler:${jobName})`,
+					systemPrompt,
+					[{ role: "user", content: instructions }, { role: "assistant", content: responseText }],
+					modelId,
+				);
 
 				// Update inbox message with agent response (shows "Replied" badge)
 				if (responseText) {

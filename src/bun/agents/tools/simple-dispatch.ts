@@ -79,7 +79,6 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 				if (!isReadOnly) writeAgentRunning = true;
 				try {
 					const { displayName } = await resolveAgent(args.agent);
-					console.log(`[PM→DISPATCH SIMPLE] Spawning sub-agent "${args.agent}" (${displayName}) project=${deps.projectId ?? "none"} readOnly=${isReadOnly} taskPreview="${args.task.slice(0, 150).replace(/\n/g, " ")}"`);
 					const result = await runInlineAgent({
 						conversationId: `scheduler:${crypto.randomUUID()}`,
 						agentName: args.agent,
@@ -93,7 +92,6 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 						persistToDb: false,
 						callbacks: NOOP_CALLBACKS,
 					});
-					console.log(`[PM→DISPATCH SIMPLE RESULT] agent="${args.agent}" status=${result.status} filesModified=${result.filesModified.length}`);
 					return JSON.stringify({ success: true, agent: displayName, status: result.status, summary: result.summary, filesModified: result.filesModified });
 				} catch (err) {
 					return JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) });
@@ -125,7 +123,6 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 					args.tasks.map(async (t, i) => {
 						if (i > 0) await new Promise(r => setTimeout(r, i * 1500));
 						const { displayName } = await resolveAgent(t.agent);
-						console.log(`[PM→DISPATCH SIMPLE PARALLEL] Spawning sub-agent "${t.agent}" (${displayName}) project=${deps.projectId ?? "none"} taskPreview="${t.task.slice(0, 150).replace(/\n/g, " ")}"`);
 						const result = await runInlineAgent({
 							conversationId: `scheduler:${crypto.randomUUID()}`,
 							agentName: t.agent,
@@ -139,7 +136,6 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 							persistToDb: false,
 							callbacks: NOOP_CALLBACKS,
 						});
-						console.log(`[PM→DISPATCH SIMPLE PARALLEL RESULT] agent="${t.agent}" status=${result.status}`);
 						return result;
 					}),
 				);

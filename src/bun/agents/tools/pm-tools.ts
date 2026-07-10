@@ -601,9 +601,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					};
 
 					// Fire-and-forget: agent runs in background
-					console.log(`[PM→DISPATCH] Spawning sub-agent "${args.agent}" (${displayName}) project=${effectiveProjectId} kanbanTask=${args.kanban_task_id ?? "none"} readOnly=${isReadOnly} taskPreview="${taskWithInstructions.slice(0, 150).replace(/\n/g, " ")}"`);
 					runInlineAgent(agentOpts).then(async (result) => {
-						console.log(`[PM→DISPATCH RESULT] agent="${args.agent}" status=${result.status} filesModified=${result.filesModified.length}`);
 						// Clear the task conv pin now that the agent has finished
 						const { engines: enginesMap } = await import("../../engine-manager");
 						const doneEng = enginesMap.get(effectiveProjectId);
@@ -913,7 +911,6 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 
 							const agentAbort = new AbortController();
 							deps.registerAgentAbort?.(agentAbort, t.agent);
-							console.log(`[PM→DISPATCH PARALLEL] Spawning sub-agent "${t.agent}" (${displayName}) project=${deps.projectId} taskPreview="${t.task.slice(0, 150).replace(/\n/g, " ")}"`);
 							try {
 								const parallelResult = await runInlineAgent({
 									conversationId: deps.conversationId,
@@ -928,7 +925,6 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 									projectId: deps.projectId,
 									readOnly: true,
 								});
-								console.log(`[PM→DISPATCH PARALLEL RESULT] agent="${t.agent}" status=${parallelResult.status}`);
 								return parallelResult;
 							} finally {
 								deps.unregisterAgentAbort?.(agentAbort);

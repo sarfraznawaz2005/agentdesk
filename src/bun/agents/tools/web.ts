@@ -30,6 +30,17 @@ function stripHtml(html: string): string {
 	return root.textContent.replace(/\s+/g, " ").trim();
 }
 
+// Agent tool calls always receive a real (non-null) abortSignal from the AI
+// SDK — it's the run's overall guardrail (30 min timeout / stuck-loop / user
+// abort), not a per-request timeout. A plain `abortSignal ?? AbortSignal.timeout(ms)`
+// therefore never falls through to the intended short timeout, so a silently
+// dropped connection hangs until the OS's own TCP timeout (e.g. ~21s on
+// Windows for a black-holed host) instead of failing fast. Combine both so
+// whichever fires first wins.
+function withTimeout(abortSignal: AbortSignal | undefined, ms: number): AbortSignal {
+	return abortSignal ? AbortSignal.any([abortSignal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
+}
+
 // ---------------------------------------------------------------------------
 // Search helpers
 // ---------------------------------------------------------------------------
@@ -47,7 +58,7 @@ export async function ddgSearch(
 				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 		},
 		body: new URLSearchParams({ q: query, kl: "us-en" }),
-		signal: abortSignal ?? AbortSignal.timeout(15_000),
+		signal: withTimeout(abortSignal, 15_000),
 	});
 
 	if (!response.ok) {
@@ -103,7 +114,7 @@ export async function tavilySearch(
 			include_answer: true,
 			include_raw_content: false,
 		}),
-		signal: abortSignal ?? AbortSignal.timeout(30_000),
+		signal: withTimeout(abortSignal, 30_000),
 	});
 
 	if (response.status === 401) {
@@ -205,7 +216,7 @@ const webFetchTool = tool({
 						"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 					...headers,
 				},
-				signal: abortSignal ?? AbortSignal.timeout(timeout),
+				signal: withTimeout(abortSignal, timeout),
 			});
 
 			const contentType = response.headers.get("content-type") ?? "";
@@ -291,7 +302,7 @@ const httpRequestTool = tool({
 				method,
 				headers,
 				body: body !== undefined ? body : undefined,
-				signal: abortSignal ?? AbortSignal.timeout(timeout),
+				signal: withTimeout(abortSignal, timeout),
 			});
 
 			const responseHeaders: Record<string, string> = {};
