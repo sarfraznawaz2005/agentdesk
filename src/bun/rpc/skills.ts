@@ -42,7 +42,7 @@ export function getSkill(name: string) {
 
 export function refreshSkills() {
 	skillRegistry.reload();
-	return { count: skillRegistry.getAll().length };
+	return { count: skillRegistry.getAll().filter(isSkillVisible).length };
 }
 
 export function getSkillsDirectory() {
