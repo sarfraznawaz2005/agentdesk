@@ -14,9 +14,10 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2 } from "lucide-react";
+import { Check, Copy, Loader2, BookmarkPlus } from "lucide-react";
 import { Tip } from "../ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
 import { rpc } from "../../lib/rpc";
 import { IS_REMOTE } from "../../lib/remote-transport";
 import { useFreelanceEngineStore } from "@/stores/freelance-engine-store";
@@ -294,6 +295,8 @@ export function InboxTab() {
   const [sentReplySentAt, setSentReplySentAt] = useState<string | null>(null);
   const [sentReplyLoading, setSentReplyLoading] = useState(false);
   const [sentReplyCopied, setSentReplyCopied] = useState(false);
+  const [saveDraftItem, setSaveDraftItem] = useState<FreelanceOutboxItemDto | null>(null);
+  const [saveSentReplyOpen, setSaveSentReplyOpen] = useState(false);
 
   const viewSentReply = useCallback(async (threadId: string) => {
     setSentReplyOpen(true);
@@ -1064,6 +1067,16 @@ export function InboxTab() {
                       {copiedId === item.id ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
                     </button>
                   </Tip>
+                  <Tip content="Save to Collection" side="top">
+                    <button
+                      type="button"
+                      className="rounded p-1 hover:bg-accent"
+                      onClick={() => setSaveDraftItem(item)}
+                      aria-label="Save to Collection"
+                    >
+                      <BookmarkPlus className="size-3" />
+                    </button>
+                  </Tip>
                 </div>
                 {item.status === "draft" ? (
                   <AutoGrowTextarea
@@ -1201,21 +1214,33 @@ export function InboxTab() {
                 </p>
               </div>
               {sentReplyBody && (
-                <Tip content={sentReplyCopied ? "Copied!" : "Copy reply"} side="left">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(sentReplyBody).then(() => {
-                        setSentReplyCopied(true);
-                        setTimeout(() => setSentReplyCopied(false), 1500);
-                      });
-                    }}
-                    className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                    aria-label="Copy reply"
-                  >
-                    {sentReplyCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                  </button>
-                </Tip>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Tip content={sentReplyCopied ? "Copied!" : "Copy reply"} side="left">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(sentReplyBody).then(() => {
+                          setSentReplyCopied(true);
+                          setTimeout(() => setSentReplyCopied(false), 1500);
+                        });
+                      }}
+                      className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                      aria-label="Copy reply"
+                    >
+                      {sentReplyCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    </button>
+                  </Tip>
+                  <Tip content="Save to Collection" side="left">
+                    <button
+                      type="button"
+                      onClick={() => setSaveSentReplyOpen(true)}
+                      className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                      aria-label="Save to Collection"
+                    >
+                      <BookmarkPlus className="size-3.5" />
+                    </button>
+                  </Tip>
+                </div>
               )}
             </div>
           </DialogHeader>
@@ -1236,6 +1261,38 @@ export function InboxTab() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SaveToCollectionModal
+        open={!!saveDraftItem}
+        onOpenChange={(open) => { if (!open) setSaveDraftItem(null); }}
+        contentMarkdown={saveDraftItem?.draftBody ?? ""}
+        sourceType="freelance_inbox"
+        sourceRef={
+          saveDraftItem
+            ? {
+                projectName:
+                  threads.find((t) => t.id === saveDraftItem.threadId)?.clientName ??
+                  threads.find((t) => t.id === saveDraftItem.threadId)?.title ??
+                  undefined,
+                taskId: saveDraftItem.listingId ?? saveDraftItem.threadId ?? undefined,
+              }
+            : undefined
+        }
+      />
+      <SaveToCollectionModal
+        open={saveSentReplyOpen}
+        onOpenChange={setSaveSentReplyOpen}
+        contentMarkdown={sentReplyBody ?? ""}
+        sourceType="freelance_inbox"
+        sourceRef={
+          selectedThread
+            ? {
+                projectName: selectedThread.clientName ?? selectedThread.title ?? undefined,
+                taskId: selectedThread.listingId ?? selectedThread.id ?? undefined,
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

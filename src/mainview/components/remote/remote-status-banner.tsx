@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IS_REMOTE, forgetRemotePairing } from "@/lib/remote-transport";
+import { IS_REMOTE, IS_DEV_DIRECT, forgetRemotePairing } from "@/lib/remote-transport";
 
 type Status = "connecting" | "online" | "offline";
 
@@ -26,7 +26,7 @@ export function RemoteStatusBanner() {
   const [stuck, setStuck] = useState(false);
 
   useEffect(() => {
-    if (!IS_REMOTE) return;
+    if (!IS_REMOTE || IS_DEV_DIRECT) return;
     const handler = (e: Event) => {
       const s = (e as CustomEvent<{ status?: Status }>).detail?.status;
       if (s) setStatus(s);
@@ -47,7 +47,7 @@ export function RemoteStatusBanner() {
     return () => clearTimeout(t);
   }, [status]);
 
-  if (!IS_REMOTE || status === "online") return null;
+  if (!IS_REMOTE || IS_DEV_DIRECT || status === "online") return null;
 
   const message =
     status === "connecting"

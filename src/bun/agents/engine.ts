@@ -143,6 +143,22 @@ export class AgentEngine {
 			console.warn(`[Engine] Conversation ${conversationId} no longer exists — skipping sendMessage`);
 			return { messageId: assistantMessageId, userMessageId };
 		}
+		// An empty message persists as an empty text content block, which every
+		// provider rejects — and once persisted it poisons this conversation's
+		// history for every future send, not just this one. Reject at the source
+		// rather than relying on each individual caller (chat UI, scheduler,
+		// channels, agent reports) to have already guarded against it.
+		if (!content) {
+			console.warn(`[Engine] sendMessage: empty content for conversation ${conversationId} — skipping`);
+			// Release the processing lock set above — otherwise every later
+			// sendMessage call on this engine waits forever on a promise nothing
+			// ever resolves (this is a bail-out before the normal lockResolve()
+			// callsite further down, which only runs once real PM processing settles).
+			this.pmProcessing = false;
+			lockResolve();
+			if (this.pmProcessingPromise === lockPromise) this.pmProcessingPromise = null;
+			return { messageId: assistantMessageId, userMessageId };
+		}
 		await db.insert(messages).values({
 			id: userMessageId,
 			conversationId,

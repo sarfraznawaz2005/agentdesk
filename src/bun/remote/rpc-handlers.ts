@@ -20,10 +20,11 @@ import { handlers as gitAnalyticsHandlers } from "../rpc-groups/git-analytics";
 import { handlers as channelsInboxSchedulerHandlers } from "../rpc-groups/channels-inbox-scheduler";
 import { handlers as pluginsToolsHandlers } from "../rpc-groups/plugins-tools";
 import { handlers as featuresHandlers } from "../rpc-groups/features";
+import { handlers as collectionsHandlers } from "../rpc-groups/collections";
 
 /**
- * The combined request-handler map (all 8 rpc-groups). The type is INFERRED as
- * the precise intersection of the eight group types so that
+ * The combined request-handler map (all 9 rpc-groups). The type is INFERRED as
+ * the precise intersection of the nine group types so that
  * `BrowserView.defineRPC<AgentDeskRPC>` keeps full type-checking in
  * rpc-registration.ts. The remote WS server accepts it via a looser structural
  * `RpcRequestHandlers` parameter (the precise type is assignable to it).
@@ -37,4 +38,5 @@ export const requestHandlers = {
   ...channelsInboxSchedulerHandlers,
   ...pluginsToolsHandlers,
   ...featuresHandlers,
+  ...collectionsHandlers,
 };

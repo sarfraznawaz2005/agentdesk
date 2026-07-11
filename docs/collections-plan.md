@@ -141,12 +141,12 @@ one spread line in `src/bun/remote/rpc-handlers.ts` → merged into
 | `reorderCollections({ orderedIds })` | Drag-and-drop rail order |
 | `deleteCollection({ id })` | Rejected for `isDefault`; non-empty collections require confirming — notes move to `Default`, never silently deleted |
 | `listNotes({ collectionId \| "favorites" \| "trash", query?, tags?, sort? })` | Note list pane |
-| `getNote` / `createNote` / `updateNote` | Editor CRUD |
+| `getCollectionNote` / `createCollectionNote` / `updateCollectionNote` | Editor CRUD — named to avoid colliding with the existing project-docs `NotesRequests.getNote/createNote/updateNote` |
 | `toggleFavorite({ id })` | Favorites virtual view |
 | `moveNote({ id, targetCollectionId })` | Move-across-collections |
 | `softDeleteNote` / `restoreNote` / `permanentlyDeleteNote` / `emptyTrash` | Trash lifecycle + Undo |
-| `searchNotes({ query, scope })` | FTS5 keyword search (the search box) |
-| `chatWithCollections({ query, scope, history })` | Embedding-based retrieval + cited answer (the chat FAB) |
+| `searchCollectionNotes({ query, scope })` | FTS5 keyword search (the search box) — renamed from the plan's original `searchNotes` to avoid colliding with the existing `NotesRequests.searchNotes` |
+| `sendCollectionsChatMessage({ sessionId, content, scope })` / `abortCollectionsChatMessage({ sessionId })` / `clearCollectionsChatSession({ sessionId })` | Streaming, tool-calling chat FAB (superseded the one-shot `chatWithCollections` — see §7) |
 | `exportNote({ id, format })` / `exportCollection({ id, format })` | Markdown / PDF / JSON |
 | `addAttachment` / `removeAttachment` / `getAttachmentDownloadPath` | File attachments (download-only, never previewed) |
 | `getLinkedNotes` / `getBacklinks` | Backlinks panel |
@@ -265,16 +265,26 @@ here from scratch.
 - **Indexing trigger:** on note create/update, re-embed in the background
   (debounced) so search/chat stay current without a manual step; "Re-index
   notes" in Settings is the manual fallback (e.g. after a model change).
-- **Gating:** the chat FAB and Settings' chat scope are disabled/greyed
-  with a "Download the embedding model to start chatting" prompt whenever
-  `getEmbeddingModelStatus()` isn't `ready` — exactly the mockup's toggle
-  behavior.
-- **Chat generation:** `chatWithCollections` embeds the query, retrieves
-  top-k notes by cosine similarity, and calls the user's already-configured
-  AI provider (via `src/bun/providers/`) with the retrieved note content as
-  context, returning an answer plus the source note ids for the citation
-  chips. No new provider/credential surface — reuses what's already wired
-  for chat elsewhere in the app.
+- **Gating (superseded):** the chat FAB no longer hard-blocks on the embedding
+  model. The chat is a streaming, tool-calling assistant (`src/bun/collections/chat.ts`,
+  mirrors the dashboard PM chat's `streamText()`/`tool()` pattern) whose
+  `search_notes` tool uses FTS5 keyword search — no embedding model required.
+  `semantic_search_notes` (the embedding-similarity tool below) is simply
+  omitted from the tool set when `getEmbeddingModelStatus()` isn't `ready`;
+  the assistant falls back to keyword search instead of refusing to chat.
+  The Settings tab still shows model status/download for the citation-quality
+  benefit semantic search provides once downloaded.
+- **Chat generation:** `sendCollectionsChatMessage` runs a multi-step
+  `streamText()` call against the user's already-configured AI provider (via
+  `src/bun/providers/`), giving the model tool access to `search_notes`,
+  `semantic_search_notes` (embedding cosine-similarity, when available),
+  `read_note`, `list_collections`, `read_skill`/`find_skills`, and
+  `web_search`/`web_fetch` — no `save_to_collection`/note-write tool (still
+  human-only, per "Agent write access" above). Tokens and tool-call events
+  stream to the webview as they happen; note ids touched by search/read tools
+  are collected and returned as citations on completion. No new
+  provider/credential surface — reuses what's already wired for chat
+  elsewhere in the app.
 
 ---
 

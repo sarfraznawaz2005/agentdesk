@@ -54,7 +54,7 @@ export function PromptsDropdown({ onSelect, disabled }: PromptsDropdownProps) {
             disabled={disabled}
             className="flex-shrink-0 h-8 w-8 text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted"
           >
-            <BookOpen className="size-4" />
+            <BookOpen className="size-5" />
           </Button>
         </PopoverTrigger>
       </Tip>

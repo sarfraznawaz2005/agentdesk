@@ -336,18 +336,23 @@ function AppShellContent() {
       />
       <main className="app-background flex-1 flex flex-col min-w-0">
         <ConnectionStatus />
-        <TopNav
-          title={pageTitle}
-          workspacePath={projectWorkspacePath ?? undefined}
-          dataPath={location.pathname.split("/").filter(Boolean)[0] === "settings" ? dataPath ?? undefined : undefined}
-          phrase={headerPhrase ?? undefined}
-          beforeTitle={projectId ? <ProjectAvatar id={projectId} name={pageTitle} className="h-7 w-7 text-xs" /> : undefined}
-          afterTitle={projectId ? <ProjectBranchBadge projectId={projectId} /> : undefined}
-          onMenuClick={() => setMobileNavOpen(true)}
-        >
-          {headerActions}
-          {projectId && <ProjectSwitcher currentProjectId={projectId} />}
-        </TopNav>
+        {/* Collections has its own Library/Settings tab bar right below where
+            this would sit — skip the app-title nav there so the tabs take its
+            place instead of stacking underneath it. */}
+        {location.pathname !== "/collections" && (
+          <TopNav
+            title={pageTitle}
+            workspacePath={projectWorkspacePath ?? undefined}
+            dataPath={location.pathname.split("/").filter(Boolean)[0] === "settings" ? dataPath ?? undefined : undefined}
+            phrase={headerPhrase ?? undefined}
+            beforeTitle={projectId ? <ProjectAvatar id={projectId} name={pageTitle} className="h-7 w-7 text-xs" /> : undefined}
+            afterTitle={projectId ? <ProjectBranchBadge projectId={projectId} /> : undefined}
+            onMenuClick={() => setMobileNavOpen(true)}
+          >
+            {headerActions}
+            {projectId && <ProjectSwitcher currentProjectId={projectId} />}
+          </TopNav>
+        )}
         <div id="main-scroll-container" className="flex-1 overflow-auto">
           <ErrorBoundary>
             <Outlet />

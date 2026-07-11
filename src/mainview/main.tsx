@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { initClientErrorHandler } from "./lib/global-error-handler";
-import { IS_REMOTE, isPaired, REPAIR_REASON_KEY } from "./lib/remote-transport";
+import { IS_REMOTE, IS_DEV_DIRECT, isPaired, REPAIR_REASON_KEY } from "./lib/remote-transport";
 import { completeAndStorePairing, clearStoredPairing } from "../shared/remote/web-pairing";
 import { PairingScreen } from "./components/remote/pairing-screen";
 import { RemoteStatusBanner } from "./components/remote/remote-status-banner";
@@ -14,7 +14,7 @@ initClientErrorHandler();
 
 // Register the PWA service worker — web mode only (not the Electrobun webview),
 // so the desktop app is never affected by SW caching.
-if (IS_REMOTE && "serviceWorker" in navigator) {
+if (IS_REMOTE && !IS_DEV_DIRECT && "serviceWorker" in navigator) {
 	window.addEventListener("load", () => {
 		navigator.serviceWorker.register("/sw.js").catch(() => {});
 	});
@@ -78,10 +78,11 @@ if (pairCode) {
 	// Web bootstrap (TASK-482): in a plain browser, show the pairing screen until
 	// this device is paired to a desktop. In Electrobun (IS_REMOTE === false) this
 	// is always the normal app.
-	const needsPairing = IS_REMOTE && !isPaired();
+	const needsPairing = IS_REMOTE && !IS_DEV_DIRECT && !isPaired();
 
 	// Web notifications for approval events when the tab is backgrounded (TASK-490).
-	if (IS_REMOTE && !needsPairing) initWebNotifications();
+	// Skipped in dev-direct mode — it's a local debug tab, not a real remote client.
+	if (IS_REMOTE && !IS_DEV_DIRECT && !needsPairing) initWebNotifications();
 
 	root.render(
 		<StrictMode>

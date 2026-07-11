@@ -79,6 +79,22 @@ export type WebviewSchema = RPCSchema<{
       path: string | null;
     };
 
+    // Collection attachment file selected from native picker (fire-and-forget) —
+    // noteId correlates back to which note's attach flow requested the picker.
+    collectionAttachmentFilePicked: {
+      noteId: string;
+      path: string | null;
+    };
+
+    // Collections embedding-model download progress (streamed from Bun during
+    // downloadEmbeddingModel), same fire-and-forget-events-alongside-a-pending-RPC
+    // shape as updateStatus above.
+    collectionEmbeddingModelStatus: {
+      status: "downloading" | "ready" | "error";
+      progress?: number;
+      message?: string;
+    };
+
     // WhatsApp real-time events
     whatsappQR: {
       channelId: string;
@@ -104,6 +120,20 @@ export type WebviewSchema = RPCSchema<{
       messageId: string;
       projectId: string | null;
       response: string;
+    };
+
+    // Scheduler run-state — fires for both manual (Run button) and automatic
+    // (cron-fired) job runs so the Scheduler page can show a live Stop button.
+    cronJobRunStateChanged: {
+      jobId: string;
+      running: boolean;
+    };
+    // Correlates a scheduler-originated inbox message (agent_task_simple) to
+    // its owning job's run state, so the Inbox detail pane can show Stop too.
+    schedulerInboxRunState: {
+      messageId: string;
+      jobId: string;
+      running: boolean;
     };
 
     // Kanban real-time updates
@@ -284,6 +314,28 @@ export type WebviewSchema = RPCSchema<{
       args: Record<string, unknown>;
     };
     dashboardPMError: {
+      sessionId: string;
+      error: string;
+    };
+
+    // Collections chat (personal knowledge-base assistant widget)
+    collectionsChatChunk: {
+      sessionId: string;
+      messageId: string;
+      token: string;
+    };
+    collectionsChatComplete: {
+      sessionId: string;
+      messageId: string;
+      content: string;
+      citations: Array<{ noteId: string; title: string; collectionId: string }>;
+    };
+    collectionsChatToolCall: {
+      sessionId: string;
+      toolName: string;
+      args: Record<string, unknown>;
+    };
+    collectionsChatError: {
       sessionId: string;
       error: string;
     };

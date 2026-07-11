@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -1069,3 +1069,111 @@ export const modelPreferences = sqliteTable(
 		),
 	}),
 );
+
+// ---------------------------------------------------------------------------
+// collections (v56) — personal, cross-project knowledge base
+// ---------------------------------------------------------------------------
+// Deliberately separate from `notes` (project docs, above): a collection is a
+// user-organized category of personal notes that lives outside any single
+// project. See docs/collections-plan.md for the full feature plan. Indexes,
+// the collection_notes_fts virtual table, and the seeded Default collection
+// are created in migration v56, per this file's convention of keeping indexes
+// in raw-SQL migrations rather than inline here (see the note above
+// `agent_memories`).
+export const collections = sqliteTable("collections", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull(),
+	color: text("color").notNull(),
+	icon: text("icon"),
+	// Marks the single seeded "Default" collection — blocks delete, not rename.
+	isDefault: integer("is_default").notNull().default(0),
+	sortOrder: integer("sort_order").notNull().default(0),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// collection_notes (v56)
+// ---------------------------------------------------------------------------
+// Note content is stored as raw GFM markdown (contentMarkdown), never HTML or
+// rich-text JSON. `embedding` is a packed little-endian Float32Array BLOB
+// (see docs/collections-plan.md §7); `embeddingModel` records which model
+// produced it so a future model change can detect staleness. "Favorites" is
+// a virtual view over isFavorite — there is no separate favorites table/row.
+// Trash reuses `updatedAt` as the 30-day purge clock instead of adding a
+// second deletedAt column, matching the plain isDeleted-flag convention used
+// elsewhere in this file (see freelanceListings.isDeleted).
+export const collectionNotes = sqliteTable("collection_notes", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	collectionId: text("collection_id")
+		.notNull()
+		.references(() => collections.id),
+	title: text("title").notNull(),
+	contentMarkdown: text("content_markdown").notNull().default(""),
+	// JSON-serialized string[]
+	tags: text("tags").notNull().default("[]"),
+	isFavorite: integer("is_favorite").notNull().default(0),
+	isDeleted: integer("is_deleted").notNull().default(0),
+	// 'pm_chat' | 'council' | 'freelance_chat' | 'skills_chat' | 'freelance_inbox' | 'inbox_message' | 'manual'
+	sourceType: text("source_type"),
+	// JSON: { projectId?, projectName?, taskId? } — powers the provenance chip
+	sourceRef: text("source_ref"),
+	embedding: blob("embedding", { mode: "buffer" }),
+	embeddingModel: text("embedding_model"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// collection_note_attachments (v56)
+// ---------------------------------------------------------------------------
+// Files live on disk under Utils.paths.userData/collections/<noteId>/, never
+// inlined into the DB. Download-only by design — never previewed in-app.
+export const collectionNoteAttachments = sqliteTable("collection_note_attachments", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	noteId: text("note_id")
+		.notNull()
+		.references(() => collectionNotes.id),
+	fileName: text("file_name").notNull(),
+	// Relative path under the collections storage dir
+	filePath: text("file_path").notNull(),
+	fileSize: integer("file_size").notNull(),
+	mimeType: text("mime_type"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
+// collection_note_links (v56) — resolved [[wiki-links]] between notes
+// ---------------------------------------------------------------------------
+// Populated by parsing contentMarkdown on save (src/bun/collections/links.ts).
+// Resolution is global (across all collections), not scoped to one.
+export const collectionNoteLinks = sqliteTable("collection_note_links", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	sourceNoteId: text("source_note_id")
+		.notNull()
+		.references(() => collectionNotes.id),
+	targetNoteId: text("target_note_id")
+		.notNull()
+		.references(() => collectionNotes.id),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});

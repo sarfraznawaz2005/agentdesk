@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Check, Copy, Loader2, RefreshCw, Square, Trash2, X } from "lucide-react";
+import { Check, Copy, Loader2, RefreshCw, Square, Trash2, X, BookmarkPlus } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,6 +11,7 @@ import { TypingRow } from "@/components/chat/message-list";
 import { ToolCallCard } from "@/components/chat/tool-call-card";
 import type { ToolCallPartData } from "@/components/chat/tool-call-card";
 import { rpc } from "@/lib/rpc";
+import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
 import type { SkillsChatMessageDto } from "../../../shared/rpc/skills";
 
 // ---------------------------------------------------------------------------
@@ -156,6 +157,7 @@ function MessageBubble({
 }) {
   const isUser = message.role === "user";
   const isErr = isError(message);
+  const [saveToCollectionOpen, setSaveToCollectionOpen] = useState(false);
 
   if (isErr) {
     return (
@@ -204,6 +206,16 @@ function MessageBubble({
         {!isUser && !streaming && (
           <div className="flex items-center gap-0.5 mt-1.5 -mb-0.5">
             <CopyButton text={message.content} />
+            <Tip content="Save to Collection" side="top">
+              <button
+                type="button"
+                onClick={() => setSaveToCollectionOpen(true)}
+                aria-label="Save to Collection"
+                className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <BookmarkPlus className="size-3.5" />
+              </button>
+            </Tip>
             {isLastAssistant && onRegenerate && (
               <Tip content="Regenerate response" side="top">
                 <button
@@ -219,6 +231,12 @@ function MessageBubble({
           </div>
         )}
       </div>
+      <SaveToCollectionModal
+        open={saveToCollectionOpen}
+        onOpenChange={setSaveToCollectionOpen}
+        contentMarkdown={message.content}
+        sourceType="skills_chat"
+      />
     </div>
   );
 }

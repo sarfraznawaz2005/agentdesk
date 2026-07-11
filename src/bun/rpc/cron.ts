@@ -2,7 +2,7 @@
 import { db } from "../db";
 import { cronJobs, cronJobHistory, settings } from "../db/schema";
 import { eq, desc } from "drizzle-orm";
-import { refreshJob, getNextRuns, triggerJobNow } from "../scheduler";
+import { refreshJob, getNextRuns, triggerJobNow, stopJobNow, isJobRunning, getRunningSchedulerMessages as getRunningSchedulerMessagesImpl } from "../scheduler";
 
 // ---------------------------------------------------------------------------
 // Helper — read global timezone from settings (fallback UTC)
@@ -23,15 +23,42 @@ async function getGlobalTimezone(): Promise<string> {
 // RPC handlers
 // ---------------------------------------------------------------------------
 
+// Whether a Stop click on this job type/config actually cancels anything —
+// must mirror what task-executor.ts honors an abortSignal for. pm_prompt and
+// PM-routed agent_task dispatch fire-and-forget into the project's own
+// conversation (the cron run itself finishes almost instantly), so Stop has
+// nothing real to cancel there; showing it would be a false affordance.
+function isJobStoppable(taskType: string, taskConfig: string): boolean {
+	switch (taskType) {
+		case "shell":
+		case "webhook":
+		case "agent_task_simple":
+			return true;
+		case "agent_task": {
+			try {
+				const config = JSON.parse(taskConfig) as { agentId?: string };
+				return (config.agentId || "project-manager") !== "project-manager";
+			} catch {
+				return false;
+			}
+		}
+		default:
+			return false;
+	}
+}
+
 export async function getCronJobs(params?: { projectId?: string }) {
 	const jobs = params?.projectId
 		? await db.select().from(cronJobs).where(eq(cronJobs.projectId, params.projectId))
 		: await db.select().from(cronJobs);
 
-	// Enrich each job with a computed nextRunAt so the UI can display it
+	// Enrich each job with a computed nextRunAt + live running state so the UI
+	// can display it (including for auto-fired runs, not just manual triggers)
 	return jobs.map((job) => ({
 		...job,
 		nextRunAt: getNextRuns(job.cronExpression, job.timezone ?? "UTC", 1)[0] ?? null,
+		isRunning: isJobRunning(job.id),
+		isStoppable: isJobStoppable(job.taskType, job.taskConfig),
 	}));
 }
 
@@ -122,4 +149,12 @@ export async function triggerCronJob(params: { id: string }) {
 	if (rows.length === 0) throw new Error("Job not found");
 	await triggerJobNow(params.id);
 	return { success: true };
+}
+
+export async function stopCronJob(params: { id: string }) {
+	return { stopped: stopJobNow(params.id) };
+}
+
+export function getRunningSchedulerMessages() {
+	return getRunningSchedulerMessagesImpl();
 }

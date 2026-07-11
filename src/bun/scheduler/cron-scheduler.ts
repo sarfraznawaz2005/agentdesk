@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { executeTask, type TaskType } from "./task-executor";
 import { eventBus } from "./event-bus";
 import { sendDesktopNotification } from "../notifications/desktop";
+import { broadcastToWebview } from "../engine-manager";
 
 // Task types that have no project conversation or live UI feedback —
 // the user needs a desktop notification to know the job ran.
@@ -18,8 +19,25 @@ interface ManagedJob {
 
 const activeJobs = new Map<string, ManagedJob>();
 
+// Per-jobId cancellation handle for the currently in-flight run (if any). Used
+// by stopJobNow (the Scheduler/Inbox Stop button) and isJobRunning (initial
+// UI state + getCronJobs enrichment). Only one run per job at a time.
+const runningJobs = new Map<string, AbortController>();
+
 export async function triggerJobNow(jobId: string): Promise<void> {
 	return runJob(jobId);
+}
+
+/** Aborts the in-flight run for a job, if any. Returns whether one was running. */
+export function stopJobNow(jobId: string): boolean {
+	const controller = runningJobs.get(jobId);
+	if (!controller) return false;
+	controller.abort();
+	return true;
+}
+
+export function isJobRunning(jobId: string): boolean {
+	return runningJobs.has(jobId);
 }
 
 async function runJob(jobId: string): Promise<void> {
@@ -38,46 +56,57 @@ async function runJob(jobId: string): Promise<void> {
 		status: "running",
 	});
 
-	// Execute — inject _jobName and _projectId so task-executor can use them
-	const taskConfig = JSON.parse(job.taskConfig);
-	taskConfig._jobName = job.name;
-	if (job.projectId) taskConfig._projectId = job.projectId;
-	const result = await executeTask(job.taskType as TaskType, taskConfig);
+	const controller = new AbortController();
+	runningJobs.set(jobId, controller);
+	broadcastToWebview("cronJobRunStateChanged", { jobId, running: true });
 
-	// Update history
-	const completedAt = new Date().toISOString();
-	await db.update(cronJobHistory).set({
-		completedAt,
-		status: result.success ? "success" : "error",
-		output: result.output || result.error || null,
-		durationMs: result.durationMs,
-	}).where(eq(cronJobHistory.id, historyId));
+	try {
+		// Execute — inject _jobName/_projectId/_jobId so task-executor can use them
+		const taskConfig = JSON.parse(job.taskConfig);
+		taskConfig._jobName = job.name;
+		taskConfig._jobId = jobId;
+		if (job.projectId) taskConfig._projectId = job.projectId;
+		const result = await executeTask(job.taskType as TaskType, taskConfig, controller.signal);
 
-	// Update job lastRun
-	await db.update(cronJobs).set({
-		lastRunAt: startedAt,
-		lastRunStatus: result.success ? "success" : "error",
-		updatedAt: completedAt,
-	}).where(eq(cronJobs.id, jobId));
+		// Update history
+		const completedAt = new Date().toISOString();
+		const status = result.stopped ? "stopped" : result.success ? "success" : "error";
+		await db.update(cronJobHistory).set({
+			completedAt,
+			status,
+			output: result.output || result.error || null,
+			durationMs: result.durationMs,
+		}).where(eq(cronJobHistory.id, historyId));
 
-	// Desktop notification for task types with no other UI feedback
-	if (NOTIFY_ON_COMPLETE.has(job.taskType as TaskType)) {
-		const title = result.success ? `✓ ${job.name}` : `✗ ${job.name} failed`;
-		const body = result.success
-			? (result.output?.slice(0, 120) ?? "Completed successfully")
-			: (result.error?.slice(0, 120) ?? "An error occurred");
-		sendDesktopNotification(title, body).catch(() => {});
+		// Update job lastRun
+		await db.update(cronJobs).set({
+			lastRunAt: startedAt,
+			lastRunStatus: status,
+			updatedAt: completedAt,
+		}).where(eq(cronJobs.id, jobId));
+
+		// Desktop notification for task types with no other UI feedback
+		if (NOTIFY_ON_COMPLETE.has(job.taskType as TaskType) && !result.stopped) {
+			const title = result.success ? `✓ ${job.name}` : `✗ ${job.name} failed`;
+			const body = result.success
+				? (result.output?.slice(0, 120) ?? "Completed successfully")
+				: (result.error?.slice(0, 120) ?? "An error occurred");
+			sendDesktopNotification(title, body).catch(() => {});
+		}
+
+		// Auto-delete one-shot jobs after successful run
+		if (job.oneShot && result.success) {
+			await db.delete(cronJobHistory).where(eq(cronJobHistory.jobId, jobId));
+			await db.delete(cronJobs).where(eq(cronJobs.id, jobId));
+			stopJob(jobId);
+		}
+
+		// Emit event
+		eventBus.emit({ type: "cron:fired", jobId, jobName: job.name });
+	} finally {
+		runningJobs.delete(jobId);
+		broadcastToWebview("cronJobRunStateChanged", { jobId, running: false });
 	}
-
-	// Auto-delete one-shot jobs after successful run
-	if (job.oneShot && result.success) {
-		await db.delete(cronJobHistory).where(eq(cronJobHistory.jobId, jobId));
-		await db.delete(cronJobs).where(eq(cronJobs.id, jobId));
-		stopJob(jobId);
-	}
-
-	// Emit event
-	eventBus.emit({ type: "cron:fired", jobId, jobName: job.name });
 }
 
 function startJob(job: typeof cronJobs.$inferSelect): void {

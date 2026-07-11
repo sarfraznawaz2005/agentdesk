@@ -122,7 +122,7 @@ export type InboxRequests = {
   // Cron jobs
   getCronJobs: {
     params: { projectId?: string };
-    response: Array<{ id: string; projectId: string | null; name: string; cronExpression: string; timezone: string; taskType: string; taskConfig: string; enabled: number; oneShot: number; lastRunAt: string | null; lastRunStatus: string | null; createdAt: string; updatedAt: string }>;
+    response: Array<{ id: string; projectId: string | null; name: string; cronExpression: string; timezone: string; taskType: string; taskConfig: string; enabled: number; oneShot: number; lastRunAt: string | null; lastRunStatus: string | null; createdAt: string; updatedAt: string; isRunning: boolean; isStoppable: boolean }>;
   };
   createCronJob: {
     params: { projectId?: string; name: string; cronExpression: string; timezone?: string; taskType: string; taskConfig: string; enabled?: boolean; oneShot?: boolean };
@@ -151,6 +151,14 @@ export type InboxRequests = {
   triggerCronJob: {
     params: { id: string };
     response: { success: boolean };
+  };
+  stopCronJob: {
+    params: { id: string };
+    response: { stopped: boolean };
+  };
+  getRunningSchedulerMessages: {
+    params: Record<string, never>;
+    response: Array<{ messageId: string; jobId: string }>;
   };
 
   // Automation rules

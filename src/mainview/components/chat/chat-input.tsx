@@ -9,7 +9,7 @@ import {
   useImperativeHandle,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, Square, Paperclip, Server, X, FileText, Sparkles, AlertCircle, RefreshCw, WifiOff, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUp, Square, Paperclip, Server, X, FileText, Sparkles, AlertCircle, RefreshCw, WifiOff, Clock, ChevronDown, ChevronUp, Library } from "lucide-react";
 import { MESSAGE_QUEUE_MAX, type QueuedMessage } from "@/stores/message-queue";
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { PromptsDropdown } from "./prompts-dropdown";
 import { rpc } from "../../lib/rpc";
 import { useChatStore } from "../../stores/chat-store";
 import { Tip } from "@/components/ui/tooltip";
+import { AttachNoteModal } from "@/components/collections/attach-note-modal";
 import {
   useInputPopover,
   SLASH_COMMANDS,
@@ -170,6 +171,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }
   const [lastSent, setLastSent] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<AttachmentFile[]>([]);
+  const [attachNoteOpen, setAttachNoteOpen] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -541,6 +543,24 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  // Attaching a Collections note reuses the existing text-attachment plumbing
+  // (chip rendering, removal, saveAttachment + implicit-context injection on
+  // send) — it's just an AttachmentFile whose content came from a note instead
+  // of a picked File. getNoteContentForContext is read-only, so the note itself
+  // is never modified by attaching it.
+  const handleAttachNote = useCallback((note: { id: string; title: string; contentMarkdown: string }) => {
+    setAttachedFiles((prev) => [
+      ...prev,
+      {
+        name: `${note.title || "Untitled note"}.md`,
+        type: "text",
+        content: note.contentMarkdown,
+        size: note.contentMarkdown.length,
+      },
+    ]);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+
   // ---- Shell mode execution -----------------------------------------------
   const executeShell = useCallback(async (command: string) => {
     if (!command.trim() || shellExecuting) return;
@@ -802,6 +822,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </DialogContent>
       </Dialog>
 
+      {/* Attach a note dialog */}
+      <AttachNoteModal open={attachNoteOpen} onOpenChange={setAttachNoteOpen} onAttach={handleAttachNote} />
+
       {/* Compacting indicator */}
       {compacting && (
         <div className="flex items-center gap-2 mb-1.5 px-2 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
@@ -882,6 +905,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 disabled={isStreaming || disabled || enhancing}
               >
                 <Paperclip className="w-5 h-5" />
+              </button>
+            </Tip>
+          )}
+
+          {/* Attach a note — hidden in shell mode */}
+          {!isShellMode && (
+            <Tip content="Attach a note" side="top">
+              <button
+                type="button"
+                onClick={() => setAttachNoteOpen(true)}
+                className="flex-shrink-0 p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground/60"
+                disabled={isStreaming || disabled || enhancing}
+              >
+                <Library className="w-5 h-5" />
               </button>
             </Tip>
           )}

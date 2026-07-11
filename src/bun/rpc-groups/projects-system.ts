@@ -57,7 +57,12 @@ export const handlers: Record<string, (params: any) => any> = {
 
 	// File Attachments
 	saveAttachment: async (params) => {
-		const { projectId, fileName, dataBase64, type } = params;
+		const { projectId, dataBase64, type } = params;
+		// fileName can come from arbitrary text (e.g. a Collections note title
+		// attached to chat, which has no filesystem-legality constraint) — strip
+		// characters Windows/macOS/Linux all forbid in a single path segment
+		// before it's ever joined into a real fs path below.
+		const fileName = params.fileName.replace(/[\\/:*?"<>|]/g, "_").trim() || "attachment";
 
 		// Save to global workspace .attachments/ (not per-project)
 		const gwpRows = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, "global_workspace_path")).limit(1);

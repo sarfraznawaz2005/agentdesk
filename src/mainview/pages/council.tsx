@@ -3,12 +3,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import { rpc } from "@/lib/rpc";
-import { Users, Send, Loader2, CheckCircle, Copy, Check, Download } from "lucide-react";
+import { Users, Send, Loader2, CheckCircle, Copy, Check, Download, BookmarkPlus } from "lucide-react";
 import { useHeaderActions } from "@/lib/header-context";
 import { toast } from "@/components/ui/toast";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { CodeBlock } from "@/components/chat/code-block";
 import { Tip } from "@/components/ui/tooltip";
+import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -247,6 +248,7 @@ function MessageBubble({
   sessionState: SessionState;
 }) {
   const [copied, setCopied] = useState(false);
+  const [saveToCollectionOpen, setSaveToCollectionOpen] = useState(false);
 
   function handleCopy() {
     navigator.clipboard.writeText(message.content).then(() => {
@@ -386,8 +388,23 @@ function MessageBubble({
                 <Download className="w-3.5 h-3.5" />
               </button>
             </Tip>
+            <Tip content="Save to Collection" side="top">
+              <button
+                onClick={() => setSaveToCollectionOpen(true)}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Save to Collection"
+              >
+                <BookmarkPlus className="w-3.5 h-3.5" />
+              </button>
+            </Tip>
           </div>
         )}
+        <SaveToCollectionModal
+          open={saveToCollectionOpen}
+          onOpenChange={setSaveToCollectionOpen}
+          contentMarkdown={message.content}
+          sourceType="council"
+        />
       </div>
     );
   }

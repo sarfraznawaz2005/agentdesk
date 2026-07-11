@@ -62,7 +62,7 @@ export async function buildContext(options: ContextOptions): Promise<BuiltContex
 
   for (const msg of recentMessages) {
     if (msg.role === "system") continue; // skip any persisted system messages
-    if (msg.role === "assistant" && !msg.content) continue; // skip empty placeholder
+    if (!msg.content) continue; // skip empty placeholder (assistant or user — an empty text block is rejected by every provider)
     if (msg.content.startsWith("[Generation failed]")) continue; // skip error messages — not useful context
     const role = msg.role === "assistant" ? "assistant" : "user";
     coreMessages.push({ role, content: msg.content });

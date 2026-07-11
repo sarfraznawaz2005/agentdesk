@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { Check, Copy, Trash2, ClipboardList, RefreshCw, GitBranch, GitCompare, ListChecks, CheckSquare, Square, Paperclip } from "lucide-react";
+import { Check, Copy, Trash2, ClipboardList, RefreshCw, GitBranch, GitCompare, ListChecks, CheckSquare, Square, Paperclip, BookmarkPlus } from "lucide-react";
 import { cn, displayAgentName } from "@/lib/utils";
 import { relativeTimeVerbose } from "@/lib/date-utils";
 import type { Message } from "@/stores/chat-store";
@@ -16,6 +16,7 @@ import { MessageParts, ThinkingBlock, type MessagePartData } from "./message-par
 import { rpc } from "@/lib/rpc";
 import { useChatStore } from "@/stores/chat-store";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
+import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
 
 // Re-export so MessageList (and any other consumers) can import from here
 export type { Message };
@@ -63,6 +64,32 @@ function highlightChildren(children: React.ReactNode, query: string): React.Reac
 // ---------------------------------------------------------------------------
 // Attachment previews in user messages
 // ---------------------------------------------------------------------------
+
+// User messages persist with the implicit AI context (attached file/note
+// content, @mentioned file content) baked directly into `content` — the PM
+// rebuilds its history straight from the DB, so that content has to stay in
+// the row. But rendered raw through ReactMarkdown, the `<attached-file>`
+// wrapper is an unrecognized tag that rehype-sanitize strips entirely
+// (content included), which is why a reload showed an empty bubble instead of
+// the "Attached: [name]" chip the pre-refresh optimistic render had. Extract
+// the wrapped blocks back out into chip labels before markdown-rendering.
+const ATTACHMENT_CONTEXT_PATTERNS = [
+  /<attached-file name="([^"]*)"(?:\s+path="[^"]*")?>[\s\S]*?<\/attached-file>\n?/g,
+  /\[Attached image: "([^"]*)" saved at "[^"]*"\.[^\]]*\]\n?/g,
+  /\[Attached file: "([^"]*)" saved at "[^"]*"\.[^\]]*\]\n?/g,
+];
+
+function extractAttachmentChips(content: string): { chips: string[]; text: string } {
+  const chips: string[] = [];
+  let text = content;
+  for (const pattern of ATTACHMENT_CONTEXT_PATTERNS) {
+    text = text.replace(pattern, (_match, name: string) => {
+      chips.push(name);
+      return "";
+    });
+  }
+  return { chips, text: text.trim() };
+}
 
 function AttachmentPreviews({ attachments }: { attachments: Array<{ name: string; type: string; path?: string; dataUrl?: string }> }) {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -260,6 +287,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
   const [isRetrying, setIsRetrying] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [parts, setParts] = useState<MessagePartData[] | null>(null);
+  const [saveToCollectionOpen, setSaveToCollectionOpen] = useState(false);
 
   const { deleteMessage, retryLastMessage, branchConversation, setActiveConversation, loadMessages } = useMessageActions();
   const stopAgent = useChatStore((s) => s.stopAgent);
@@ -336,6 +364,12 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
   const isError = message.role === "error" || message.content.startsWith("[Generation failed]");
   const isAgentCard = !!message.hasParts;
 
+  // Only user messages ever carry the embedded attachment/mention context tags.
+  const { chips: attachmentChips, text: displayContent } = useMemo(
+    () => (isUser ? extractAttachmentChips(message.content) : { chips: [], text: message.content }),
+    [isUser, message.content],
+  );
+
   // Parse plan metadata if present (memoized to avoid repeated JSON.parse)
   const parsedMeta = useMemo(() => {
     try {
@@ -367,7 +401,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
   }, [isPlan, allMessages, message.id, message.conversationId]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    navigator.clipboard.writeText(displayContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -641,12 +675,24 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                   </div>
                 </>
               )}
-              {/* Attachment previews */}
-              {isUser && parsedMeta?.attachments && (
+              {/* Attachment previews — rich (with image thumbnails) when the in-memory
+                  metadata is still around; otherwise (e.g. after a reload, since
+                  attachment metadata isn't persisted) fall back to plain name chips
+                  recovered from the embedded context tags. */}
+              {isUser && parsedMeta?.attachments ? (
                 <AttachmentPreviews attachments={parsedMeta.attachments} />
-              )}
+              ) : isUser && attachmentChips.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {attachmentChips.map((name, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/20 text-xs text-white/90 border border-white/20">
+                      <Paperclip className="w-3 h-3" />
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               {(() => {
-                const c = message.content?.trim();
+                const c = displayContent?.trim();
                 if (c?.startsWith("{") && c.includes('"stdout"')) {
                   try {
                     const parsed = JSON.parse(c);
@@ -682,7 +728,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                     rehypePlugins={[rehypeSanitize]}
                     components={mdComponents as never}
                   >
-                    {message.content + (isStreaming ? "▍" : "")}
+                    {displayContent + (isStreaming ? "▍" : "")}
                   </ReactMarkdown>
                 );
               })()}
@@ -757,6 +803,15 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                   {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
                 </button>
               </Tip>
+              <Tip content="Save to Collection" side="top">
+                <button
+                  onClick={() => setSaveToCollectionOpen(true)}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  aria-label="Save to Collection"
+                >
+                  <BookmarkPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </Tip>
               {projectId && isLastMessage && (
                 <Tip content="Retry" side="top">
                   <button
@@ -793,6 +848,14 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
         variant="destructive"
         onConfirm={() => { deleteMessage(message.id); setShowDeleteDialog(false); }}
         onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      <SaveToCollectionModal
+        open={saveToCollectionOpen}
+        onOpenChange={setSaveToCollectionOpen}
+        contentMarkdown={message.content}
+        sourceType="pm_chat"
+        sourceRef={projectId ? { projectId } : undefined}
       />
     </div>
   );

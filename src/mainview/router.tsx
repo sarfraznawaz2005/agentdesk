@@ -14,6 +14,7 @@ import { SchedulerPage } from "./pages/scheduler";
 import { AnalyticsPage } from "./pages/analytics";
 import { OnboardingPage } from "./pages/onboarding";
 import { PromptsPage } from "./pages/prompts";
+import { CollectionsPage } from "./pages/collections";
 import { SkillsPage } from "./pages/skills";
 import { DbViewerPage } from "./pages/plugin-db-viewer";
 import { CouncilPage } from "./pages/council";
@@ -83,6 +84,12 @@ const promptsRoute = createRoute({
   component: PromptsPage,
 });
 
+const collectionsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/collections",
+  component: CollectionsPage,
+});
+
 const skillsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/skills",
@@ -123,6 +130,7 @@ const routeTree = rootRoute.addChildren([
   schedulerRoute,
   skillsRoute,
   promptsRoute,
+  collectionsRoute,
 
   analyticsRoute,
   dbViewerRoute,

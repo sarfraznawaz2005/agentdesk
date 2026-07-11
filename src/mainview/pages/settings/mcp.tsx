@@ -212,7 +212,7 @@ export function McpSettings() {
   const failedCount = Object.values(liveStatus).filter((s) => s === "failed").length;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Server className="w-5 h-5 text-muted-foreground" />

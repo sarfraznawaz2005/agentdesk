@@ -7,6 +7,15 @@ import type { ConversationsRequests } from "./conversations";
 import type { AgentsRequests } from "./agents";
 import type { KanbanRequests } from "./kanban";
 import type { NotesRequests } from "./notes";
+import type {
+  CollectionsRequests,
+  CollectionDto,
+  CollectionNoteDto,
+  CollectionNoteSummaryDto,
+  CollectionAttachmentDto,
+  CollectionLinkedNoteDto,
+  EmbeddingModelStatusDto,
+} from "./collections";
 import type { DeployRequests } from "./deploy";
 import type { GitRequests } from "./git";
 import type { IntegrationsRequests } from "./integrations";
@@ -46,6 +55,7 @@ type BunRequests =
   & AgentsRequests
   & KanbanRequests
   & NotesRequests
+  & CollectionsRequests
   & DeployRequests
   & GitRequests
   & IntegrationsRequests
@@ -86,6 +96,13 @@ export type {
   AgentsRequests,
   KanbanRequests,
   NotesRequests,
+  CollectionsRequests,
+  CollectionDto,
+  CollectionNoteDto,
+  CollectionNoteSummaryDto,
+  CollectionAttachmentDto,
+  CollectionLinkedNoteDto,
+  EmbeddingModelStatusDto,
   DeployRequests,
   GitRequests,
   IntegrationsRequests,

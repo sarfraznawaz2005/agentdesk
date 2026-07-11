@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Zap,
   Play,
+  Square,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,13 @@ function LastRunBadge({ status }: { status: string | null }) {
       </Badge>
     );
   }
+  if (status === "stopped") {
+    return (
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-muted text-muted-foreground border-border">
+        Stopped
+      </Badge>
+    );
+  }
   return (
     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
       {status}
@@ -263,6 +271,7 @@ function HistorySection({ jobId, expanded, onCleared }: HistorySectionProps) {
                   entry.status === "success" ? "bg-green-500" :
                   entry.status === "error" ? "bg-red-500" :
                   entry.status === "running" ? "bg-blue-500" :
+                  entry.status === "stopped" ? "bg-muted-foreground" :
                   "bg-muted-foreground/60"
                 )}
                 aria-hidden="true"
@@ -313,19 +322,21 @@ function HistorySection({ jobId, expanded, onCleared }: HistorySectionProps) {
 
 interface CronJobCardProps {
   job: CronJob;
+  isRunning: boolean;
   onEdit: (job: CronJob) => void;
   onDelete: (job: CronJob) => void;
   onToggleEnabled: (job: CronJob, enabled: boolean) => void;
   onJobsReload: () => void;
 }
 
-function CronJobCard({ job, onEdit, onDelete, onToggleEnabled, onJobsReload }: CronJobCardProps) {
+function CronJobCard({ job, isRunning, onEdit, onDelete, onToggleEnabled, onJobsReload }: CronJobCardProps) {
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
-  const [running, setRunning] = useState(false);
+  const [triggering, setTriggering] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   async function handleRunNow() {
-    setRunning(true);
+    setTriggering(true);
     try {
       await rpc.triggerCronJob({ id: job.id });
       toast("success", `"${job.name}" triggered.`);
@@ -334,7 +345,22 @@ function CronJobCard({ job, onEdit, onDelete, onToggleEnabled, onJobsReload }: C
       const msg = err instanceof Error ? err.message : "Failed to trigger job.";
       toast("error", msg);
     } finally {
-      setRunning(false);
+      setTriggering(false);
+    }
+  }
+
+  async function handleStop() {
+    setStopping(true);
+    try {
+      const result = (await rpc.stopCronJob({ id: job.id })) as { stopped: boolean };
+      if (!result.stopped) {
+        toast("error", "Job was no longer running.");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to stop job.";
+      toast("error", msg);
+    } finally {
+      setStopping(false);
     }
   }
 
@@ -444,17 +470,45 @@ function CronJobCard({ job, onEdit, onDelete, onToggleEnabled, onJobsReload }: C
           </Button>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 gap-1 text-xs text-green-700 hover:text-green-800 hover:bg-green-50"
-              onClick={handleRunNow}
-              disabled={running}
-              aria-label={`Run job ${job.name} now`}
-            >
-              <Play className="h-3.5 w-3.5" aria-hidden="true" />
-              {running ? "Running…" : "Run"}
-            </Button>
+            {isRunning && job.isStoppable ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={handleStop}
+                disabled={stopping}
+                aria-label={`Stop job ${job.name}`}
+              >
+                <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                {stopping ? "Stopping…" : "Stop"}
+              </Button>
+            ) : isRunning ? (
+              // Not individually cancellable (e.g. PM-dispatched tasks continue in
+              // their own conversation after this cron run returns) — show a plain
+              // status instead of a Stop button that wouldn't actually stop anything.
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 gap-1 text-xs text-muted-foreground"
+                disabled
+                aria-label={`Job ${job.name} is running`}
+              >
+                <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                Running…
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 gap-1 text-xs text-green-700 hover:text-green-800 hover:bg-green-50"
+                onClick={handleRunNow}
+                disabled={triggering}
+                aria-label={`Run job ${job.name} now`}
+              >
+                <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                {triggering ? "Starting…" : "Run"}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -494,6 +548,7 @@ function CronJobCard({ job, onEdit, onDelete, onToggleEnabled, onJobsReload }: C
 interface CronJobsTabProps {
   jobs: CronJob[];
   loading: boolean;
+  runningJobIds: Set<string>;
   onAdd: () => void;
   onEdit: (job: CronJob) => void;
   onDelete: (job: CronJob) => void;
@@ -504,6 +559,7 @@ interface CronJobsTabProps {
 function CronJobsTab({
   jobs,
   loading,
+  runningJobIds,
   onAdd,
   onEdit,
   onDelete,
@@ -578,6 +634,7 @@ function CronJobsTab({
             <li key={job.id}>
               <CronJobCard
                 job={job}
+                isRunning={runningJobIds.has(job.id)}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onToggleEnabled={onToggleEnabled}
@@ -682,6 +739,7 @@ export function SchedulerPage() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("cron");
+  const [runningJobIds, setRunningJobIds] = useState<Set<string>>(new Set());
 
   // Cron form state
   const [formOpen, setFormOpen] = useState(false);
@@ -708,7 +766,9 @@ export function SchedulerPage() {
     setLoading(true);
     try {
       const result = await rpc.getCronJobs();
-      setJobs(Array.isArray(result) ? (result as unknown as CronJob[]) : []);
+      const loaded = Array.isArray(result) ? (result as unknown as CronJob[]) : [];
+      setJobs(loaded);
+      setRunningJobIds(new Set(loaded.filter((j) => j.isRunning).map((j) => j.id)));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load cron jobs.";
       toast("error", msg);
@@ -716,6 +776,25 @@ export function SchedulerPage() {
       setLoading(false);
     }
   }, []);
+
+  // Live running-state — covers both manual (Run button) and automatic
+  // (cron-fired) job runs, so Stop shows up regardless of trigger source.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { jobId, running } = (e as CustomEvent).detail as { jobId: string; running: boolean };
+      setRunningJobIds((prev) => {
+        const next = new Set(prev);
+        if (running) next.add(jobId);
+        else next.delete(jobId);
+        return next;
+      });
+      // A run just finished — refresh so next/last-run info and the history
+      // badge reflect the outcome without a manual reload.
+      if (!running) loadJobs();
+    };
+    window.addEventListener("agentdesk:cron-run-state-changed", handler);
+    return () => window.removeEventListener("agentdesk:cron-run-state-changed", handler);
+  }, [loadJobs]);
 
   const loadRules = useCallback(async () => {
     setRulesLoading(true);
@@ -852,6 +931,7 @@ export function SchedulerPage() {
           <CronJobsTab
             jobs={jobs}
             loading={loading}
+            runningJobIds={runningJobIds}
             onAdd={handleAddJob}
             onEdit={handleEditJob}
             onDelete={handleDeleteJob}

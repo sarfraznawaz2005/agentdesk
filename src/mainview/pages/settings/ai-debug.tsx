@@ -93,7 +93,7 @@ export function AiDebugSettings() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold">Debug</h2>
         <p className="text-sm text-muted-foreground mt-0.5">

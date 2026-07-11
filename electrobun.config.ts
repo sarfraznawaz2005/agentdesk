@@ -17,6 +17,12 @@ export default {
 			"assets/icon.ico": "app.ico",
 			"plugins": "plugins",
 			"skills": "skills",
+			// onnxruntime-node's native binding (used by @huggingface/transformers for Collections'
+			// local embedding model) is loaded via a require() relative to its own dist/ folder.
+			// Bun's bundler flattens src/bun into a single bun/index.js, so that relative require
+			// resolves to Resources/app/bin/napi-v6/... at runtime — copy the prebuilt .node
+			// binaries there so the flattened bundle can still find them.
+			"node_modules/onnxruntime-node/bin": "bin",
 			"release-notes.json": "release-notes.json",
 			"assets/uninstall.ps1": "uninstall.ps1",
 		},

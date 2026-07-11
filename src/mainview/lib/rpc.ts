@@ -16,7 +16,7 @@ import { Electroview } from "electrobun/view";
 import type { AgentDeskRPC } from "../../shared/rpc";
 import type { IssueFixerConfigDto } from "../../shared/rpc/issue-fixer";
 import type { RemoteSyncConfigInput } from "../../shared/rpc/remote-sync";
-import { IS_REMOTE, createRemoteRpcTransport } from "./remote-transport";
+import { IS_REMOTE, IS_DEV_DIRECT, createRemoteRpcTransport, createDevRpcTransport } from "./remote-transport";
 
 // ---------------------------------------------------------------------------
 // Webview-side RPC definition
@@ -133,6 +133,12 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       directorySelected: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:directory-selected", { detail: payload }));
       },
+      collectionAttachmentFilePicked: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:collection-attachment-file-picked", { detail: payload }));
+      },
+      collectionEmbeddingModelStatus: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:collection-embedding-model-status", { detail: payload }));
+      },
       shellApprovalRequest: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-request", { detail: payload }));
       },
@@ -156,6 +162,12 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       inboxResponseUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:inbox-response-updated", { detail: payload }));
+      },
+      cronJobRunStateChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:cron-run-state-changed", { detail: payload }));
+      },
+      schedulerInboxRunState: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:scheduler-inbox-run-state", { detail: payload }));
       },
       conversationTitleChanged: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:conversation-title-changed", { detail: payload }));
@@ -189,6 +201,18 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       dashboardPMError: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-error", { detail: payload }));
+      },
+      collectionsChatChunk: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:collections-chat-chunk", { detail: payload }));
+      },
+      collectionsChatComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:collections-chat-complete", { detail: payload }));
+      },
+      collectionsChatToolCall: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:collections-chat-tool-call", { detail: payload }));
+      },
+      collectionsChatError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:collections-chat-error", { detail: payload }));
       },
       dashboardAgentChunk: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-chunk", { detail: payload }));
@@ -389,7 +413,7 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
 export const electroview = IS_REMOTE ? null : new Electroview({ rpc: electrobunRpc });
 
 const electroviewRpc: typeof electrobunRpc = IS_REMOTE
-  ? (createRemoteRpcTransport() as unknown as typeof electrobunRpc)
+  ? ((IS_DEV_DIRECT ? createDevRpcTransport() : createRemoteRpcTransport()) as unknown as typeof electrobunRpc)
   : electrobunRpc;
 
 // ---------------------------------------------------------------------------
@@ -792,6 +816,157 @@ export const rpc = {
   deleteWorkspacePlan: (path: string) =>
     electroviewRpc.request.deleteWorkspacePlan({ path }),
 
+  // ---- Collections -----------------------------------------------------------
+  // Personal, cross-project knowledge base (see docs/collections-plan.md).
+  // Wrappers are added incrementally as each phase's RPC methods land — only
+  // the Phase-1 CRUD surface used by the Library screen shell is wired so far.
+
+  /** List every collection with its live note count. */
+  listCollections: () => electroviewRpc.request.listCollections({}),
+
+  /** Create a new collection. */
+  createCollection: (params: { name: string; color: string; icon?: string }) =>
+    electroviewRpc.request.createCollection(params),
+
+  /** Rename a collection (Default included — only its isDefault status is protected, not its name). */
+  renameCollection: (params: { id: string; name: string }) =>
+    electroviewRpc.request.renameCollection(params),
+
+  /** Change a collection's color swatch. */
+  recolorCollection: (params: { id: string; color: string; icon?: string }) =>
+    electroviewRpc.request.recolorCollection(params),
+
+  /** Delete a collection (rejected for the Default collection); its notes move to Default. */
+  deleteCollection: (params: { id: string }) =>
+    electroviewRpc.request.deleteCollection(params),
+
+  /** Persist a new drag-and-drop order for custom (non-Default) collections in the rail. */
+  reorderCollections: (params: { orderedIds: string[] }) =>
+    electroviewRpc.request.reorderCollections(params),
+
+  /** List notes in a collection, or the virtual "favorites"/"trash" scopes. */
+  listNotes: (params: { collectionId: string; query?: string; tags?: string[]; sort?: "updated" | "created" | "title" | "favorite" }) =>
+    electroviewRpc.request.listNotes(params),
+
+  /** Fetch a single collection note by id, including attachments. */
+  getCollectionNote: (params: { id: string }) =>
+    electroviewRpc.request.getCollectionNote(params),
+
+  /** Create a new collection note. */
+  createCollectionNote: (params: { collectionId: string; title: string; contentMarkdown?: string }) =>
+    electroviewRpc.request.createCollectionNote(params),
+
+  /** Update an existing collection note's title, content, or tags. */
+  updateCollectionNote: (params: { id: string; title?: string; contentMarkdown?: string; tags?: string[] }) =>
+    electroviewRpc.request.updateCollectionNote(params),
+
+  /** Toggle a note's favorite flag. Favorites is a virtual view over this flag, not a real collection. */
+  toggleFavorite: (params: { id: string }) =>
+    electroviewRpc.request.toggleFavorite(params),
+
+  /** Move a note into a different real collection (drag-and-drop onto a rail item). */
+  moveNote: (params: { id: string; targetCollectionId: string }) =>
+    electroviewRpc.request.moveNote(params),
+
+  /** Move a note to Trash (isDeleted=1). updatedAt is bumped and doubles as the 30-day purge clock. */
+  softDeleteNote: (params: { id: string }) =>
+    electroviewRpc.request.softDeleteNote(params),
+
+  /** Restore a note out of Trash (isDeleted=0). */
+  restoreNote: (params: { id: string }) =>
+    electroviewRpc.request.restoreNote(params),
+
+  /** Permanently delete a single trashed note and its attachment files. Irreversible. */
+  permanentlyDeleteNote: (params: { id: string }) =>
+    electroviewRpc.request.permanentlyDeleteNote(params),
+
+  /** Permanently delete every trashed note and their attachment files. Irreversible. */
+  emptyTrash: () => electroviewRpc.request.emptyTrash({}),
+
+  /** FTS5 keyword search over notes, scoped to one collection/favorites/trash, or "all" for global search. */
+  searchCollectionNotes: (params: { query: string; scope: string }) =>
+    electroviewRpc.request.searchCollectionNotes(params),
+
+  /** Opens the native OS file picker; the chosen path arrives via the "agentdesk:collection-attachment-file-picked" event. */
+  pickAttachmentFile: (params: { noteId: string }) =>
+    electroviewRpc.request.pickAttachmentFile(params),
+
+  /** Copy an already-picked file into a note's attachment storage and record it. */
+  addAttachment: (params: { noteId: string; sourcePath: string }) =>
+    electroviewRpc.request.addAttachment(params),
+
+  /** Remove an attachment (deletes both the DB row and the file on disk). */
+  removeAttachment: (params: { id: string }) =>
+    electroviewRpc.request.removeAttachment(params),
+
+  /** Resolve an attachment's real absolute path for download. */
+  getAttachmentDownloadPath: (params: { id: string }) =>
+    electroviewRpc.request.getAttachmentDownloadPath(params),
+
+  /** Reveal an attachment in the OS file explorer (no in-app "Save As" dialog exists). */
+  revealAttachment: (params: { id: string }) =>
+    electroviewRpc.request.revealAttachment(params),
+
+  /** Export a single note as Markdown/PDF/JSON — writes the file and reveals it in the OS file explorer. */
+  exportNote: (params: { id: string; format: "markdown" | "pdf" | "json" }) =>
+    electroviewRpc.request.exportNote(params),
+
+  /** Export every note in a collection as one bundle (JSON array / multi-page PDF / zip of .md files). */
+  exportCollection: (params: { id: string; format: "markdown" | "pdf" | "json" }) =>
+    electroviewRpc.request.exportCollection(params),
+
+  /** Notes this note links out to via [[wiki-links]] in its own content. */
+  getLinkedNotes: (params: { id: string }) =>
+    electroviewRpc.request.getLinkedNotes(params),
+
+  /** Notes that link to this note via a [[wiki-link]] in their own content. */
+  getBacklinks: (params: { id: string }) =>
+    electroviewRpc.request.getBacklinks(params),
+
+  /** Save chat/inbox content into a collection note, stamped with provenance (sourceType/sourceRef). */
+  saveToCollection: (params: {
+    collectionId: string;
+    title: string;
+    contentMarkdown: string;
+    sourceType?: "pm_chat" | "council" | "freelance_chat" | "skills_chat" | "freelance_inbox" | "inbox_message" | "manual";
+    sourceRef?: { projectId?: string; projectName?: string; taskId?: string };
+  }) => electroviewRpc.request.saveToCollection(params),
+
+  /** Lightweight cross-collection note search for the "Attach a note" picker. */
+  listNotesForAttachPicker: (params: { query?: string }) =>
+    electroviewRpc.request.listNotesForAttachPicker(params),
+
+  /** Full markdown content of a note, for inlining into an outgoing chat message. */
+  getNoteContentForContext: (params: { id: string }) =>
+    electroviewRpc.request.getNoteContentForContext(params),
+
+  /** Total size/file count under the collections attachment storage root, for the Settings tab's Attachment storage card. */
+  getAttachmentStorageInfo: () => electroviewRpc.request.getAttachmentStorageInfo({}),
+
+  /** Reveals the collections attachment storage root in the OS file explorer. */
+  openAttachmentStorageFolder: () => electroviewRpc.request.openAttachmentStorageFolder({}),
+
+  /** Embedding model download/readiness status — drives the Settings tab's Embedding & Chat card and the chat FAB's gating. */
+  getEmbeddingModelStatus: () => electroviewRpc.request.getEmbeddingModelStatus({}),
+
+  /** Downloads the local embedding model. Resolves once fully downloaded and verified; incremental progress arrives via collectionEmbeddingModelStatus events. */
+  downloadEmbeddingModel: () => electroviewRpc.request.downloadEmbeddingModel({}),
+
+  /** Manually re-embeds every note (e.g. after a model change). Resolves once the full pass completes. */
+  reindexNotes: () => electroviewRpc.request.reindexNotes({}),
+
+  /** Send a message to the Collections chat assistant. Returns immediately; tokens arrive via collectionsChatChunk events. */
+  sendCollectionsChatMessage: (sessionId: string, content: string, scope: string) =>
+    electroviewRpc.request.sendCollectionsChatMessage({ sessionId, content, scope }),
+
+  /** Abort an in-flight Collections chat stream. */
+  abortCollectionsChatMessage: (sessionId: string) =>
+    electroviewRpc.request.abortCollectionsChatMessage({ sessionId }),
+
+  /** Clear Collections chat conversation history for a session. */
+  clearCollectionsChatSession: (sessionId: string) =>
+    electroviewRpc.request.clearCollectionsChatSession({ sessionId }),
+
   // ---- Discord -------------------------------------------------------------
 
   /** Fetch all Discord channel configurations. */
@@ -1092,6 +1267,12 @@ export const rpc = {
 
   triggerCronJob: (params: { id: string }) =>
     electroviewRpc.request.triggerCronJob(params),
+
+  stopCronJob: (params: { id: string }) =>
+    electroviewRpc.request.stopCronJob(params),
+
+  getRunningSchedulerMessages: () =>
+    electroviewRpc.request.getRunningSchedulerMessages({}),
 
   // ---- Automation Rules ----------------------------------------------------
 

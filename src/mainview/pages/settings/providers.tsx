@@ -868,7 +868,7 @@ export function ProvidersSettings() {
   // -------------------------------------------------------------------------
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div>
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>

@@ -20,6 +20,7 @@ import { WhatsAppAdapter } from "./channels/whatsapp-adapter";
 import { EmailAdapter } from "./channels/email-adapter";
 
 import { maybeRunStartupMaintenance, runIncrementalMaintenance } from "./db/maintenance";
+import { startCollectionsTrashPurgeTimer, stopCollectionsTrashPurgeTimer } from "./collections/trash-purge";
 import { registerWindowsUninstaller } from "./windows-registry";
 import { getOrCreateEngine, setMainWindowRef } from "./engine-manager";
 import { rpc, onSettingChange } from "./rpc-registration";
@@ -43,6 +44,10 @@ import { enableLaunchAtStartup, disableLaunchAtStartup } from "./system/login-it
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
+// Dev-only local RPC port so a plain browser tab at DEV_SERVER_URL can drive the
+// app directly (no pairing) — see the isDevMode check below and
+// src/mainview/lib/remote-transport.ts's IS_DEV_DIRECT/createDevRpcTransport.
+const DEV_REMOTE_RPC_PORT = 5174;
 
 // Window state shape persisted to disk
 interface WindowState {
@@ -256,6 +261,7 @@ setMainWindowRef(mainWindow);
 // 7-day full VACUUM (which holds a DB lock) is pushed out ~20s so it never competes with
 // the initial UI/agent load — it shows the maintenance overlay for its duration.
 setTimeout(() => {
+	startCollectionsTrashPurgeTimer();
 	syncWorkspaceFolders().catch((e) => console.error("[startup] workspace sync:", e));
 	import("./rpc/deploy")
 		.then(({ reconcileStuckDeploys }) => reconcileStuckDeploys())
@@ -343,6 +349,12 @@ mainWindow.webview.on("dom-ready", () => {
 			startPlaygroundServer();
 
 			// Remote RPC server (web app) — opt-in via AGENTDESK_REMOTE_RPC_PORT; no-op otherwise.
+			// Dev builds default it on (unless already set) so a plain browser tab at
+			// http://localhost:5173 can drive the app directly, with no pairing —
+			// production/canary are unaffected since isDevMode is false there.
+			if (isDevMode && !process.env.AGENTDESK_REMOTE_RPC_PORT) {
+				process.env.AGENTDESK_REMOTE_RPC_PORT = String(DEV_REMOTE_RPC_PORT);
+			}
 			maybeStartRemoteRpcServer();
 
 			// Remote access (web app over the relay) — connects only if the user has
@@ -421,6 +433,7 @@ Electrobun.events.on("before-quit", () => {
 		}
 
 		stopSleepBlock();
+		stopCollectionsTrashPurgeTimer();
 		await shutdownChannelManager();
 		shutdownCronScheduler();
 		shutdownAutomationEngine();

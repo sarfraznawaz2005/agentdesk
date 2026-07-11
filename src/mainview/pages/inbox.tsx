@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { relativeTime as formatTimestamp } from "@/lib/date-utils";
+import { relativeTime as formatTimestamp, parseDbDate } from "@/lib/date-utils";
 import { useHeaderActions } from "@/lib/header-context";
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import {
   Check,
   Star,
   Download,
+  BookmarkPlus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
 import { InboxRulesEditor } from "@/components/inbox/inbox-rules-editor";
 import { downloadMarkdown } from "@/lib/export-markdown";
+import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +97,7 @@ function getSourceBadgeStyle(source: string): string {
     case "discord": return "bg-indigo-50 text-indigo-700 border-indigo-200";
     case "whatsapp": return "bg-green-50 text-green-700 border-green-200";
     case "email": return "bg-amber-50 text-amber-700 border-amber-200";
+    case "scheduler": return "bg-purple-50 text-purple-700 border-purple-200";
     default: return "bg-muted/50 text-muted-foreground border-border";
   }
 }
@@ -105,6 +108,7 @@ function getSourceLabel(source: string): string {
     case "discord": return "Discord";
     case "whatsapp": return "WhatsApp";
     case "email": return "Email";
+    case "scheduler": return "Scheduler";
     default: return source;
   }
 }
@@ -206,28 +210,6 @@ function PromptBlock({ content }: { content: string }) {
   );
 }
 
-/** Copy-to-clipboard button for the agent response only (not the prompt). */
-function CopyResponseButton({ content }: { content: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <Tip content={copied ? "Copied!" : "Copy response"} side="top">
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        aria-label={copied ? "Copied" : "Copy response"}
-      >
-        {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
-      </button>
-    </Tip>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Message Detail Pane (right side of the master-detail split)
 // ---------------------------------------------------------------------------
@@ -240,6 +222,7 @@ interface MessageDetailPaneProps {
   onFavorite: (id: string) => void;
   onBack: () => void;
   projectName?: string;
+  runningJobId?: string;
 }
 
 function MessageDetailPane({
@@ -250,16 +233,40 @@ function MessageDetailPane({
   onFavorite,
   onBack,
   projectName,
+  runningJobId,
 }: MessageDetailPaneProps) {
   const source = getChannelSource(message);
   const senderLabel = message.sender || "Unknown";
   const hasThread = threadMessages.length > 1;
+  const [responseCopied, setResponseCopied] = useState(false);
+  const [saveToCollectionOpen, setSaveToCollectionOpen] = useState(false);
+  const [stopping, setStopping] = useState(false);
+
+  async function handleStop() {
+    if (!runningJobId) return;
+    setStopping(true);
+    try {
+      const result = (await rpc.stopCronJob({ id: runningJobId })) as { stopped: boolean };
+      if (!result.stopped) toast("error", "Job was no longer running.");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Failed to stop job.");
+    } finally {
+      setStopping(false);
+    }
+  }
 
   function handleExportResponse() {
     if (!message.agentResponse) return;
-    const date = new Date(message.createdAt).toISOString().slice(0, 10);
+    const date = parseDbDate(message.createdAt).toISOString().slice(0, 10);
     downloadMarkdown(`${senderLabel} response ${date}`, message.agentResponse);
     toast("success", "Response exported as markdown.");
+  }
+
+  function handleCopyResponse() {
+    if (!message.agentResponse) return;
+    navigator.clipboard.writeText(message.agentResponse);
+    setResponseCopied(true);
+    setTimeout(() => setResponseCopied(false), 2000);
   }
 
   return (
@@ -291,7 +298,42 @@ function MessageDetailPane({
           aria-hidden="true"
         />
         <h2 className="text-base font-semibold text-foreground truncate">{senderLabel}</h2>
+        {runningJobId && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 shrink-0"
+            onClick={handleStop}
+            disabled={stopping}
+            aria-label="Stop scheduled job"
+          >
+            <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+            {stopping ? "Stopping…" : "Stop"}
+          </Button>
+        )}
         <div className="ml-auto flex items-center gap-1 shrink-0">
+          <Tip content={message.agentResponse ? (responseCopied ? "Copied!" : "Copy response") : "No agent response to copy"} side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              onClick={handleCopyResponse}
+              disabled={!message.agentResponse}
+            >
+              {responseCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            </Button>
+          </Tip>
+          <Tip content={message.agentResponse ? "Save to Collection" : "No agent response to save"} side="top">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setSaveToCollectionOpen(true)}
+              disabled={!message.agentResponse}
+            >
+              <BookmarkPlus className="h-3.5 w-3.5" />
+            </Button>
+          </Tip>
           <Tip content={message.agentResponse ? "Export response as markdown" : "No agent response to export"} side="top">
             <Button
               variant="ghost"
@@ -377,7 +419,7 @@ function MessageDetailPane({
           )}
 
           <span aria-label="Received at">
-            {new Date(message.createdAt).toLocaleString()}
+            {parseDbDate(message.createdAt).toLocaleString()}
           </span>
         </div>
 
@@ -389,10 +431,7 @@ function MessageDetailPane({
           <>
             <Separator />
             <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent Response</p>
-                <CopyResponseButton key={message.id} content={message.agentResponse} />
-              </div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent Response</p>
               <div className="text-sm leading-relaxed break-words bg-muted/50 rounded-md p-3">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -446,6 +485,15 @@ function MessageDetailPane({
           </>
         )}
       </div>
+
+      <SaveToCollectionModal
+        open={saveToCollectionOpen}
+        onOpenChange={setSaveToCollectionOpen}
+        contentMarkdown={message.agentResponse ?? ""}
+        suggestedTitle={senderLabel}
+        sourceType="inbox_message"
+        sourceRef={{ projectName, taskId: message.threadId ?? message.id }}
+      />
     </div>
   );
 }
@@ -547,6 +595,10 @@ export function InboxPage() {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Scheduler messages whose job is still running (manual or auto-fired) —
+  // messageId -> jobId, drives the header Stop button.
+  const [runningSchedulerJobs, setRunningSchedulerJobs] = useState<Map<string, string>>(new Map());
+
   // ---------------------------------------------------------------------------
   // Project name map
   // ---------------------------------------------------------------------------
@@ -628,6 +680,29 @@ export function InboxPage() {
     };
     window.addEventListener("agentdesk:inbox-response-updated", handler);
     return () => window.removeEventListener("agentdesk:inbox-response-updated", handler);
+  }, []);
+
+  // Seed + live-track scheduler jobs still running — covers messages from
+  // auto-fired runs that started before this tab was opened.
+  useEffect(() => {
+    rpc.getRunningSchedulerMessages()
+      .then((result) => {
+        const entries = result as unknown as Array<{ messageId: string; jobId: string }>;
+        setRunningSchedulerJobs(new Map(entries.map((e) => [e.messageId, e.jobId])));
+      })
+      .catch(() => {});
+
+    const handler = (e: Event) => {
+      const { messageId, jobId, running } = (e as CustomEvent).detail as { messageId: string; jobId: string; running: boolean };
+      setRunningSchedulerJobs((prev) => {
+        const next = new Map(prev);
+        if (running) next.set(messageId, jobId);
+        else next.delete(messageId);
+        return next;
+      });
+    };
+    window.addEventListener("agentdesk:scheduler-inbox-run-state", handler);
+    return () => window.removeEventListener("agentdesk:scheduler-inbox-run-state", handler);
   }, []);
 
   // Debounced search
@@ -1380,6 +1455,7 @@ export function InboxPage() {
         >
           {selectedMessage ? (
             <MessageDetailPane
+              key={selectedMessage.id}
               message={selectedMessage}
               threadMessages={
                 selectedMessage.threadId
@@ -1394,6 +1470,7 @@ export function InboxPage() {
                 setSelectedId(null);
               }}
               projectName={selectedMessage.projectId ? projectMap.get(selectedMessage.projectId) : undefined}
+              runningJobId={runningSchedulerJobs.get(selectedMessage.id)}
             />
           ) : (
             !loading &&

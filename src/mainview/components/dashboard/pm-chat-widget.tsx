@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { MessageSquare, X, Send, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { MessageSquare, X, Send, Square, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { rpc } from "@/lib/rpc";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { useDashboardLauncherStore, selectHasCustomAgents } from "@/stores/dashboard-launcher-store";
+import { QuickAttachBar } from "./quick-attach-bar";
 
 // Stable id for the mobile chat FAB registry (mirrors bg-indigo-600 = #4f46e5).
 const PM_LAUNCHER_ID = "pm";
@@ -204,7 +205,13 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   useEffect(() => {
     if (!open) return;
     const handleMouseDown = (e: MouseEvent) => {
-      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+      const target = e.target as Element;
+      // Radix Dialog/Popover content (Attach a note, Prompts Library) is
+      // portaled to document.body, outside widgetRef — without this check
+      // a click inside them reads as "outside" and closes the panel before
+      // the pick registers.
+      if (target.closest('[role="dialog"], [data-radix-popper-content-wrapper]')) return;
+      if (widgetRef.current && !widgetRef.current.contains(target)) {
         setOpen(false);
       }
     };
@@ -382,6 +389,11 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     }
   }, [isStreaming]);
 
+  const handleStop = useCallback(async () => {
+    await rpc.abortDashboardMessage(sessionId.current);
+    setIsStreaming(false);
+  }, []);
+
   const sendInfo = useCallback(async () => {
     if (isStreaming) return;
     setIsStreaming(true);
@@ -447,6 +459,11 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     });
     if (ok) toast("success", "Chat exported as Markdown.");
   }, [messages]);
+
+  const insertText = useCallback((text: string) => {
+    setInput((prev) => (prev ? `${prev}\n\n${text}` : text));
+    requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus());
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -718,31 +735,48 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
           {/* Input */}
           <div className="px-3 pb-3 pt-2 border-t border-border shrink-0">
             <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask the PM anything…"
-                rows={1}
-                className={cn(
-                  "flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2",
-                  "text-sm placeholder:text-muted-foreground",
-                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                  "max-h-28 overflow-y-auto",
-                )}
-                style={{ minHeight: "2.25rem" }}
-                disabled={isStreaming}
-              />
-              <Button
-                type="button"
-                size="icon"
-                onClick={sendMessage}
-                disabled={!input.trim() || isStreaming}
-                className="shrink-0 h-9 w-9"
-              >
-                <Send className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
-              </Button>
+              <div className="flex flex-1 items-center gap-0.5 rounded-lg border border-input bg-background pl-1 pr-2 py-1 focus-within:ring-1 focus-within:ring-ring">
+                <QuickAttachBar onInsertText={insertText} disabled={isStreaming} />
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask the PM anything…"
+                  rows={1}
+                  className={cn(
+                    "flex-1 resize-none bg-transparent px-1.5 py-1",
+                    "text-sm placeholder:text-muted-foreground",
+                    "focus-visible:outline-none",
+                    "max-h-28 overflow-y-auto",
+                  )}
+                  style={{ minHeight: "1.75rem" }}
+                  disabled={isStreaming}
+                />
+              </div>
+              {isStreaming ? (
+                <Tip content="Stop generating" side="top">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    onClick={handleStop}
+                    className="shrink-0 h-9 w-9"
+                  >
+                    <Square className="h-3.5 w-3.5" strokeWidth={3.5} fill="currentColor" aria-hidden="true" />
+                  </Button>
+                </Tip>
+              ) : (
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={sendMessage}
+                  disabled={!input.trim()}
+                  className="shrink-0 h-9 w-9"
+                >
+                  <Send className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
+                </Button>
+              )}
             </div>
             <p className="text-[10px] text-muted-foreground mt-1 px-1">
               Enter to send · Shift+Enter for newline
@@ -885,25 +919,36 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
           {/* Input */}
           <div className="px-4 pb-4 pt-2 border-t border-border shrink-0">
             <div className="flex items-end gap-2">
-              <textarea
-                ref={modalInputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask the PM anything…"
-                rows={1}
-                className={cn(
-                  "flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2",
-                  "text-sm placeholder:text-muted-foreground",
-                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                  "max-h-28 overflow-y-auto",
-                )}
-                style={{ minHeight: "2.25rem" }}
-                disabled={isStreaming}
-              />
-              <Button type="button" size="icon" onClick={sendMessage} disabled={!input.trim() || isStreaming} className="shrink-0 h-9 w-9">
-                <Send className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
-              </Button>
+              <div className="flex flex-1 items-center gap-0.5 rounded-lg border border-input bg-background pl-1 pr-2 py-1 focus-within:ring-1 focus-within:ring-ring">
+                <QuickAttachBar onInsertText={insertText} disabled={isStreaming} />
+                <textarea
+                  ref={modalInputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask the PM anything…"
+                  rows={1}
+                  className={cn(
+                    "flex-1 resize-none bg-transparent px-1.5 py-1",
+                    "text-sm placeholder:text-muted-foreground",
+                    "focus-visible:outline-none",
+                    "max-h-28 overflow-y-auto",
+                  )}
+                  style={{ minHeight: "1.75rem" }}
+                  disabled={isStreaming}
+                />
+              </div>
+              {isStreaming ? (
+                <Tip content="Stop generating" side="top">
+                  <Button type="button" size="icon" variant="destructive" onClick={handleStop} className="shrink-0 h-9 w-9">
+                    <Square className="h-3.5 w-3.5" strokeWidth={3.5} fill="currentColor" aria-hidden="true" />
+                  </Button>
+                </Tip>
+              ) : (
+                <Button type="button" size="icon" onClick={sendMessage} disabled={!input.trim()} className="shrink-0 h-9 w-9">
+                  <Send className="h-4 w-4" strokeWidth={3.5} aria-hidden="true" />
+                </Button>
+              )}
             </div>
             <p className="text-[10px] text-muted-foreground mt-1 px-1">Enter to send · Shift+Enter for newline</p>
           </div>

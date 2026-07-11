@@ -16,6 +16,7 @@
  */
 
 import { createRelayRpcClient, type RelayRpcClient } from "../../shared/remote/relay-rpc-client";
+import { createWsRpcClient } from "../../shared/remote/ws-rpc-client";
 import { loadStoredPairing, isPaired, clearStoredPairing } from "../../shared/remote/web-pairing";
 
 export { isPaired };
@@ -49,6 +50,19 @@ export function forgetRemotePairing(reason?: string): void {
 export const IS_REMOTE: boolean =
   typeof window !== "undefined" && !("__electrobunWebviewId" in window);
 
+/**
+ * True for a plain browser tab hitting the Vite dev server directly (`bun run
+ * dev`/`run.ps1`, then http://localhost:5173). Lets local development and
+ * visual/browser-automation testing skip pairing entirely and talk straight to
+ * the dev-only local RPC server the Bun backend starts in this case (see
+ * DEV_REMOTE_RPC_PORT in src/bun/index.ts). `import.meta.env.DEV` is always
+ * false in production/canary builds, so this never affects real users.
+ */
+export const IS_DEV_DIRECT: boolean = IS_REMOTE && import.meta.env.DEV;
+
+/** Must match DEV_REMOTE_RPC_PORT in src/bun/index.ts. */
+const DEV_RPC_PORT = 5174;
+
 // ---------------------------------------------------------------------------
 // Broadcast method → DOM event name (mirrors rpc.ts `messages`)
 // ---------------------------------------------------------------------------
@@ -75,6 +89,8 @@ const BROADCAST_EVENTS: Record<string, string> = {
   providerTestResult: "agentdesk:provider-test-result",
   providersChanged: "agentdesk:providers-changed",
   directorySelected: "agentdesk:directory-selected",
+  collectionAttachmentFilePicked: "agentdesk:collection-attachment-file-picked",
+  collectionEmbeddingModelStatus: "agentdesk:collection-embedding-model-status",
   shellApprovalRequest: "agentdesk:shell-approval-request",
   shellApprovalExpired: "agentdesk:shell-approval-expired",
   userQuestionRequest: "agentdesk:user-question-request",
@@ -83,6 +99,8 @@ const BROADCAST_EVENTS: Record<string, string> = {
   whatsappStatus: "agentdesk:whatsapp-status",
   inboxMessageReceived: "agentdesk:inbox-message-received",
   inboxResponseUpdated: "agentdesk:inbox-response-updated",
+  cronJobRunStateChanged: "agentdesk:cron-run-state-changed",
+  schedulerInboxRunState: "agentdesk:scheduler-inbox-run-state",
   conversationTitleChanged: "agentdesk:conversation-title-changed",
   conversationUpdated: "agentdesk:conversation-updated",
   switchToConversation: "agentdesk:switch-to-conversation",
@@ -236,6 +254,27 @@ export function createRemoteRpcTransport(): RemoteTransport {
       },
     ),
     // Fire-and-forget messages (e.g. renderer logs) stay local in web mode.
+    send: new Proxy({}, { get: () => () => undefined }),
+  };
+}
+
+/**
+ * Build a `.request` / `.send` transport for local dev browser testing
+ * (IS_DEV_DIRECT). Connects straight to the dev-only local RPC server over
+ * plaintext WebSocket — no pairing, no relay, no encryption — since both ends
+ * are the same machine's dev build.
+ */
+export function createDevRpcTransport(): RemoteTransport {
+  const client = createWsRpcClient({
+    url: `ws://localhost:${DEV_RPC_PORT}`,
+    onBroadcast: (method, payload) => dispatchRemoteBroadcast(method, payload),
+  });
+
+  return {
+    request: new Proxy(
+      {},
+      { get: (_t, method: string) => (params: unknown) => client.request(method, params) },
+    ),
     send: new Proxy({}, { get: () => () => undefined }),
   };
 }

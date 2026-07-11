@@ -85,6 +85,8 @@ export interface CronJob {
   lastRunAt: string | null;
   lastRunStatus: string | null;
   createdAt: string;
+  isRunning?: boolean;
+  isStoppable?: boolean;
 }
 
 type TaskType = "reminder" | "shell" | "webhook" | "agent_task" | "agent_task_simple";

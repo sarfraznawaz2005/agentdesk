@@ -312,6 +312,15 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
         ? `${implicitContext}\n${content}`
         : content;
 
+      // If the user typed nothing and every attachment failed to save (network
+      // hiccup, disk error, etc. — silently skipped in the loop above), there's
+      // nothing left to send. Bail out instead of forwarding an empty message,
+      // which the AI provider rejects with an opaque API error.
+      if (!fullContent.trim()) {
+        toast("error", "Failed to attach file(s) — nothing to send.");
+        return;
+      }
+
       // Add user message to local state immediately (show visible content).
       // The attachment-saving loop above awaits per-file, so the user could
       // have switched conversations by the time we get here — the backend

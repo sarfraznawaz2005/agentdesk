@@ -18,6 +18,17 @@ export interface TaskResult {
 	output?: string;
 	error?: string;
 	durationMs: number;
+	stopped?: boolean;
+}
+
+// Correlates an in-flight scheduler-originated inbox message (agent_task_simple)
+// to its owning cron job, so the Inbox page can show/target a Stop button for
+// messages that are still running — including ones fired automatically on
+// schedule, not just user-triggered runs.
+const runningSchedulerMessages = new Map<string, string>(); // messageId -> jobId
+
+export function getRunningSchedulerMessages(): Array<{ messageId: string; jobId: string }> {
+	return [...runningSchedulerMessages.entries()].map(([messageId, jobId]) => ({ messageId, jobId }));
 }
 
 type GetOrCreateEngine = (projectId: string) => { sendMessage: (conversationId: string, content: string) => Promise<unknown> };
@@ -31,6 +42,7 @@ export function setTaskExecutorEngine(resolver: GetOrCreateEngine): void {
 export async function executeTask(
 	taskType: TaskType,
 	config: Record<string, unknown>,
+	abortSignal?: AbortSignal,
 ): Promise<TaskResult> {
 	const start = Date.now();
 
@@ -80,12 +92,17 @@ export async function executeTask(
 				});
 
 				const timeoutId = setTimeout(() => proc.kill(), timeout);
+				const onAbort = () => proc.kill();
+				abortSignal?.addEventListener("abort", onAbort);
 				const [stdout, stderr] = await Promise.all([
 					new Response(proc.stdout).text(),
 					new Response(proc.stderr).text(),
 				]);
 				clearTimeout(timeoutId);
+				abortSignal?.removeEventListener("abort", onAbort);
 				const exitCode = await proc.exited;
+
+				if (abortSignal?.aborted) return { success: false, stopped: true, error: "STOPPED BY USER", durationMs: Date.now() - start };
 
 				output = stdout || stderr;
 				if (exitCode !== 0) {
@@ -104,13 +121,23 @@ export async function executeTask(
 
 				const controller = new AbortController();
 				const timeoutId = setTimeout(() => controller.abort(), timeout);
+				const onAbort = () => controller.abort();
+				abortSignal?.addEventListener("abort", onAbort);
 
-				const response = await fetch(url, {
-					method,
-					headers,
-					body: body || undefined,
-					signal: controller.signal,
-				});
+				let response: Response;
+				try {
+					response = await fetch(url, {
+						method,
+						headers,
+						body: body || undefined,
+						signal: controller.signal,
+					});
+				} catch (err) {
+					if (abortSignal?.aborted) return { success: false, stopped: true, error: "STOPPED BY USER", durationMs: Date.now() - start };
+					throw err;
+				} finally {
+					abortSignal?.removeEventListener("abort", onAbort);
+				}
 				clearTimeout(timeoutId);
 
 				output = `HTTP ${response.status} ${response.statusText}`;
@@ -175,9 +202,12 @@ export async function executeTask(
 					].filter(Boolean).join("\n");
 
 					// Register an AbortController so the stop button and dashboard
-					// "N agents working" badge work correctly.
+					// "N agents working" badge work correctly. Chained to the job-level
+					// signal so the Scheduler/Inbox Stop button cancels this run too.
 					const abortController = new AbortController();
 					registerAgentController(projectId, abortController, agentId);
+					const onJobAbort = () => abortController.abort();
+					abortSignal?.addEventListener("abort", onJobAbort);
 
 					// Real broadcast callbacks — mirrors engine-manager.ts callbacks so
 					// the frontend receives partCreated/partUpdated/agentInlineStart/etc.
@@ -255,8 +285,12 @@ export async function executeTask(
 							callbacks,
 							abortSignal: abortController.signal,
 						});
+						if (result.status === "cancelled" && abortSignal?.aborted) {
+							return { success: false, stopped: true, error: "STOPPED BY USER", durationMs: Date.now() - start };
+						}
 						output = `Agent task completed: ${result.status}`;
 					} finally {
+						abortSignal?.removeEventListener("abort", onJobAbort);
 						unregisterAgentController(projectId, abortController);
 					}
 				}
@@ -269,6 +303,7 @@ export async function executeTask(
 				const agentId = (config.agentId as string | undefined) || "project-manager";
 				const jobName = (config._jobName as string | undefined) || "Agent Task";
 				const simpleProjectId = config._projectId as string | undefined;
+				const schedulerJobId = config._jobId as string | undefined;
 				if (!instructions) throw new Error("agent_task_simple requires instructions");
 
 				// Register an AbortController so the dashboard "N agents working" badge
@@ -335,6 +370,13 @@ export async function executeTask(
 					threadId,
 				});
 
+				// Track this message as running for the given job so the Inbox page
+				// can show a Stop button, including for auto-fired (non-manual) runs.
+				if (schedulerJobId) {
+					runningSchedulerMessages.set(msgId, schedulerJobId);
+					broadcastToWebview("schedulerInboxRunState", { messageId: msgId, jobId: schedulerJobId, running: true });
+				}
+
 				// Run agent with full tool set (skills, MCP, plugins, web) — no project/conversation needed
 				let responseText = "";
 				try {
@@ -371,6 +413,7 @@ export async function executeTask(
 						system: systemPrompt,
 						prompt: instructions,
 						tools: allTools,
+						abortSignal,
 						// Stop when the model produces a final text response with no tool calls
 						stopWhen: [
 							({ steps }) => {
@@ -382,11 +425,17 @@ export async function executeTask(
 					});
 					responseText = result.text.trim();
 				} catch (err) {
-					responseText = `Error: ${err instanceof Error ? err.message : String(err)}`;
+					responseText = abortSignal?.aborted
+						? "STOPPED BY USER"
+						: `Error: ${err instanceof Error ? err.message : String(err)}`;
 				} finally {
 					// Always unregister controller so the dashboard badge clears
 					if (simpleProjectId && simpleAbortController) {
 						unregisterAgentController(simpleProjectId, simpleAbortController);
+					}
+					if (schedulerJobId) {
+						runningSchedulerMessages.delete(msgId);
+						broadcastToWebview("schedulerInboxRunState", { messageId: msgId, jobId: schedulerJobId, running: false });
 					}
 				}
 
@@ -402,6 +451,10 @@ export async function executeTask(
 				// Update inbox message with agent response (shows "Replied" badge)
 				if (responseText) {
 					await updateAgentResponse(msgId, responseText);
+				}
+
+				if (responseText === "STOPPED BY USER") {
+					return { success: false, stopped: true, error: responseText, durationMs: Date.now() - start };
 				}
 
 				// Desktop notification

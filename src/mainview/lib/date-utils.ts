@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
  * to force UTC parsing. Strings that already carry timezone info (ISO 8601 with Z or +offset)
  * are left untouched.
  */
-function parseDbDate(dateStr: string): Date {
+export function parseDbDate(dateStr: string): Date {
 	const needsUtcHint = !/Z$|[+-]\d{2}:\d{2}$/.test(dateStr);
 	return new Date(needsUtcHint ? dateStr.replace(" ", "T") + "Z" : dateStr);
 }

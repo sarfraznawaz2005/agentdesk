@@ -67,6 +67,8 @@ export const handlers: Record<string, (params: any) => any> = {
 	clearCronJobHistory: (params) => cronRpc.clearCronJobHistory(params),
 	previewCronSchedule: (params) => cronRpc.previewCronSchedule(params),
 	triggerCronJob: (params) => cronRpc.triggerCronJob(params),
+	stopCronJob: (params) => cronRpc.stopCronJob(params),
+	getRunningSchedulerMessages: () => cronRpc.getRunningSchedulerMessages(),
 
 	// Automation Rules
 	getAutomationRules: (params) => automationRpc.getAutomationRules(params),
