@@ -1,13 +1,20 @@
 [
     {
+        "version":  "2.5.7",
+        "title":  "Enhanced Search Functionality",
+        "changes":  [
+                        "Enhanced error handling for a smoother user experience"
+                    ]
+    },
+    {
         "version":  "2.5.6",
         "title":  "New Collections and Chat Enhancements",
         "changes":  [
-"[NEW]: Added Collectoins feature - Personal Notes",
-"Fixed Inbox related issues and minor UI changes",
-"Ability to stop streaming for chat widgets on dashboard",
-"Added attach prompt & collection icons to chat widget",
-"Ability to stop running scheduled items"
+                        "[NEW]: Added Collectoins feature - Personal Notes",
+                        "Fixed Inbox related issues and minor UI changes",
+                        "Ability to stop streaming for chat widgets on dashboard",
+                        "Added attach prompt \u0026 collection icons to chat widget",
+                        "Ability to stop running scheduled items"
                     ]
     },
     {
