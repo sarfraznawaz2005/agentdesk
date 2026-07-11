@@ -5,7 +5,7 @@ import { ModelsSettings } from "./settings/models";
 import { GeneralSettings } from "./settings/general";
 import { ConstitutionSettings } from "./settings/constitution";
 import { GithubSettings } from "./settings/github";
-import { TavilySettings } from "./settings/tavily-settings";
+import { SearchSettings } from "./settings/search-settings";
 import { AppearanceSettings } from "./settings/appearance";
 import { DiscordSettings } from "./settings/discord-settings";
 import { WhatsAppSettings } from "./settings/whatsapp-settings";
@@ -90,7 +90,7 @@ export function SettingsPage() {
         <TabsContent value="integrations">
           <SubTabs tabs={[
             { value: "github", label: "GitHub", content: <GithubSettings /> },
-            { value: "tavily", label: "Tavily Search", content: <TavilySettings /> },
+            { value: "search", label: "Search", content: <SearchSettings /> },
           ]} />
         </TabsContent>
 

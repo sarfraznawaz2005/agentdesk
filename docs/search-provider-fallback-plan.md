@@ -1,7 +1,13 @@
 # Search Provider Fallback — Implementation Plan
 
-> Status: **planned, not yet implemented.** This document is the design of
-> record; implementation will follow in a later session.
+> Status: **implemented.** Layers 1–3 below are complete (see
+> `src/bun/agents/tools/web.ts`, `src/mainview/pages/settings/search-settings.tsx`,
+> `docs/workflow.md`, `src/bun/db/seed.ts`). Verified via the fetch-mocked
+> fallback matrix in `tests/agents/web-search.test.ts`, `bun run typecheck`,
+> `bun run lint`, and the full `bun test` suite. `docs/prd.md` step 10 (adding
+> a Web Tools row) was left as-is — it was a pre-existing documentation gap,
+> not something this feature introduced. This document is kept as the design
+> record.
 
 ## Context
 
