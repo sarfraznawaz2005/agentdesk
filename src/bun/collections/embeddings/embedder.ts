@@ -1,8 +1,12 @@
 // Generates embeddings for Collections notes/search/chat using the model downloaded by
 // model-manager.ts. This module never fetches over the network — it only reads what's already
 // on disk, so callers must check isEmbeddingModelDownloaded() (or handle the thrown error) first.
+//
+// @huggingface/transformers is imported dynamically inside getExtractor(), not at module top
+// level — see model-manager.ts's top-of-file comment for why (this module is statically imported
+// by chat.ts/indexer.ts, which are in turn reachable from app startup).
 
-import { pipeline, env, type FeatureExtractionPipeline } from "@huggingface/transformers";
+import type { FeatureExtractionPipeline } from "@huggingface/transformers";
 import { EMBEDDING_MODEL_ID, EMBEDDING_MODEL_DIMS, configureEmbeddingModelEnv, isEmbeddingModelDownloaded } from "./model-manager";
 
 let cachedExtractor: FeatureExtractionPipeline | null = null;
@@ -11,16 +15,16 @@ let loadingPromise: Promise<FeatureExtractionPipeline> | null = null;
 async function getExtractor(): Promise<FeatureExtractionPipeline> {
 	if (cachedExtractor) return cachedExtractor;
 	if (!loadingPromise) {
-		configureEmbeddingModelEnv();
-		env.allowRemoteModels = false; // local-only — downloading is model-manager.ts's job, not ours
-		loadingPromise = pipeline("feature-extraction", EMBEDDING_MODEL_ID)
-			.then((extractor) => {
-				cachedExtractor = extractor;
-				return extractor;
-			})
-			.finally(() => {
-				loadingPromise = null;
-			});
+		loadingPromise = (async () => {
+			const { pipeline, env } = await import("@huggingface/transformers");
+			await configureEmbeddingModelEnv();
+			env.allowRemoteModels = false; // local-only — downloading is model-manager.ts's job, not ours
+			const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL_ID);
+			cachedExtractor = extractor;
+			return extractor;
+		})().finally(() => {
+			loadingPromise = null;
+		});
 	}
 	return loadingPromise;
 }

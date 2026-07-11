@@ -23,6 +23,16 @@ export default {
 			// resolves to Resources/app/bin/napi-v6/... at runtime — copy the prebuilt .node
 			// binaries there so the flattened bundle can still find them.
 			"node_modules/onnxruntime-node/bin": "bin",
+			// sharp (a transitive dependency of @huggingface/transformers, used for image
+			// preprocessing) resolves its native binding via a bare `require("@img/sharp-<platform>-
+			// <arch>/...")` — ordinary node_modules resolution, not a relative path. Bun's bundler
+			// can't statically inline that dynamic specifier, so it survives as a real require() at
+			// runtime; since node_modules is never shipped, that require always failed and crashed
+			// the app on every startup (the sharp import is unconditional — see model-manager.ts).
+			// Copying @img here lets Node's directory-walk-up resolution find it from
+			// Resources/app/bun/index.js. Only copies whatever platform packages are installed on
+			// the machine that ran this build, so each OS/arch's own CI build picks up its own.
+			"node_modules/@img": "node_modules/@img",
 			"release-notes.json": "release-notes.json",
 			"assets/uninstall.ps1": "uninstall.ps1",
 		},

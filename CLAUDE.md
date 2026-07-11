@@ -234,6 +234,18 @@ Turn tasks into verifiable goals and loop until they're met, rather than stoppin
 - **Follow the task workflow**: `Plan → Approve → Execute → Done`.
    Use `aitasks` CLI for all task tracking (see Task Management section below)
 - Use `electrobun` skill for `electrobun` development.
+- **New native/binary dependencies must ship their platform binaries, and never load eagerly at
+   startup.** Bun's bundler flattens `src/bun` into one file, so any package with a `.node`
+   addon or per-platform optional-dependency binary (`onnxruntime-node`, `sharp`, etc.) needs an
+   explicit copy rule in `electrobun.config.ts`'s `build.copy` — verify by inspecting the actual
+   packaged `build/`/`artifacts/` output, not just `bun run dev` (dev mode doesn't hit the same
+   bundling path). Separately, any module that statically imports such a dependency must not sit
+   on the `rpc-registration.ts` import graph (loaded unconditionally on every boot) unless the
+   whole app needs it to start — gate it behind a dynamic `import()` at the point of use instead,
+   so a broken/missing native binding only disables that one feature instead of crashing the app
+   for every user before the window even opens (this exact chain — `@huggingface/transformers` →
+   `sharp` eagerly imported via the Collections RPC group — shipped in v2.5.6/`773c233` and broke
+   startup for all users; see fix in the following commit).
 
 ---
 

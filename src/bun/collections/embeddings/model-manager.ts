@@ -6,12 +6,19 @@
 //
 // embedder.ts (a later task) is responsible for loading the model for actual inference — this
 // module only owns download/verify/status so Settings can gate the chat FAB correctly.
+//
+// @huggingface/transformers (and its native sharp/onnxruntime-node dependencies) is imported
+// dynamically inside runDownload()/configureEmbeddingModelEnv(), never at module top level. This
+// module is statically imported by rpc/collections.ts, which loads unconditionally at app
+// startup — a top-level import here would load those native deps on every boot for every user,
+// whether or not Collections is ever opened (a broken native binding once crashed the whole app
+// this way; see electrobun.config.ts's @img copy rule for the packaging half of that fix).
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, readdirSync } from "node:fs";
 import { join, sep } from "node:path";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { Utils } from "electrobun/bun";
-import { pipeline, env, type ProgressInfo } from "@huggingface/transformers";
+import type { ProgressInfo } from "@huggingface/transformers";
 import { db } from "../../db";
 import { collectionNotes } from "../../db/schema";
 import { broadcastToWebview } from "../../engine-manager";
@@ -32,7 +39,8 @@ function markerPath(): string {
 // Points @huggingface/transformers' shared env at our controlled download directory instead of
 // its package-relative default (see TASK-534's spike notes) — embedder.ts calls this too, so both
 // modules always agree on where the model lives regardless of call order.
-export function configureEmbeddingModelEnv(): void {
+export async function configureEmbeddingModelEnv(): Promise<void> {
+	const { env } = await import("@huggingface/transformers");
 	const dir = embeddingModelDir();
 	env.cacheDir = dir.endsWith(sep) ? dir : dir + sep;
 }
@@ -124,7 +132,8 @@ async function runDownload(): Promise<{ success: boolean }> {
 
 	try {
 		mkdirSync(embeddingModelDir(), { recursive: true });
-		configureEmbeddingModelEnv();
+		const { pipeline, env } = await import("@huggingface/transformers");
+		await configureEmbeddingModelEnv();
 		env.allowRemoteModels = true;
 
 		const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL_ID, {
