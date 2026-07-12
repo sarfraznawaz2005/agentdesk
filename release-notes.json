@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.5.8",
+        "title":  "Enhanced Search Capabilities",
+        "changes":  [
+                        "Updated search engine to Exa with improved fallback plan documentation",
+                        "Optimized binary copying for platform-specific builds of onnxruntime-node",
+                        "Implemented web search fallback options with Tavily, Brave, and DuckDuckGo integration"
+                    ]
+    },
+    {
         "version":  "2.5.7",
         "title":  "Enhanced Search Functionality",
         "changes":  [
