@@ -1,5 +1,26 @@
 [
     {
+        "version":  "2.6.1",
+        "title":  "New Features and Enhancements",
+        "changes":  [
+"[NEW] Deep reseaerch tool added",
+"[NEW] public_place skill added",
+"[NEW] Image and audio input capabilities",
+"Improved web_fetch and http_request tools"
+                    ]
+    },
+    {
+        "version":  "2.6.0",
+        "title":  "New Features and Enhancements",
+        "changes":  [
+                        "Convert HTML content to plain text easily with the new html-to-text package.",
+                        "Process audio files with improved capabilities for media follow-up handling.",
+                        "Handle image follow-up messages more effectively with new tools for reading images and taking screenshots.",
+                        "Get clearer guidance on using the deep_research tool with enhanced descriptions.",
+                        "Utilize the new deep research tool for better autonomous research capabilities."
+                    ]
+    },
+    {
         "version":  "2.5.8",
         "title":  "Enhanced Search Capabilities",
         "changes":  [
