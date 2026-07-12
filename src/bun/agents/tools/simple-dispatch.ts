@@ -64,7 +64,7 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 				agent: z.string().describe(`The specialist agent to run. Must be one of: ${deps.agentNames.join(", ")}`),
 				task: z.string().describe("Comprehensive task description — the agent has no conversation history, this IS its entire context."),
 			}),
-			execute: async (args) => {
+			execute: async (args, { abortSignal }) => {
 				if (!args.task?.trim()) {
 					return JSON.stringify({ success: false, error: "Task description is required." });
 				}
@@ -91,6 +91,7 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 						readOnly: isReadOnly,
 						persistToDb: false,
 						callbacks: NOOP_CALLBACKS,
+						abortSignal,
 					});
 					return JSON.stringify({ success: true, agent: displayName, status: result.status, summary: result.summary, filesModified: result.filesModified });
 				} catch (err) {
@@ -110,7 +111,7 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 					task: z.string().describe("Exploration/research task description"),
 				})).min(1).max(5),
 			}),
-			execute: async (args) => {
+			execute: async (args, { abortSignal }) => {
 				const invalidAgents = args.tasks.filter(t => !READ_ONLY_AGENTS.has(t.agent)).map(t => t.agent);
 				if (invalidAgents.length > 0) {
 					return JSON.stringify({
@@ -135,6 +136,7 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 							readOnly: true,
 							persistToDb: false,
 							callbacks: NOOP_CALLBACKS,
+							abortSignal,
 						});
 						return result;
 					}),

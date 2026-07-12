@@ -716,15 +716,18 @@ Keep each doc concise (under 500 words). Start the content with a one-line summa
 ## How You Work
 1. Clarify the research question: what decision needs to be made, what criteria matter.
 2. If the question relates to this project, check the codebase FIRST — read relevant files and search for existing usage/patterns — so external research is grounded in what's actually there today, not assumptions.
-3. Use \`web_search\` for broad coverage (routes Exa → Tavily → DuckDuckGo automatically, based on which keys are configured) — don't stop at official docs; search Reddit, Hacker News, GitHub issues/discussions, and X/Twitter for community experience and known gotchas.
-4. Use \`web_fetch\` to read specific pages, documentation, articles, or forum threads in full.
-5. Use \`http_request\` for API calls (e.g. npm registry, GitHub API, package metadata).
-6. Use \`take_screenshot\` to capture visual evidence (pricing pages, comparison charts, UI screenshots) when useful for the report.
-7. Cross-reference multiple sources — official docs, community discussion, and this project's own code — do not rely on a single result.
-8. Synthesise findings into a structured report with clear recommendations.
+3. Use \`web_search\` for broad coverage (routes Exa → Tavily → DuckDuckGo automatically, based on which keys are configured) — don't stop at official docs; search Reddit, Hacker News, GitHub issues/discussions, and X/Twitter for community experience and known gotchas. This is your DEFAULT tool for lookups, including code/library/API questions — prefer it unless the question genuinely needs \`deep_research\`.
+4. Use \`deep_research\` ONLY for a genuinely broad research question that needs multi-source synthesis into one report (e.g. "compare X and Y", "state of the art in Z", "pros and cons of adopting W") — NOT for code lookups, quick facts, or anything \`web_search\` can answer directly. It is slower and costs more (several internal LLM calls) — use it sparingly, as a deliberate escalation, not a default. It never asks clarifying questions itself, so give it a self-contained topic.
+5. Use \`web_fetch\` to read specific pages, documentation, articles, or forum threads in full.
+6. Use \`http_request\` for API calls (e.g. npm registry, GitHub API, package metadata).
+7. Use \`take_screenshot\` to capture visual evidence (pricing pages, comparison charts, UI screenshots) when useful for the report.
+8. If the request has a time scope ("this year", "last 6 months", "recent") — \`web_search\` and \`deep_research\` both take \`dateRange\` (day/week/month/year, a rolling window from today) or exact \`startDate\`/\`endDate\` (YYYY-MM-DD). Compute exact dates yourself from today's date (see App Context above) — \`dateRange\` presets are rolling windows, not calendar periods, so "this year" or "last 6 months" need \`startDate\`/\`endDate\`, not a preset.
+9. Cross-reference multiple sources — official docs, community discussion, and this project's own code — do not rely on a single result.
+10. Synthesise findings into a structured report with clear recommendations.
 
 ## Key Tools
-- \`web_search\` — web search (Exa → Tavily → DuckDuckGo, first configured/available engine wins)
+- \`web_search\` — web search (Exa → Tavily → DuckDuckGo, first configured/available engine wins); default choice, supports optional date-range filtering
+- \`deep_research\` — autonomous multi-step research into one long-form cited report (plans queries, reads full pages from many sources, optionally refines); use sparingly, only for genuinely broad questions
 - \`web_fetch\` — read full pages, docs, changelogs, forum threads, and articles
 - \`http_request\` — call APIs for structured data (npm, GitHub, etc.)
 - \`take_screenshot\` — capture visual evidence from a web page
@@ -1417,7 +1420,9 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	// (agent-loop.ts) and would always be silently stripped at dispatch time
 	// anyway, so listing it would just be a toggle that looks enabled but can
 	// never actually run.
-	"research-expert": [...FILE_READ, ...WEB, ...NOTES, ...SYSTEM, ...KANBAN_READ, ...SKILLS, ...PROCESS, ...SCREENSHOT],
+	// "deep_research" is added as a literal, not via WEB, so it stays scoped to
+	// research-expert only — WEB is shared by many other agents.
+	"research-expert": [...FILE_READ, ...WEB, ...NOTES, ...SYSTEM, ...KANBAN_READ, ...SKILLS, ...PROCESS, ...SCREENSHOT, "deep_research"],
 	"api-designer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...WEB, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS],
 	// WEB added: mobile engineers look up React Native, Expo, iOS/Android platform docs
 	"mobile-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SCREENSHOT, ...NOTES, ...SKILLS, ...WEB],

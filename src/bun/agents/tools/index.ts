@@ -1,4 +1,5 @@
-import type { Tool } from "ai";
+import { tool, type Tool } from "ai";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { agents, agentTools } from "../../db/schema";
@@ -34,6 +35,34 @@ export interface ToolRegistryEntry {
 	category: ToolCategory;
 }
 
+// deep_research's real implementation needs the run's resolved provider/model
+// (see the overlay in agent-loop.ts, right after model resolution completes),
+// which this static registry has no access to. This stub exists only so the
+// tool NAME is valid for agent_tools rows / getToolDefinitions() listing —
+// research-expert always gets the real, runtime-bound tool from the overlay
+// instead. If this stub ever executes directly, something upstream is wrong.
+const deepResearchStub: ToolRegistryEntry = {
+	category: "web",
+	tool: tool({
+		description:
+			"Autonomously research a BROAD topic in depth: plans sub-questions, searches the web " +
+			"multiple times, reads full pages from many sources, and synthesizes a long-form cited " +
+			"markdown report. Slower and more costly than web_search (may take several minutes, " +
+			"multiple internal LLM calls). Use sparingly — ONLY for genuinely broad research questions " +
+			"that need multi-source synthesis (e.g. 'compare X and Y', 'state of the art in Z', 'pros " +
+			"and cons of adopting W'). For anything else — including quick lookups, error messages, " +
+			"package/library questions, API docs, or checking a specific fact — use web_search instead, " +
+			"which is faster and cheaper. Give it one topic; it never asks clarifying questions — it " +
+			"assumes a reasonable interpretation and proceeds autonomously, which is required since " +
+			"this may run unattended via schedules.",
+		inputSchema: z.object({ topic: z.string().min(1).describe("The research topic or question") }),
+		execute: async (): Promise<string> =>
+			JSON.stringify({
+				error: "deep_research requires the research-expert agent's runtime context; this registry stub should never execute directly.",
+			}),
+	}),
+};
+
 // ---------------------------------------------------------------------------
 // Internal registry — assembled from individual tool modules
 // ---------------------------------------------------------------------------
@@ -47,6 +76,7 @@ const toolRegistry: Record<string, ToolRegistryEntry> = {
 	...gitTools,
 	...planningTools,
 	...webTools,
+	deep_research: deepResearchStub,
 	...systemTools,
 	...processTools,
 	...screenshotTools,

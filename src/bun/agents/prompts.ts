@@ -1272,11 +1272,27 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		? `\n## Feature Branch Workflow\n\nThis project uses a feature branch workflow. Auto-commit will handle switching to the correct feature branch when your task is complete. Your only responsibility: **never commit directly to main or master**. Use \`git_status\` to check the current branch before committing if you commit manually.`
 		: "";
 
+	// App Context (today's date + current time) — the PM and lean-mode custom agents
+	// already get this (getPMSystemPrompt, and the useSystemPromptOnly branch above);
+	// standard built-in sub-agents (research-expert, etc.) did not, which meant they
+	// had no reliable way to compute a relative date range ("last 6 months") or reason
+	// about "today" at all. Same minimal shape as the lean-mode section for consistency.
+	const agentUserTimezone = await loadUserTimezone();
+	const agentNow = new Date();
+	const agentToday = agentNow.toLocaleDateString("en-CA", { timeZone: agentUserTimezone }); // YYYY-MM-DD
+	const agentCurrentTime = agentNow.toLocaleString("en-US", {
+		weekday: "short", month: "short", day: "numeric",
+		hour: "2-digit", minute: "2-digit", hour12: false,
+		timeZone: agentUserTimezone,
+	});
+	const appContext = `## App Context\n\n- **Current time**: ${agentCurrentTime} (${agentUserTimezone})\n- **Today's date**: ${agentToday}`;
+
 	return [
 		basePrompt,
 		projectContext,
 		filteredConstitution ? `## Constitution\n\n${filteredConstitution}` : "",
 		userSection,
+		appContext,
 		knowledgeSection,
 		memorySection,
 		pluginPrompts,

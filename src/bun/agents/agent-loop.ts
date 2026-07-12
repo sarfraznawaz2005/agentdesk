@@ -910,6 +910,21 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		}
 	}
 
+	// deep_research — research-expert only. Overlays the real, runtime-bound tool over the
+	// registry stub, but ONLY when the agent already has it enabled (present in `tools` after
+	// allowlist filtering). Built here, not in getToolsForAgent, so it can capture the resolved
+	// provider/model without forcing sequential resolution on every agent run.
+	if (agentName === "research-expert" && tools.deep_research) {
+		const { createDeepResearchTool } = await import("./tools/deep-research");
+		const dr = createDeepResearchTool({
+			providerConfig: effectiveProviderConfig,
+			modelId: effectiveModelId,
+			thinkingBudget: customThinkingTokens,
+			projectId,
+		});
+		if (dr.deep_research) tools.deep_research = dr.deep_research.tool;
+	}
+
 	// Inject workspace path as default for directory/path tools so agents don't need to guess it
 	if (workspacePath) {
 		const wrapDirTool = (original: Tool, paramName: string) => {
