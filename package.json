@@ -70,6 +70,7 @@
 		"extract-zip": "^2.0.1",
 		"gray-matter": "^4.0.3",
 		"he": "^1.2.0",
+		"html-to-text": "^10.0.0",
 		"imapflow": "^1.2.12",
 		"jimp": "^1.6.1",
 		"lucide-react": "^0.460.0",

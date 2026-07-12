@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
-import { parse as parseHtml } from "node-html-parser";
+import { compile as compileHtmlToText } from "html-to-text";
 import { db } from "../../db";
 import { settings } from "../../db/schema";
 import type { ToolRegistryEntry } from "./index";
@@ -23,11 +23,33 @@ async function getIntegrationKey(key: string): Promise<string | null> {
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function stripHtml(html: string): string {
-	const root = parseHtml(html);
-	// Remove script and style blocks — their text content is not human-readable
-	root.querySelectorAll("script, style").forEach((el) => el.remove());
-	return root.textContent.replace(/\s+/g, " ").trim();
+// html-to-text walks the DOM and inserts line breaks at block-element boundaries
+// (paragraphs, list items, headings), unlike a naive `.textContent` extraction
+// which concatenates adjacent elements with zero separator when the source HTML
+// has no whitespace between them (e.g. a title immediately followed by a badge
+// span renders as "titleBadge" with node-html-parser's textContent). This isn't
+// a total fix — tightly-packed inline elements with no whitespace in the source
+// (badges, adjacent buttons) can still run together in ANY html-to-text
+// approach, because there's no separator in the source to preserve — but it
+// correctly handles the common case (articles, docs, lists) that web_fetch and
+// search-result parsing actually deal with day to day.
+//
+// Default output keeps link URLs inline as `text [url]` — useful when the
+// caller may want to discover and follow links from the page. `ignoreLinks`
+// (opt-in) drops the bracketed URLs for ~10% denser prose, at the cost of no
+// longer being able to see where a link on the page actually points.
+const htmlToPlainText = compileHtmlToText({ wordwrap: false });
+const htmlToPlainTextNoLinks = compileHtmlToText({
+	wordwrap: false,
+	selectors: [{ selector: "a", options: { ignoreHref: true } }],
+});
+
+function stripHtml(html: string, opts: { ignoreLinks?: boolean } = {}): string {
+	const convert = opts.ignoreLinks ? htmlToPlainTextNoLinks : htmlToPlainText;
+	return convert(html)
+		.replace(/[ \t]+/g, " ")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 }
 
 // Agent tool calls always receive a real (non-null) abortSignal from the AI
@@ -410,7 +432,16 @@ const webSearchTool = tool({
 // web_fetch — Fetch a URL and return its text content
 // ---------------------------------------------------------------------------
 
-const MAX_FETCH_CHARS = 15_000; // 15 000 characters of plain text per page
+const MAX_FETCH_CHARS = 15_000; // default cap, unchanged — protects context budget for the common case
+const MAX_ALLOWED_FETCH_CHARS = 100_000; // hard ceiling a caller may explicitly request up to
+
+// Callers (web_fetch, http_request) may ask for more than the default when they
+// know a specific page needs it (e.g. real content sits behind a large amount
+// of boilerplate markup) — clamped so a bad request can't blow the context budget.
+function clampMaxChars(requested: number | undefined): number {
+	if (!requested || requested <= 0) return MAX_FETCH_CHARS;
+	return Math.min(Math.floor(requested), MAX_ALLOWED_FETCH_CHARS);
+}
 
 export interface FetchedPage {
 	url: string;
@@ -428,9 +459,9 @@ export interface FetchedPage {
 // have one bad URL abort the whole batch.
 export async function fetchPageText(
 	url: string,
-	opts: { abortSignal?: AbortSignal; timeoutMs?: number; maxChars?: number; headers?: Record<string, string> } = {},
+	opts: { abortSignal?: AbortSignal; timeoutMs?: number; maxChars?: number; headers?: Record<string, string>; ignoreLinks?: boolean } = {},
 ): Promise<FetchedPage> {
-	const { abortSignal, timeoutMs = 15_000, maxChars = MAX_FETCH_CHARS, headers } = opts;
+	const { abortSignal, timeoutMs = 15_000, maxChars = MAX_FETCH_CHARS, headers, ignoreLinks } = opts;
 	if (isBlockedUrl(url)) {
 		return { url, ok: false, status: 0, contentType: "", text: "", truncated: false, error: "Refused to fetch a non-http(s) or internal/private URL." };
 	}
@@ -464,7 +495,7 @@ export async function fetchPageText(
 		}
 
 		const raw = await response.text();
-		const text = contentType.includes("html") ? stripHtml(raw) : raw;
+		const text = contentType.includes("html") ? stripHtml(raw, { ignoreLinks }) : raw;
 		const truncated = text.length > maxChars;
 		const body = truncated ? text.slice(0, maxChars) + `\n... (truncated at ${maxChars} chars)` : text;
 
@@ -479,7 +510,8 @@ export async function fetchPageText(
 const webFetchTool = tool({
 	description:
 		"Fetch the text content of a URL. Returns the response body as a string (HTML stripped to plain text, JSON, etc.). " +
-		"Useful for reading documentation, API specs, or any public URL. Response is truncated at 15 000 characters.",
+		"Useful for reading documentation, API specs, or any public URL. Response is truncated at 15 000 characters by default — " +
+		`pass maxChars to raise that (up to ${MAX_ALLOWED_FETCH_CHARS}) only when you know the real content sits past the default cutoff.`,
 	inputSchema: z.object({
 		url: z.string().url().describe("The URL to fetch"),
 		headers: z
@@ -491,9 +523,25 @@ const webFetchTool = tool({
 			.int()
 			.optional()
 			.describe("Request timeout in milliseconds (default: 15000)"),
+		maxChars: z
+			.number()
+			.int()
+			.optional()
+			.describe(
+				`Maximum characters of response text to return (default: ${MAX_FETCH_CHARS}, hard ceiling: ${MAX_ALLOWED_FETCH_CHARS}). ` +
+				"Raise this only for pages you know need it — a larger response costs more context.",
+			),
+		ignoreLinks: z
+			.boolean()
+			.optional()
+			.describe(
+				"Opt-in, default false (links are kept inline as 'text [url]'). Set true to strip link URLs for " +
+				"denser prose — only do this when you just need the page's content and don't need to discover " +
+				"or follow any links it contains.",
+			),
 	}),
-	execute: async ({ url, headers, timeout = 15_000 }, { abortSignal }): Promise<string> => {
-		const page = await fetchPageText(url, { abortSignal, timeoutMs: timeout, headers });
+	execute: async ({ url, headers, timeout = 15_000, maxChars, ignoreLinks }, { abortSignal }): Promise<string> => {
+		const page = await fetchPageText(url, { abortSignal, timeoutMs: timeout, headers, maxChars: clampMaxChars(maxChars), ignoreLinks });
 		if (!page.ok) {
 			return JSON.stringify({ error: page.error, url, ...(page.status ? { status: page.status } : {}) });
 		}
@@ -515,7 +563,9 @@ const httpRequestTool = tool({
 	description:
 		"Make an HTTP request with full control over method, headers, and body. " +
 		"Use this to test APIs you have built, call webhooks, or interact with external services. " +
-		"Returns status code, response headers, and body.",
+		"Returns status code, response headers, and body (raw, not HTML-stripped — use web_fetch if you want stripped text). " +
+		`Body is truncated at 15 000 characters by default; pass maxChars to raise that (up to ${MAX_ALLOWED_FETCH_CHARS}) ` +
+		"for pages with heavy boilerplate before the real content.",
 	inputSchema: z.object({
 		url: z.string().url().describe("The request URL"),
 		method: z
@@ -537,11 +587,20 @@ const httpRequestTool = tool({
 			.int()
 			.optional()
 			.describe("Request timeout in milliseconds (default: 30000)"),
+		maxChars: z
+			.number()
+			.int()
+			.optional()
+			.describe(
+				`Maximum characters of raw response body to return (default: ${MAX_FETCH_CHARS}, hard ceiling: ${MAX_ALLOWED_FETCH_CHARS}). ` +
+				"Raise this only for pages you know need it — a larger response costs more context.",
+			),
 	}),
 	execute: async (
-		{ url, method = "GET", headers, body, timeout = 30_000 },
+		{ url, method = "GET", headers, body, timeout = 30_000, maxChars },
 		{ abortSignal },
 	): Promise<string> => {
+		const effectiveMaxChars = clampMaxChars(maxChars);
 		try {
 			const response = await fetch(url, {
 				method,
@@ -565,8 +624,8 @@ const httpRequestTool = tool({
 				contentType.includes("javascript")
 			) {
 				const text = await response.text();
-				responseBody = text.length > MAX_FETCH_CHARS
-					? text.slice(0, MAX_FETCH_CHARS) + `\n... (truncated at ${MAX_FETCH_CHARS} chars)`
+				responseBody = text.length > effectiveMaxChars
+					? text.slice(0, effectiveMaxChars) + `\n... (truncated at ${effectiveMaxChars} chars)`
 					: text;
 			} else {
 				responseBody = `(binary content, content-type: ${contentType})`;
