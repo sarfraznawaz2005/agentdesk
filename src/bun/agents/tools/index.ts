@@ -47,14 +47,20 @@ const deepResearchStub: ToolRegistryEntry = {
 		description:
 			"Autonomously research a BROAD topic in depth: plans sub-questions, searches the web " +
 			"multiple times, reads full pages from many sources, and synthesizes a long-form cited " +
-			"markdown report. Slower and more costly than web_search (may take several minutes, " +
-			"multiple internal LLM calls). Use sparingly — ONLY for genuinely broad research questions " +
-			"that need multi-source synthesis (e.g. 'compare X and Y', 'state of the art in Z', 'pros " +
-			"and cons of adopting W'). For anything else — including quick lookups, error messages, " +
-			"package/library questions, API docs, or checking a specific fact — use web_search instead, " +
-			"which is faster and cheaper. Give it one topic; it never asks clarifying questions — it " +
-			"assumes a reasonable interpretation and proceeds autonomously, which is required since " +
-			"this may run unattended via schedules.",
+			"markdown report — in ONE call, instead of you making many manual web_search calls " +
+			"yourself. Use this whenever a task asks you to: research across several distinct " +
+			"sources/platforms/communities (e.g. Reddit, X, Indie Hackers, Product Hunt, G2, forums) " +
+			"and cross-check or synthesize findings; validate or evaluate a business/product idea, " +
+			"market, or investment opportunity against evidence from multiple sources; compare options " +
+			"or survey the state of something; or produce ONE consolidated recommendation/report that " +
+			"depends on cross-referencing many independent sources rather than one lookup. That is " +
+			"exactly this tool's job — reach for it instead of a string of individual web_search calls " +
+			"whenever a task's own instructions describe that kind of broad, multi-source research. " +
+			"For quick lookups instead — error messages, package/library questions, API docs, or " +
+			"checking one specific fact — use web_search, which is faster and cheaper. Give it one " +
+			"topic (condense a long task into its research question if needed); it never asks " +
+			"clarifying questions — it assumes a reasonable interpretation and proceeds autonomously, " +
+			"which is required since this may run unattended via schedules.",
 		inputSchema: z.object({ topic: z.string().min(1).describe("The research topic or question") }),
 		execute: async (): Promise<string> =>
 			JSON.stringify({
