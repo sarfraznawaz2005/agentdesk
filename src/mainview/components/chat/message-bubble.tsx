@@ -76,6 +76,7 @@ function highlightChildren(children: React.ReactNode, query: string): React.Reac
 const ATTACHMENT_CONTEXT_PATTERNS = [
   /<attached-file name="([^"]*)"(?:\s+path="[^"]*")?>[\s\S]*?<\/attached-file>\n?/g,
   /\[Attached image: "([^"]*)" saved at "[^"]*"\.[^\]]*\]\n?/g,
+  /\[Attached audio: "([^"]*)" saved at "[^"]*"\.[^\]]*\]\n?/g,
   /\[Attached file: "([^"]*)" saved at "[^"]*"\.[^\]]*\]\n?/g,
 ];
 

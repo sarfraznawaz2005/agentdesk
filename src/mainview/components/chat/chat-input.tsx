@@ -9,7 +9,7 @@ import {
   useImperativeHandle,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, Square, Paperclip, Server, X, FileText, Sparkles, AlertCircle, RefreshCw, WifiOff, Clock, ChevronDown, ChevronUp, Library } from "lucide-react";
+import { ArrowUp, Square, Paperclip, Server, X, FileText, Music, Sparkles, AlertCircle, RefreshCw, WifiOff, Clock, ChevronDown, ChevronUp, Library } from "lucide-react";
 import { MESSAGE_QUEUE_MAX, type QueuedMessage } from "@/stores/message-queue";
 import {
   Dialog,
@@ -80,7 +80,13 @@ export const BINARY_DOC_EXTENSIONS = new Set([
   "zip", "tar", "gz", "7z", "rar",
 ]);
 
-export type AttachmentType = "text" | "image" | "binary";
+// Only formats the read_audio tool (and the AI SDK's OpenAI-compatible audio
+// input) actually accepts — wav and mp3. Anything else is rejected with a
+// clear error rather than silently mis-delivered; transcoding other formats
+// would need an ffmpeg-class dependency this app doesn't carry.
+export const AUDIO_EXTENSIONS = new Set(["wav", "mp3"]);
+
+export type AttachmentType = "text" | "image" | "audio" | "binary";
 
 export interface AttachmentFile {
   name: string;
@@ -98,6 +104,7 @@ export function categorizeFile(name: string): AttachmentType {
   if (dot === -1) return "text"; // No extension — likely Dockerfile, Makefile, etc.
   const ext = name.slice(dot + 1).toLowerCase();
   if (IMAGE_EXTENSIONS.has(ext)) return "image";
+  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
   if (BINARY_DOC_EXTENSIONS.has(ext)) return "binary";
   if (TEXT_EXTENSIONS.has(ext)) return "text";
   return "binary";
@@ -107,6 +114,7 @@ export function categorizeFile(name: string): AttachmentType {
 const ACCEPT_ALL = [
   ...Array.from(TEXT_EXTENSIONS).map(e => `.${e}`),
   ...Array.from(IMAGE_EXTENSIONS).map(e => `.${e}`),
+  ...Array.from(AUDIO_EXTENSIONS).map(e => `.${e}`),
   ...Array.from(BINARY_DOC_EXTENSIONS).map(e => `.${e}`),
 ].join(",");
 
@@ -946,6 +954,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 >
                   {f.type === "image" && f.content ? (
                     <img src={f.content} alt={f.name} className="w-8 h-8 rounded object-cover shrink-0" />
+                  ) : f.type === "audio" ? (
+                    <Music className="w-3.5 h-3.5 shrink-0" />
                   ) : f.type === "binary" ? (
                     <FileText className="w-3.5 h-3.5 shrink-0" />
                   ) : (

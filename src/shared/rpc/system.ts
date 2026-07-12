@@ -178,7 +178,7 @@ export type SystemRequests = {
 
   // File attachments
   saveAttachment: {
-    params: { projectId: string; fileName: string; dataBase64: string; type: "text" | "image" | "binary" };
+    params: { projectId: string; fileName: string; dataBase64: string; type: "text" | "image" | "audio" | "binary" };
     response: { success: boolean; path: string; name: string; type: string; size: number };
   };
 

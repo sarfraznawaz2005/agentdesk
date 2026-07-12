@@ -1386,32 +1386,32 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	// (Carved out of the read-only write-tool filter in agent-loop.ts so it keeps
 	// create_task despite being a read-only agent.)
 	"task-planner": [...PLANNING, ...NOTES, ...KANBAN_READ, "create_task", ...FILE_READ],
-	// WEB added: architects evaluate libraries, look up patterns and technical docs
-	"software-architect": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...GIT_READ, ...NOTES, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...SYSTEM, ...SKILLS, ...WEB],
-	// WEB added: frontend engineers constantly reference MDN, npm, framework docs
-	"frontend_engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...SCREENSHOT, ...PROCESS, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB],
-	// WEB added: backend engineers look up API docs, packages; git_stash added (listed as Key Tool in system prompt)
-	"backend-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "git_stash"],
-	// read_image added: review screenshots/mockups attached to a task or referenced in a diff
-	"code-reviewer": [...FILE_READ, ...SHELL, ...KANBAN_REVIEWER, ...GIT_READ, ...LSP, ...SYSTEM, ...NOTES, ...SKILLS, "read_image"],
-	// NOTES added: QA agents should document test findings/reports; SCREENSHOT added: visual/E2E testing
-	"qa-engineer": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SKILLS, ...NOTES, ...SCREENSHOT],
-	// WEB added: DevOps looks up Docker Hub, cloud docs, CI/CD platform docs; read_image added: review dashboard/monitoring screenshots
-	"devops-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...GIT_READ, ...GIT_WRITE, ...PROCESS, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "read_image"],
+	// WEB added: architects evaluate libraries, look up patterns and technical docs; read_audio added: review voice notes/recordings attached to a task
+	"software-architect": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...GIT_READ, ...NOTES, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...SYSTEM, ...SKILLS, ...WEB, "read_audio"],
+	// WEB added: frontend engineers constantly reference MDN, npm, framework docs; read_audio added: review voice notes/recordings attached to a task
+	"frontend_engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...SCREENSHOT, ...PROCESS, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "read_audio"],
+	// WEB added: backend engineers look up API docs, packages; git_stash added (listed as Key Tool in system prompt); read_audio added: review voice notes/recordings attached to a task
+	"backend-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "git_stash", "read_audio"],
+	// read_image added: review screenshots/mockups attached to a task or referenced in a diff; read_audio added: review voice notes/recordings attached to a task
+	"code-reviewer": [...FILE_READ, ...SHELL, ...KANBAN_REVIEWER, ...GIT_READ, ...LSP, ...SYSTEM, ...NOTES, ...SKILLS, "read_image", "read_audio"],
+	// NOTES added: QA agents should document test findings/reports; SCREENSHOT added: visual/E2E testing; read_audio added: review voice notes/recordings attached to a task
+	"qa-engineer": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SKILLS, ...NOTES, ...SCREENSHOT, "read_audio"],
+	// WEB added: DevOps looks up Docker Hub, cloud docs, CI/CD platform docs; read_image/read_audio added: review dashboard/monitoring screenshots and voice notes
+	"devops-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...GIT_READ, ...GIT_WRITE, ...PROCESS, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "read_image", "read_audio"],
 	// FILE_WRITE added: system prompt explicitly says "apply security fixes" using write/edit tools
 	"security-expert": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...GIT_READ, ...LSP, ...WEB, ...SYSTEM, ...NOTES, ...SKILLS],
 	// SHELL added: needed to run doc generators (typedoc, mkdocs, openapi-generator, etc.)
 	"documentation-expert": [...FILE_READ, ...FILE_WRITE, ...KANBAN, ...NOTES, ...GIT_READ, ...SYSTEM, ...SKILLS, ...SHELL],
-	// git_stash added: listed as Key Tool in system prompt
-	"debugging-specialist": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, "git_stash"],
-	// WEB added: performance engineers look up benchmarks, profiling tools; SCREENSHOT added: capture flamegraphs
-	"performance-expert": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, ...SCREENSHOT],
+	// git_stash added: listed as Key Tool in system prompt; read_audio added: review voice notes/recordings attached to a task
+	"debugging-specialist": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, "git_stash", "read_audio"],
+	// WEB added: performance engineers look up benchmarks, profiling tools; SCREENSHOT added: capture flamegraphs; read_audio added: review voice notes/recordings attached to a task
+	"performance-expert": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, ...SCREENSHOT, "read_audio"],
 	// WEB added: data engineers look up format specs, API docs for data sources
 	"data-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB],
 	// PROCESS added: run long migrations/VACUUM in background; WEB added: DB docs, EXPLAIN plan references
 	"database-expert": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...LSP, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...PROCESS, ...WEB],
-	// GIT_READ added: context on recent UI changes for design decisions
-	"ui-ux-designer": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...LSP, ...SCREENSHOT, ...WEB, ...SYSTEM, ...NOTES, ...SKILLS, ...GIT_READ],
+	// GIT_READ added: context on recent UI changes for design decisions; read_audio added: review voice notes/recordings attached to a task
+	"ui-ux-designer": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...LSP, ...SCREENSHOT, ...WEB, ...SYSTEM, ...NOTES, ...SKILLS, ...GIT_READ, "read_audio"],
 	// git_stash + git_cherry_pick added: both explicitly listed as Key Tools in system prompt
 	"refactoring-specialist": [...FILE_READ, ...FILE_WRITE, ...FILE_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, "git_stash", "git_cherry_pick"],
 	"code-explorer": [...FILE_READ, ...FILE_COMMON_ADVANCED, ...SHELL, ...GIT_READ, ...WEB, ...LSP, ...SYSTEM, ...KANBAN_READ, ...SKILLS, ...NOTES],
@@ -1422,11 +1422,12 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	// anyway, so listing it would just be a toggle that looks enabled but can
 	// never actually run.
 	// "deep_research" is added as a literal, not via WEB, so it stays scoped to
-	// research-expert only — WEB is shared by many other agents.
-	"research-expert": [...FILE_READ, ...WEB, ...NOTES, ...SYSTEM, ...KANBAN_READ, ...SKILLS, ...PROCESS, ...SCREENSHOT, "deep_research"],
+	// research-expert only — WEB is shared by many other agents. read_audio
+	// added: review voice notes/recordings referenced in research sources.
+	"research-expert": [...FILE_READ, ...WEB, ...NOTES, ...SYSTEM, ...KANBAN_READ, ...SKILLS, ...PROCESS, ...SCREENSHOT, "deep_research", "read_audio"],
 	"api-designer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...WEB, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS],
-	// WEB added: mobile engineers look up React Native, Expo, iOS/Android platform docs
-	"mobile-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SCREENSHOT, ...NOTES, ...SKILLS, ...WEB],
+	// WEB added: mobile engineers look up React Native, Expo, iOS/Android platform docs; read_audio added: review voice notes/recordings attached to a task
+	"mobile-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SCREENSHOT, ...NOTES, ...SKILLS, ...WEB, "read_audio"],
 	"ml-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...WEB, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS],
 	// Playground agent: no git, no kanban, no notes, no planning — just build + preview tools.
 	"playground-agent": [...FILE_READ, ...FILE_WRITE, "download_file", ...SHELL, ...WEB, ...LSP, ...PROCESS, "sleep", ...SKILLS],

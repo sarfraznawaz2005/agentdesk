@@ -29,7 +29,7 @@ import { createTrackedFileTools } from "./tools/file-ops";
 import { skillRegistry } from "../skills/registry";
 import { logPrompt } from "./prompt-logger";
 import { isTransientError, getBackoffDelay } from "./safety";
-import { buildImageFollowUpMessage } from "./tools/screenshot";
+import { buildMediaFollowUpMessage } from "./tools/media-followup";
 
 // ---------------------------------------------------------------------------
 // Agent loop file logger — writes to {userData}/logs/agent-loop.log
@@ -1189,13 +1189,13 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			prepareStep: async ({ steps, messages: stepMessages }) => {
 				if (steps.length === 0) return undefined; // First step — no compaction needed
 
-				// Deliver real image bytes from a read_image/take_screenshot call as a
-				// follow-up user message — the only wire format every provider actually
-				// supports as vision input (see buildImageFollowUpMessage in screenshot.ts).
+				// Deliver real media bytes from a read_image/take_screenshot/read_audio call
+				// as a follow-up user message — the only wire format every provider actually
+				// supports as vision/audio input (see buildMediaFollowUpMessage in media-followup.ts).
 				const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
-				const imageFollowUp = buildImageFollowUpMessage(lastStep.toolResults);
-				if (imageFollowUp) {
-					agentMessages.push(imageFollowUp as ModelMessage);
+				const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
+				if (mediaFollowUp) {
+					agentMessages.push(mediaFollowUp as ModelMessage);
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
 					return recached.system !== undefined
 						? { messages: recached.messages, system: recached.system }

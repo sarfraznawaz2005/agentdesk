@@ -26,6 +26,25 @@ const ACTIVITY_WIDTH_MAX = 400;
 const ACTIVITY_WIDTH_DEFAULT = 300;
 const FOCUS_KEY = "chat-focus-mode";
 
+/**
+ * Base64-encode a file's bytes without spreading the whole buffer into
+ * String.fromCharCode(...) at once — that throws "RangeError: Maximum call
+ * stack size exceeded" for any file roughly ≥600KB-1MB (verified: fails
+ * around 1,000,000 array elements). It was silently swallowed by the
+ * try/catch around each attachment save, so any audio/binary attachment
+ * past that size vanished with no chip, no error, and no context reaching
+ * the PM. Chunking keeps each spread call well under that limit.
+ */
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const CHUNK_SIZE = 0x8000; // 32KB
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE));
+  }
+  return btoa(binary);
+}
+
 export function ChatLayout({ projectId }: ChatLayoutProps) {
   const [isFocused, setIsFocused] = useState(() => {
     try { return localStorage.getItem(FOCUS_KEY) === "true"; } catch { return false; }
@@ -274,8 +293,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
             } else if (att.type === "image" && att.content.startsWith("data:")) {
               base64 = att.content.split(",")[1] ?? "";
             } else if (att.file) {
-              const buf = await att.file.arrayBuffer();
-              base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+              base64 = await fileToBase64(att.file);
             } else {
               continue;
             }
@@ -294,11 +312,18 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
               implicitContext += `\n<attached-file name="${saved.name}" path="${saved.path}">\n${att.content}\n</attached-file>\n`;
             } else if (att.type === "image") {
               implicitContext += `\n[Attached image: "${saved.name}" saved at "${saved.path}". Call read_image with this path to view it. If the current model cannot interpret the returned image, say so.]\n`;
+            } else if (att.type === "audio") {
+              implicitContext += `\n[Attached audio: "${saved.name}" saved at "${saved.path}". Call read_audio with this path to hear it. Only WAV and MP3 are supported — if the file is another format, say so. If the current model cannot interpret the returned audio, say so.]\n`;
             } else {
               implicitContext += `\n[Attached file: "${saved.name}" saved at "${saved.path}". This is a binary file (${att.name.split(".").pop()}). Use available tools or skills to read/extract content from this file before responding.]\n`;
             }
-          } catch {
-            // Skip failed attachment saves
+          } catch (err) {
+            // Surface attachment failures instead of silently dropping them —
+            // a swallowed error here previously hid a stack-overflow bug
+            // (fileToBase64) that silently dropped every audio/binary
+            // attachment over ~600KB-1MB with zero user-facing feedback.
+            console.error(`[ChatLayout] Failed to attach "${att.name}":`, err);
+            toast("error", `Failed to attach "${att.name}" — ${err instanceof Error ? err.message : "unknown error"}`);
           }
         }
 

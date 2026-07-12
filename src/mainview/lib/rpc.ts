@@ -1157,7 +1157,7 @@ export const rpc = {
     electroviewRpc.request.respondShellApproval({ requestId, decision }),
 
   /** Save an attached file to the project workspace. */
-  saveAttachment: (projectId: string, fileName: string, dataBase64: string, type: "text" | "image" | "binary") =>
+  saveAttachment: (projectId: string, fileName: string, dataBase64: string, type: "text" | "image" | "audio" | "binary") =>
     electroviewRpc.request.saveAttachment({ projectId, fileName, dataBase64, type }),
 
   /** Respond to a user question from the PM agent. */

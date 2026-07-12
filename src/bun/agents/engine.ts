@@ -20,7 +20,9 @@ import { createPMTools } from "./tools/pm-tools";
 import { kanbanTools } from "./tools/kanban";
 import { notesTools } from "./tools/notes";
 import { fileOpsTools } from "./tools/file-ops";
-import { screenshotTools, buildImageFollowUpMessage } from "./tools/screenshot";
+import { screenshotTools } from "./tools/screenshot";
+import { audioTools } from "./tools/audio";
+import { buildMediaFollowUpMessage } from "./tools/media-followup";
 import { skillTools } from "./tools/skills";
 import { createPreviewTool } from "./tools/preview";
 import { isTransientError, getBackoffDelay } from "./safety";
@@ -548,6 +550,8 @@ export class AgentEngine {
 				checksum: fileOpsTools.checksum.tool,
 				// Read attached/referenced images (requires a vision-capable model)
 				read_image: screenshotTools.read_image.tool,
+				// Read attached/referenced audio (requires an audio-capable model; WAV/MP3 only)
+				read_audio: audioTools.read_audio.tool,
 				// Skill tools
 				read_skill: skillTools.read_skill.tool,
 				read_skill_file: skillTools.read_skill_file.tool,
@@ -609,15 +613,15 @@ export class AgentEngine {
 					stopWhen: [stepCountIs(100)],
 					abortSignal: abortController?.signal,
 					...pmThinkingOptions,
-					// Deliver real image bytes from a read_image/take_screenshot call as a
-					// follow-up user message — the only wire format every provider actually
-					// supports as vision input (see buildImageFollowUpMessage in screenshot.ts).
+					// Deliver real media bytes from a read_image/take_screenshot/read_audio call
+					// as a follow-up user message — the only wire format every provider actually
+					// supports as vision/audio input (see buildMediaFollowUpMessage in media-followup.ts).
 					prepareStep: async ({ steps }) => {
 						if (steps.length === 0) return undefined;
 						const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
-						const imageFollowUp = buildImageFollowUpMessage(lastStep.toolResults);
-						if (!imageFollowUp) return undefined;
-						context.messages = [...context.messages, imageFollowUp as ModelMessage];
+						const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
+						if (!mediaFollowUp) return undefined;
+						context.messages = [...context.messages, mediaFollowUp as ModelMessage];
 						const recached = applyAnthropicCaching(providerRow.providerType, context.system, context.messages);
 						return recached.system !== undefined
 							? { messages: recached.messages, system: recached.system }

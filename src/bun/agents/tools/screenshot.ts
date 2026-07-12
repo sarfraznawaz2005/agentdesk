@@ -56,10 +56,10 @@ function findChrome(): string | null {
 //
 // So the tool-result text must never carry the base64 payload. Instead:
 // extractImagePayload() strips it out of the JSON for toModelOutput (keeps
-// the result cheap on every provider), and buildImageFollowUpMessage() below
-// re-delivers the actual bytes as a synthetic user-role image message right
-// after the tool call — the one wire format every provider genuinely
-// supports as real, efficiently-tokenized vision input.
+// the result cheap on every provider), and buildMediaFollowUpMessage() in
+// media-followup.ts re-delivers the actual bytes as a synthetic user-role
+// image message right after the tool call — the one wire format every
+// provider genuinely supports as real, efficiently-tokenized vision input.
 // ---------------------------------------------------------------------------
 
 export function extractImagePayload(output: unknown): { base64: string; mimeType: string } | null {
@@ -88,29 +88,6 @@ function imageToolModelOutput(output: string) {
 		// not JSON or no image payload — fall through to plain text
 	}
 	return { type: "text" as const, value: output };
-}
-
-const IMAGE_TOOL_NAMES = new Set(["read_image", "take_screenshot"]);
-
-/**
- * Build a synthetic user message carrying the real image bytes for any
- * read_image/take_screenshot calls in a completed step, so the model
- * actually sees the image on the next step. Returns null if the step had
- * no successful image-tool results.
- */
-export function buildImageFollowUpMessage(
-	toolResults: Array<{ toolName: string; output?: unknown; result?: unknown }> | undefined,
-): { role: "user"; content: Array<{ type: "image"; image: string; mediaType: string }> } | null {
-	if (!toolResults?.length) return null;
-	const images = toolResults
-		.filter((tr) => IMAGE_TOOL_NAMES.has(tr.toolName))
-		.map((tr) => extractImagePayload(tr.output ?? tr.result))
-		.filter((img): img is { base64: string; mimeType: string } => img !== null);
-	if (images.length === 0) return null;
-	return {
-		role: "user",
-		content: images.map(({ base64, mimeType }) => ({ type: "image" as const, image: base64, mediaType: mimeType })),
-	};
 }
 
 // ---------------------------------------------------------------------------
