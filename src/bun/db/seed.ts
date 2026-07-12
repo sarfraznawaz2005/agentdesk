@@ -1392,11 +1392,12 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	"frontend_engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...SCREENSHOT, ...PROCESS, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB],
 	// WEB added: backend engineers look up API docs, packages; git_stash added (listed as Key Tool in system prompt)
 	"backend-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "git_stash"],
-	"code-reviewer": [...FILE_READ, ...SHELL, ...KANBAN_REVIEWER, ...GIT_READ, ...LSP, ...SYSTEM, ...NOTES, ...SKILLS],
+	// read_image added: review screenshots/mockups attached to a task or referenced in a diff
+	"code-reviewer": [...FILE_READ, ...SHELL, ...KANBAN_REVIEWER, ...GIT_READ, ...LSP, ...SYSTEM, ...NOTES, ...SKILLS, "read_image"],
 	// NOTES added: QA agents should document test findings/reports; SCREENSHOT added: visual/E2E testing
 	"qa-engineer": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...GIT_READ, ...SYSTEM, ...SKILLS, ...NOTES, ...SCREENSHOT],
-	// WEB added: DevOps looks up Docker Hub, cloud docs, CI/CD platform docs
-	"devops-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...GIT_READ, ...GIT_WRITE, ...PROCESS, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB],
+	// WEB added: DevOps looks up Docker Hub, cloud docs, CI/CD platform docs; read_image added: review dashboard/monitoring screenshots
+	"devops-engineer": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...GIT_READ, ...GIT_WRITE, ...PROCESS, ...SYSTEM, ...NOTES, ...SKILLS, ...WEB, "read_image"],
 	// FILE_WRITE added: system prompt explicitly says "apply security fixes" using write/edit tools
 	"security-expert": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...GIT_READ, ...LSP, ...WEB, ...SYSTEM, ...NOTES, ...SKILLS],
 	// SHELL added: needed to run doc generators (typedoc, mkdocs, openapi-generator, etc.)

@@ -29,6 +29,7 @@ import { createTrackedFileTools } from "./tools/file-ops";
 import { skillRegistry } from "../skills/registry";
 import { logPrompt } from "./prompt-logger";
 import { isTransientError, getBackoffDelay } from "./safety";
+import { buildImageFollowUpMessage } from "./tools/screenshot";
 
 // ---------------------------------------------------------------------------
 // Agent loop file logger — writes to {userData}/logs/agent-loop.log
@@ -1187,6 +1188,19 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			// --- Context compaction between steps ---
 			prepareStep: async ({ steps, messages: stepMessages }) => {
 				if (steps.length === 0) return undefined; // First step — no compaction needed
+
+				// Deliver real image bytes from a read_image/take_screenshot call as a
+				// follow-up user message — the only wire format every provider actually
+				// supports as vision input (see buildImageFollowUpMessage in screenshot.ts).
+				const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
+				const imageFollowUp = buildImageFollowUpMessage(lastStep.toolResults);
+				if (imageFollowUp) {
+					agentMessages.push(imageFollowUp as ModelMessage);
+					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
+					return recached.system !== undefined
+						? { messages: recached.messages, system: recached.system }
+						: { messages: recached.messages };
+				}
 
 				// Inject stuck loop warning if set by onStepFinish
 				if (pendingStuckWarning) {

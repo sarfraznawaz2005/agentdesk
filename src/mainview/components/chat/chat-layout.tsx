@@ -293,7 +293,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
             if (att.type === "text") {
               implicitContext += `\n<attached-file name="${saved.name}" path="${saved.path}">\n${att.content}\n</attached-file>\n`;
             } else if (att.type === "image") {
-              implicitContext += `\n[Attached image: "${saved.name}" saved at "${saved.path}". Use read_file to view this image if you support vision, or describe that you cannot view images with the current model.]\n`;
+              implicitContext += `\n[Attached image: "${saved.name}" saved at "${saved.path}". Call read_image with this path to view it. If the current model cannot interpret the returned image, say so.]\n`;
             } else {
               implicitContext += `\n[Attached file: "${saved.name}" saved at "${saved.path}". This is a binary file (${att.name.split(".").pop()}). Use available tools or skills to read/extract content from this file before responding.]\n`;
             }

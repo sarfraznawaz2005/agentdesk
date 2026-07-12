@@ -41,6 +41,79 @@ function findChrome(): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Shared: image tool result handling.
+//
+// A tool-result message can only carry an actual image on Anthropic's API
+// (as a tool_result image block). Every OpenAI-compatible chat/completions
+// backend (OpenAI, DeepSeek, Groq, xAI, OpenRouter, Ollama, ZenMux, and any
+// other custom provider) requires tool-result content to be a plain string —
+// the AI SDK's openai-compatible adapter just JSON.stringifies whatever we
+// give it, which means a raw base64 payload gets embedded as literal TEXT
+// and tokenized character-by-character. For a ~150-300KB resized image that
+// can be tens of thousands of tokens, which blew a small-context-window
+// model's request budget and came back as a 400 "invalid_params" from
+// ZenMux (stepfun/step-3.7-flash-free).
+//
+// So the tool-result text must never carry the base64 payload. Instead:
+// extractImagePayload() strips it out of the JSON for toModelOutput (keeps
+// the result cheap on every provider), and buildImageFollowUpMessage() below
+// re-delivers the actual bytes as a synthetic user-role image message right
+// after the tool call — the one wire format every provider genuinely
+// supports as real, efficiently-tokenized vision input.
+// ---------------------------------------------------------------------------
+
+export function extractImagePayload(output: unknown): { base64: string; mimeType: string } | null {
+	if (typeof output !== "string") return null;
+	try {
+		const parsed = JSON.parse(output) as { image?: { base64?: string; mimeType?: string } };
+		const base64 = parsed.image?.base64;
+		const mimeType = parsed.image?.mimeType;
+		return base64 && mimeType ? { base64, mimeType } : null;
+	} catch {
+		return null;
+	}
+}
+
+function imageToolModelOutput(output: string) {
+	try {
+		const parsed = JSON.parse(output) as { image?: unknown; [key: string]: unknown };
+		if (parsed.image) {
+			const { image: _image, ...meta } = parsed;
+			return {
+				type: "text" as const,
+				value: JSON.stringify({ ...meta, note: "Image loaded — its content is provided to you as an image in the next message." }),
+			};
+		}
+	} catch {
+		// not JSON or no image payload — fall through to plain text
+	}
+	return { type: "text" as const, value: output };
+}
+
+const IMAGE_TOOL_NAMES = new Set(["read_image", "take_screenshot"]);
+
+/**
+ * Build a synthetic user message carrying the real image bytes for any
+ * read_image/take_screenshot calls in a completed step, so the model
+ * actually sees the image on the next step. Returns null if the step had
+ * no successful image-tool results.
+ */
+export function buildImageFollowUpMessage(
+	toolResults: Array<{ toolName: string; output?: unknown; result?: unknown }> | undefined,
+): { role: "user"; content: Array<{ type: "image"; image: string; mediaType: string }> } | null {
+	if (!toolResults?.length) return null;
+	const images = toolResults
+		.filter((tr) => IMAGE_TOOL_NAMES.has(tr.toolName))
+		.map((tr) => extractImagePayload(tr.output ?? tr.result))
+		.filter((img): img is { base64: string; mimeType: string } => img !== null);
+	if (images.length === 0) return null;
+	return {
+		role: "user",
+		content: images.map(({ base64, mimeType }) => ({ type: "image" as const, image: base64, mediaType: mimeType })),
+	};
+}
+
+// ---------------------------------------------------------------------------
 // take_screenshot tool
 // ---------------------------------------------------------------------------
 
@@ -118,39 +191,42 @@ async function getDevServerUrl(projectId: string): Promise<string | null> {
 	return rows[0]?.value?.trim() || null;
 }
 
-const takeScreenshotTool = tool({
+const takeScreenshotInputSchema = z.object({
+	url: z
+		.string()
+		.optional()
+		.describe(
+			"URL to screenshot. Defaults to the project's Dev Server URL if configured.",
+		),
+	project_id: z
+		.string()
+		.describe("Project ID — used to look up the dev server URL if no URL is provided."),
+	width: z
+		.number()
+		.int()
+		.min(320)
+		.max(3840)
+		.optional()
+		.default(1280)
+		.describe("Viewport width in pixels (default: 1280)"),
+	height: z
+		.number()
+		.int()
+		.min(240)
+		.max(2160)
+		.optional()
+		.default(720)
+		.describe("Viewport height in pixels (default: 720)"),
+});
+type TakeScreenshotInput = z.infer<typeof takeScreenshotInputSchema>;
+
+const takeScreenshotTool = tool<TakeScreenshotInput, string>({
 	description:
 		"Take a screenshot of a web page at the given URL. Returns a base64-encoded PNG image. " +
 		"If no URL is provided, uses the project's configured Dev Server URL. " +
 		"Useful for visually verifying UI changes, catching layout bugs, and comparing before/after states. " +
 		"Requires Chrome/Chromium to be installed on the system.",
-	inputSchema: z.object({
-		url: z
-			.string()
-			.optional()
-			.describe(
-				"URL to screenshot. Defaults to the project's Dev Server URL if configured.",
-			),
-		project_id: z
-			.string()
-			.describe("Project ID — used to look up the dev server URL if no URL is provided."),
-		width: z
-			.number()
-			.int()
-			.min(320)
-			.max(3840)
-			.optional()
-			.default(1280)
-			.describe("Viewport width in pixels (default: 1280)"),
-		height: z
-			.number()
-			.int()
-			.min(240)
-			.max(2160)
-			.optional()
-			.default(720)
-			.describe("Viewport height in pixels (default: 720)"),
-	}),
+	inputSchema: takeScreenshotInputSchema,
 	execute: async (args): Promise<string> => {
 		let targetUrl = args.url;
 
@@ -188,6 +264,7 @@ const takeScreenshotTool = tool({
 			image: { type: "image", mimeType, base64 },
 		});
 	},
+	toModelOutput: ({ output }: { output: string }) => imageToolModelOutput(output),
 });
 
 // ---------------------------------------------------------------------------
@@ -228,15 +305,18 @@ async function resizeToFit(buffer: Buffer): Promise<{ data: Buffer; mimeType: st
 }
 
 
-const readImageTool = tool({
+const readImageInputSchema = z.object({
+	path: z.string().describe("Absolute or relative path to the image file"),
+});
+type ReadImageInput = z.infer<typeof readImageInputSchema>;
+
+const readImageTool = tool<ReadImageInput, string>({
 	description:
 		"Read an image file and return its base64-encoded content. Supports PNG, JPG, GIF, WebP, BMP, and SVG. " +
 		"Use this to analyze screenshots, mockups, diagrams, or any visual asset. " +
 		"Requires a vision-capable AI model to interpret the image content. " +
 		"Max file size: 20 MB.",
-	inputSchema: z.object({
-		path: z.string().describe("Absolute or relative path to the image file"),
-	}),
+	inputSchema: readImageInputSchema,
 	execute: async ({ path: imagePath }): Promise<string> => {
 		try {
 			const { extname: getExt, resolve } = await import("node:path");
@@ -285,6 +365,7 @@ const readImageTool = tool({
 			});
 		}
 	},
+	toModelOutput: ({ output }: { output: string }) => imageToolModelOutput(output),
 });
 
 // ---------------------------------------------------------------------------

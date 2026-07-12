@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from "ai";
+import { streamText, stepCountIs, type ModelMessage } from "ai";
 
 // ---------------------------------------------------------------------------
 // /preview slash-command — full instructions passed silently to the PM
@@ -20,6 +20,7 @@ import { createPMTools } from "./tools/pm-tools";
 import { kanbanTools } from "./tools/kanban";
 import { notesTools } from "./tools/notes";
 import { fileOpsTools } from "./tools/file-ops";
+import { screenshotTools, buildImageFollowUpMessage } from "./tools/screenshot";
 import { skillTools } from "./tools/skills";
 import { createPreviewTool } from "./tools/preview";
 import { isTransientError, getBackoffDelay } from "./safety";
@@ -545,6 +546,8 @@ export class AgentEngine {
 				search_files: fileOpsTools.search_files.tool,
 				search_content: fileOpsTools.search_content.tool,
 				checksum: fileOpsTools.checksum.tool,
+				// Read attached/referenced images (requires a vision-capable model)
+				read_image: screenshotTools.read_image.tool,
 				// Skill tools
 				read_skill: skillTools.read_skill.tool,
 				read_skill_file: skillTools.read_skill_file.tool,
@@ -606,6 +609,20 @@ export class AgentEngine {
 					stopWhen: [stepCountIs(100)],
 					abortSignal: abortController?.signal,
 					...pmThinkingOptions,
+					// Deliver real image bytes from a read_image/take_screenshot call as a
+					// follow-up user message — the only wire format every provider actually
+					// supports as vision input (see buildImageFollowUpMessage in screenshot.ts).
+					prepareStep: async ({ steps }) => {
+						if (steps.length === 0) return undefined;
+						const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
+						const imageFollowUp = buildImageFollowUpMessage(lastStep.toolResults);
+						if (!imageFollowUp) return undefined;
+						context.messages = [...context.messages, imageFollowUp as ModelMessage];
+						const recached = applyAnthropicCaching(providerRow.providerType, context.system, context.messages);
+						return recached.system !== undefined
+							? { messages: recached.messages, system: recached.system }
+							: { messages: recached.messages };
+					},
 					onStepFinish: (stepResult) => {
 						const stepAny = stepResult as {
 							text?: string;
