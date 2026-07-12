@@ -1,4 +1,32 @@
+import { readdirSync } from "node:fs";
 import type { ElectrobunConfig } from "electrobun";
+
+// onnxruntime-node ships prebuilt native binaries for every OS/arch (win32, darwin, linux)
+// bundled inside a single npm package, unlike sharp's per-platform optionalDependencies.
+// Each release is built on its own native CI runner (see .github/workflows/release.yml —
+// ubuntu-latest / windows-latest / macos-latest, no cross-compilation), so process.platform
+// and process.arch here always match the platform being packaged — scope the copy to just
+// that one platform/arch instead of shipping all ~127MB of every OS's binaries in every build.
+const onnxPlatformBinDir = `node_modules/onnxruntime-node/bin/napi-v6/${process.platform}/${process.arch}`;
+const onnxPlatformBinDest = `bin/napi-v6/${process.platform}/${process.arch}`;
+
+// On Windows, that same directory also bundles the DirectML execution provider's redistributables
+// (DirectML.dll, dxcompiler.dll, dxil.dll — ~24MB combined). Collections' embedding pipeline
+// (src/bun/collections/embeddings/embedder.ts) never passes a `device` option to `pipeline()`, so
+// transformers.js falls back to its Node default, which is always "cpu" (never "dml") — see
+// DEFAULT_DEVICE in @huggingface/transformers. ONNX Runtime only LoadLibrary()s an execution
+// provider's DLL when that provider is actually requested at session creation, so these three
+// files are dead weight here. Verified empirically: removing them and running a real CPU-EP
+// session (InferenceSession.create + session.run) against the downloaded model.onnx still
+// succeeds. Only applies to win32 — darwin/linux builds of onnxruntime-node don't bundle
+// separate CoreML/CUDA redistributables in this directory, so there's nothing to trim there.
+const WIN_DML_ONLY_FILES = new Set(["DirectML.dll", "dxcompiler.dll", "dxil.dll"]);
+
+const onnxCopyEntries = Object.fromEntries(
+	readdirSync(onnxPlatformBinDir)
+		.filter((file) => process.platform !== "win32" || !WIN_DML_ONLY_FILES.has(file))
+		.map((file) => [`${onnxPlatformBinDir}/${file}`, `${onnxPlatformBinDest}/${file}`]),
+);
 
 export default {
 	app: {
@@ -21,8 +49,11 @@ export default {
 			// local embedding model) is loaded via a require() relative to its own dist/ folder.
 			// Bun's bundler flattens src/bun into a single bun/index.js, so that relative require
 			// resolves to Resources/app/bin/napi-v6/... at runtime — copy the prebuilt .node
-			// binaries there so the flattened bundle can still find them.
-			"node_modules/onnxruntime-node/bin": "bin",
+			// binaries there so the flattened bundle can still find them. Scoped to the current
+			// build's platform/arch only, minus the unused DirectML files on Windows (see
+			// onnxCopyEntries above) — copying the whole package's bin/ folder shipped every OS's
+			// binaries (~127MB) in every release regardless of target.
+			...onnxCopyEntries,
 			// sharp (a transitive dependency of @huggingface/transformers, used for image
 			// preprocessing) resolves its native binding via a bare `require("@img/sharp-<platform>-
 			// <arch>/...")` — ordinary node_modules resolution, not a relative path. Bun's bundler
