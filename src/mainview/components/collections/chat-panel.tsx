@@ -29,6 +29,8 @@ import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useCollectionsStore } from "@/stores/collections-store";
 import type { CollectionChatCitationDto } from "../../../shared/rpc/collections";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { VoiceInputButton } from "@/components/chat/voice-input-button";
 
 // Streaming, tool-calling Collections chat widget — mirrors
 // src/mainview/components/dashboard/pm-chat-widget.tsx's feature set (zoom, expand,
@@ -280,6 +282,10 @@ function ChatInputBar({
 	isStreaming,
 	onSend,
 	onStop,
+	voiceSupported,
+	voiceListening,
+	voiceError,
+	onVoiceToggle,
 }: {
 	inputRef: React.RefObject<HTMLTextAreaElement | null>;
 	value: string;
@@ -288,6 +294,10 @@ function ChatInputBar({
 	isStreaming: boolean;
 	onSend: () => void;
 	onStop: () => void;
+	voiceSupported: boolean;
+	voiceListening: boolean;
+	voiceError: string | null;
+	onVoiceToggle: () => void;
 }) {
 	return (
 		<div className="px-3 pb-3 pt-2 border-t border-border shrink-0">
@@ -309,6 +319,9 @@ function ChatInputBar({
 						style={{ minHeight: "1.75rem" }}
 						disabled={isStreaming}
 					/>
+					{voiceSupported && (
+						<VoiceInputButton listening={voiceListening} error={voiceError} onClick={onVoiceToggle} disabled={isStreaming} />
+					)}
 				</div>
 				{isStreaming ? (
 					<Tip content="Stop generating" side="top">
@@ -485,10 +498,15 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 		setSelectedNote(citation.noteId);
 	}
 
+	const voice = useVoiceInput(input, setInput, () =>
+		requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus()),
+	);
+
 	const sendMessage = useCallback(async () => {
 		const content = input.trim();
 		if (!content || isStreaming) return;
 
+		voice.stop();
 		setInput("");
 		requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus());
 		setLastSent(content);
@@ -512,7 +530,7 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 			});
 			setIsStreaming(false);
 		}
-	}, [input, isStreaming, effectiveScope]);
+	}, [input, isStreaming, effectiveScope, voice]);
 
 	const retryLastMessage = useCallback(async () => {
 		if (isStreaming) return;
@@ -760,6 +778,10 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 						isStreaming={isStreaming}
 						onSend={sendMessage}
 						onStop={handleStop}
+						voiceSupported={voice.supported}
+						voiceListening={voice.listening}
+						voiceError={voice.error}
+						onVoiceToggle={voice.toggle}
 					/>
 				</div>
 			)}
@@ -792,6 +814,10 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 						isStreaming={isStreaming}
 						onSend={sendMessage}
 						onStop={handleStop}
+						voiceSupported={voice.supported}
+						voiceListening={voice.listening}
+						voiceError={voice.error}
+						onVoiceToggle={voice.toggle}
 					/>
 				</DialogContent>
 			</Dialog>

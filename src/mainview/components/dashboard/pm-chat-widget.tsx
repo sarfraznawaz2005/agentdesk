@@ -14,6 +14,8 @@ import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { useDashboardLauncherStore, selectHasCustomAgents } from "@/stores/dashboard-launcher-store";
 import { QuickAttachBar } from "./quick-attach-bar";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { VoiceInputButton } from "@/components/chat/voice-input-button";
 
 // Stable id for the mobile chat FAB registry (mirrors bg-indigo-600 = #4f46e5).
 const PM_LAUNCHER_ID = "pm";
@@ -201,6 +203,13 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   const expandedOpenRef = useRef(false);
   const widgetRef = useRef<HTMLDivElement>(null);
 
+  // Declared early — sendMessage's useCallback dependency array references `voice`,
+  // and deps arrays evaluate immediately every render (unlike a callback body), so
+  // `voice` must already be initialized by the time that array is evaluated.
+  const voice = useVoiceInput(input, setInput, () =>
+    requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus()),
+  );
+
   // Close when clicking outside the widget
   useEffect(() => {
     if (!open) return;
@@ -338,6 +347,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     const content = input.trim();
     if (!content || isStreaming) return;
 
+    voice.stop();
     setInput("");
     requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus());
     setLastSent(content);
@@ -361,7 +371,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
       });
       setIsStreaming(false);
     }
-  }, [input, isStreaming]);
+  }, [input, isStreaming, voice]);
 
   const retryLastMessage = useCallback(async () => {
     if (isStreaming) return;
@@ -753,6 +763,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                   style={{ minHeight: "1.75rem" }}
                   disabled={isStreaming}
                 />
+                {voice.supported && (
+                  <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={isStreaming} />
+                )}
               </div>
               {isStreaming ? (
                 <Tip content="Stop generating" side="top">
@@ -937,6 +950,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                   style={{ minHeight: "1.75rem" }}
                   disabled={isStreaming}
                 />
+                {voice.supported && (
+                  <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={isStreaming} />
+                )}
               </div>
               {isStreaming ? (
                 <Tip content="Stop generating" side="top">

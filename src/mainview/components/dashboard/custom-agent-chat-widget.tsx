@@ -15,6 +15,8 @@ import { UnreadDot } from "@/components/ui/unread-dot";
 import { exportChatMarkdown } from "@/lib/export-markdown";
 import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
 import { QuickAttachBar } from "./quick-attach-bar";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { VoiceInputButton } from "@/components/chat/voice-input-button";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,6 +179,13 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   const modalInputRef  = useRef<HTMLTextAreaElement>(null);
   const expandedOpenRef = useRef(false);
   const widgetRef      = useRef<HTMLDivElement>(null);
+
+  // Declared early — sendMessage's useCallback dependency array references `voice`,
+  // and deps arrays evaluate immediately every render (unlike a callback body), so
+  // `voice` must already be initialized by the time that array is evaluated.
+  const voice = useVoiceInput(input, setInput, () =>
+    requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus()),
+  );
 
   // Mirror the latest messages into a ref so async callbacks / event handlers
   // read current state without capturing a stale closure. Synced in an effect
@@ -373,6 +382,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     const content = input.trim();
     if (!content || isStreaming) return;
 
+    voice.stop();
     setInput("");
     requestAnimationFrame(() => (expandedOpenRef.current ? modalInputRef : inputRef).current?.focus());
     setLastSent(content);
@@ -396,7 +406,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       });
       setIsStreaming(false);
     }
-  }, [input, isStreaming, agentName]);
+  }, [input, isStreaming, agentName, voice]);
 
   const handleStop = useCallback(async () => {
     await rpc.abortDashboardAgentMessage(sessionId.current);
@@ -752,6 +762,9 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   style={{ minHeight: "1.75rem" }}
                   disabled={isStreaming}
                 />
+                {voice.supported && (
+                  <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={isStreaming} />
+                )}
               </div>
               {isStreaming ? (
                 <Tip content="Stop generating" side="top">
@@ -948,6 +961,9 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                   style={{ minHeight: "1.75rem" }}
                   disabled={isStreaming}
                 />
+                {voice.supported && (
+                  <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={isStreaming} />
+                )}
               </div>
               {isStreaming ? (
                 <Tip content="Stop generating" side="top">

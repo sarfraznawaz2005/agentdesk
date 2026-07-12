@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
 import { PromptsDropdown } from "./prompts-dropdown";
+import { VoiceInputButton } from "./voice-input-button";
+import { useVoiceInput } from "../../lib/use-voice-input";
 import { rpc } from "../../lib/rpc";
 import { useChatStore } from "../../stores/chat-store";
 import { Tip } from "@/components/ui/tooltip";
@@ -395,6 +397,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     });
   }, [inputMode, popoverMode, searchFiles, onInputChange]);
 
+  // ---- Voice input (Web Speech API) ---------------------------------------
+  // Declared here (before handleSend below) because handleSend's useCallback
+  // dependency array references `voice` — deps arrays evaluate immediately every
+  // render, unlike a callback body, so `voice` must already be initialized by
+  // the time that array is evaluated (TDZ — see aitasks TASK-548 notes).
+  const voice = useVoiceInput(value, handleInputChange, () => requestAnimationFrame(() => textareaRef.current?.focus()));
+
   // ---- Filtered slash commands (hide /compact below 50% utilization) --------
   const visibleSlashCommands = useMemo(
     () => SLASH_COMMANDS.filter((cmd) => cmd.id !== "compact" || contextUtilization >= 50),
@@ -596,6 +605,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   // ---- Send handler (normal mode) -----------------------------------------
   const handleSend = useCallback(() => {
+    // If voice input is still listening when the user sends (button click or
+    // Enter), stop it — otherwise the mic keeps capturing silently in the
+    // background after the message has already gone out.
+    voice.stop();
+
     if (inputMode === "shell") {
       executeShell(value);
       return;
@@ -627,7 +641,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         textareaRef.current.focus();
       }
     });
-  }, [value, inputMode, attachedFiles, disabled, mentionedFiles, onSend, onInputChange, executeShell]);
+  }, [value, inputMode, attachedFiles, disabled, mentionedFiles, onSend, onInputChange, executeShell, voice]);
 
   // ---- Keyboard handler ----------------------------------------------------
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -912,7 +926,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 className="flex-shrink-0 p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground/60"
                 disabled={isStreaming || disabled || enhancing}
               >
-                <Paperclip className="w-5 h-5" />
+                <Paperclip className="w-4 h-4" />
               </button>
             </Tip>
           )}
@@ -926,7 +940,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 className="flex-shrink-0 p-1.5 text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground/60"
                 disabled={isStreaming || disabled || enhancing}
               >
-                <Library className="w-5 h-5" />
+                <Library className="w-4 h-4" />
               </button>
             </Tip>
           )}
@@ -1006,6 +1020,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 isShellMode ? "font-mono text-red-900 placeholder:text-red-400" : "text-foreground",
                 (disabled || enhancing) && "opacity-50",
               )}
+            />
+          )}
+
+          {/* Voice input — hidden in shell mode, or entirely if this webview has no speech engine */}
+          {!isShellMode && voice.supported && (
+            <VoiceInputButton
+              listening={voice.listening}
+              error={voice.error}
+              onClick={voice.toggle}
+              disabled={isStreaming || disabled || enhancing}
             />
           )}
 

@@ -45,6 +45,10 @@ import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
 import { MessageParts, type MessagePartData } from "@/components/chat/message-parts";
 import { CodeBlock } from "@/components/chat/code-block";
+import { QuickAttachBar } from "@/components/dashboard/quick-attach-bar";
+import { AttachFileTextButton } from "@/components/chat/attach-file-text-button";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { VoiceInputButton } from "@/components/chat/voice-input-button";
 import { usePlaygroundStore } from "@/stores/playground-store";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
@@ -333,6 +337,11 @@ export function PlaygroundPage() {
   const store = usePlaygroundStore();
 
   const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Declared early — handleSend's useCallback dependency array references `voice`,
+  // and deps arrays evaluate immediately every render (unlike a callback body), so
+  // `voice` must already be initialized by the time that array is evaluated.
+  const voice = useVoiceInput(input, setInput, () => requestAnimationFrame(() => textareaRef.current?.focus()));
   const [confirmNew, setConfirmNew] = useState(false);
   const [confirmCreate, setConfirmCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -476,13 +485,19 @@ export function PlaygroundPage() {
 
   const handleSend = useCallback(() => {
     if (!input.trim() || store.running) return;
+    voice.stop();
     const text = input;
     setInput("");
     sendMessage(text);
-  }, [input, store.running, sendMessage]);
+  }, [input, store.running, sendMessage, voice]);
 
   const handleStop = useCallback(() => {
     rpc.playgroundStop().catch(() => {});
+  }, []);
+
+  const insertText = useCallback((text: string) => {
+    setInput((prev) => (prev ? `${prev}\n\n${text}` : text));
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }, []);
 
   // Apply a user-edited preview URL: reload the iframe immediately (store) and
@@ -1009,20 +1024,28 @@ export function PlaygroundPage() {
       {!showPreviewPane && (
         <div className="border-t border-border bg-background p-3 shrink-0">
           <div className="flex items-end gap-2">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              rows={1}
-              placeholder={store.running ? "Playground Agent is working…" : "Describe what you want to build…"}
-              disabled={store.running}
-              className="max-h-40 min-h-[44px] flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring disabled:opacity-60"
-            />
+            <div className="flex flex-1 items-center gap-0.5 rounded-lg border border-input bg-background pl-1 pr-2 py-1 focus-within:ring-1 focus-within:ring-ring">
+              <AttachFileTextButton onInsertText={insertText} disabled={store.running} />
+              <QuickAttachBar onInsertText={insertText} disabled={store.running} />
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                rows={1}
+                placeholder={store.running ? "Playground Agent is working…" : "Describe what you want to build…"}
+                disabled={store.running}
+                className="max-h-40 min-h-[38px] flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
+              />
+              {voice.supported && (
+                <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={store.running} />
+              )}
+            </div>
             {store.running ? (
               <Button variant="destructive" size="lg" onClick={handleStop} className="h-11">
                 <Square className="h-4 w-4 fill-current" />

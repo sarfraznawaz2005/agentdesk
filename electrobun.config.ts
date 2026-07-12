@@ -73,6 +73,10 @@ export default {
 		watchIgnore: ["dist/**", "src/mainview/**"],
 		mac: {
 			bundleCEF: false,
+			// WKWebView requires this entitlement to even prompt for the mic (voice input).
+			entitlements: {
+				"com.apple.security.device.audio-input": "Microphone access for voice-to-text input",
+			},
 		},
 		linux: {
 			bundleCEF: true,

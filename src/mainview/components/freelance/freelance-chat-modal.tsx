@@ -14,6 +14,8 @@ import { ToolCallCard } from "@/components/chat/tool-call-card";
 import type { ToolCallPartData } from "@/components/chat/tool-call-card";
 import { rpc } from "@/lib/rpc";
 import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { VoiceInputButton } from "@/components/chat/voice-input-button";
 import type { FreelanceChatMessageDto } from "../../../shared/rpc/freelance";
 import type { FreelanceListingDto } from "../../../shared/rpc/freelance";
 
@@ -350,6 +352,8 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamingContentRef = useRef("");
 
+  const voice = useVoiceInput(inputValue, setInputValue, () => requestAnimationFrame(() => inputRef.current?.focus()));
+
   // ── Auto-scroll to bottom ──────────────────────────────────────────────────
 
   const scrollToBottom = useCallback(() => {
@@ -527,6 +531,7 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
       const text = content.trim();
       if (!text || isSending) return;
 
+      voice.stop();
       const userMsg: FreelanceChatMessageDto = {
         id: crypto.randomUUID(),
         role: "user",
@@ -553,7 +558,7 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
         });
       }
     },
-    [listing.id, isSending],
+    [listing.id, isSending, voice],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -855,6 +860,9 @@ export function FreelanceChatModal({ listing, open, onClose }: FreelanceChatModa
                   el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
                 }}
               />
+              {voice.supported && (
+                <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={isSending} />
+              )}
               {isSending ? (
                 <Button
                   onClick={() => { rpc.freelanceChatStop(listing.id).catch(() => {}); }}

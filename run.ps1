@@ -1,5 +1,12 @@
-# Enable WebView2 remote debugging so edge://inspect can attach DevTools to the live app
-$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
+# Enable WebView2 remote debugging so edge://inspect can attach DevTools to the live app.
+# --use-fake-ui-for-media-stream: WebView2 does not persist the mic "Allow" decision across
+# app restarts, and Electrobun exposes no config hook for WebView2's SavesInProfile permission
+# option (see demo/voice-input's README for the investigation). This flag auto-accepts
+# getUserMedia/SpeechRecognition mic requests silently for dev runs launched via this script.
+# NOTE: this must be set here (before the app process is spawned) — setting it from inside
+# src/bun/index.ts does NOT work, because that code runs in a Bun Worker thread whose
+# process.env is isolated from the real OS environment block WebView2Loader.dll reads.
+$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222 --use-fake-ui-for-media-stream"
 
 # Detect if the user wants the freelance feature enabled before the build wipes the bin dir.
 # Checks both the bin output dir and the project root so either placement works.

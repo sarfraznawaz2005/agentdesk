@@ -10,6 +10,10 @@ import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { CodeBlock } from "@/components/chat/code-block";
 import { Tip } from "@/components/ui/tooltip";
 import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
+import { QuickAttachBar } from "@/components/dashboard/quick-attach-bar";
+import { AttachFileTextButton } from "@/components/chat/attach-file-text-button";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { VoiceInputButton } from "@/components/chat/voice-input-button";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -510,6 +514,11 @@ export function CouncilPage() {
   const [agentStates, setAgentStates] = useState<Map<string, AgentState>>(new Map());
   const [bordaScores, setBordaScores] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
+  const insertText = useCallback((text: string) => {
+    setQuery((prev) => (prev ? `${prev}\n\n${text}` : text));
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+  const voice = useVoiceInput(query, setQuery, () => requestAnimationFrame(() => inputRef.current?.focus()));
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Keep a ref to agents so event handler callbacks don't capture stale closure
@@ -801,6 +810,7 @@ export function CouncilPage() {
     const trimmed = query.trim();
     if (!trimmed || sessionState === "running") return;
 
+    voice.stop();
     const isFollowUp = sessionState === "done";
     setQuery("");
     setSessionState("running");
@@ -940,18 +950,25 @@ export function CouncilPage() {
 
           {/* Input area */}
           <div className="border-t border-border bg-background shrink-0 p-3 flex gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !inputDisabled) handleSend();
-            }}
-            placeholder={placeholder}
-            disabled={inputDisabled}
-            className="flex-1 border border-border rounded-lg px-3.5 py-2 text-sm outline-none bg-background text-foreground placeholder:text-muted-foreground transition-colors focus:border-green-500 disabled:bg-muted disabled:cursor-not-allowed"
-          />
+          <div className="flex flex-1 items-center gap-0.5 rounded-lg border border-border bg-background pl-1 pr-2 py-1 transition-colors focus-within:border-green-500">
+            <AttachFileTextButton onInsertText={insertText} disabled={inputDisabled} />
+            <QuickAttachBar onInsertText={insertText} disabled={inputDisabled} />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !inputDisabled) handleSend();
+              }}
+              placeholder={placeholder}
+              disabled={inputDisabled}
+              className="flex-1 min-w-0 bg-transparent px-1.5 py-1 text-sm outline-none text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed"
+            />
+            {voice.supported && (
+              <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={inputDisabled} />
+            )}
+          </div>
           <button
             onClick={handleSend}
             disabled={inputDisabled || !query.trim()}
