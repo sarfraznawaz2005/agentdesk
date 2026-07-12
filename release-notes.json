@@ -1,12 +1,20 @@
 [
     {
+        "version":  "2.6.2",
+        "title":  "New Chat Features Added",
+        "changes":  [
+                        "Added voice input support in chat components",
+                        "Introduced file attachment functionality in chat components"
+                    ]
+    },
+    {
         "version":  "2.6.1",
         "title":  "New Features and Enhancements",
         "changes":  [
-"[NEW] Deep reseaerch tool added",
-"[NEW] public_place skill added",
-"[NEW] Image and audio input capabilities",
-"Improved web_fetch and http_request tools"
+                        "[NEW] Deep reseaerch tool added",
+                        "[NEW] public_place skill added",
+                        "[NEW] Image and audio input capabilities",
+                        "Improved web_fetch and http_request tools"
                     ]
     },
     {
