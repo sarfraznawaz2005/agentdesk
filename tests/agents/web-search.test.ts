@@ -2,7 +2,7 @@
  * tests/agents/web-search.test.ts
  *
  * Fetch-mocked fallback matrix for the web_search tool's engine ordering:
- * Tavily -> Brave -> DuckDuckGo, first configured/available engine wins.
+ * Exa -> Tavily -> DuckDuckGo, first configured/available engine wins.
  */
 
 import { mock, describe, it, expect, beforeEach, afterAll } from "bun:test";
@@ -28,8 +28,8 @@ const TAVILY_BODY = JSON.stringify({
 	results: [{ title: "Tavily Result", url: "https://tavily.example.com", content: "Tavily snippet", score: 0.9 }],
 });
 
-const BRAVE_BODY = JSON.stringify({
-	web: { results: [{ title: "Brave Result", url: "https://brave.example.com", description: "Brave snippet" }] },
+const EXA_BODY = JSON.stringify({
+	results: [{ title: "Exa Result", url: "https://exa.example.com", text: "Exa snippet" }],
 });
 
 function jsonResponse(body: string, status = 200): Response {
@@ -88,7 +88,7 @@ describe("web_search fallback matrix", () => {
 		expect(parsed.results[0].title).toBe("DDG Result Title");
 	});
 
-	it("valid Tavily key -> routes to tavily", async () => {
+	it("valid Tavily key (no Exa key) -> routes to tavily", async () => {
 		await saveIntegrationKey(testDbInstance.db, "tavily_api_key", "tvly-valid");
 		queueFetch([jsonResponse(TAVILY_BODY)]);
 
@@ -104,9 +104,9 @@ describe("web_search fallback matrix", () => {
 		expect(parsed.results[0].title).toBe("Tavily Result");
 	});
 
-	it("only Brave key -> routes to brave", async () => {
-		await saveIntegrationKey(testDbInstance.db, "brave_api_key", "brave-valid");
-		queueFetch([jsonResponse(BRAVE_BODY)]);
+	it("only Exa key -> routes to exa", async () => {
+		await saveIntegrationKey(testDbInstance.db, "exa_api_key", "exa-valid");
+		queueFetch([jsonResponse(EXA_BODY)]);
 
 		const { webTools } = await import("../../src/bun/agents/tools/web");
 		const raw = await webTools.web_search.tool.execute!(
@@ -115,14 +115,14 @@ describe("web_search fallback matrix", () => {
 		);
 		const parsed = JSON.parse(raw as string);
 
-		expect(parsed.engine).toBe("brave");
-		expect(parsed.results[0].title).toBe("Brave Result");
+		expect(parsed.engine).toBe("exa");
+		expect(parsed.results[0].title).toBe("Exa Result");
 	});
 
-	it("Tavily rate-limited, Brave configured -> falls back to brave", async () => {
+	it("Exa rate-limited, Tavily configured -> falls back to tavily", async () => {
+		await saveIntegrationKey(testDbInstance.db, "exa_api_key", "exa-valid");
 		await saveIntegrationKey(testDbInstance.db, "tavily_api_key", "tvly-valid");
-		await saveIntegrationKey(testDbInstance.db, "brave_api_key", "brave-valid");
-		queueFetch([jsonResponse("rate limited", 429), jsonResponse(BRAVE_BODY)]);
+		queueFetch([jsonResponse("rate limited", 429), jsonResponse(TAVILY_BODY)]);
 
 		const { webTools } = await import("../../src/bun/agents/tools/web");
 		const raw = await webTools.web_search.tool.execute!(
@@ -131,13 +131,13 @@ describe("web_search fallback matrix", () => {
 		);
 		const parsed = JSON.parse(raw as string);
 
-		expect(parsed.engine).toBe("brave");
-		expect(parsed.results[0].title).toBe("Brave Result");
+		expect(parsed.engine).toBe("tavily");
+		expect(parsed.results[0].title).toBe("Tavily Result");
 	});
 
-	it("Tavily and Brave both rate-limited -> falls back to duckduckgo", async () => {
+	it("Exa and Tavily both rate-limited -> falls back to duckduckgo", async () => {
+		await saveIntegrationKey(testDbInstance.db, "exa_api_key", "exa-valid");
 		await saveIntegrationKey(testDbInstance.db, "tavily_api_key", "tvly-valid");
-		await saveIntegrationKey(testDbInstance.db, "brave_api_key", "brave-valid");
 		queueFetch([jsonResponse("rate limited", 429), jsonResponse("rate limited", 429), htmlResponse(DDG_HTML)]);
 
 		const { webTools } = await import("../../src/bun/agents/tools/web");
@@ -152,8 +152,8 @@ describe("web_search fallback matrix", () => {
 	});
 
 	it("all engines fail -> returns an aggregated error", async () => {
+		await saveIntegrationKey(testDbInstance.db, "exa_api_key", "exa-valid");
 		await saveIntegrationKey(testDbInstance.db, "tavily_api_key", "tvly-valid");
-		await saveIntegrationKey(testDbInstance.db, "brave_api_key", "brave-valid");
 		queueFetch([jsonResponse("rate limited", 429), jsonResponse("rate limited", 429), htmlResponse("<html>no results</html>")]);
 
 		const { webTools } = await import("../../src/bun/agents/tools/web");
@@ -165,6 +165,24 @@ describe("web_search fallback matrix", () => {
 
 		expect(parsed.error).toBe("All search engines failed");
 		expect(parsed.details).toHaveLength(3);
-		expect(parsed.details.map((d: { engine: string }) => d.engine)).toEqual(["tavily", "brave", "duckduckgo"]);
+		expect(parsed.details.map((d: { engine: string }) => d.engine)).toEqual(["exa", "tavily", "duckduckgo"]);
+	});
+
+	it("Exa returns zero results -> treated as a valid (empty) answer, not a fallback trigger", async () => {
+		// Unlike DuckDuckGo's HTML scrape (where zero parsed results is ambiguous
+		// with a blocked/changed page), Exa is a structured JSON API like Tavily
+		// — a genuinely empty result set is a real answer, not a failure signal.
+		await saveIntegrationKey(testDbInstance.db, "exa_api_key", "exa-valid");
+		queueFetch([jsonResponse(JSON.stringify({ results: [] }))]);
+
+		const { webTools } = await import("../../src/bun/agents/tools/web");
+		const raw = await webTools.web_search.tool.execute!(
+			{ query: "test", maxResults: 5 },
+			{ toolCallId: "7", messages: [] } as never,
+		);
+		const parsed = JSON.parse(raw as string);
+
+		expect(parsed.engine).toBe("exa");
+		expect(parsed.results).toEqual([]);
 	});
 });

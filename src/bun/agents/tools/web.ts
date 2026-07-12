@@ -50,7 +50,7 @@ function withTimeout(abortSignal: AbortSignal | undefined, ms: number): AbortSig
 // webSearchTool can log a reason per engine and try the next one instead of
 // having to re-parse an error-shaped JSON string.
 export class SearchEngineError extends Error {
-	constructor(public readonly engine: "tavily" | "brave" | "duckduckgo", message: string) {
+	constructor(public readonly engine: "exa" | "tavily" | "duckduckgo", message: string) {
 		super(message);
 		this.name = "SearchEngineError";
 	}
@@ -165,71 +165,69 @@ export async function tavilySearch(
 	};
 }
 
-export async function braveSearch(
+export async function exaSearch(
 	query: string,
 	apiKey: string,
 	maxResults: number,
 	abortSignal?: AbortSignal,
 ): Promise<SearchResult> {
-	const url = new URL("https://api.search.brave.com/res/v1/web/search");
-	url.searchParams.set("q", query);
-	// Brave's free tier caps count at 20; clamp so we honour the caller's
-	// 1–25 range without sending an out-of-range value.
-	url.searchParams.set("count", String(Math.min(maxResults, 20)));
-
-	const response = await fetch(url, {
-		method: "GET",
-		headers: {
-			Accept: "application/json",
-			"X-Subscription-Token": apiKey,
-		},
+	const response = await fetch("https://api.exa.ai/search", {
+		method: "POST",
+		headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+		body: JSON.stringify({
+			query,
+			// "auto" (~1s) keeps this a quick lookup call, not a research-grade
+			// job — "deep"/"deep-reasoning" are a separate, separately-billed
+			// product we deliberately never request here.
+			type: "auto",
+			numResults: maxResults,
+			// `text` (compact, capped at 1000 chars) reads as continuous prose —
+			// `highlights` was tried first but returns disjointed, "..."-joined
+			// fragments that are harder for an agent to parse than a clean excerpt.
+			contents: { text: { maxCharacters: 1000, verbosity: "compact" } },
+		}),
 		signal: withTimeout(abortSignal, 15_000),
 	});
 
 	if (response.status === 401 || response.status === 403) {
 		throw new SearchEngineError(
-			"brave",
-			"Invalid Brave API key. Update it in Settings → Integrations → Search.",
+			"exa",
+			"Invalid Exa API key. Update it in Settings → Integrations → Search.",
 		);
 	}
 	if (response.status === 429) {
-		throw new SearchEngineError("brave", "Brave API rate limit reached.");
+		throw new SearchEngineError("exa", "Exa API rate limit reached.");
 	}
 	if (!response.ok) {
 		const body = await response.text().catch(() => "");
-		throw new SearchEngineError("brave", `Brave API error ${response.status}: ${body}`);
+		throw new SearchEngineError("exa", `Exa API error ${response.status}: ${body}`);
 	}
 
 	const data = await response.json() as {
-		web?: { results?: Array<{ title: string; url: string; description: string }> };
+		results: Array<{ title: string | null; url: string; text?: string }>;
 	};
-	const results = data.web?.results ?? [];
-
-	if (results.length === 0) {
-		throw new SearchEngineError("brave", "No results returned by Brave Search");
-	}
 
 	return {
 		query,
-		results: results.slice(0, maxResults).map((r) => ({
-			title: r.title,
+		results: data.results.map((r) => ({
+			title: r.title ?? "",
 			url: r.url,
-			snippet: r.description,
+			snippet: r.text ?? "",
 		})),
 	};
 }
 
 // ---------------------------------------------------------------------------
-// web_search — Tavily → Brave → DuckDuckGo, first available engine wins
+// web_search — Exa → Tavily → DuckDuckGo, first available engine wins
 // ---------------------------------------------------------------------------
 
-type EngineName = "tavily" | "brave" | "duckduckgo";
+type EngineName = "exa" | "tavily" | "duckduckgo";
 
 const webSearchTool = tool({
 	description:
-		"Search the web. Routes through Tavily when a key is configured in Settings → " +
-		"Integrations → Search (higher-quality, structured results plus a synthesised answer), " +
-		"falling back to Brave Search if a Brave key is configured and Tavily is unavailable or " +
+		"Search the web. Routes through Exa when a key is configured in Settings → " +
+		"Integrations → Search (neural search built for agents, token-efficient results), " +
+		"falling back to Tavily if a Tavily key is configured and Exa is unavailable or " +
 		"rate-limited, and finally to DuckDuckGo (no key required) if neither is configured or " +
 		"both fail. The fallback is automatic — always call this single tool. " +
 		"Use this to research errors, find packages, or look up documentation.",
@@ -243,18 +241,18 @@ const webSearchTool = tool({
 			.optional()
 			.describe(
 				"Maximum number of results to return (default: 10). " +
-				"Note: the Tavily and Brave backends cap this at 20; DuckDuckGo honours the full range.",
+				"Note: the Tavily backend caps this at 20; Exa and DuckDuckGo honour the full range.",
 			),
 	}),
 	execute: async ({ query, maxResults = 10 }, { abortSignal }): Promise<string> => {
-		const [tavilyKey, braveKey] = await Promise.all([
+		const [exaKey, tavilyKey] = await Promise.all([
+			getIntegrationKey("exa_api_key"),
 			getIntegrationKey("tavily_api_key"),
-			getIntegrationKey("brave_api_key"),
 		]);
 
 		const engines: Array<{ name: EngineName; run: () => Promise<SearchResult> }> = [];
+		if (exaKey) engines.push({ name: "exa", run: () => exaSearch(query, exaKey, maxResults, abortSignal) });
 		if (tavilyKey) engines.push({ name: "tavily", run: () => tavilySearch(query, tavilyKey, maxResults, abortSignal) });
-		if (braveKey) engines.push({ name: "brave", run: () => braveSearch(query, braveKey, maxResults, abortSignal) });
 		engines.push({ name: "duckduckgo", run: () => ddgSearch(query, maxResults, abortSignal) });
 
 		const failures: Array<{ engine: EngineName; reason: string }> = [];

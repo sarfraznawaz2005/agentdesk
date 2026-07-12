@@ -1,5 +1,12 @@
 # Search Provider Fallback — Implementation Plan
 
+> **Update:** Brave was later dropped (paid/rate-limited free tier) and
+> replaced with **Exa** as the first-tier engine — see commit history for
+> `src/bun/agents/tools/web.ts`. The chain is now **Exa → Tavily →
+> DuckDuckGo**. Everything below describes the original Tavily/Brave/DuckDuckGo
+> design and is kept as a historical record — it does not reflect the current
+> engine set.
+
 > Status: **implemented.** Layers 1–3 below are complete (see
 > `src/bun/agents/tools/web.ts`, `src/mainview/pages/settings/search-settings.tsx`,
 > `docs/workflow.md`, `src/bun/db/seed.ts`). Verified via the fetch-mocked

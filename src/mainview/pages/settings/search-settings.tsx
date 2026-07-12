@@ -185,8 +185,8 @@ function useProviderKey(settingKey: string) {
 }
 
 export function SearchSettings() {
+  const exa = useProviderKey("exa_api_key");
   const tavily = useProviderKey("tavily_api_key");
-  const brave = useProviderKey("brave_api_key");
 
   useEffect(() => {
     let cancelled = false;
@@ -194,8 +194,8 @@ export function SearchSettings() {
       .getSettings("integrations")
       .then((s) => {
         if (cancelled) return;
+        exa.load(s);
         tavily.load(s);
-        brave.load(s);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -217,13 +217,36 @@ export function SearchSettings() {
       <Separator />
 
       <ProviderCard
+        settingKey="exa-key"
+        title="Exa"
+        description={
+          <>
+            Get a free key at <span className="font-mono text-xs">exa.ai</span> — includes 20,000
+            requests/month on the free tier. Neural search built for AI agents with token-efficient
+            results. Tried first when configured.
+          </>
+        }
+        placeholder="exa-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        hint="Exa keys are issued from the Exa dashboard."
+        status={exa.status}
+        apiKey={exa.apiKey}
+        showKey={exa.showKey}
+        isSaving={exa.isSaving}
+        onChange={exa.handleChange}
+        onToggleShow={() => exa.setShowKey((p) => !p)}
+        onSave={() => exa.handleSave("Exa")}
+        onClear={() => exa.handleClear("Exa")}
+      />
+
+      <ProviderCard
         settingKey="tavily-key"
         title="Tavily"
         description={
           <>
             Get a free key at <span className="font-mono text-xs">tavily.com</span> — includes 1,000
             searches/month on the free tier. Agents use <strong>advanced</strong> search depth for higher
-            quality results. Tried first when configured.
+            quality results plus a synthesised answer. Used as the middle fallback, when Exa is not
+            configured or is unavailable.
           </>
         }
         placeholder="tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -238,28 +261,6 @@ export function SearchSettings() {
         onClear={() => tavily.handleClear("Tavily")}
       />
 
-      <ProviderCard
-        settingKey="brave-key"
-        title="Brave Search"
-        description={
-          <>
-            Get a free key at <span className="font-mono text-xs">brave.com/search/api</span> — includes a
-            free monthly quota with a ~1 request/second rate limit. Used as the middle fallback, when Tavily
-            is not configured or is unavailable.
-          </>
-        }
-        placeholder="BSAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        hint="Brave keys are issued from the Brave Search API dashboard."
-        status={brave.status}
-        apiKey={brave.apiKey}
-        showKey={brave.showKey}
-        isSaving={brave.isSaving}
-        onChange={brave.handleChange}
-        onToggleShow={() => brave.setShowKey((p) => !p)}
-        onSave={() => brave.handleSave("Brave")}
-        onClear={() => brave.handleClear("Brave")}
-      />
-
       <Card className="bg-muted/40">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">How agents use this</CardTitle>
@@ -267,7 +268,7 @@ export function SearchSettings() {
         <CardContent className="text-xs text-muted-foreground space-y-1">
           <p>
             <code className="font-mono bg-muted px-1 rounded">web_search</code> always tries providers in a
-            fixed order — <strong>Tavily → Brave → DuckDuckGo</strong> — and automatically moves to the next
+            fixed order — <strong>Exa → Tavily → DuckDuckGo</strong> — and automatically moves to the next
             one if a provider is not configured, hits its rate limit, or errors. DuckDuckGo needs no key and
             is always the final fallback, so agents can always search the web.
           </p>

@@ -716,7 +716,7 @@ Keep each doc concise (under 500 words). Start the content with a one-line summa
 ## How You Work
 1. Clarify the research question: what decision needs to be made, what criteria matter.
 2. If the question relates to this project, check the codebase FIRST — read relevant files and search for existing usage/patterns — so external research is grounded in what's actually there today, not assumptions.
-3. Use \`web_search\` for broad coverage (routes Tavily → Brave → DuckDuckGo automatically, based on which keys are configured) — don't stop at official docs; search Reddit, Hacker News, GitHub issues/discussions, and X/Twitter for community experience and known gotchas.
+3. Use \`web_search\` for broad coverage (routes Exa → Tavily → DuckDuckGo automatically, based on which keys are configured) — don't stop at official docs; search Reddit, Hacker News, GitHub issues/discussions, and X/Twitter for community experience and known gotchas.
 4. Use \`web_fetch\` to read specific pages, documentation, articles, or forum threads in full.
 5. Use \`http_request\` for API calls (e.g. npm registry, GitHub API, package metadata).
 6. Use \`take_screenshot\` to capture visual evidence (pricing pages, comparison charts, UI screenshots) when useful for the report.
@@ -724,7 +724,7 @@ Keep each doc concise (under 500 words). Start the content with a one-line summa
 8. Synthesise findings into a structured report with clear recommendations.
 
 ## Key Tools
-- \`web_search\` — web search (Tavily → Brave → DuckDuckGo, first configured/available engine wins)
+- \`web_search\` — web search (Exa → Tavily → DuckDuckGo, first configured/available engine wins)
 - \`web_fetch\` — read full pages, docs, changelogs, forum threads, and articles
 - \`http_request\` — call APIs for structured data (npm, GitHub, etc.)
 - \`take_screenshot\` — capture visual evidence from a web page

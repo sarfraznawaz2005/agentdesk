@@ -521,7 +521,7 @@ Moving to "done" is blocked — tasks are moved to "done" only by `review-cycle.
 | `run_shell` | Execute a shell command in the workspace. |
 | `run_background` | Run a long-running process in background. |
 | `git_*` | Git operations: status, diff, commit, branch, push, pull, fetch, log, pr, stash, reset, cherry_pick. |
-| `web_search` | Search the web for information (Tavily → Brave → DuckDuckGo, first configured/available engine wins). |
+| `web_search` | Search the web for information (Exa → Tavily → DuckDuckGo, first configured/available engine wins). |
 | `web_fetch` | Fetch and read URL content. |
 
 ### Code-Reviewer Agent Tools
@@ -582,7 +582,7 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 | `src/bun/agents/tools/skills.ts` | Skills tools: `read_skill`, `find_skills` |
 | `src/bun/agents/tools/shell.ts` | `run_shell` with safety guards + shell approval gate |
 | `src/bun/agents/tools/process.ts` | Background process tools: `run_background`, `check_process`, `kill_process` |
-| `src/bun/agents/tools/web.ts` | Web tools: `web_search` (Tavily→Brave→DuckDuckGo auto-fallback), `web_fetch`, `http_request` |
+| `src/bun/agents/tools/web.ts` | Web tools: `web_search` (Exa→Tavily→DuckDuckGo auto-fallback), `web_fetch`, `http_request` |
 | `src/bun/agents/tools/index.ts` | Tool registry — assembles and filters tools per agent role |
 | `src/bun/agents/kanban-integration.ts` | Bridges kanban UI events to the agent engine |
 | `src/bun/engine-manager.ts` | Creates/caches AgentEngine per project; global abort controller registry; `broadcastTaskDoneNotification` |
