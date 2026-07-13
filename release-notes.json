@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.6.3",
+        "title":  "Enhanced Chat and Live Updates",
+        "changes":  [
+                        "Improved chat access with a new chat launcher footer.",
+                        "Full streaming support added for live text updates in the agent loop.",
+                        "Enhanced routing for Claude Subscription across various paths."
+                    ]
+    },
+    {
         "version":  "2.6.2",
         "title":  "New Chat Features Added",
         "changes":  [
