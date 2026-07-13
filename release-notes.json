@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.6.4",
+        "title":  "Chat Component Improvements",
+        "changes":  [
+                        "Adjusted chat component positioning to prevent overlap with the footer."
+                    ]
+    },
+    {
         "version":  "2.6.3",
         "title":  "Enhanced Chat and Live Updates",
         "changes":  [
