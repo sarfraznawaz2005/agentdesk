@@ -475,6 +475,14 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 					const agentRunning = !seg.end && !!hasRunningAgents;
 					const rawName = seg.start.agentName ?? seg.agentName;
 					const isCollapsed = !!collapsedAgentBlocks[seg.start.id];
+					// Full Streaming: the most-recent text/reasoning child of a still-
+					// running agent block is the one currently being live-updated —
+					// give it a pulse/cursor treatment. A cheap, message-scoped
+					// heuristic (highest sortOrder of that type, block has no
+					// agent_end part yet) rather than a dedicated "isLive" field.
+					const liveChildId = agentRunning
+						? [...seg.children].reverse().find((c) => c.type === "text" || c.type === "reasoning")?.id
+						: undefined;
 					return (
 						<div key={seg.start.id} className={cn("border border-border border-l-[3px] rounded-lg my-2 overflow-hidden", borderColor)}>
 							<AgentStartBlock
@@ -491,7 +499,7 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 								<>
 									<div className="pl-3 pr-2 py-1 overflow-hidden">
 										{seg.children.map((child) => (
-											<PartRenderer key={child.id} part={child} />
+											<PartRenderer key={child.id} part={child} isLive={child.id === liveChildId} />
 										))}
 									</div>
 									{seg.end && seg.end.toolState === "error" && (
@@ -513,7 +521,7 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 	);
 });
 
-const PartRenderer = memo(function PartRenderer({ part }: { part: MessagePartData }) {
+const PartRenderer = memo(function PartRenderer({ part, isLive }: { part: MessagePartData; isLive?: boolean }) {
 	switch (part.type) {
 		case "text": {
 			if (!part.content?.trim()) return null;
@@ -552,7 +560,7 @@ const PartRenderer = memo(function PartRenderer({ part }: { part: MessagePartDat
 					);
 				}
 			}
-			return <div className="my-2"><TextBlock content={part.content} /></div>;
+			return <div className="my-2"><TextBlock content={isLive ? part.content + "▍" : part.content} /></div>;
 		}
 
 		case "tool_call": {
@@ -571,8 +579,9 @@ const PartRenderer = memo(function PartRenderer({ part }: { part: MessagePartDat
 
 		case "reasoning":
 			return (
-				<div className="text-sm text-foreground/80 italic leading-snug whitespace-pre-wrap my-1 py-2">
-					{part.content.trim()}
+				<div className="text-sm text-foreground/80 italic leading-snug whitespace-pre-wrap my-1 py-2 flex items-start gap-1.5">
+					{isLive && <Brain className="w-3 h-3 mt-1 shrink-0 animate-pulse" />}
+					<span>{part.content.trim()}{isLive && "▍"}</span>
 				</div>
 			);
 

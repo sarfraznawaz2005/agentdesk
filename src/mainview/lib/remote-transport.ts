@@ -120,6 +120,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   playgroundRunStarted: "agentdesk:playground-run-started",
   playgroundPart: "agentdesk:playground-part",
   playgroundPartUpdated: "agentdesk:playground-part-updated",
+  playgroundPartsRemoved: "agentdesk:playground-parts-removed",
   playgroundAgentStart: "agentdesk:playground-agent-start",
   playgroundAgentComplete: "agentdesk:playground-agent-complete",
   playgroundRunComplete: "agentdesk:playground-run-complete",

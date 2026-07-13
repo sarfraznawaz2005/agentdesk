@@ -30,6 +30,23 @@ export interface ClaudeCliRunOpts {
 	onReasoning: (text: string) => void;
 	onToolCallStart: (toolName: string, args: unknown) => string;
 	onToolCallEnd: (callId: string, resultText: string, isError: boolean) => void;
+	/** Live, per-token text delta as Claude generates — a raw, unbuffered,
+	 *  cheap capability. Callers are responsible for throttling before this
+	 *  reaches the UI (see agents/throttled-accumulator.ts) — this function
+	 *  does no batching itself. Only ever fires when the caller opts in
+	 *  (Full Streaming mode); never buffered/discarded on retry like onText —
+	 *  a failed attempt's tokens are already visible by the time the retry
+	 *  decision is made, so onRetract exists to tell the caller to clear them. */
+	onTextToken?: (delta: string) => void;
+	/** Live, per-token reasoning/thinking delta — same semantics as onTextToken. */
+	onReasoningToken?: (delta: string) => void;
+	/** Fired when a verification failure is about to trigger a retry — the
+	 *  caller should discard whatever onTextToken/onReasoningToken content it
+	 *  displayed live for the attempt that just failed. Never fired for the
+	 *  attempt that ultimately succeeds (or the last, failing one — its
+	 *  buffered text/reasoning simply never reaches onText/onReasoning, same
+	 *  as before this capability existed). */
+	onRetract?: () => void;
 }
 
 export interface ClaudeCliRunResult {
@@ -220,6 +237,10 @@ export async function runClaudeCliTask(opts: ClaudeCliRunOpts): Promise<ClaudeCl
 			};
 		}
 		console.warn(`[ClaudeSubscriptionSDK] No tool call with real arguments landed on attempt ${attempt} — retrying`);
+		// The failed attempt's live onTextToken/onReasoningToken deltas are
+		// already visible in the UI (they're never buffered) — tell the caller
+		// to discard them before the retry's fresh deltas start arriving.
+		opts.onRetract?.();
 	}
 }
 
@@ -244,6 +265,9 @@ export async function testClaudeSubscriptionSdkConnection(
 				pathToClaudeCodeExecutable: resolveClaudeCliPath(),
 				tools: [],
 				maxTurns: 1,
+				// Same isolation-mode reasoning as the main runner below — this
+				// connection check shouldn't trigger the user's own Claude Code hooks.
+				settingSources: [],
 			},
 		})) {
 			if (msg.type === "result") {
@@ -396,9 +420,32 @@ async function runClaudeCliTaskOnce(
 				permissionMode: "bypassPermissions",
 				allowDangerouslySkipPermissions: true,
 				abortController,
+				// SDK isolation mode — omitting this loads the user's real
+				// ~/.claude/settings.json (and any project/local settings) by
+				// default, so their own Claude Code hooks (e.g. Stop/PermissionRequest
+				// desktop notifications) would fire for every AgentDesk-driven
+				// session. AgentDesk already fully controls tools/permissions/model
+				// itself here, so it never needed those files — an empty array
+				// excludes them entirely without touching the user's own `claude`
+				// CLI/desktop app usage, which is a separate process invocation.
+				settingSources: [],
+				// Emits `stream_event` messages (raw Anthropic content_block_delta
+				// events) alongside the existing complete `assistant` messages —
+				// gives real per-token text/thinking deltas for onTextToken/
+				// onReasoningToken without changing what onText/onReasoning receive.
+				// Only meaningfully used when a caller actually wires those up
+				// (Full Streaming mode) — harmless, ignored overhead otherwise.
+				includePartialMessages: true,
 			},
 		})) {
-			if (msg.type === "assistant") {
+			if (msg.type === "stream_event") {
+				const event = msg.event;
+				if (event.type === "content_block_delta") {
+					const delta = event.delta;
+					if (delta.type === "text_delta" && delta.text) opts.onTextToken?.(delta.text);
+					else if (delta.type === "thinking_delta" && delta.thinking) opts.onReasoningToken?.(delta.thinking);
+				}
+			} else if (msg.type === "assistant") {
 				for (const block of msg.message.content ?? []) {
 					if (block.type === "text" && block.text) opts.onText(block.text);
 					if (block.type === "thinking" && block.thinking) opts.onReasoning(block.thinking);

@@ -175,6 +175,10 @@ function bufferPartUpdate(partId: string, updates: Partial<PlaygroundPartDto>): 
 	if (idx >= 0) activityParts[idx] = { ...activityParts[idx], ...updates };
 }
 
+function bufferPartsRemoved(partIds: string[]): void {
+	activityParts = activityParts.filter((p) => !partIds.includes(p.id));
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -286,6 +290,10 @@ export async function runPlayground(userMessage: string, consoleErrors?: string[
 			onTextDelta: () => {
 				/* parts carry the text; no token-level streaming needed for the playground */
 			},
+			onPartsRemoved: (_messageId, partIds) => {
+				bufferPartsRemoved(partIds);
+				broadcastToWebview("playgroundPartsRemoved", { partIds });
+			},
 			onAgentStart: (_messageId, _agentName, _displayName, task) => {
 				broadcastToWebview("playgroundAgentStart", { task });
 			},
@@ -321,6 +329,10 @@ export async function runPlayground(userMessage: string, consoleErrors?: string[
 			// Playground agent must never use them — remove them from its toolset entirely.
 			excludeTools: ["request_human_input", "chrome-devtools_*", "verify_implementation"],
 			abortSignal: abortController.signal,
+			// The Playground's live-preview UX depends on progressively-updated
+			// parts regardless of the user's global Streaming setting — always
+			// full streaming here, never Hybrid/No Streaming.
+			streamingModeOverride: "full",
 		});
 
 		// Persist the turn pair to JSON for context threading on the next message.

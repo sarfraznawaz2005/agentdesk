@@ -60,6 +60,10 @@ interface CouncilEvent {
   agents?: AgentInfo[];
   agentName?: string;
   token?: string;
+  /** Authoritative final content for "agent-response-complete"/"final-answer-complete" —
+   *  present so No Streaming mode (which never fires the token events) still
+   *  has something to render instead of a permanently-empty message. */
+  content?: string;
   turnsLeft?: number;
   questionId?: string;
   question?: string;
@@ -696,7 +700,9 @@ export function CouncilPage() {
         setMessages((prev) =>
           prev.map((m) =>
             m.agentName === name && m.streaming && m.round === round
-              ? { ...m, streaming: false }
+              // No Streaming mode never fires "agent-token" — content stays
+              // authoritative here rather than relying only on prior appends.
+              ? { ...m, content: detail.content ?? m.content, streaming: false }
               : m,
           ),
         );
@@ -754,13 +760,23 @@ export function CouncilPage() {
       }
 
       case "final-answer-complete": {
-        setMessages((prev) =>
-          prev
-            .filter((m) => m.type !== "pm-thinking")
-            .map((m) =>
-              m.type === "final-answer" && m.streaming ? { ...m, streaming: false } : m,
-            ),
-        );
+        setMessages((prev) => {
+          const withoutThinking = prev.filter((m) => m.type !== "pm-thinking");
+          const hasFinal = withoutThinking.some((m) => m.type === "final-answer");
+          // No Streaming mode never fires "final-answer-token" — the message
+          // may not exist yet (it's normally created on the first token).
+          if (!hasFinal) {
+            return [
+              ...withoutThinking,
+              { id: `final-${Date.now()}`, type: "final-answer" as const, content: detail.content ?? "", streaming: false },
+            ];
+          }
+          return withoutThinking.map((m) =>
+            m.type === "final-answer" && m.streaming
+              ? { ...m, content: detail.content ?? m.content, streaming: false }
+              : m,
+          );
+        });
         break;
       }
 

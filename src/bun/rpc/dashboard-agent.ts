@@ -19,6 +19,8 @@ import { agents, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { getStreamingMode } from "../agents/streaming-mode";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { getAgentSystemPrompt } from "../agents/prompts";
 import { getToolsForAgent } from "../agents/tools/index";
 import { broadcastToWebview } from "../engine-manager";
@@ -136,12 +138,23 @@ export async function sendDashboardAgentMessage(
 				},
 			});
 			const tools = { ...agentTools, remove_last_message: removeLastMsgTool };
+			const streamingMode = await getStreamingMode();
+			const isFullStreaming = streamingMode === "full";
+			const isNoStreaming = streamingMode === "none";
 
 			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
 			// Haiku — non-Haiku models route through the official Agent SDK
 			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
 			if (provider.providerType === "claude-subscription" && !isHaikuModel(modelId)) {
 				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				// Full Streaming only — broadcastToWebview appends client-side, so
+				// only the slice new since the last throttled flush is ever sent.
+				let flushedLength = 0;
+				const textAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+					const delta = acc.slice(flushedLength);
+					flushedLength = acc.length;
+					if (delta) broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: delta });
+				}) : null;
 				const cliResult = await runClaudeCliTask({
 					task: flattenHistoryForCli(newHistory),
 					systemPrompt: system,
@@ -152,15 +165,18 @@ export async function sendDashboardAgentMessage(
 					verifyToolCall: false, // dashboard agent chat is general Q&A — a turn may legitimately need zero tool calls
 					onText: (text) => {
 						fullText += text;
-						broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
+						if (!isFullStreaming) broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
 					},
 					onReasoning: () => { /* dashboard agent chat doesn't surface reasoning today (same as the streamText path, which ignores 'reasoning' parts) */ },
+					onTextToken: (delta) => textAcc?.push(delta),
+					onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
 					onToolCallStart: (toolName, args) => {
 						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName, args });
 						return crypto.randomUUID();
 					},
 					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
 				});
+				textAcc?.flushNow();
 
 				if (abortController.signal.aborted) return;
 				if (cliResult.status === "cancelled") return;
@@ -194,7 +210,7 @@ export async function sendDashboardAgentMessage(
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;
-						broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
+						if (!isNoStreaming) broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
 						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName: part.toolName, args: tcInput });
@@ -209,7 +225,7 @@ export async function sendDashboardAgentMessage(
 					try { finalText = await result.text; } catch { /* not available */ }
 					if (finalText.trim()) {
 						fullText = finalText;
-						broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: fullText });
+						if (!isNoStreaming) broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: fullText });
 					}
 				}
 			}

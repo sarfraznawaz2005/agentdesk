@@ -28,6 +28,8 @@ import { skillTools } from "./tools/skills";
 import { createPreviewTool } from "./tools/preview";
 import { isTransientError, getBackoffDelay } from "./safety";
 import { logPrompt } from "./prompt-logger";
+import { getStreamingMode } from "./streaming-mode";
+import { createThrottledAccumulator } from "./throttled-accumulator";
 import { eventBus } from "../scheduler";
 import type { AgentActivityEvent } from "./types";
 import { toolResultIsError, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
@@ -337,6 +339,11 @@ export class AgentEngine {
 					: undefined;
 			let reasoningEmittedFromStream = false;
 			const model = adapter ? adapter.createModel(modelId, pmCustomThinkingTokens) : null;
+			// Read once, shared by both the CLI branch below and the streamText
+			// branch further down — see docs/... global "Streaming" setting.
+			const streamingMode = await getStreamingMode();
+			const isFullStreaming = streamingMode === "full";
+			const isNoStreaming = streamingMode === "none";
 
 			// 6. Build inline agent callbacks that bridge to RPC broadcasts
 			const emit = (agentId: string, agentName: string, type: AgentActivityEvent["type"], data: Record<string, unknown>) => {
@@ -623,6 +630,27 @@ export class AgentEngine {
 				this.callbacks.onStreamReset(conversationId, assistantMessageId);
 				await logPrompt("PM", context.system, context.messages, providerRow.defaultModel ?? "default");
 
+				// Full Streaming support — only ever active when the user has opted
+				// in; Hybrid/No Streaming leave onText/onReasoning below completely
+				// unchanged (today's exact single-dump-at-the-end behavior). See
+				// agent-loop.ts's identical mechanism for sub-agents — this is the
+				// flat-message-content counterpart (PM's message has no parts array).
+				let flushedTextLength = 0;
+				const textAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+					// onStreamToken APPENDS the given token client-side — unlike the
+					// parts-based onPartUpdated, it is not a full-content replace — so
+					// only the slice new since the last flush is ever sent.
+					const delta = acc.slice(flushedTextLength);
+					flushedTextLength = acc.length;
+					if (delta) this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
+				}) : null;
+				const reasoningAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+					// emitActivity("thinking", ...) REPLACES the displayed text each
+					// call (matches the existing streamText branch's own emitThinking
+					// below) — so the full accumulated value is sent, not a delta.
+					emitActivity("thinking", { text: acc, isPartial: true });
+				}) : null;
+
 				const cliResult = await runClaudeCliTask({
 					task: transcript || content,
 					systemPrompt: context.system ?? "",
@@ -637,11 +665,28 @@ export class AgentEngine {
 					verifyToolCall: false,
 					onText: (text) => {
 						fullText += text;
-						this.callbacks.onStreamToken(conversationId, assistantMessageId, text, null);
+						// In Full Streaming, this same content already reached the UI
+						// progressively via onTextToken below — broadcasting it again in
+						// full here would double it (onStreamToken appends, not replaces).
+						if (!isFullStreaming) this.callbacks.onStreamToken(conversationId, assistantMessageId, text, null);
 					},
 					onReasoning: (text) => {
 						accumulatedReasoning += (accumulatedReasoning ? "\n\n" : "") + text;
-						emitActivity("thinking", { text, isPartial: false });
+						if (!isFullStreaming) emitActivity("thinking", { text, isPartial: false });
+					},
+					onTextToken: (delta) => textAcc?.push(delta),
+					onReasoningToken: (delta) => reasoningAcc?.push(delta),
+					onRetract: () => {
+						// Live-streamed content from a failed, now-retried attempt must be
+						// cleared before the retry's fresh deltas start arriving. In
+						// practice PM chat passes verifyToolCall: false, so this never
+						// actually fires — wired anyway for the same safety-net reasoning
+						// as the CLI runner's own contract.
+						textAcc?.cancel();
+						reasoningAcc?.cancel();
+						flushedTextLength = 0;
+						this.callbacks.onStreamReset(conversationId, assistantMessageId);
+						emitActivity("thinking", { text: "", isPartial: true });
 					},
 					onToolCallStart: (toolName, args) => {
 						const callId = crypto.randomUUID();
@@ -658,6 +703,15 @@ export class AgentEngine {
 						emitActivity("tool_result", { toolName, result: resultText, isError });
 					},
 				});
+
+				// Flush any tail content still sitting in the throttle window — the
+				// attempt is done, and nothing further will trigger it.
+				if (isFullStreaming) {
+					textAcc?.flushNow();
+					reasoningAcc?.cancel();
+					const finalReasoning = reasoningAcc?.value();
+					if (finalReasoning) emitActivity("thinking", { text: finalReasoning, isPartial: false });
+				}
 
 				if (abortController?.signal.aborted) {
 					await db.delete(messages).where(eq(messages.id, assistantMessageId)).catch(() => {});
@@ -796,7 +850,7 @@ export class AgentEngine {
 						};
 						const pmReasoning = extractPMReasoning(stepResult);
 						if (pmReasoning && !reasoningEmittedFromStream) {
-							emitActivity("thinking", { text: pmReasoning });
+							if (!isNoStreaming) emitActivity("thinking", { text: pmReasoning });
 							accumulatedReasoning += (accumulatedReasoning ? "\n\n" : "") + pmReasoning;
 						}
 						reasoningEmittedFromStream = false;
@@ -838,7 +892,11 @@ export class AgentEngine {
 					if (reasoningFlushTimer) { clearTimeout(reasoningFlushTimer); reasoningFlushTimer = null; }
 					if (!allReasoning) return;
 					reasoningEmittedFromStream = true;
-					this.callbacks.onAgentActivity?.({
+					// No Streaming: skip the live broadcast, but keep every bookkeeping
+					// side effect below (accumulatedReasoning still needs the final
+					// value for msgMeta persistence) — only the progressive UI update
+					// is suppressed here.
+					if (!isNoStreaming) this.callbacks.onAgentActivity?.({
 						projectId: this.projectId,
 						conversationId,
 						agentId: "project-manager",
@@ -881,7 +939,7 @@ export class AgentEngine {
 						fullText += delta;
 						stepTextEmitted += delta;
 						if (retractedFallback) retractedFallback = "";
-						this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
+						if (!isNoStreaming) this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
 					} else if (part.type === "tool-call") {
 						const tc = part as { toolName?: string };
 						if (tc.toolName === "run_agent" || tc.toolName === "run_agents_parallel") {

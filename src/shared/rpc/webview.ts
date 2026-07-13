@@ -461,6 +461,12 @@ export type WebviewSchema = RPCSchema<{
         timeEnd?: string;
       };
     };
+    // Full Streaming only — a Claude Subscription attempt failed tool-call
+    // verification and is being retried; the live part(s) it streamed must
+    // be discarded rather than left as a stale, incomplete entry.
+    playgroundPartsRemoved: {
+      partIds: string[];
+    };
     playgroundAgentStart: { task: string };
     playgroundAgentComplete: {
       status: string;

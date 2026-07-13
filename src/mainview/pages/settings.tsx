@@ -13,6 +13,7 @@ import { EmailSettings } from "./settings/email-settings";
 import { NotificationSettings } from "./settings/notification-settings";
 import { McpSettings } from "./settings/mcp";
 import { AiDebugSettings } from "./settings/ai-debug";
+import { StreamingSettings } from "./settings/streaming";
 import { EnvVarsSettings } from "./settings/env-vars";
 import { RecommendationsSettings } from "./settings/recommendations";
 import { AuditLogSettings } from "./settings/audit-log";
@@ -71,6 +72,7 @@ export function SettingsPage() {
           <SubTabs tabs={[
             { value: "providers", label: "Providers", content: <ProvidersSettings /> },
             { value: "models", label: "Models", content: <ModelsSettings /> },
+            { value: "streaming", label: "Streaming", content: <StreamingSettings /> },
             { value: "mcp", label: "MCP Servers", content: <McpSettings /> },
             { value: "constitution", label: "Constitution", content: <ConstitutionSettings /> },
             { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },

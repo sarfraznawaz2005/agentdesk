@@ -455,10 +455,16 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 		};
 
 		const onComplete = (e: Event) => {
-			const { sessionId: sid, messageId, citations } = (e as CustomEvent<{ sessionId: string; messageId: string; content: string; citations: CollectionChatCitationDto[] }>).detail;
+			const { sessionId: sid, messageId, content, citations } = (e as CustomEvent<{ sessionId: string; messageId: string; content: string; citations: CollectionChatCitationDto[] }>).detail;
 			if (sid !== sessionId.current) return;
 			setMessages((prev) => {
-				const next = prev.map((m) => (m.id === messageId ? { ...m, streaming: false, citations } : m));
+				// No Streaming mode delivers zero chunks — the message row may not
+				// exist yet (onChunk normally creates it); create it here from the
+				// final content instead of silently dropping the reply.
+				const existing = prev.find((m) => m.id === messageId);
+				const next = existing
+					? prev.map((m) => (m.id === messageId ? { ...m, content, streaming: false, citations } : m))
+					: [...prev, { id: messageId, role: "assistant" as const, content, streaming: false, citations }];
 				persistMessages(next);
 				return next;
 			});

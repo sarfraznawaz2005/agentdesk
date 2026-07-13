@@ -9,7 +9,7 @@
  * conversation and streamed to the frontend via callbacks.
  */
 
-import { generateText, type Tool, type ModelMessage } from "ai";
+import { generateText, streamText, type Tool, type ModelMessage } from "ai";
 import { eq, inArray } from "drizzle-orm";
 import { Utils } from "electrobun/bun";
 import { appendFileSync, existsSync, mkdirSync } from "fs";
@@ -25,6 +25,8 @@ import { getAgentSystemPrompt } from "./prompts";
 import { getToolsForAgent } from "./tools/index";
 import { getPluginTools, applyAnthropicCaching } from "./engine-types";
 import { getSetting } from "../rpc/settings";
+import { getStreamingMode, type StreamingMode } from "./streaming-mode";
+import { createThrottledAccumulator } from "./throttled-accumulator";
 import { FileTracker } from "./tools/file-tracker";
 import { createTrackedFileTools } from "./tools/file-ops";
 import { skillRegistry } from "../skills/registry";
@@ -126,6 +128,10 @@ export interface InlineAgentCallbacks {
 	onPartCreated(part: MessagePart): void;
 	onPartUpdated(messageId: string, partId: string, updates: Partial<MessagePart>): void;
 	onTextDelta(messageId: string, delta: string): void;
+	/** A live (never-persisted-as-final) text/reasoning part streamed during
+	 *  Full Streaming mode must be discarded — e.g. a Claude Subscription
+	 *  CLI-path attempt failed tool-call verification and is being retried. */
+	onPartsRemoved?(messageId: string, partIds: string[]): void;
 	onAgentStart(messageId: string, agentName: string, agentDisplayName: string, task: string): void;
 	onAgentComplete(messageId: string, agentName: string, status: string, summary: string, filesModified: string[], tokensUsed: { prompt: number; completion: number; contextLimit?: number; cacheCreationTokens?: number; cacheReadTokens?: number }): void;
 	/** Notify frontend that a new agent message row was created so it appears in chat. */
@@ -181,6 +187,13 @@ export interface InlineAgentOptions {
 	 * would block with no UI to satisfy them (e.g. request_human_input).
 	 */
 	excludeTools?: string[];
+	/**
+	 * Overrides the global Streaming setting (Settings → AI → Streaming) for this
+	 * call only — the Playground always passes "full" here, since its live-preview
+	 * UX depends on progressively-updated parts regardless of what the user has
+	 * chosen for every other chat surface. Leave unset to use the global setting.
+	 */
+	streamingModeOverride?: StreamingMode;
 }
 
 export interface InlineAgentResult {
@@ -1118,6 +1131,75 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	callbacks.onPartCreated(startPart);
 	callbacks.onAgentStart(startMsgId, agentName, agentDisplayName, task);
 
+	// --- 4a. Full Streaming support: progressively-updated live text/reasoning
+	// parts, shared by both the CLI/SDK branch and the generateText/streamText
+	// branch below. Only "full" mode ever creates the throttled accumulators
+	// that drive this — "hybrid"/"none" never touch it, so their behavior is
+	// completely unchanged (same code paths as before this capability existed).
+	// streamingModeOverride lets a caller (the Playground) ignore the global
+	// setting entirely — skips the DB read too, via ?? short-circuiting.
+	const streamingMode = opts.streamingModeOverride ?? (await getStreamingMode());
+	type LiveKind = "text" | "reasoning";
+	const livePartIds: Record<LiveKind, string | null> = { text: null, reasoning: null };
+	const liveAccs: Record<LiveKind, ReturnType<typeof createThrottledAccumulator> | null> = { text: null, reasoning: null };
+
+	function pushLiveDelta(kind: LiveKind, delta: string): void {
+		if (streamingMode !== "full") return;
+		let acc = liveAccs[kind];
+		if (!acc) {
+			acc = createThrottledAccumulator((accumulated) => {
+				const existingId = livePartIds[kind];
+				if (!existingId) {
+					const id = crypto.randomUUID();
+					livePartIds[kind] = id;
+					const part: MessagePart = { id, messageId: startMsgId, type: kind, content: accumulated, sortOrder: sortOrder++ };
+					if (persist) db.insert(messageParts).values({
+						id: part.id, messageId: part.messageId, type: part.type,
+						content: part.content, sortOrder: part.sortOrder,
+					}).catch(() => {});
+					callbacks.onPartCreated(part);
+				} else {
+					if (persist) db.update(messageParts).set({ content: accumulated }).where(eq(messageParts.id, existingId)).catch(() => {});
+					callbacks.onPartUpdated(startMsgId, existingId, { content: accumulated });
+				}
+			});
+			liveAccs[kind] = acc;
+		}
+		acc.push(delta);
+	}
+
+	/** Finalize a step/attempt's live part with the authoritative complete
+	 *  text. Returns true if there was a live part to finalize (caller should
+	 *  skip its own create-a-new-part fallback); false if nothing was streamed
+	 *  live for it (mode wasn't "full", or this step had no text of this kind). */
+	function finalizeLivePart(kind: LiveKind, finalText: string): boolean {
+		liveAccs[kind]?.cancel();
+		liveAccs[kind] = null;
+		const id = livePartIds[kind];
+		if (!id) return false;
+		livePartIds[kind] = null;
+		if (persist) db.update(messageParts).set({ content: finalText }).where(eq(messageParts.id, id)).catch(() => {});
+		callbacks.onPartUpdated(startMsgId, id, { content: finalText });
+		return true;
+	}
+
+	/** Discard live parts for a now-failed/retried attempt — only ever
+	 *  exercised on the Claude Subscription CLI retry path in "full" mode. */
+	function retractLiveParts(): void {
+		const ids = (["text", "reasoning"] as LiveKind[])
+			.map((k) => {
+				liveAccs[k]?.cancel();
+				liveAccs[k] = null;
+				const id = livePartIds[k];
+				livePartIds[k] = null;
+				return id;
+			})
+			.filter((id): id is string => !!id);
+		if (ids.length === 0) return;
+		if (persist) db.delete(messageParts).where(inArray(messageParts.id, ids)).catch(() => {});
+		callbacks.onPartsRemoved?.(startMsgId, ids);
+	}
+
 	// --- 4b. Claude Subscription non-Haiku models: execute via the Agent SDK
 	// instead of the generateText() loop below (see isClaudeSubscriptionViaCli
 	// above) — persists the same MessagePart shapes onStepFinish produces, but
@@ -1153,6 +1235,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			timeoutMs,
 			abortSignal,
 			onText: (text) => {
+				if (finalizeLivePart("text", text)) return;
 				const textPart: MessagePart = {
 					id: crypto.randomUUID(), messageId: startMsgId, type: "text",
 					content: text, sortOrder: sortOrder++,
@@ -1164,6 +1247,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				callbacks.onPartCreated(textPart);
 			},
 			onReasoning: (text) => {
+				if (finalizeLivePart("reasoning", text)) return;
 				const reasoningPart: MessagePart = {
 					id: crypto.randomUUID(), messageId: startMsgId, type: "reasoning",
 					content: text, sortOrder: sortOrder++,
@@ -1174,6 +1258,9 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				}).catch(() => {});
 				callbacks.onPartCreated(reasoningPart);
 			},
+			onTextToken: (delta) => pushLiveDelta("text", delta),
+			onReasoningToken: (delta) => pushLiveDelta("reasoning", delta),
+			onRetract: retractLiveParts,
 			onToolCallStart: (toolName, args) => {
 				const callId = crypto.randomUUID();
 				const toolCallPart: MessagePart = {
@@ -1332,7 +1419,13 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		const COMPACT_KEEP_RECENT = 5;
 
 		const cached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
-		const result = await generateText({
+		// streamText always — even outside "full" mode, this is functionally
+		// identical to generateText for every consumer below (same final
+		// aggregate fields, just awaited instead of synchronous), and it's what
+		// lets "full" mode read live text-delta/reasoning-delta parts off
+		// fullStream without a second, duplicated call-and-retry-loop
+		// implementation to keep in sync with this one.
+		const result = streamText({
 			model,
 			system: cached.system,
 			messages: cached.messages,
@@ -1490,7 +1583,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 
 				// Emit reasoning
 				const reasoning = typeof step.reasoningText === "string" ? step.reasoningText : "";
-				if (reasoning) {
+				if (reasoning && !finalizeLivePart("reasoning", reasoning)) {
 					const reasoningPart: MessagePart = {
 						id: crypto.randomUUID(),
 						messageId: startMsgId,
@@ -1507,7 +1600,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				}
 
 				// Emit text
-				if (step.text) {
+				if (step.text && !finalizeLivePart("text", step.text)) {
 					const textPart: MessagePart = {
 						id: crypto.randomUUID(),
 						messageId: startMsgId,
@@ -1594,17 +1687,39 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			},
 		});
 
+		// Consuming fullStream both drives the generation to completion (streamText
+		// is otherwise inert — nothing above happens without a consumer) and, in
+		// "full" mode, feeds live text/reasoning deltas into the same progressive-
+		// part mechanism the CLI branch uses. onStepFinish above (unchanged) still
+		// creates/finalizes the authoritative MessagePart once each step completes.
+		for await (const part of result.fullStream) {
+			if (part.type === "text-delta") {
+				pushLiveDelta("text", part.text ?? "");
+			} else if (part.type === "reasoning-delta") {
+				pushLiveDelta("reasoning", part.text ?? "");
+			} else if (part.type === "error") {
+				// streamText reports internal/provider errors as a stream part rather
+				// than always rejecting the call outright — without this, such an
+				// error would otherwise be silently swallowed here (the loop just
+				// ends) instead of being caught by the try/catch below, the same way
+				// a rejected generateText() promise used to surface it.
+				const err = (part as { error: unknown }).error;
+				throw err instanceof Error ? err : new Error(String(err));
+			}
+		}
+
 		clearTimeout(timeoutId);
 		const elapsed = Math.round((Date.now() - startMs) / 1000);
-		const rawFinish = result.rawFinishReason ?? result.finishReason;
-		const totalUsage = result.usage;
+		const rawFinish = (await result.rawFinishReason) ?? (await result.finishReason);
+		const totalUsage = await result.usage;
 		const totalPrompt = totalUsage?.inputTokens ?? lastPromptTokens;
 		const totalCompletion = totalUsage?.outputTokens ?? completionTokens;
-		logAgent(`${agentName} END | status=completed | finish=${rawFinish} | totalTokens=${totalPrompt + totalCompletion} (prompt=${totalPrompt} completion=${totalCompletion}) | context=${lastPromptTokens}/${CONTEXT_LIMIT} (${Math.round(lastPromptTokens / CONTEXT_LIMIT * 100)}%) | elapsed=${elapsed}s | steps=${result.steps?.length ?? 0} | aiCompacted=${aiCompactionDone}`);
+		const finalSteps = await result.steps;
+		logAgent(`${agentName} END | status=completed | finish=${rawFinish} | totalTokens=${totalPrompt + totalCompletion} (prompt=${totalPrompt} completion=${totalCompletion}) | context=${lastPromptTokens}/${CONTEXT_LIMIT} (${Math.round(lastPromptTokens / CONTEXT_LIMIT * 100)}%) | elapsed=${elapsed}s | steps=${finalSteps?.length ?? 0} | aiCompacted=${aiCompactionDone}`);
 
 		// --- 8. Build summary ---
 		const filesModified = fileTracker.getModifiedFiles();
-		const summary = result.text || "(completed via tool calls)";
+		const summary = (await result.text) || "(completed via tool calls)";
 
 		// Log task + final answer together so Analytics' Messages tab shows the
 		// full exchange, not just what was asked.
@@ -1696,6 +1811,9 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			retryAttempt++;
 			const delay = getBackoffDelay(retryAttempt - 1);
 			logAgent(`${agentName} transient error, retry ${retryAttempt}/${MAX_RETRIES} after ${delay}ms: ${error instanceof Error ? error.message : String(error)}`);
+			// Discard any "full" mode live part(s) streamed before the transient
+			// error hit — this whole attempt is being retried from scratch.
+			retractLiveParts();
 			await new Promise(r => setTimeout(r, delay));
 			continue retry;
 		}

@@ -17,6 +17,8 @@ import { db } from "../db";
 import { collectionNotes, aiProviders } from "../db/schema";
 import { createProviderAdapter, getDefaultModel } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { getStreamingMode } from "../agents/streaming-mode";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { embedText } from "./embeddings/embedder";
 import { unpackVector, rankBySimilarity, type VectorEntry } from "./embeddings/similarity";
 import { isEmbeddingModelDownloaded } from "./embeddings/model-manager";
@@ -288,12 +290,23 @@ export async function sendCollectionsChatMessage(params: {
 			const tuning = await getSemanticSearchTuning();
 			const tools = createCollectionsChatTools(scope, citationSink, tuning);
 			const systemPrompt = await buildCollectionsSystemPrompt();
+			const streamingMode = await getStreamingMode();
+			const isFullStreaming = streamingMode === "full";
+			const isNoStreaming = streamingMode === "none";
 
 			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
 			// Haiku — non-Haiku models route through the official Agent SDK
 			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
 			if (providerType === "claude-subscription" && !isHaikuModel(modelId)) {
 				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				// Full Streaming only — broadcastToWebview appends client-side, so
+				// only the slice new since the last throttled flush is ever sent.
+				let flushedLength = 0;
+				const textAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+					const delta = acc.slice(flushedLength);
+					flushedLength = acc.length;
+					if (delta) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: delta });
+				}) : null;
 				const cliResult = await runClaudeCliTask({
 					task: flattenHistoryForCli(newHistory),
 					systemPrompt,
@@ -304,15 +317,18 @@ export async function sendCollectionsChatMessage(params: {
 					verifyToolCall: false, // Collections chat is Q&A over notes — a turn may legitimately need zero tool calls
 					onText: (text) => {
 						fullText += text;
-						broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
+						if (!isFullStreaming) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
 					},
 					onReasoning: () => { /* Collections chat doesn't surface reasoning today (same as the streamText path, which ignores 'reasoning' parts) */ },
+					onTextToken: (delta) => textAcc?.push(delta),
+					onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
 					onToolCallStart: (toolName, args) => {
 						broadcastToWebview("collectionsChatToolCall", { sessionId, toolName, args: args as Record<string, unknown> });
 						return crypto.randomUUID();
 					},
 					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
 				});
+				textAcc?.flushNow();
 
 				if (abortController.signal.aborted) return;
 				if (cliResult.status === "cancelled") return;
@@ -339,7 +355,7 @@ export async function sendCollectionsChatMessage(params: {
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;
-						broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
+						if (!isNoStreaming) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
 						broadcastToWebview("collectionsChatToolCall", { sessionId, toolName: part.toolName, args: tcInput as Record<string, unknown> });
@@ -354,7 +370,7 @@ export async function sendCollectionsChatMessage(params: {
 					try { finalText = await result.text; } catch { /* not available */ }
 					if (finalText.trim()) {
 						fullText = finalText;
-						broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: fullText });
+						if (!isNoStreaming) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: fullText });
 					}
 				}
 			}

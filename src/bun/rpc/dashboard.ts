@@ -26,6 +26,8 @@ import {
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { getStreamingMode } from "../agents/streaming-mode";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { webTools } from "../agents/tools/web";
 import { kanbanTools } from "../agents/tools/kanban";
 import { gitTools } from "../agents/tools/git";
@@ -629,12 +631,24 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 			const modelId = providerRow.defaultModel ?? getDefaultModel(providerRow.providerType);
 			const tools = createDashboardTools();
 			const systemPrompt = await buildDashboardSystemPrompt();
+			const streamingMode = await getStreamingMode();
+			const isFullStreaming = streamingMode === "full";
+			const isNoStreaming = streamingMode === "none";
 
 			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
 			// Haiku — non-Haiku models route through the official Agent SDK
 			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
 			if (providerRow.providerType === "claude-subscription" && !isHaikuModel(modelId)) {
 				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				// Full Streaming only — broadcastToWebview("dashboardPMChunk", {token})
+				// appends client-side, so only the slice new since the last throttled
+				// flush is ever sent (not the full accumulated text).
+				let flushedLength = 0;
+				const textAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+					const delta = acc.slice(flushedLength);
+					flushedLength = acc.length;
+					if (delta) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: delta });
+				}) : null;
 				const cliResult = await runClaudeCliTask({
 					task: flattenHistoryForCli(newHistory),
 					systemPrompt,
@@ -645,9 +659,13 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					verifyToolCall: false, // dashboard chat is general Q&A — a turn may legitimately need zero tool calls
 					onText: (text) => {
 						fullText += text;
-						broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
+						// Already delivered progressively via onTextToken in Full Streaming —
+						// broadcasting the whole text again here would duplicate it.
+						if (!isFullStreaming) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
 					},
 					onReasoning: () => { /* dashboard chat doesn't surface reasoning today (same as the streamText path, which ignores 'reasoning' parts) */ },
+					onTextToken: (delta) => textAcc?.push(delta),
+					onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
 					onToolCallStart: (toolName, args) => {
 						broadcastToWebview("dashboardPMToolCall", { sessionId, toolName, args });
 						if (toolName === "read_skill" && (args as Record<string, unknown>)?.name) {
@@ -657,6 +675,7 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					},
 					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
 				});
+				textAcc?.flushNow();
 
 				if (abortController.signal.aborted) return;
 				if (cliResult.status === "cancelled") return;
@@ -691,7 +710,7 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;
-						broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
+						if (!isNoStreaming) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
 						broadcastToWebview("dashboardPMToolCall", { sessionId, toolName: part.toolName, args: tcInput });
@@ -709,7 +728,7 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					try { finalText = await result.text; } catch { /* not available */ }
 					if (finalText.trim()) {
 						fullText = finalText;
-						broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: fullText });
+						if (!isNoStreaming) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: fullText });
 					}
 				}
 			}

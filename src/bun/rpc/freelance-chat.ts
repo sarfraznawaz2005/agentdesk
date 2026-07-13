@@ -5,6 +5,8 @@ import { db } from "../db";
 import { freelanceChatMessages, freelanceListings, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { getStreamingMode } from "../agents/streaming-mode";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { broadcastToWebview } from "../engine-manager";
 import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
@@ -294,12 +296,23 @@ async function streamAndPersist(
 
     // Track tool call start times for duration reporting
     const toolStartTimes = new Map<string, string>();
+    const streamingMode = await getStreamingMode();
+    const isFullStreaming = streamingMode === "full";
+    const isNoStreaming = streamingMode === "none";
 
     // Claude Subscription's direct-HTTP OAuth path 429s for anything but
     // Haiku — non-Haiku models route through the official Agent SDK instead
     // (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
     if (providerType === "claude-subscription" && !isHaikuModel(modelId)) {
       const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+      // Full Streaming only — broadcastToWebview appends client-side, so only
+      // the slice new since the last throttled flush is ever sent.
+      let flushedLength = 0;
+      const textAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+        const delta = acc.slice(flushedLength);
+        flushedLength = acc.length;
+        if (delta) broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token: delta });
+      }) : null;
       const cliResult = await runClaudeCliTask({
         task: flattenHistoryForCli(history),
         systemPrompt,
@@ -310,9 +323,11 @@ async function streamAndPersist(
         verifyToolCall: false, // freelance chat is advisory Q&A — a turn may legitimately need zero tool calls
         onText: (text) => {
           fullContent += text;
-          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token: text });
+          if (!isFullStreaming) broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token: text });
         },
         onReasoning: () => { /* freelance chat doesn't surface reasoning today (same as the streamText path, which never handled 'reasoning' parts) */ },
+        onTextToken: (delta) => textAcc?.push(delta),
+        onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
         onToolCallStart: (toolName, args) => {
           const callId = crypto.randomUUID();
           const timeStart = new Date().toISOString();
@@ -340,6 +355,7 @@ async function streamAndPersist(
           });
         },
       });
+      textAcc?.flushNow();
 
       if (signal.aborted || cliResult.status === "cancelled") {
         broadcastToWebview(FREELANCE_EVENTS.CHAT_STOPPED, { listingId });
@@ -368,7 +384,7 @@ async function streamAndPersist(
         if (part.type === "text-delta") {
           const token = (part as { text?: string }).text ?? "";
           fullContent += token;
-          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token });
+          if (!isNoStreaming) broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token });
         } else if (part.type === "tool-call") {
           const tc = (part as unknown) as { toolCallId: string; toolName: string; input: Record<string, unknown> };
           const timeStart = new Date().toISOString();

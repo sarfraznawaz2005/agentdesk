@@ -14,6 +14,8 @@ import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { getStreamingMode } from "../agents/streaming-mode";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { broadcastToWebview } from "../engine-manager";
 import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
@@ -124,6 +126,9 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
     const { adapter, providerType, modelId } = await getDefaultProviderAndModel();
     const tools = buildSkillsChatTools();
     const systemPrompt = buildSystemPrompt();
+    const streamingMode = await getStreamingMode();
+    const isFullStreaming = streamingMode === "full";
+    const isNoStreaming = streamingMode === "none";
 
     // Claude Subscription's direct-HTTP OAuth path 429s for anything but
     // Haiku — non-Haiku models route through the official Agent SDK instead
@@ -131,6 +136,14 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
     if (providerType === "claude-subscription" && !isHaikuModel(modelId)) {
       const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
       const toolStartTimes = new Map<string, string>();
+      // Full Streaming only — broadcastToWebview appends client-side, so only
+      // the slice new since the last throttled flush is ever sent.
+      let flushedLength = 0;
+      const textAcc = isFullStreaming ? createThrottledAccumulator((acc) => {
+        const delta = acc.slice(flushedLength);
+        flushedLength = acc.length;
+        if (delta) broadcastToWebview("skillsChat.token", { messageId, token: delta });
+      }) : null;
 
       const cliResult = await runClaudeCliTask({
         task: flattenHistoryForCli(modelHistory),
@@ -142,9 +155,11 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
         verifyToolCall: false, // skills chat is Q&A/search-driven — a turn may legitimately need zero tool calls
         onText: (text) => {
           fullContent += text;
-          broadcastToWebview("skillsChat.token", { messageId, token: text });
+          if (!isFullStreaming) broadcastToWebview("skillsChat.token", { messageId, token: text });
         },
         onReasoning: () => { /* skills chat doesn't surface reasoning today (same as the streamText path, which never handled 'reasoning' parts) */ },
+        onTextToken: (delta) => textAcc?.push(delta),
+        onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
         onToolCallStart: (toolName, args) => {
           const callId = crypto.randomUUID();
           const timeStart = new Date().toISOString();
@@ -170,6 +185,7 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
           });
         },
       });
+      textAcc?.flushNow();
 
       if (signal.aborted || cliResult.status === "cancelled") {
         broadcastToWebview("skillsChat.stopped", {});
@@ -200,7 +216,7 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
         if (part.type === "text-delta") {
           const token = (part as { text?: string }).text ?? "";
           fullContent += token;
-          broadcastToWebview("skillsChat.token", { messageId, token });
+          if (!isNoStreaming) broadcastToWebview("skillsChat.token", { messageId, token });
         } else if (part.type === "tool-call") {
           const tc = part as unknown as { toolCallId: string; toolName: string; input: Record<string, unknown> };
           const timeStart = new Date().toISOString();

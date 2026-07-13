@@ -20,6 +20,8 @@ import { aiProviders } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { createProviderAdapter, getDefaultModel } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { getStreamingMode } from "../agents/streaming-mode";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { broadcastToWebview } from "../engine-manager";
 import { sendDesktopNotification } from "../notifications/desktop";
 
@@ -113,10 +115,21 @@ async function councilComplete(opts: {
   onToken?: (token: string) => void;
 }): Promise<string> {
   const { provider, system, prompt, signal, onToken } = opts;
+  const streamingMode = await getStreamingMode();
 
   if (provider.providerType === "claude-subscription" && !isHaikuModel(provider.modelId)) {
     const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+    const isFullStreaming = streamingMode === "full";
     let fullText = "";
+    // Full Streaming only — onToken is treated as a delta-append callback by
+    // every caller (matches the non-CLI branch's per-chunk onToken(chunk)
+    // below), so only the slice new since the last throttled flush is sent.
+    let flushedLength = 0;
+    const textAcc = isFullStreaming && onToken ? createThrottledAccumulator((acc) => {
+      const delta = acc.slice(flushedLength);
+      flushedLength = acc.length;
+      if (delta) onToken(delta);
+    }) : null;
     const cliResult = await runClaudeCliTask({
       task: prompt,
       systemPrompt: system,
@@ -125,11 +138,14 @@ async function councilComplete(opts: {
       timeoutMs: opts.timeoutMs ?? AGENT_STREAM_TIMEOUT_MS,
       abortSignal: signal,
       verifyToolCall: false, // no tools offered — every Council phase is a pure text completion
-      onText: (text) => { fullText += text; onToken?.(text); },
+      onText: (text) => { fullText += text; if (!isFullStreaming) onToken?.(text); },
       onReasoning: () => { /* Council doesn't surface reasoning today, same as the generateText/streamText path */ },
+      onTextToken: (delta) => textAcc?.push(delta),
+      onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
       onToolCallStart: () => crypto.randomUUID(),
       onToolCallEnd: () => {},
     });
+    textAcc?.flushNow();
     if (cliResult.status === "cancelled") throw new DOMException("Aborted", "AbortError");
     if (cliResult.status === "failed" || cliResult.status === "timeout") throw new Error(cliResult.summary);
     return fullText.trim() || cliResult.summary.trim();
@@ -142,7 +158,7 @@ async function councilComplete(opts: {
     for await (const chunk of stream.textStream) {
       if (signal.aborted) break;
       fullText += chunk;
-      onToken(chunk);
+      if (streamingMode !== "none") onToken(chunk);
     }
     return fullText;
   }
@@ -250,14 +266,18 @@ async function runParallelRound(
       const streamPromise = (async () => {
         const messages = buildMessages(agent);
         const prompt = messages.map((m) => m.content).join("\n\n");
-        await councilComplete({
+        // The return value is the sole source of truth for the agent's
+        // response — onToken is a UI-only side channel that councilComplete
+        // itself may legitimately suppress (No Streaming mode never calls it
+        // at all), so accumulating agentResponse from onToken would silently
+        // drop the whole response in that mode.
+        agentResponse = await councilComplete({
           provider,
           system: buildSystem(agent),
           prompt,
           signal,
           onToken: (chunk) => {
             if (signal.aborted) return;
-            agentResponse += chunk;
             emit(sessionId, { type: "agent-token", agentName: agent.name, token: chunk, round });
           },
         });
@@ -282,13 +302,13 @@ async function runParallelRound(
           `[Council] agent ${agent.name} ${isTimeout ? "timed out" : "errored"} in round ${round}:`,
           isTimeout ? "(120s)" : err,
         );
-        emit(sessionId, { type: "agent-response-complete", agentName: agent.name, round });
+        emit(sessionId, { type: "agent-response-complete", agentName: agent.name, round, content: agentResponse.trim() });
         return agentResponse.trim()
           ? { agentName: agent.name, displayName: agent.displayName, content: agentResponse.trim() }
           : null;
       }
 
-      emit(sessionId, { type: "agent-response-complete", agentName: agent.name, round });
+      emit(sessionId, { type: "agent-response-complete", agentName: agent.name, round, content: agentResponse.trim() });
 
       if (!agentResponse.trim()) return null;
       return { agentName: agent.name, displayName: agent.displayName, content: agentResponse.trim() };
@@ -585,7 +605,10 @@ async function runSession(session: CouncilSession, query: string, context?: stri
 
   const didConverge = converged;
 
-  await councilComplete({
+  // The return value is the sole source of truth — onToken is a UI-only side
+  // channel councilComplete may legitimately suppress (No Streaming mode
+  // never calls it at all), so the final answer must not depend on it firing.
+  const finalAnswer = await councilComplete({
     provider,
     signal,
     system: `You are the Project Manager synthesizing a council discussion. The peer-ranked scores are: ${scoresStr}. The highest-scoring position should anchor your recommendation. ${
@@ -600,7 +623,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
     },
   });
 
-  emit(sessionId, { type: "final-answer-complete" });
+  emit(sessionId, { type: "final-answer-complete", content: finalAnswer });
 
   // OS-level desktop notification so the user knows the council has reached a decision
   sendDesktopNotification(

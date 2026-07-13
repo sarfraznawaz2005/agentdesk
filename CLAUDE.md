@@ -255,6 +255,14 @@ Turn tasks into verifiable goals and loop until they're met, rather than stoppin
    `internalCallModelId` Haiku-swap because it's a bounded one-shot completion with no tools (mirror
    `agents/tools/deep-research.ts`, `agents/tools/preview.ts`, `agents/summarizer.ts`). Not relevant
    to UI-only changes, DB/schema work, or anything that never touches an AI provider call.
+- **The Claude Subscription CLI/SDK path (`claude-subscription-cli-runner.ts`) always passes
+   `settingSources: []` to `query()`, on both call sites.** Without it, the SDK loads the user's
+   real `~/.claude/settings.json` (plus any project/local settings) by default, so their own Claude
+   Code hooks (e.g. Stop/PermissionRequest desktop notifications) fire for every AgentDesk-driven
+   session, indistinguishable from their own manual `claude` CLI/desktop app usage. AgentDesk
+   already fully controls tools/permissions/model itself for this path, so it never needed those
+   files — do not remove this option, and do not add a new `query()` call site for this provider
+   without it.
 - **New native/binary dependencies must ship their platform binaries, and never load eagerly at
    startup.** Bun's bundler flattens `src/bun` into one file, so any package with a `.node`
    addon or per-platform optional-dependency binary (`onnxruntime-node`, `sharp`, etc.) needs an

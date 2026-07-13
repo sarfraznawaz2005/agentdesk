@@ -277,10 +277,16 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     };
 
     const onComplete = (e: Event) => {
-      const { sessionId: sid, messageId } = (e as CustomEvent<{ sessionId: string; messageId: string; content: string }>).detail;
+      const { sessionId: sid, messageId, content } = (e as CustomEvent<{ sessionId: string; messageId: string; content: string }>).detail;
       if (sid !== sessionId.current) return;
       setMessages((prev) => {
-        const next = prev.map((m) => m.id === messageId ? { ...m, streaming: false } : m);
+        // No Streaming mode delivers zero chunks — the message row may not
+        // exist yet (onChunk normally creates it); create it here from the
+        // final content instead of silently dropping the reply.
+        const existing = prev.find((m) => m.id === messageId);
+        const next = existing
+          ? prev.map((m) => m.id === messageId ? { ...m, content, streaming: false } : m)
+          : [...prev, { id: messageId, role: "assistant" as const, content, streaming: false }];
         persistMessages(next);
         return next;
       });

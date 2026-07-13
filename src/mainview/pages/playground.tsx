@@ -374,6 +374,10 @@ export function PlaygroundPage() {
         s.onPartUpdated(d.partId, clean);
       }
     };
+    const onPartsRemoved = (e: Event) => {
+      const d = (e as CustomEvent).detail as { partIds: string[] };
+      if (d?.partIds?.length) s.onPartsRemoved(d.partIds);
+    };
     const onAgentComplete = (e: Event) => {
       const d = (e as CustomEvent).detail as {
         status: string;
@@ -428,6 +432,7 @@ export function PlaygroundPage() {
     window.addEventListener("agentdesk:playground-run-started", onRunStarted);
     window.addEventListener("agentdesk:playground-part", onPart);
     window.addEventListener("agentdesk:playground-part-updated", onPartUpdated);
+    window.addEventListener("agentdesk:playground-parts-removed", onPartsRemoved);
     window.addEventListener("agentdesk:playground-agent-complete", onAgentComplete);
     window.addEventListener("agentdesk:playground-run-complete", onRunComplete);
     window.addEventListener("agentdesk:playground-run-error", onRunError);
@@ -447,6 +452,7 @@ export function PlaygroundPage() {
       window.removeEventListener("agentdesk:playground-run-started", onRunStarted);
       window.removeEventListener("agentdesk:playground-part", onPart);
       window.removeEventListener("agentdesk:playground-part-updated", onPartUpdated);
+      window.removeEventListener("agentdesk:playground-parts-removed", onPartsRemoved);
       window.removeEventListener("agentdesk:playground-agent-complete", onAgentComplete);
       window.removeEventListener("agentdesk:playground-run-complete", onRunComplete);
       window.removeEventListener("agentdesk:playground-run-error", onRunError);

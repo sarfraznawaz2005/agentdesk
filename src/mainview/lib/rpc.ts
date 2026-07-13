@@ -238,6 +238,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       playgroundPartUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:playground-part-updated", { detail: payload }));
       },
+      playgroundPartsRemoved: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:playground-parts-removed", { detail: payload }));
+      },
       playgroundAgentStart: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:playground-agent-start", { detail: payload }));
       },

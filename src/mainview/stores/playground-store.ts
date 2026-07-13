@@ -71,6 +71,7 @@ interface PlaygroundState {
   onRunStarted: (message: string) => void;
   onPart: (part: MessagePartData) => void;
   onPartUpdated: (partId: string, updates: Partial<MessagePartData>) => void;
+  onPartsRemoved: (partIds: string[]) => void;
   onAgentComplete: (status: string, summary: string, tokens: PlaygroundTokens) => void;
   onRunComplete: () => void;
   onRunError: (error: string) => void;
@@ -180,6 +181,11 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   onPartUpdated: (partId, updates) =>
     set((s) => ({
       parts: s.parts.map((p) => (p.id === partId ? { ...p, ...updates } : p)),
+    })),
+
+  onPartsRemoved: (partIds) =>
+    set((s) => ({
+      parts: s.parts.filter((p) => !partIds.includes(p.id)),
     })),
 
   onAgentComplete: (status, summary, tokens) =>
