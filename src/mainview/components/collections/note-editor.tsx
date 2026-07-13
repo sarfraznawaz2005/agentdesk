@@ -415,17 +415,6 @@ export function NoteEditor() {
 								<Star className={cn("w-4 h-4", isFavorite ? "text-amber-500 fill-amber-500" : "text-muted-foreground")} />
 							</Button>
 						</Tip>
-						<Tip content="Delete note">
-							<Button
-								size="sm"
-								variant="ghost"
-								className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-								onClick={handleDelete}
-								aria-label="Delete note"
-							>
-								<Trash2 className="w-4 h-4" />
-							</Button>
-						</Tip>
 						<DropdownMenu>
 							<Tip content="Export note">
 								<DropdownMenuTrigger asChild>
@@ -449,6 +438,17 @@ export function NoteEditor() {
 								))}
 							</DropdownMenuContent>
 						</DropdownMenu>
+						<Tip content="Delete note">
+							<Button
+								size="sm"
+								variant="ghost"
+								className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+								onClick={handleDelete}
+								aria-label="Delete note"
+							>
+								<Trash2 className="w-4 h-4" />
+							</Button>
+						</Tip>
 						<Button size="sm" className="ml-1" onClick={handleSave} disabled={!dirty || saving}>
 							<Save className="w-3.5 h-3.5 mr-1" />
 							{saving ? "Saving…" : "Save"}
