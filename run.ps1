@@ -13,7 +13,6 @@ $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222 --use
 $binDir = Join-Path $PSScriptRoot "build\dev-win-x64\AgentDesk-dev\bin"
 $freelanceEnabled = (Test-Path (Join-Path $binDir "freelance")) -or (Test-Path (Join-Path $PSScriptRoot "freelance"))
 $claudeEnabled = (Test-Path (Join-Path $binDir "claude")) -or (Test-Path (Join-Path $PSScriptRoot "claude"))
-$autoearnEnabled = (Test-Path (Join-Path $binDir "autoearn")) -or (Test-Path (Join-Path $PSScriptRoot "autoearn"))
 
 # Start Vite dev server in a hidden window so it doesn't share the console
 $vite = Start-Process -FilePath "cmd" -ArgumentList "/c bun run hmr" -PassThru -WindowStyle Hidden
@@ -39,12 +38,11 @@ if (-not $ready) {
 # If the freelance or claude flags were present, spawn a background watcher that recreates
 # them in the bin dir after every Electrobun build (initial or hot-rebuild) which wipes that folder.
 $watcher = $null
-if ($freelanceEnabled -or $claudeEnabled -or $autoearnEnabled) {
+if ($freelanceEnabled -or $claudeEnabled) {
     if ($freelanceEnabled) { Write-Host "Freelance feature flag detected - preserving it across rebuilds." }
     if ($claudeEnabled)    { Write-Host "Claude subscription flag detected - preserving it across rebuilds." }
-    if ($autoearnEnabled)  { Write-Host "Auto-Earn feature flag detected - preserving it across rebuilds." }
     $watcher = Start-Job -ScriptBlock {
-        param($dir, $freelance, $claude, $autoearn)
+        param($dir, $freelance, $claude)
         while ($true) {
             if (Test-Path $dir) {
                 if ($freelance -and -not (Test-Path (Join-Path $dir "freelance"))) {
@@ -53,13 +51,10 @@ if ($freelanceEnabled -or $claudeEnabled -or $autoearnEnabled) {
                 if ($claude -and -not (Test-Path (Join-Path $dir "claude"))) {
                     New-Item -ItemType File -Path (Join-Path $dir "claude") -Force | Out-Null
                 }
-                if ($autoearn -and -not (Test-Path (Join-Path $dir "autoearn"))) {
-                    New-Item -ItemType File -Path (Join-Path $dir "autoearn") -Force | Out-Null
-                }
             }
             Start-Sleep -Milliseconds 500
         }
-    } -ArgumentList $binDir, $freelanceEnabled, $claudeEnabled, $autoearnEnabled
+    } -ArgumentList $binDir, $freelanceEnabled, $claudeEnabled
 }
 
 # Start Electrobun (blocks until app closes or Ctrl+C).

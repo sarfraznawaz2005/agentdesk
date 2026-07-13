@@ -34,8 +34,13 @@ async function sendWindowsToast(title: string, body: string): Promise<void> {
 	const iconPath = `${PATHS.VIEWS_FOLDER}/assets/tray-icon.png`.replace(/\\/g, "/");
 	const iconUri = `file:///${iconPath.replace(/^\//, "")}`;
 
+	// activationType="background" (+ no `launch` attribute) means clicking the toast body
+	// does nothing beyond dismissing it — it never tries to foreground-activate an app.
+	// Without this, the default "foreground" activation type asks Windows to bring the
+	// notification's owning app (here, the PowerShell AUMID we borrow — see below) to the
+	// front on click, which pops up an unwanted PowerShell window and steals focus.
 	const toastXml = [
-		`<toast>`,
+		`<toast activationType="background">`,
 		`  <visual>`,
 		`    <binding template="ToastGeneric">`,
 		`      <image placement="appLogoOverride" src="${iconUri}"/>`,
@@ -59,9 +64,13 @@ async function sendWindowsToast(title: string, body: string): Promise<void> {
 	].join("\n");
 
 	try {
+		// `-WindowStyle Hidden` still allocates a (hidden) console window for the process,
+		// which Windows can hand focus/activation to — observed as other open windows losing
+		// focus or minimizing the instant a toast is posted. `windowsHide` uses the CREATE_NO_WINDOW
+		// flag instead, so no window handle is ever created for this process to begin with.
 		const proc = Bun.spawn(
 			["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", ps],
-			{ stdout: "ignore", stderr: "ignore" },
+			{ stdout: "ignore", stderr: "ignore", windowsHide: true },
 		);
 		// Fire-and-forget with a 5 s safety timeout
 		await Promise.race([proc.exited, new Promise<void>((r) => setTimeout(r, 5000))]);

@@ -369,7 +369,7 @@ mainWindow.webview.on("dom-ready", () => {
 			}
 
 			// Auto-Earn watchdog — bun-side safety net (stuck sends, engine heartbeat).
-			// Self-gates on the autoearn flag file + master switch, so it's inert otherwise.
+			// Self-gates on the freelance flag file + master switch, so it's inert otherwise.
 			import("./freelance/watchdog")
 				.then(({ startAutoEarnWatchdog }) => startAutoEarnWatchdog())
 				.catch((err: unknown) => console.error("[startup] Auto-Earn watchdog unavailable:", err));

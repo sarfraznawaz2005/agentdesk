@@ -1179,7 +1179,7 @@ If it cannot be previewed here, call \`playground_reject\` with a clear reason a
   5. Confirm it serves: \`http_request GET http://localhost:8000\` (or the relevant port). If it fails, retry up to 3 times with a 1s \`sleep\` between attempts — the server may still be warming up. Do NOT give up after one failure.
   6. Once \`http_request\` succeeds, call \`playground_render_preview\` with \`type:"devserver"\`.
   7. Only if it still fails after those retries, fall back to a static HTML representation — and explain why in your summary.
-- Use skills (\`find_skills\`, \`read_skill\`) when a relevant one exists (e.g. frontend design, charts). Use the web tools to fetch references or assets when helpful.
+- Use skills (\`find_skills\`, \`read_skill\`) when a relevant one exists. Always use the \`frontend-design\` skill when building a web page or UI layout — read it before writing HTML/CSS so the result looks intentional, not templated. Use the web tools to fetch references or assets when helpful.
 - Keep dependencies lean. If you \`npm install\`, do it inside the workspace.
 
 ## STEP 3 — Render the preview

@@ -158,8 +158,7 @@ export async function portableApplyUpdate(): Promise<{ success: boolean; error?:
 		const binDir = join(currentBundleRoot, "bin");
 		const hadFreelance = existsSync(join(binDir, "freelance"));
 		const hadClaude = existsSync(join(binDir, "claude"));
-		const hadAutoearn = existsSync(join(binDir, "autoearn"));
-		log(`flags freelance=${hadFreelance} claude=${hadClaude} autoearn=${hadAutoearn}`);
+		log(`flags freelance=${hadFreelance} claude=${hadClaude}`);
 
 		const script = buildApplyScript({
 			bundle: currentBundleRoot,
@@ -171,7 +170,6 @@ export async function portableApplyUpdate(): Promise<{ success: boolean; error?:
 			cleanupExtract: EXTRACT_DIR,
 			hadFreelance,
 			hadClaude,
-			hadAutoearn,
 		});
 		writeFileSync(SCRIPT, script, "utf-8");
 		log("Wrote apply-portable.ps1");
@@ -207,12 +205,10 @@ function buildApplyScript(o: {
 	cleanupExtract: string;
 	hadFreelance: boolean;
 	hadClaude: boolean;
-	hadAutoearn: boolean;
 }): string {
 	const restoreFlags =
 		(o.hadFreelance ? `New-Item -ItemType File -Path '${ps(join(o.binDir, "freelance"))}' -Force | Out-Null\nLog 'Restored freelance flag'\n` : "") +
-		(o.hadClaude ? `New-Item -ItemType File -Path '${ps(join(o.binDir, "claude"))}' -Force | Out-Null\nLog 'Restored claude flag'\n` : "") +
-		(o.hadAutoearn ? `New-Item -ItemType File -Path '${ps(join(o.binDir, "autoearn"))}' -Force | Out-Null\nLog 'Restored autoearn flag'\n` : "");
+		(o.hadClaude ? `New-Item -ItemType File -Path '${ps(join(o.binDir, "claude"))}' -Force | Out-Null\nLog 'Restored claude flag'\n` : "");
 
 	// NOTE: the script lives in temp (NOT under $bundle), so robocopy /MIR won't touch it.
 	return `$ErrorActionPreference = 'Continue'

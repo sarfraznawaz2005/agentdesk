@@ -376,7 +376,7 @@ function AppShellContent() {
         />
       )}
       {/* Auto-Earn background engine — keeps the freelance Inbox sync + full-auto
-          send loop alive on every page (self-gates on the autoearn flag + switch).
+          send loop alive on every page (self-gates on the freelance flag + switch).
           Mounted in BOTH desktop and web: it also portal-renders the Auto-Earn
           Inbox tab UI, so gating it out blanks that tab in web mode. Its native
           <electrobun-webview> live session already no-ops in a browser

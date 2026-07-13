@@ -7,8 +7,8 @@
 > automation** (amount/days/proposal fill — bids are NEVER auto-placed, the user
 > always clicks Place Bid); the **always-on background engine** (`AlwaysMountedInbox`
 > + `freelance-engine-store`) so sync / notifications / full-auto sending run on
-> ANY page like auto-shortlist (deferred ~4s after launch); the `autoearn`
-> flag-file gate (preserved across Setup + portable updates + dev rebuilds);
+> ANY page like auto-shortlist (deferred ~4s after launch); gated behind the
+> same `freelance` flag-file (no separate `autoearn` flag file anymore);
 > per-currency earnings on the dashboard; `awaiting_review` outbox state + failed
 > Retry/Dismiss; configurable default delivery days; `maxSendsPerHour` default
 > lowered 4→1. **See §12–13 for what's implemented beyond this plan and the known
@@ -371,10 +371,9 @@ Broadcasts (extend `freelance/events.ts`):
 | `freelance_pause_until` | `""` | global quiet/pause window (ISO ts); blocks all sends + the expert, sync keeps running |
 
 > **Feature gate:** the entire Auto-Earn surface (settings card, Inbox/Auto-Earn
-> tabs, background engine) only appears when an `autoearn` flag file (no extension)
-> sits next to the exe — same mechanism as the `freelance` flag, and preserved
-> across Setup-installer updates (`updater.ts`), portable updates
-> (`updater-portable.ts`), and dev rebuilds (`run.ps1`).
+> tabs, background engine) rides on the same `freelance` flag file (no extension,
+> next to the exe) — there is no separate `autoearn` flag file. `isAutoEarnFeatureAvailable()`
+> in `feature-flag.ts` simply delegates to `isFreelanceEnabled()`.
 
 ---
 

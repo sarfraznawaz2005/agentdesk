@@ -10,8 +10,11 @@ import { mock, describe, it, expect, beforeEach, afterEach, beforeAll, spyOn } f
 import { createTestDb } from "../helpers/db";
 
 // Must mock electrobun/bun before any import that transitively pulls it in.
+// Updater.localInfo.channel is read by lib/dev-mode.ts (agent-loop's [TOOLCALL]
+// dev-only logging gate) — must be present or that import throws at load time.
 mock.module("electrobun/bun", () => ({
 	Utils: { paths: { userData: "/tmp/test-agentdesk-agent-loop" } },
+	Updater: { localInfo: { channel: async () => "test" } },
 }));
 
 // Mock the db module with our test database instance. We use lazy initialisation
