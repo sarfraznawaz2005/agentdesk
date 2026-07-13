@@ -29,6 +29,7 @@ export function AppearanceSettings() {
   const [background, setBackgroundState] = useState<string>(getStoredBackground);
   const [sidebarDefault, setSidebarDefault] = useState<SidebarDefault>("expanded");
   const [dashboardQuotes, setDashboardQuotes] = useState(true);
+  const [chatWidgetsDashboardOnly, setChatWidgetsDashboardOnly] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -43,6 +44,9 @@ export function AppearanceSettings() {
       }
       if (settings["dashboard_quotes"] !== undefined) {
         setDashboardQuotes(settings["dashboard_quotes"] !== false && settings["dashboard_quotes"] !== "false");
+      }
+      if (settings["chat_widgets_dashboard_only"] !== undefined) {
+        setChatWidgetsDashboardOnly(settings["chat_widgets_dashboard_only"] !== false && settings["chat_widgets_dashboard_only"] !== "false");
       }
       setIsDirty(false);
     }).catch(() => {});
@@ -78,16 +82,18 @@ export function AppearanceSettings() {
       await Promise.all([
         rpc.saveSetting("sidebar_default", sidebarDefault, "appearance"),
         rpc.saveSetting("dashboard_quotes", dashboardQuotes, "appearance"),
+        rpc.saveSetting("chat_widgets_dashboard_only", chatWidgetsDashboardOnly, "appearance"),
       ]);
       setIsDirty(false);
       toast("success", "Appearance settings saved.");
       window.dispatchEvent(new CustomEvent("agentdesk:sidebar-default-changed", { detail: { sidebarDefault } }));
+      window.dispatchEvent(new CustomEvent("agentdesk:chat-widgets-scope-changed", { detail: { dashboardOnly: chatWidgetsDashboardOnly } }));
     } catch {
       toast("error", "Failed to save appearance settings.");
     } finally {
       setIsSaving(false);
     }
-  }, [sidebarDefault, dashboardQuotes]);
+  }, [sidebarDefault, dashboardQuotes, chatWidgetsDashboardOnly]);
 
   return (
     <div className="space-y-6">
@@ -253,6 +259,25 @@ export function AppearanceSettings() {
               checked={dashboardQuotes}
               onCheckedChange={(val) => {
                 setDashboardQuotes(val);
+                setIsDirty(true);
+              }}
+            />
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="chat-widgets-dashboard-only-toggle">Show Chat Widgets Only on Dashboard</Label>
+              <p className="text-xs text-muted-foreground">
+                Chat launchers (PM, custom agents) and their footer bar appear only on the Dashboard page. Turn off to show them on every page.
+              </p>
+            </div>
+            <Switch
+              id="chat-widgets-dashboard-only-toggle"
+              checked={chatWidgetsDashboardOnly}
+              onCheckedChange={(val) => {
+                setChatWidgetsDashboardOnly(val);
                 setIsDirty(true);
               }}
             />

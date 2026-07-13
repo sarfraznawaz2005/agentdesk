@@ -344,7 +344,7 @@ function ChatInputBar({
 // ChatPanel
 // ---------------------------------------------------------------------------
 
-export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ChatPanel({ open, onClose, footerShowing }: { open: boolean; onClose: () => void; footerShowing: boolean }) {
 	const { percent: fontSizePercent, zoomIn, zoomOut, atMin: zoomAtMin, atMax: zoomAtMax } = useConvFontSize("conv-font-size-collections");
 	const [showZoomHint, setShowZoomHint] = useState(false);
 	const zoomHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -752,13 +752,15 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 				<div
 					ref={widgetRef}
 					className={cn(
-						// bottom-12 (not bottom-[19px]): clears the persistent
-						// ChatLauncherFooter bar (h-11, fixed to the viewport bottom
-						// on every page including Collections) instead of sitting
-						// behind/under it.
-						"fixed bottom-12 right-6 z-[57]",
+						// bottom-12 (not bottom-[19px]) only while the persistent
+						// ChatLauncherFooter bar is actually showing on this page (h-11,
+						// fixed to the viewport bottom) — otherwise it isn't there to
+						// clear, so keep the tighter original offset.
+						"fixed right-6 z-[57]",
+						footerShowing ? "bottom-12" : "bottom-[19px]",
 						"flex flex-col w-[504px] h-[540px]",
-						"max-md:left-3 max-md:right-3 max-md:bottom-12 max-md:w-auto max-md:h-[82dvh]",
+						footerShowing ? "max-md:bottom-12" : "max-md:bottom-3",
+						"max-md:left-3 max-md:right-3 max-md:w-auto max-md:h-[82dvh]",
 						"bg-background border border-border rounded-xl shadow-2xl overflow-hidden",
 					)}
 				>

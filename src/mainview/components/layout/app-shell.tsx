@@ -26,6 +26,8 @@ import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox"
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { IS_REMOTE } from "@/lib/remote-transport";
 import { useIsMobile } from "@/lib/use-is-mobile";
+import { useChatWidgetsVisibleHere } from "@/lib/use-chat-widgets-scope";
+import { cn } from "@/lib/utils";
 // Side-effect import: attaches the Issue Fixer live-run listeners at app startup so runs
 // stream into the store regardless of which tab/page is open (matches the chat store).
 import "@/stores/issue-fixer-store";
@@ -129,6 +131,7 @@ function AppShellContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
+  const chatWidgetsVisible = useChatWidgetsVisibleHere();
 
   // Resolve the app's data directory once — it never changes during a session.
   // Used by the Settings page header to open the data folder in the explorer.
@@ -358,8 +361,9 @@ function AppShellContent() {
             that covers whatever a page renders at its very bottom (a project's
             chat input, Playground's, Council's, etc). Pages with short content
             just get a bit of empty space at the end; pages using h-full
-            percentage layouts get correctly squeezed above it. */}
-        <div id="main-scroll-container" className="flex-1 overflow-auto pb-11">
+            percentage layouts get correctly squeezed above it. Only reserved
+            when the footer will actually show here — see chatWidgetsVisible. */}
+        <div id="main-scroll-container" className={cn("flex-1 overflow-auto", chatWidgetsVisible && "pb-11")}>
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
@@ -389,16 +393,17 @@ function AppShellContent() {
           (runtimeAvailable=false) and the inbox shows a desktop-only note (TASK-485). */}
       <AlwaysMountedInbox />
       {/* Dashboard chat widgets — their trigger pills are hidden (the
-          ChatLauncherFooter below is the launcher, available on every page);
-          these stay mounted here — on every route, not just the Dashboard —
-          to host the chat panels, stream listeners, and launcher-registry
-          registration. */}
+          ChatLauncherFooter below is the launcher). Visible on every route by
+          default is actually gated by chatWidgetsVisible: dashboard-only
+          (default, per the "Show chat widgets only on Dashboard" appearance
+          setting) restricts registration + the footer to "/"; turning that
+          off shows them everywhere, same as before. */}
       <div
         className="fixed bottom-6 right-6 z-50 flex flex-wrap-reverse justify-end items-end gap-3"
         style={{ maxWidth: `calc(100vw - ${isMobile ? 0 : sidebarCollapsed ? 60 : 200}px - 24px)` }}
       >
-        <CustomAgentChatLauncher visible={true} />
-        <PmChatWidget visible={true} />
+        <CustomAgentChatLauncher visible={chatWidgetsVisible} />
+        <PmChatWidget visible={chatWidgetsVisible} />
       </div>
       {/* Persistent footer bar listing every launcher directly (all screen sizes). */}
       <ChatLauncherFooter sidebarCollapsed={sidebarCollapsed} isMobile={isMobile} />

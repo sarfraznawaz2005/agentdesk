@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useChatWidgetsVisibleHere } from "@/lib/use-chat-widgets-scope";
 import { ChatPanel } from "./chat-panel";
 
 // Same fixed-circular-button convention as src/mainview/components/dashboard/chat-fab.tsx —
@@ -8,6 +9,9 @@ import { ChatPanel } from "./chat-panel";
 // is open (the panel's own header X closes it) instead of sitting behind/above the panel.
 export function ChatFab() {
 	const [open, setOpen] = useState(false);
+	// The persistent ChatLauncherFooter bar only shows on Collections when the
+	// "Show chat widgets only on Dashboard" setting is off — clear it only then.
+	const footerShowing = useChatWidgetsVisibleHere();
 
 	return (
 		<>
@@ -16,10 +20,8 @@ export function ChatFab() {
 					type="button"
 					onClick={() => setOpen(true)}
 					className={cn(
-						// bottom-12 (not bottom-6): clears the persistent ChatLauncherFooter
-						// bar (h-11, fixed to the viewport bottom on every page) instead of
-						// sitting behind/under it.
-						"fixed bottom-12 right-6 z-[57] flex h-14 w-14 items-center justify-center rounded-full",
+						"fixed right-6 z-[57] flex h-14 w-14 items-center justify-center rounded-full",
+						footerShowing ? "bottom-12" : "bottom-6",
 						"bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors",
 					)}
 					aria-label="Open collections chat"
@@ -29,7 +31,7 @@ export function ChatFab() {
 			)}
 			{/* Always mounted (even while closed) so an in-flight stream's event
 			    listeners stay attached — only the panel's own JSX hides when !open. */}
-			<ChatPanel open={open} onClose={() => setOpen(false)} />
+			<ChatPanel open={open} onClose={() => setOpen(false)} footerShowing={footerShowing} />
 		</>
 	);
 }
