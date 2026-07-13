@@ -228,10 +228,17 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, [open]);
 
-  // Auto-scroll to latest message, and when panel/modal opens
+  // Auto-scroll to latest message, and when panel/modal opens. Opening with an
+  // existing conversation should land at the bottom instantly, not visibly
+  // animate down to it — only new messages arriving while already open scroll
+  // smoothly.
+  const prevOpenStateRef = useRef({ open, expandedOpen });
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    modalMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const justOpened = open !== prevOpenStateRef.current.open || expandedOpen !== prevOpenStateRef.current.expandedOpen;
+    const behavior = justOpened ? "auto" : "smooth";
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    modalMessagesEndRef.current?.scrollIntoView({ behavior });
+    prevOpenStateRef.current = { open, expandedOpen };
   }, [messages, open, expandedOpen]);
 
   // Sync expandedOpen into a ref so stream callbacks can read the current value.

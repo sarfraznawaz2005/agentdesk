@@ -752,9 +752,13 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 				<div
 					ref={widgetRef}
 					className={cn(
-						"fixed bottom-[19px] right-6 z-[57]",
+						// bottom-12 (not bottom-[19px]): clears the persistent
+						// ChatLauncherFooter bar (h-11, fixed to the viewport bottom
+						// on every page including Collections) instead of sitting
+						// behind/under it.
+						"fixed bottom-12 right-6 z-[57]",
 						"flex flex-col w-[504px] h-[540px]",
-						"max-md:left-3 max-md:right-3 max-md:bottom-3 max-md:w-auto max-md:h-[82dvh]",
+						"max-md:left-3 max-md:right-3 max-md:bottom-12 max-md:w-auto max-md:h-[82dvh]",
 						"bg-background border border-border rounded-xl shadow-2xl overflow-hidden",
 					)}
 				>

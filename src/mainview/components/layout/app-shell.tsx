@@ -353,7 +353,13 @@ function AppShellContent() {
             {projectId && <ProjectSwitcher currentProjectId={projectId} />}
           </TopNav>
         )}
-        <div id="main-scroll-container" className="flex-1 overflow-auto">
+        {/* pb-11 (44px) reserves room for the persistent ChatLauncherFooter bar
+            (same 44px, via its own h-11) — otherwise it's a `fixed` overlay
+            that covers whatever a page renders at its very bottom (a project's
+            chat input, Playground's, Council's, etc). Pages with short content
+            just get a bit of empty space at the end; pages using h-full
+            percentage layouts get correctly squeezed above it. */}
+        <div id="main-scroll-container" className="flex-1 overflow-auto pb-11">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>

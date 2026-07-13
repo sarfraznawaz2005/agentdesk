@@ -141,13 +141,14 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
   return (
     <div
       ref={containerRef}
-      // Same outer py-2 as the sidebar's version-footer wrapper, with the
-      // button's own padding trimmed down to bring the total row height in
-      // line with it — so the two top borders coincide.
       // z-40 (not higher): the expanded-chat Dialog's scrim (DialogOverlay) is
       // z-50 and covers the whole app — this bar must sit below that so it
       // dims along with everything else instead of poking through on top of it.
-      className="fixed bottom-0 z-40 flex items-center justify-center gap-2 overflow-hidden border-t border-border bg-background/80 backdrop-blur-sm px-3 py-2"
+      // h-11 (44px) is a fixed height, not padding-driven — app-shell.tsx
+      // reserves the same 44px (`pb-11` on #main-scroll-container) so every
+      // page's own bottom-anchored content (chat inputs, etc.) has room above
+      // this bar instead of being covered by it.
+      className="fixed bottom-0 z-40 flex h-11 items-center justify-center gap-2 overflow-hidden border-t border-border bg-background/80 backdrop-blur-sm px-3"
       style={{ left: isMobile ? 0 : sidebarCollapsed ? 60 : 200, right: 0 }}
     >
       {/* Hidden measuring clone — same markup/classes as the real pills (plus a

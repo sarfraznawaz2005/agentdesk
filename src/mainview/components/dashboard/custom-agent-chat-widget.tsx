@@ -244,10 +244,16 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, [open]);
 
-  // Auto-scroll (widget + modal)
+  // Auto-scroll (widget + modal). Opening with an existing conversation should
+  // land at the bottom instantly, not visibly animate down to it — only new
+  // messages arriving while already open scroll smoothly.
+  const prevOpenStateRef = useRef({ open, expandedOpen });
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    modalMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const justOpened = open !== prevOpenStateRef.current.open || expandedOpen !== prevOpenStateRef.current.expandedOpen;
+    const behavior = justOpened ? "auto" : "smooth";
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    modalMessagesEndRef.current?.scrollIntoView({ behavior });
+    prevOpenStateRef.current = { open, expandedOpen };
   }, [messages, open, expandedOpen]);
 
   // Focus input on open

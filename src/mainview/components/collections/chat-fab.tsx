@@ -16,7 +16,10 @@ export function ChatFab() {
 					type="button"
 					onClick={() => setOpen(true)}
 					className={cn(
-						"fixed bottom-6 right-6 z-[57] flex h-14 w-14 items-center justify-center rounded-full",
+						// bottom-12 (not bottom-6): clears the persistent ChatLauncherFooter
+						// bar (h-11, fixed to the viewport bottom on every page) instead of
+						// sitting behind/under it.
+						"fixed bottom-12 right-6 z-[57] flex h-14 w-14 items-center justify-center rounded-full",
 						"bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors",
 					)}
 					aria-label="Open collections chat"
