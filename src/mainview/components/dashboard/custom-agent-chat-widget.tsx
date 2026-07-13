@@ -332,17 +332,19 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     };
   }, [agentName]);
 
-  // --- Mobile chat FAB integration ------------------------------------------
-  // Register this launcher (only while on the dashboard) so the FAB can list +
-  // reopen it; mirror unread + open state through the shared store.
+  // --- Footer chat launcher integration ---------------------------------------
+  // Register this launcher so the footer bar can list + toggle it; mirror
+  // unread, streaming, and open state through the shared store so both are
+  // visible even while the panel is closed or the user is on another page.
   const launcherId = `agent:${agentName}`;
   useEffect(() => {
     if (!visible) return;
     const { register, unregister } = useDashboardLauncherStore.getState();
-    register({ id: launcherId, displayName, color, order: 1, unread });
+    register({ id: launcherId, displayName, color, order: 1, unread, streaming: isStreaming });
     return () => unregister(launcherId);
   }, [visible, launcherId, displayName, color]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { useDashboardLauncherStore.getState().setUnread(launcherId, unread); }, [launcherId, unread]);
+  useEffect(() => { useDashboardLauncherStore.getState().setStreaming(launcherId, isStreaming); }, [launcherId, isStreaming]);
   useEffect(() => {
     const s = useDashboardLauncherStore.getState();
     if (open) s.setActiveOpen(launcherId);
@@ -351,9 +353,10 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   const openRequestId = useDashboardLauncherStore((s) => s.openRequestId);
   useEffect(() => {
     if (openRequestId === launcherId) {
-      // Responding to an external open-request signal from the FAB.
+      // Responding to an external toggle-request signal from the footer —
+      // clicking an already-open entry closes its panel back down.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOpen(true);
+      setOpen((o) => !o);
       useDashboardLauncherStore.getState().clearOpenRequest();
     }
   }, [openRequestId, launcherId]);
@@ -532,7 +535,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
             "text-white shadow-lg whitespace-nowrap",
             "hover:brightness-110 transition-[filter,transform] duration-150",
             "text-sm font-medium",
-            "hidden", // launcher lives in the ChatFab (all screen sizes); this pill is kept only as the panel mount-point
+            "hidden", // launcher lives in the sidebar's "Chats" button; this pill is kept only as the panel mount-point
           )}
           title={displayName}
         >
@@ -543,15 +546,16 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       )}
 
       {/* Chat panel — z-[60] so it sits above the row of floating trigger
-          buttons (z-50) when opened. Sits ~5px lower than the buttons. */}
+          buttons (z-50) when opened. Bottom offset clears the persistent
+          ChatLauncherFooter bar so the panel sits just above it. */}
       {open && !expandedOpen && (
         <div
           ref={widgetRef}
           className={cn(
-            "fixed bottom-[19px] right-6 z-[60]",
+            "fixed bottom-12 right-6 z-[60]",
             "flex flex-col w-[480px] h-[530px]",
             // Mobile: span the viewport instead of a fixed 480px panel.
-            "max-md:left-3 max-md:right-3 max-md:bottom-3 max-md:w-auto max-md:h-[82dvh]",
+            "max-md:left-3 max-md:right-3 max-md:bottom-12 max-md:w-auto max-md:h-[82dvh]",
             "bg-background border border-border rounded-xl shadow-2xl",
           )}
         >

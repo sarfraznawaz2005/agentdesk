@@ -15,7 +15,7 @@ import { WhatsNewDialog } from "../modals/whats-new-dialog";
 import type { ReleaseEntry } from "../../../shared/rpc/whats-new";
 import { PmChatWidget } from "@/components/dashboard/pm-chat-widget";
 import { CustomAgentChatLauncher } from "@/components/dashboard/custom-agent-chat-launcher";
-import { ChatFab } from "@/components/dashboard/chat-fab";
+import { ChatLauncherFooter } from "@/components/dashboard/chat-launcher-footer";
 import { MaintenanceOverlay } from "@/components/layout/maintenance-overlay";
 import { AgentSessionToast } from "@/components/layout/agent-session-toast";
 import { CrossProjectApprovalToast } from "@/components/layout/cross-project-approval-toast";
@@ -382,18 +382,20 @@ function AppShellContent() {
           <electrobun-webview> live session already no-ops in a browser
           (runtimeAvailable=false) and the inbox shows a desktop-only note (TASK-485). */}
       <AlwaysMountedInbox />
-      {/* Dashboard chat widgets — their trigger pills are hidden (the ChatFab
-          below is the launcher on all screen sizes); these stay mounted here to
-          host the chat panels, stream listeners, and FAB-registry registration. */}
+      {/* Dashboard chat widgets — their trigger pills are hidden (the
+          ChatLauncherFooter below is the launcher, available on every page);
+          these stay mounted here — on every route, not just the Dashboard —
+          to host the chat panels, stream listeners, and launcher-registry
+          registration. */}
       <div
         className="fixed bottom-6 right-6 z-50 flex flex-wrap-reverse justify-end items-end gap-3"
         style={{ maxWidth: `calc(100vw - ${isMobile ? 0 : sidebarCollapsed ? 60 : 200}px - 24px)` }}
       >
-        <CustomAgentChatLauncher visible={location.pathname === "/"} />
-        <PmChatWidget visible={location.pathname === "/"} />
+        <CustomAgentChatLauncher visible={true} />
+        <PmChatWidget visible={true} />
       </div>
-      {/* A single FAB replaces the stacked launcher pills above (all screen sizes). */}
-      <ChatFab />
+      {/* Persistent footer bar listing every launcher directly (all screen sizes). */}
+      <ChatLauncherFooter sidebarCollapsed={sidebarCollapsed} isMobile={isMobile} />
       {/* Global "maintenance underway" overlay — sits above every page. */}
       <MaintenanceOverlay />
     </div>

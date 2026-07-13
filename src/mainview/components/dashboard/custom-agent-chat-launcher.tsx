@@ -13,12 +13,11 @@ interface ChatAgent {
  * Fetches all custom agents with "Enable Chat" turned on and renders one
  * floating chat widget for each, stacked above the PM button.
  *
- * The widgets stay MOUNTED regardless of the current page (only their trigger
- * button is gated by `visible`) so their stream listeners keep capturing replies
- * — and flagging them unread — even after the user navigates away from the
- * dashboard mid-conversation. The list (re)fetches on mount and whenever the
- * dashboard becomes visible, so toggling "Enable Chat" in Settings → Agents is
- * reflected without a full reload.
+ * The widgets are mounted app-wide (available on every page, not just the
+ * Dashboard) so their stream listeners keep capturing replies — and flagging
+ * them unread — no matter which page the user is on mid-conversation. The
+ * list (re)fetches on mount and whenever an agent's chat setting changes, so
+ * toggling "Enable Chat" in Settings → Agents is reflected without a reload.
  */
 export function CustomAgentChatLauncher({ visible }: { visible: boolean }) {
   const [agents, setAgents] = useState<ChatAgent[]>([]);

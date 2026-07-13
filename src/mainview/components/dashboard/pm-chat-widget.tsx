@@ -12,12 +12,12 @@ import { Tip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { UnreadDot } from "@/components/ui/unread-dot";
-import { useDashboardLauncherStore, selectHasCustomAgents } from "@/stores/dashboard-launcher-store";
+import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
 import { QuickAttachBar } from "./quick-attach-bar";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { VoiceInputButton } from "@/components/chat/voice-input-button";
 
-// Stable id for the mobile chat FAB registry (mirrors bg-indigo-600 = #4f46e5).
+// Stable id for the sidebar chat launcher registry (mirrors bg-indigo-600 = #4f46e5).
 const PM_LAUNCHER_ID = "pm";
 
 // ---------------------------------------------------------------------------
@@ -323,16 +323,18 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     };
   }, []);
 
-  // --- Mobile chat FAB integration ------------------------------------------
-  // Register this launcher (only while on the dashboard) so the FAB can list +
-  // reopen it; mirror unread + open state through the shared store.
+  // --- Footer chat launcher integration ---------------------------------------
+  // Register this launcher so the footer bar can list + toggle it; mirror
+  // unread, streaming, and open state through the shared store so both are
+  // visible even while the panel is closed or the user is on another page.
   useEffect(() => {
     if (!visible) return;
     const { register, unregister } = useDashboardLauncherStore.getState();
-    register({ id: PM_LAUNCHER_ID, displayName: "Chat with PM", color: "#4f46e5", order: 0, unread });
+    register({ id: PM_LAUNCHER_ID, displayName: "Chat with PM", color: "#4f46e5", order: 0, unread, streaming: isStreaming });
     return () => unregister(PM_LAUNCHER_ID);
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { useDashboardLauncherStore.getState().setUnread(PM_LAUNCHER_ID, unread); }, [unread]);
+  useEffect(() => { useDashboardLauncherStore.getState().setStreaming(PM_LAUNCHER_ID, isStreaming); }, [isStreaming]);
   useEffect(() => {
     const s = useDashboardLauncherStore.getState();
     if (open) s.setActiveOpen(PM_LAUNCHER_ID);
@@ -341,14 +343,12 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   const openRequestId = useDashboardLauncherStore((s) => s.openRequestId);
   useEffect(() => {
     if (openRequestId === PM_LAUNCHER_ID) {
-      setOpen(true);
+      // Responding to an external toggle-request signal from the footer —
+      // clicking an already-open entry closes its panel back down.
+      setOpen((o) => !o);
       useDashboardLauncherStore.getState().clearOpenRequest();
     }
   }, [openRequestId]);
-  // With custom agents present the PM lives in the ChatFab; alone it shows as a
-  // direct pill (like before the FAB existed).
-  const hasCustomAgents = useDashboardLauncherStore(selectHasCustomAgents);
-
   const sendMessage = useCallback(async () => {
     const content = input.trim();
     if (!content || isStreaming) return;
@@ -523,9 +523,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
             "bg-primary text-primary-foreground shadow-lg",
             "hover:bg-primary/90 transition-colors duration-150",
             "text-sm font-medium whitespace-nowrap",
-            // Hidden only when the ChatFab is in play (1+ custom agents); alone
-            // the PM shows as a direct pill.
-            hasCustomAgents && "hidden",
+            // The sidebar's "Chats" button is the sole launcher entry point now
+            // (available on every page); this pill is kept only as the panel mount-point.
+            "hidden",
           )}
           title="Chat with PM"
         >
@@ -536,16 +536,17 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
       )}
 
       {/* Chat panel — higher z-index than the floating buttons so custom-agent
-          trigger buttons (z-50) don't overlap the open widget. Sits ~5px lower
-          than the trigger button row so the buttons stay visually anchored. */}
+          trigger buttons (z-50) don't overlap the open widget. Bottom offset
+          clears the persistent ChatLauncherFooter bar so the panel sits just
+          above it instead of behind/under it. */}
       {open && !expandedOpen && (
         <div
           ref={widgetRef}
           className={cn(
-            "fixed bottom-[19px] right-6 z-[60]",
+            "fixed bottom-12 right-6 z-[60]",
             "flex flex-col w-[480px] h-[530px]",
             // Mobile: span the viewport instead of a fixed 480px panel.
-            "max-md:left-3 max-md:right-3 max-md:bottom-3 max-md:w-auto max-md:h-[82dvh]",
+            "max-md:left-3 max-md:right-3 max-md:bottom-12 max-md:w-auto max-md:h-[82dvh]",
             "bg-background border border-border rounded-xl shadow-2xl",
           )}
         >
