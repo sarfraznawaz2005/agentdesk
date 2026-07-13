@@ -10,6 +10,7 @@
 
 import { generateText } from "ai";
 import type { createProviderAdapter } from "../providers";
+import { internalCallModelId } from "../providers/claude-subscription";
 
 type ProviderAdapter = ReturnType<typeof createProviderAdapter>;
 
@@ -18,12 +19,13 @@ export async function qaRevise(
 	modelId: string,
 	kind: "reply" | "proposal",
 	text: string,
+	providerType?: string,
 ): Promise<string> {
 	const trimmed = text.trim();
 	if (trimmed.length < 20) return trimmed;
 	try {
 		const { text: out } = await generateText({
-			model: adapter.createModel(modelId),
+			model: adapter.createModel(providerType ? internalCallModelId(providerType, modelId) : modelId),
 			system: `You are a strict editor reviewing a freelancer's client ${kind} before it is sent. Remove or soften: any over-promise (guarantees, "100%", "best", unrealistic timelines), any unverifiable boast (specific past clients, numbers, or credentials you were not explicitly given), and any AI giveaway phrasing. Preserve the meaning, tone, and roughly the length. Do NOT add new claims or new information. Output ONLY the corrected ${kind} text — no preamble, no quotes, no notes. If it is already clean, return it unchanged.`,
 			prompt: trimmed,
 			temperature: 0.2,

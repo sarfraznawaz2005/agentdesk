@@ -6,6 +6,7 @@ import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
 import { createSummary } from "../db/summaries";
 import type { ProviderConfig } from "../providers/types";
+import { internalCallModelId } from "../providers/claude-subscription";
 
 /** Per-conversation lock to prevent concurrent summarization runs. */
 const activeSummarizations = new Set<string>();
@@ -117,7 +118,7 @@ export async function summarizeConversation(options: {
     // 4. Create provider adapter and model
     const resolvedModelId = modelId || getDefaultModel(providerConfig.providerType);
     const adapter = createProviderAdapter(providerConfig);
-    const model = adapter.createModel(resolvedModelId);
+    const model = adapter.createModel(internalCallModelId(providerConfig.providerType, resolvedModelId));
 
     // 5. Iterative summarization — each chunk builds on the running summary
     let runningSummary = previousSummary;

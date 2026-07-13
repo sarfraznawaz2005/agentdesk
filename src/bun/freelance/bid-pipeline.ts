@@ -12,6 +12,7 @@ import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { aiProviders, freelanceListings } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { internalCallModelId } from "../providers/claude-subscription";
 import { ensureFullDescription } from "./description";
 import { getFreelanceSettings } from "./settings";
 import { getAutoEarnSettings } from "./auto-earn-settings";
@@ -28,7 +29,7 @@ Open by showing you understood the specific job — reference a concrete detail.
 ${getHumanizerRules()}`;
 }
 
-async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string }> {
+async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string; providerType: string }> {
 	const fl = await getFreelanceSettings();
 	let row = fl.analysisProviderId
 		? (await db.select().from(aiProviders).where(eq(aiProviders.id, fl.analysisProviderId)).limit(1))[0]
@@ -39,7 +40,7 @@ async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof c
 		id: row.id, name: row.name, providerType: row.providerType,
 		apiKey: row.apiKey, baseUrl: row.baseUrl ?? null, defaultModel: row.defaultModel ?? null,
 	});
-	return { adapter, modelId: row.defaultModel ?? "gpt-4o-mini" };
+	return { adapter, modelId: row.defaultModel ?? "gpt-4o-mini", providerType: row.providerType };
 }
 
 function getAccountAutonomy(platform: string): string {
@@ -59,8 +60,8 @@ export async function analyzeListingRequirements(_platform: string, listingId: s
 	const listing = (await db.select().from(freelanceListings).where(eq(freelanceListings.id, listingId)).limit(1))[0];
 	if (!listing) throw new Error("Listing not found");
 
-	const { adapter, modelId } = await resolveProviderAndModel();
-	const fullDescription = await ensureFullDescription(listing, adapter, modelId);
+	const { adapter, modelId, providerType } = await resolveProviderAndModel();
+	const fullDescription = await ensureFullDescription(listing, adapter, modelId, undefined, providerType);
 	const description = String(fullDescription || listing.description || "").slice(0, 8000);
 
 	const aeSettings = await getAutoEarnSettings();
@@ -101,7 +102,7 @@ Respond ONLY with valid JSON in this exact shape:
 	let parsed: BidRequirementsDto = { hasRequirements: false, questions: [] };
 	try {
 		const { text } = await generateText({
-			model: adapter.createModel(modelId),
+			model: adapter.createModel(internalCallModelId(providerType, modelId)),
 			prompt: analysisPrompt,
 			temperature: 0,
 		});
@@ -132,23 +133,23 @@ export async function draftBidForListing(platform: string, listingId: string, hu
 		}
 	})();
 
-	const { adapter, modelId } = await resolveProviderAndModel();
+	const { adapter, modelId, providerType } = await resolveProviderAndModel();
 
 	// Make sure the proposal is written from the full listing page description,
 	// not the truncated RSS snippet — fetch + cache it if the chat hasn't already.
-	const fullDescription = await ensureFullDescription(listing, adapter, modelId);
+	const fullDescription = await ensureFullDescription(listing, adapter, modelId, undefined, providerType);
 	const description = String(fullDescription || listing.description || "").slice(0, 8000);
 	const answersBlock = humanAnswers?.length
 		? `\nThe client specifically requested the following information in the application — include ALL of these in the proposal:\n${humanAnswers.map((a) => `- ${a.question}: ${a.answer}`).join("\n")}\n`
 		: "";
 	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${description}${answersBlock}\n\nWrite my proposal for this job.`;
 	const { text } = await generateText({
-		model: adapter.createModel(modelId),
+		model: adapter.createModel(internalCallModelId(providerType, modelId)),
 		system: buildProposalSystem(),
 		prompt,
 		temperature: 0.75,
 	});
-	let draftBody = await qaRevise(adapter, modelId, "proposal", text.trim());
+	let draftBody = await qaRevise(adapter, modelId, "proposal", text.trim(), providerType);
 
 	// Template-variation guard (draft time): identical-skeleton proposals across
 	// many projects are THE classic bid-spam signal. Regenerate once if this one
@@ -158,12 +159,12 @@ export async function draftBidForListing(platform: string, listingId: string, hu
 	if (sim > DRAFT_SIMILARITY_MAX) {
 		try {
 			const { text: retry } = await generateText({
-				model: adapter.createModel(modelId),
+				model: adapter.createModel(internalCallModelId(providerType, modelId)),
 				system: buildProposalSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: This proposal must clearly differ in structure and wording from your recent proposals — different opening, different ordering, different phrasing. Anchor it in the specifics of THIS job.`,
 				temperature: 0.9,
 			});
-			const retryBody = await qaRevise(adapter, modelId, "proposal", retry.trim());
+			const retryBody = await qaRevise(adapter, modelId, "proposal", retry.trim(), providerType);
 			if (maxSimilarityAgainst(retryBody, priors) < sim) draftBody = retryBody;
 		} catch {
 			/* keep the original draft — the send-time gate is the backstop */

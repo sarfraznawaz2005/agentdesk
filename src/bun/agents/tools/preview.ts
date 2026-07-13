@@ -16,6 +16,7 @@ import { openPreviewWindow } from "../../annotations/preview-window";
 import { Updater } from "electrobun/bun";
 import { createProviderAdapter } from "../../providers";
 import { getDefaultModel } from "../../providers/models";
+import { internalCallModelId } from "../../providers/claude-subscription";
 import type { ProviderConfig } from "../../providers/types";
 
 // ---------------------------------------------------------------------------
@@ -182,7 +183,7 @@ async function detectWithAI(workspacePath: string, providerConfig: ProviderConfi
 		const adapter = createProviderAdapter(providerConfig);
 		const modelId = providerConfig.defaultModel ?? getDefaultModel(providerConfig.providerType);
 		const { text } = await generateText({
-			model:    adapter.createModel(modelId),
+			model:    adapter.createModel(internalCallModelId(providerConfig.providerType, modelId)),
 			messages: [{ role: "user", content: prompt }],
 		});
 

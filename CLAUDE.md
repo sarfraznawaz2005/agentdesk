@@ -234,6 +234,27 @@ Turn tasks into verifiable goals and loop until they're met, rather than stoppin
 - **Follow the task workflow**: `Plan → Approve → Execute → Done`.
    Use `aitasks` CLI for all task tracking (see Task Management section below)
 - Use `electrobun` skill for `electrobun` development.
+- **Claude Subscription is a two-path AI provider — when touching AI-provider-invoking code, check
+   both paths.** `providerType: "claude-subscription"` only behaves like a normal provider (full
+   AI-SDK `ModelMessage[]`, native multi-turn history, streaming, native tool/image content) for
+   **Haiku**, over a direct-HTTP OAuth adapter. Every other model (Sonnet/Opus) 429s on that path
+   and instead routes through a fundamentally different mechanism — the official Agent SDK spawning
+   a real `claude` CLI subprocess (`runClaudeCliTask` in `src/bun/providers/claude-subscription-cli-runner.ts`),
+   which takes a single flattened text prompt (no native multi-message array, no image/audio content
+   unless explicitly converted to an MCP content block) and wraps tools through its own layer. Gate:
+   `providerType === "claude-subscription" && !isHaikuModel(modelId)` (the `isClaudeSubscriptionViaCli`
+   pattern in `agent-loop.ts`/`engine.ts`; `isHaikuModel`/`internalCallModelId` in
+   `providers/claude-subscription.ts`). **Scope — only applies to code that creates/calls an AI
+   provider model directly**: a new chat/agent surface, a tool whose `execute()` spins up its own
+   `generateText`/`streamText` call, anything assembling conversation history for a model, or a tool
+   returning non-text content. When you touch that kind of code, verify it either (a) reuses an
+   already-routed path (`runInlineAgent`, the PM loop) and inherits the fix for free, (b) needs the
+   full CLI/SDK branch because it's conversational or tool-using (mirror the pattern already applied
+   in `rpc/dashboard.ts`, `collections/chat.ts`, `rpc/freelance-chat.ts`, `rpc/skills-search-chat.ts`,
+   `rpc/dashboard-agent.ts`, `rpc/council.ts`, `scheduler/task-executor.ts`), or (c) just needs the
+   `internalCallModelId` Haiku-swap because it's a bounded one-shot completion with no tools (mirror
+   `agents/tools/deep-research.ts`, `agents/tools/preview.ts`, `agents/summarizer.ts`). Not relevant
+   to UI-only changes, DB/schema work, or anything that never touches an AI provider call.
 - **New native/binary dependencies must ship their platform binaries, and never load eagerly at
    startup.** Bun's bundler flattens `src/bun` into one file, so any package with a `.node`
    addon or per-platform optional-dependency binary (`onnxruntime-node`, `sharp`, etc.) needs an

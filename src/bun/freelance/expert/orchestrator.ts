@@ -17,6 +17,7 @@ import { sqlite } from "../../db/connection";
 import { aiProviders } from "../../db/schema";
 import { createProviderAdapter } from "../../providers";
 import { getDefaultModel } from "../../providers/models";
+import { internalCallModelId } from "../../providers/claude-subscription";
 import type { ProviderConfig } from "../../providers/types";
 import { runInlineAgent, type InlineAgentCallbacks } from "../../agents/agent-loop";
 import { getFreelanceSettings } from "../settings";
@@ -131,7 +132,7 @@ async function triageMessage(config: ProviderConfig, modelId: string, body: stri
 	try {
 		const adapter = createProviderAdapter(config);
 		const { text } = await generateText({
-			model: adapter.createModel(modelId),
+			model: adapter.createModel(internalCallModelId(config.providerType, modelId)),
 			system: `Classify a client's freelance message into exactly ONE category:
 - payment: anything about money, invoices, deposits, releasing/holding funds, payment methods.
 - contract: signing agreements, NDAs, or legal terms.

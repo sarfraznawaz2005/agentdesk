@@ -7,6 +7,7 @@ import { sqlite } from "../db/connection";
 import { db } from "../db";
 import { freelanceListings, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { internalCallModelId } from "../providers/claude-subscription";
 import { broadcastToWebview } from "../engine-manager";
 import { coalesceBroadcast } from "../lib/coalesce-broadcast";
 import { getAllTools } from "../agents/tools/index";
@@ -31,6 +32,7 @@ import type { WizardWorkableListing, WizardFailedListing, FreelanceBlockKind } f
 async function getAnalysisProviderAndModel(): Promise<{
   adapter: ReturnType<typeof createProviderAdapter>;
   modelId: string;
+  providerType: string;
 }> {
   const s = await getFreelanceSettings();
   const providerId = s.analysisProviderId;
@@ -59,7 +61,7 @@ async function getAnalysisProviderAndModel(): Promise<{
     defaultModel: row.defaultModel ?? null,
   });
 
-  return { adapter, modelId: row.defaultModel ?? "gpt-4o-mini" };
+  return { adapter, modelId: row.defaultModel ?? "gpt-4o-mini", providerType: row.providerType };
 }
 
 // ---------------------------------------------------------------------------
@@ -823,7 +825,9 @@ async function analyzeListingWorkability(
   modelId: string,
   abortSignal?: AbortSignal,
   additionalNotes?: string,
+  providerType?: string,
 ): Promise<{ verdict: Verdict; analysisText: string }> {
+  const internalModelId = providerType ? internalCallModelId(providerType, modelId) : modelId;
   const tools = buildWizardTools();
   const userMessage = buildUserMessage(listing, fullDescription, additionalNotes);
 
@@ -832,7 +836,7 @@ async function analyzeListingWorkability(
   // and then write its analysis in the same loop. If it skips the checks entirely we force
   // them below — Condition A requires actual verification.
   let phase1Result = await generateText({
-    model: adapter.createModel(modelId),
+    model: adapter.createModel(internalModelId),
     abortSignal,
     system: buildAnalysisSystemPrompt(),
     messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
@@ -860,7 +864,7 @@ async function analyzeListingWorkability(
   if (toolResultLines.length === 0) {
     try {
       phase1Result = await generateText({
-        model: adapter.createModel(modelId),
+        model: adapter.createModel(internalModelId),
         abortSignal,
         system: buildAnalysisSystemPrompt(),
         messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
@@ -888,7 +892,7 @@ async function analyzeListingWorkability(
   if (!analysisText) {
     try {
       const written = await generateText({
-        model: adapter.createModel(modelId),
+        model: adapter.createModel(internalModelId),
         abortSignal,
         system: buildAnalysisWritePrompt(),
         messages: [{
@@ -908,7 +912,7 @@ async function analyzeListingWorkability(
   // provider support; the JSON is parsed defensively.
   const fullContext = `## Analysis\n\n${analysisText || "(no written analysis was produced)"}\n\n## System checks (internal)\n\n${toolContext}`;
   const { text: verdictText } = await generateText({
-    model: adapter.createModel(modelId),
+    model: adapter.createModel(internalModelId),
     abortSignal,
     system:
       "You are a strict data extractor. Read the provided feasibility analysis and return ONLY a JSON object — " +
@@ -983,8 +987,9 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
   try {
     let adapter: ReturnType<typeof createProviderAdapter>;
     let modelId: string;
+    let providerType: string;
     try {
-      ({ adapter, modelId } = await getAnalysisProviderAndModel());
+      ({ adapter, modelId, providerType } = await getAnalysisProviderAndModel());
     } catch {
       broadcastToWebview(FREELANCE_EVENTS.WIZARD_ERROR, { error: "No AI provider configured" });
       return;
@@ -1066,7 +1071,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
             listing.budgetType = budgetData.budgetType;
             if (budgetData.currency !== null) listing.currency = budgetData.currency;
           }
-          listing.fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
+          listing.fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal, providerType);
         } catch (err) {
           if (!isAbortError(err)) console.error(`[wizard] Failed to fetch description for ${listing.id}:`, err);
           listing.fullDescription = "";
@@ -1180,7 +1185,7 @@ async function runWizard(options: { count: number } | { since: Date }): Promise<
       let failBlockers: string[] = [];
       try {
         const { verdict, analysisText } = await analyzeListingWorkability(
-          listing, listing.fullDescription, adapter, modelId, signal, additionalNotes,
+          listing, listing.fullDescription, adapter, modelId, signal, additionalNotes, providerType,
         );
         workable = verdict.workable;
         failReason = verdict.reason || failReason;
@@ -1299,8 +1304,9 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
   try {
     let adapter: ReturnType<typeof createProviderAdapter>;
     let modelId: string;
+    let providerType: string;
     try {
-      ({ adapter, modelId } = await getAnalysisProviderAndModel());
+      ({ adapter, modelId, providerType } = await getAnalysisProviderAndModel());
     } catch {
       return;
     }
@@ -1391,7 +1397,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
             if (budgetData.currency !== null) listing.currency = budgetData.currency;
           }
           if (fullDescription === null) {
-            fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal);
+            fullDescription = await extractDescription(pageText, listing, adapter, modelId, signal, providerType);
           }
         } catch (err) {
           if (isAbortError(err)) break;
@@ -1426,7 +1432,7 @@ export async function runAutoShortlist(source: "scheduled" | "startup"): Promise
       if (signal.aborted) break;
 
       try {
-        const { verdict, analysisText } = await analyzeListingWorkability(listing, fullDescription, adapter, modelId, signal, additionalNotes);
+        const { verdict, analysisText } = await analyzeListingWorkability(listing, fullDescription, adapter, modelId, signal, additionalNotes, providerType);
         verdictMap.set(listing.id, { verdict: verdict.workable ? "workable" : "not_workable", reason: verdict.reason, blockers: verdict.blockers, analysisText, blockKind: BLOCK_KIND_ANALYSIS });
         if (verdict.workable) {
           workableListings.push({
@@ -1580,8 +1586,9 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
 
   let adapter: ReturnType<typeof createProviderAdapter>;
   let modelId: string;
+  let providerType: string;
   try {
-    ({ adapter, modelId } = await getAnalysisProviderAndModel());
+    ({ adapter, modelId, providerType } = await getAnalysisProviderAndModel());
   } catch {
     throw new Error("No AI provider configured");
   }
@@ -1607,7 +1614,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
       }
       // Only run AI description extraction if it wasn't already present
       if (fullDescription === null) {
-        fullDescription = await extractDescription(pageText, listing, adapter, modelId);
+        fullDescription = await extractDescription(pageText, listing, adapter, modelId, undefined, providerType);
       }
     } catch {
       if (fullDescription === null) fullDescription = "";
@@ -1643,7 +1650,7 @@ export async function analyzeListing(params: { listingId: string }): Promise<{
   const additionalNotes = await getFreelanceSettings().then((s) => s.additionalNotes).catch(() => "");
 
   try {
-    const { verdict, analysisText } = await analyzeListingWorkability(listing, fullDescription, adapter, modelId, undefined, additionalNotes);
+    const { verdict, analysisText } = await analyzeListingWorkability(listing, fullDescription, adapter, modelId, undefined, additionalNotes, providerType);
 
     const now = new Date().toISOString();
     sqlite.prepare(

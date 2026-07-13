@@ -20,6 +20,7 @@ import { messages, messageParts, agents as agentsTable, aiProviders, conversatio
 import type { ProviderConfig } from "../providers/types";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { getAgentSystemPrompt } from "./prompts";
 import { getToolsForAgent } from "./tools/index";
 import { getPluginTools, applyAnthropicCaching } from "./engine-types";
@@ -126,7 +127,7 @@ export interface InlineAgentCallbacks {
 	onPartUpdated(messageId: string, partId: string, updates: Partial<MessagePart>): void;
 	onTextDelta(messageId: string, delta: string): void;
 	onAgentStart(messageId: string, agentName: string, agentDisplayName: string, task: string): void;
-	onAgentComplete(messageId: string, agentName: string, status: string, summary: string, filesModified: string[], tokensUsed: { prompt: number; completion: number; contextLimit?: number }): void;
+	onAgentComplete(messageId: string, agentName: string, status: string, summary: string, filesModified: string[], tokensUsed: { prompt: number; completion: number; contextLimit?: number; cacheCreationTokens?: number; cacheReadTokens?: number }): void;
 	/** Notify frontend that a new agent message row was created so it appears in chat. */
 	onMessageCreated?(messageId: string, conversationId: string, agentName: string, content: string): void;
 	/**
@@ -186,7 +187,7 @@ export interface InlineAgentResult {
 	status: "completed" | "failed" | "cancelled" | "context_full" | "timeout";
 	summary: string;
 	filesModified: string[];
-	tokensUsed: { prompt: number; completion: number; total: number; contextLimit?: number };
+	tokensUsed: { prompt: number; completion: number; total: number; contextLimit?: number; cacheCreationTokens?: number; cacheReadTokens?: number };
 	messageIds: string[];
 }
 
@@ -863,12 +864,19 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		// Fall through to defaults
 	}
 
-	const adapter = createProviderAdapter(effectiveProviderConfig);
+	// Claude Subscription's direct-HTTP OAuth path 429s for anything but Haiku
+	// (confirmed via live testing: a server-side gate, not fixable by header
+	// replication) — non-Haiku models route through the official Agent SDK
+	// instead, which drives the user's own `claude` binary the same way a real
+	// interactive session would. See claude-subscription-cli-runner.ts.
+	const isClaudeSubscriptionViaCli =
+		effectiveProviderConfig.providerType === "claude-subscription" && !isHaikuModel(effectiveModelId);
+	const adapter = isClaudeSubscriptionViaCli ? null : createProviderAdapter(effectiveProviderConfig);
 	const customThinkingTokens =
 		effectiveProviderConfig.providerType === "custom" && effectiveThinkingBudget
 			? (THINKING_BUDGET_TOKENS[effectiveThinkingBudget] ?? 8000)
 			: undefined;
-	const model = adapter.createModel(effectiveModelId, customThinkingTokens);
+	const model = adapter ? adapter.createModel(effectiveModelId, customThinkingTokens) : null;
 
 	// --- 2. Load system prompt + tools ---
 	const [systemPromptBase, baseTools] = await Promise.all([systemPromptPromise, toolsPromise]);
@@ -914,7 +922,9 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	// deep_research — research-expert only. Overlays the real, runtime-bound tool over the
 	// registry stub, but ONLY when the agent already has it enabled (present in `tools` after
 	// allowlist filtering). Built here, not in getToolsForAgent, so it can capture the resolved
-	// provider/model without forcing sequential resolution on every agent run.
+	// provider/model without forcing sequential resolution on every agent run. Safe under
+	// Claude Subscription CLI too — createDeepResearchTool internally swaps to Haiku for its
+	// own standalone LLM calls (see internalCallModelId), independent of effectiveModelId here.
 	if (agentName === "research-expert" && tools.deep_research) {
 		const { createDeepResearchTool } = await import("./tools/deep-research");
 		const dr = createDeepResearchTool({
@@ -1107,6 +1117,165 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	}
 	callbacks.onPartCreated(startPart);
 	callbacks.onAgentStart(startMsgId, agentName, agentDisplayName, task);
+
+	// --- 4b. Claude Subscription non-Haiku models: execute via the Agent SDK
+	// instead of the generateText() loop below (see isClaudeSubscriptionViaCli
+	// above) — persists the same MessagePart shapes onStepFinish produces, but
+	// driven by runClaudeCliTask's callbacks instead of AI SDK step results.
+	if (isClaudeSubscriptionViaCli) {
+		const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+		const timeoutMs = opts.timeoutMs ?? 1_800_000;
+		const toolCallParts = new Map<string, MessagePart>();
+
+		// The SDK's query() takes a single prompt, not a ModelMessage[] — flatten
+		// any prior turns (e.g. Playground follow-ups stored in JSON — see the
+		// opts.priorMessages doc comment below) ahead of the current task, same
+		// as engine.ts does for the PM's own transcript, so multi-turn history
+		// isn't silently dropped on this path.
+		const cliTask = opts.priorMessages && opts.priorMessages.length > 0
+			? [...opts.priorMessages, { role: "user" as const, content: task }]
+				.map((m) => {
+					const text = typeof m.content === "string"
+						? m.content
+						: Array.isArray(m.content)
+							? m.content.map((p) => (p && typeof p === "object" && "text" in p ? (p as { text?: string }).text ?? "" : "")).filter(Boolean).join("\n")
+							: "";
+					return `[${m.role}]\n${text}`;
+				}).join("\n\n")
+			: task;
+
+		const cliResult = await runClaudeCliTask({
+			task: cliTask,
+			systemPrompt,
+			tools,
+			modelId: effectiveModelId,
+			workspacePath,
+			timeoutMs,
+			abortSignal,
+			onText: (text) => {
+				const textPart: MessagePart = {
+					id: crypto.randomUUID(), messageId: startMsgId, type: "text",
+					content: text, sortOrder: sortOrder++,
+				};
+				if (persist) db.insert(messageParts).values({
+					id: textPart.id, messageId: textPart.messageId, type: textPart.type,
+					content: textPart.content, sortOrder: textPart.sortOrder,
+				}).catch(() => {});
+				callbacks.onPartCreated(textPart);
+			},
+			onReasoning: (text) => {
+				const reasoningPart: MessagePart = {
+					id: crypto.randomUUID(), messageId: startMsgId, type: "reasoning",
+					content: text, sortOrder: sortOrder++,
+				};
+				if (persist) db.insert(messageParts).values({
+					id: reasoningPart.id, messageId: reasoningPart.messageId, type: reasoningPart.type,
+					content: reasoningPart.content, sortOrder: reasoningPart.sortOrder,
+				}).catch(() => {});
+				callbacks.onPartCreated(reasoningPart);
+			},
+			onToolCallStart: (toolName, args) => {
+				const callId = crypto.randomUUID();
+				const toolCallPart: MessagePart = {
+					id: crypto.randomUUID(), messageId: startMsgId, type: "tool_call",
+					content: describeToolCall(toolName, args), toolName,
+					toolInput: JSON.stringify(args), toolState: "running",
+					sortOrder: sortOrder++, timeStart: new Date().toISOString(),
+				};
+				toolCallParts.set(callId, toolCallPart);
+				if (persist) db.insert(messageParts).values({
+					id: toolCallPart.id, messageId: toolCallPart.messageId, type: toolCallPart.type,
+					content: toolCallPart.content, toolName: toolCallPart.toolName,
+					toolInput: toolCallPart.toolInput, toolState: toolCallPart.toolState,
+					sortOrder: toolCallPart.sortOrder, timeStart: toolCallPart.timeStart,
+				}).catch(() => {});
+				callbacks.onPartCreated(toolCallPart);
+				return callId;
+			},
+			onToolCallEnd: (callId, resultText, isError) => {
+				const part = toolCallParts.get(callId);
+				if (!part) return;
+				const finalIsError = isError || toolResultIsError(part.toolName ?? "", resultText);
+				const toolOutputLimit = 10_000;
+				const updates: Partial<MessagePart> = {
+					toolOutput: resultText.length > toolOutputLimit ? resultText.slice(0, toolOutputLimit) + "\n... (truncated)" : resultText,
+					toolState: finalIsError ? "error" : "success",
+					timeEnd: new Date().toISOString(),
+				};
+				if (persist) db.update(messageParts)
+					.set({ toolOutput: updates.toolOutput, toolState: updates.toolState, timeEnd: updates.timeEnd })
+					.where(eq(messageParts.id, part.id))
+					.catch(() => {});
+				callbacks.onPartUpdated(startMsgId, part.id, updates);
+			},
+		});
+
+		const filesModified = fileTracker.getModifiedFiles();
+		await logPrompt(agentName, systemPrompt, [{ role: "user", content: cliTask }, { role: "assistant", content: cliResult.summary }], effectiveModelId);
+
+		const endTime = new Date().toISOString();
+		const endPart: MessagePart = {
+			id: crypto.randomUUID(), messageId: startMsgId, type: "agent_end",
+			content: cliResult.summary, agentName, sortOrder: sortOrder++,
+			toolState: cliResult.status === "failed" ? "error" : undefined,
+			timeEnd: endTime,
+		};
+		if (persist) {
+			await db.insert(messageParts).values({
+				id: endPart.id, messageId: endPart.messageId, type: endPart.type,
+				content: endPart.content, sortOrder: endPart.sortOrder,
+				toolState: endPart.toolState, timeEnd: endPart.timeEnd,
+			});
+			await db.update(messages).set({
+				content: cliResult.summary,
+				tokenCount: Math.ceil(cliResult.summary.length / 4),
+			}).where(eq(messages.id, startMsgId));
+		}
+		callbacks.onPartCreated(endPart);
+
+		const mappedStatus: InlineAgentResult["status"] =
+			cliResult.status === "timeout" ? "timeout"
+				: cliResult.status === "cancelled" ? "cancelled"
+					: cliResult.status === "failed" ? "failed" : "completed";
+
+		// Move kanban task back to backlog on failure (not cancellation) — matches
+		// the generateText path's same distinction (see the catch block below).
+		if (opts.kanbanTaskId && mappedStatus === "failed") {
+			try {
+				const { moveKanbanTask } = await import("../rpc/kanban");
+				await moveKanbanTask(opts.kanbanTaskId, "backlog");
+			} catch { /* non-fatal */ }
+		}
+
+		callbacks.onAgentComplete(startMsgId, agentName, mappedStatus, cliResult.summary, filesModified, {
+			prompt: cliResult.usage.inputTokens, completion: cliResult.usage.outputTokens,
+			cacheCreationTokens: cliResult.usage.cacheCreationInputTokens, cacheReadTokens: cliResult.usage.cacheReadInputTokens,
+		});
+
+		const completionTime = new Date().toISOString();
+		if (persist) {
+			db.update(conversations).set({ updatedAt: completionTime }).where(eq(conversations.id, conversationId)).catch(() => {});
+			broadcastToWebview("conversationUpdated", { conversationId, updatedAt: completionTime, projectId });
+		}
+
+		return {
+			status: mappedStatus,
+			summary: cliResult.summary,
+			filesModified,
+			tokensUsed: {
+				prompt: cliResult.usage.inputTokens,
+				completion: cliResult.usage.outputTokens,
+				total: cliResult.usage.inputTokens + cliResult.usage.outputTokens,
+				cacheCreationTokens: cliResult.usage.cacheCreationInputTokens,
+				cacheReadTokens: cliResult.usage.cacheReadInputTokens,
+			},
+			messageIds,
+		};
+	}
+	// isClaudeSubscriptionViaCli returned above — model is guaranteed non-null below.
+	if (!model) {
+		throw new Error(`No language model resolved for agent "${agentName}" (provider "${effectiveProviderConfig.providerType}")`);
+	}
 
 	// --- 5. Build agent messages (fresh context + optional prior turns) ---
 	// priorMessages threads multi-turn history (e.g. Playground follow-ups stored in JSON).

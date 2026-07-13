@@ -2,6 +2,7 @@ import { tool, generateText } from "ai";
 import { z } from "zod";
 import { createProviderAdapter } from "../../providers";
 import type { ProviderConfig } from "../../providers/types";
+import { internalCallModelId } from "../../providers/claude-subscription";
 import { webTools, fetchPageText, type DateRangeOpts } from "./web";
 import type { ToolRegistryEntry } from "./index";
 
@@ -197,7 +198,10 @@ export interface DeepResearchContext {
 }
 
 export function createDeepResearchTool(ctx: DeepResearchContext): Record<string, ToolRegistryEntry> {
-	const model = createProviderAdapter(ctx.providerConfig).createModel(ctx.modelId, ctx.thinkingBudget);
+	const model = createProviderAdapter(ctx.providerConfig).createModel(
+		internalCallModelId(ctx.providerConfig.providerType, ctx.modelId),
+		ctx.thinkingBudget,
+	);
 
 	const deepResearchTool = tool({
 		description:

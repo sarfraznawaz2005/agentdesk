@@ -18,6 +18,7 @@ import { db } from "../db";
 import { agents, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { getAgentSystemPrompt } from "../agents/prompts";
 import { getToolsForAgent } from "../agents/tools/index";
 import { broadcastToWebview } from "../engine-manager";
@@ -42,6 +43,20 @@ async function getProviderForAgent(agentRow: { providerId: string | null }) {
 	const any = await db.select().from(aiProviders).limit(1);
 	if (!any[0]) throw new Error("No AI provider configured.");
 	return any[0];
+}
+
+// The SDK's query() takes a single prompt, not a ModelMessage[] — flatten the
+// conversation history into a text transcript, same approach engine.ts uses
+// for the PM's own CLI/SDK-routed transcript.
+function flattenHistoryForCli(history: ModelMessage[]): string {
+	return history.map((m) => {
+		const text = typeof m.content === "string"
+			? m.content
+			: Array.isArray(m.content)
+				? m.content.map((p) => (p && typeof p === "object" && "text" in p ? (p as { text?: string }).text ?? "" : "")).filter(Boolean).join("\n")
+				: "";
+		return `[${m.role}]\n${text}`;
+	}).join("\n\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -95,18 +110,10 @@ export async function sendDashboardAgentMessage(
 
 			const provider = await getProviderForAgent(agentRow);
 			const modelId  = agentRow.modelId ?? provider.defaultModel ?? getDefaultModel(provider.providerType);
-			const adapter  = createProviderAdapter({
-				id:           provider.id,
-				name:         provider.name,
-				providerType: provider.providerType,
-				apiKey:       provider.apiKey,
-				baseUrl:      provider.baseUrl,
-				defaultModel: provider.defaultModel,
-			});
 
 			// System prompt: getAgentSystemPrompt honours useSystemPromptOnly already.
 			// Tools: getToolsForAgent honours the per-agent agent_tools rows.
-			const [systemBase, tools] = await Promise.all([
+			const [systemBase, agentTools] = await Promise.all([
 				getAgentSystemPrompt(agentName),
 				getToolsForAgent(agentName),
 			]);
@@ -128,38 +135,87 @@ export async function sendDashboardAgentMessage(
 						: "No saved last message was found — nothing to delete.";
 				},
 			});
+			const tools = { ...agentTools, remove_last_message: removeLastMsgTool };
 
-			const result = streamText({
-				model: adapter.createModel(modelId),
-				system,
-				messages:    newHistory,
-				tools:       { ...tools, remove_last_message: removeLastMsgTool },
-				stopWhen:    [stepCountIs(100)],
-				abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
-			});
+			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
+			// Haiku — non-Haiku models route through the official Agent SDK
+			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
+			if (provider.providerType === "claude-subscription" && !isHaikuModel(modelId)) {
+				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				const cliResult = await runClaudeCliTask({
+					task: flattenHistoryForCli(newHistory),
+					systemPrompt: system,
+					tools,
+					modelId,
+					timeoutMs: 900_000,
+					abortSignal: abortController.signal,
+					verifyToolCall: false, // dashboard agent chat is general Q&A — a turn may legitimately need zero tool calls
+					onText: (text) => {
+						fullText += text;
+						broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
+					},
+					onReasoning: () => { /* dashboard agent chat doesn't surface reasoning today (same as the streamText path, which ignores 'reasoning' parts) */ },
+					onToolCallStart: (toolName, args) => {
+						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName, args });
+						return crypto.randomUUID();
+					},
+					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
+				});
 
-			for await (const part of result.fullStream) {
-				if (part.type === "text-delta") {
-					const text = (part as { text?: string }).text ?? "";
-					fullText += text;
-					broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
-				} else if (part.type === "tool-call") {
-					const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
-					broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName: part.toolName, args: tcInput });
-				} else if (part.type === "error") {
-					const err = (part as { error: unknown }).error;
-					throw err instanceof Error ? err : new Error(String(err));
+				if (abortController.signal.aborted) return;
+				if (cliResult.status === "cancelled") return;
+				if (cliResult.status === "timeout") {
+					throw Object.assign(new Error("This request hit the 15-minute time limit and was stopped. Send a follow-up to continue."), { name: "TimeoutError" });
+				}
+				if (cliResult.status === "failed") {
+					throw new Error(cliResult.summary);
+				}
+				if (!fullText.trim()) fullText = cliResult.summary;
+			} else {
+				const adapter  = createProviderAdapter({
+					id:           provider.id,
+					name:         provider.name,
+					providerType: provider.providerType,
+					apiKey:       provider.apiKey,
+					baseUrl:      provider.baseUrl,
+					defaultModel: provider.defaultModel,
+				});
+
+				const result = streamText({
+					model: adapter.createModel(modelId),
+					system,
+					messages:    newHistory,
+					tools,
+					stopWhen:    [stepCountIs(100)],
+					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
+				});
+
+				for await (const part of result.fullStream) {
+					if (part.type === "text-delta") {
+						const text = (part as { text?: string }).text ?? "";
+						fullText += text;
+						broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
+					} else if (part.type === "tool-call") {
+						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
+						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName: part.toolName, args: tcInput });
+					} else if (part.type === "error") {
+						const err = (part as { error: unknown }).error;
+						throw err instanceof Error ? err : new Error(String(err));
+					}
+				}
+
+				if (!fullText.trim()) {
+					let finalText = "";
+					try { finalText = await result.text; } catch { /* not available */ }
+					if (finalText.trim()) {
+						fullText = finalText;
+						broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: fullText });
+					}
 				}
 			}
 
 			if (!fullText.trim()) {
-				let finalText = "";
-				try { finalText = await result.text; } catch { /* not available */ }
-				if (!finalText.trim()) {
-					throw new Error("The AI model returned an empty response. Check your provider quota or switch to a different model.");
-				}
-				fullText = finalText;
-				broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: fullText });
+				throw new Error("The AI model returned an empty response. Check your provider quota or switch to a different model.");
 			}
 
 			if (fullText) {

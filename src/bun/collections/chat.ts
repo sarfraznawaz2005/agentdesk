@@ -16,6 +16,7 @@ import { eq, and } from "drizzle-orm";
 import { db } from "../db";
 import { collectionNotes, aiProviders } from "../db/schema";
 import { createProviderAdapter, getDefaultModel } from "../providers";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { embedText } from "./embeddings/embedder";
 import { unpackVector, rankBySimilarity, type VectorEntry } from "./embeddings/similarity";
 import { isEmbeddingModelDownloaded } from "./embeddings/model-manager";
@@ -222,7 +223,7 @@ function createCollectionsChatTools(
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string } | null> {
+async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; providerType: string; modelId: string } | null> {
 	const defaultRows = await db.select().from(aiProviders).where(eq(aiProviders.isDefault, 1)).limit(1);
 	const row = defaultRows[0] ?? (await db.select().from(aiProviders).limit(1))[0];
 	if (!row) return null;
@@ -235,7 +236,21 @@ async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeo
 		baseUrl: row.baseUrl ?? null,
 		defaultModel: row.defaultModel ?? null,
 	});
-	return { adapter, modelId: row.defaultModel ?? getDefaultModel(row.providerType) };
+	return { adapter, providerType: row.providerType, modelId: row.defaultModel ?? getDefaultModel(row.providerType) };
+}
+
+// The SDK's query() takes a single prompt, not a ModelMessage[] — flatten the
+// conversation history into a text transcript, same approach engine.ts uses
+// for the PM's own CLI/SDK-routed transcript.
+function flattenHistoryForCli(history: ModelMessage[]): string {
+	return history.map((m) => {
+		const text = typeof m.content === "string"
+			? m.content
+			: Array.isArray(m.content)
+				? m.content.map((p) => (p && typeof p === "object" && "text" in p ? (p as { text?: string }).text ?? "" : "")).filter(Boolean).join("\n")
+				: "";
+		return `[${m.role}]\n${text}`;
+	}).join("\n\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -269,41 +284,83 @@ export async function sendCollectionsChatMessage(params: {
 			if (!providerAndModel) {
 				throw new Error("No AI provider is configured yet. Add one in Settings → AI → AI Providers.");
 			}
-			const { adapter, modelId } = providerAndModel;
-			const model = adapter.createModel(modelId);
+			const { adapter, providerType, modelId } = providerAndModel;
 			const tuning = await getSemanticSearchTuning();
+			const tools = createCollectionsChatTools(scope, citationSink, tuning);
+			const systemPrompt = await buildCollectionsSystemPrompt();
 
-			const result = streamText({
-				model,
-				system: await buildCollectionsSystemPrompt(),
-				messages: newHistory,
-				tools: createCollectionsChatTools(scope, citationSink, tuning),
-				stopWhen: [stepCountIs(20)],
-				abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
-			});
+			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
+			// Haiku — non-Haiku models route through the official Agent SDK
+			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
+			if (providerType === "claude-subscription" && !isHaikuModel(modelId)) {
+				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				const cliResult = await runClaudeCliTask({
+					task: flattenHistoryForCli(newHistory),
+					systemPrompt,
+					tools,
+					modelId,
+					timeoutMs: 900_000,
+					abortSignal: abortController.signal,
+					verifyToolCall: false, // Collections chat is Q&A over notes — a turn may legitimately need zero tool calls
+					onText: (text) => {
+						fullText += text;
+						broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
+					},
+					onReasoning: () => { /* Collections chat doesn't surface reasoning today (same as the streamText path, which ignores 'reasoning' parts) */ },
+					onToolCallStart: (toolName, args) => {
+						broadcastToWebview("collectionsChatToolCall", { sessionId, toolName, args: args as Record<string, unknown> });
+						return crypto.randomUUID();
+					},
+					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
+				});
 
-			for await (const part of result.fullStream) {
-				if (part.type === "text-delta") {
-					const text = (part as { text?: string }).text ?? "";
-					fullText += text;
-					broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
-				} else if (part.type === "tool-call") {
-					const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
-					broadcastToWebview("collectionsChatToolCall", { sessionId, toolName: part.toolName, args: tcInput as Record<string, unknown> });
-				} else if (part.type === "error") {
-					const err = (part as { error: unknown }).error;
-					throw err instanceof Error ? err : new Error(String(err));
+				if (abortController.signal.aborted) return;
+				if (cliResult.status === "cancelled") return;
+				if (cliResult.status === "timeout") {
+					throw Object.assign(new Error("This request hit the 15-minute time limit and was stopped. Send a follow-up to continue."), { name: "TimeoutError" });
+				}
+				if (cliResult.status === "failed") {
+					throw new Error(cliResult.summary);
+				}
+				if (!fullText.trim()) fullText = cliResult.summary;
+			} else {
+				const model = adapter.createModel(modelId);
+
+				const result = streamText({
+					model,
+					system: systemPrompt,
+					messages: newHistory,
+					tools,
+					stopWhen: [stepCountIs(20)],
+					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
+				});
+
+				for await (const part of result.fullStream) {
+					if (part.type === "text-delta") {
+						const text = (part as { text?: string }).text ?? "";
+						fullText += text;
+						broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
+					} else if (part.type === "tool-call") {
+						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
+						broadcastToWebview("collectionsChatToolCall", { sessionId, toolName: part.toolName, args: tcInput as Record<string, unknown> });
+					} else if (part.type === "error") {
+						const err = (part as { error: unknown }).error;
+						throw err instanceof Error ? err : new Error(String(err));
+					}
+				}
+
+				if (!fullText.trim()) {
+					let finalText = "";
+					try { finalText = await result.text; } catch { /* not available */ }
+					if (finalText.trim()) {
+						fullText = finalText;
+						broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: fullText });
+					}
 				}
 			}
 
 			if (!fullText.trim()) {
-				let finalText = "";
-				try { finalText = await result.text; } catch { /* not available */ }
-				if (!finalText.trim()) {
-					throw new Error("The AI model returned an empty response. Check your provider quota or switch to a different model.");
-				}
-				fullText = finalText;
-				broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: fullText });
+				throw new Error("The AI model returned an empty response. Check your provider quota or switch to a different model.");
 			}
 
 			if (fullText) {

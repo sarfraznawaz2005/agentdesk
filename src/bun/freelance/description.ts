@@ -20,6 +20,7 @@ import { parse as parseHtml } from "node-html-parser";
 import { db } from "../db";
 import { freelanceListings } from "../db/schema";
 import type { createProviderAdapter } from "../providers";
+import { internalCallModelId } from "../providers/claude-subscription";
 
 // Listings whose description fetch failed (or extracted nothing) this app
 // session. A cached "" is retried once per session instead of never, so
@@ -65,9 +66,10 @@ export async function extractDescription(
   adapter: ReturnType<typeof createProviderAdapter>,
   modelId: string,
   abortSignal?: AbortSignal,
+  providerType?: string,
 ): Promise<string> {
   const { text } = await generateText({
-    model: adapter.createModel(modelId),
+    model: adapter.createModel(providerType ? internalCallModelId(providerType, modelId) : modelId),
     abortSignal,
     system:
       "You are a precise data extraction assistant. Extract ONLY the job or project description from the page content provided. " +
@@ -98,6 +100,7 @@ export async function ensureFullDescription(
   adapter: ReturnType<typeof createProviderAdapter>,
   modelId: string,
   hooks?: { onFetchStart?: () => void; onFetchDone?: () => void },
+  providerType?: string,
 ): Promise<string> {
   let fullDescription: string | null = listing.fullDescription;
 
@@ -110,7 +113,7 @@ export async function ensureFullDescription(
   hooks?.onFetchStart?.();
   try {
     const pageText = await fetchPageText(listing.url);
-    fullDescription = await extractDescription(pageText, listing, adapter, modelId);
+    fullDescription = await extractDescription(pageText, listing, adapter, modelId, undefined, providerType);
     // Extraction can legitimately return "" (no clear description on the
     // page) — treat it like a failure so we don't refetch every message.
     if (fullDescription === "") descriptionFetchFailedThisSession.add(listing.id);

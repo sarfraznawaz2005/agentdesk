@@ -378,7 +378,7 @@ export async function refreshListingDescription(params: { listingId: string }): 
     id: providerRow.id, name: providerRow.name, providerType: providerRow.providerType,
     apiKey: providerRow.apiKey, baseUrl: providerRow.baseUrl ?? null, defaultModel: providerRow.defaultModel ?? null,
   });
-  const description = await ensureFullDescription({ ...listing, fullDescription: null }, adapter, providerRow.defaultModel ?? "gpt-4o-mini");
+  const description = await ensureFullDescription({ ...listing, fullDescription: null }, adapter, providerRow.defaultModel ?? "gpt-4o-mini", undefined, providerRow.providerType);
   return { description: description || (listing.description ?? "") };
 }
 

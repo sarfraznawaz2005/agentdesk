@@ -2841,10 +2841,11 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					const takenList = [...takenNames].filter((n) => n.startsWith("feature/")).join(", ") || "none";
 
 					const { getDefaultModel } = await import("../../providers/models");
+					const { internalCallModelId } = await import("../../providers/claude-subscription");
 					const adapter = createProviderAdapter(deps.providerConfig);
 					const modelId = deps.providerConfig.defaultModel ?? getDefaultModel(deps.providerConfig.providerType);
 					const { text } = await generateText({
-						model: adapter.createModel(modelId),
+						model: adapter.createModel(internalCallModelId(deps.providerConfig.providerType, modelId)),
 						messages: [
 							{
 								role: "user",

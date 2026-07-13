@@ -130,6 +130,7 @@ async function generateProjectName(): Promise<string> {
 
 		const { generateText } = await import("ai");
 		const { createProviderAdapter } = await import("../providers");
+		const { internalCallModelId } = await import("../providers/claude-subscription");
 		const modelId = providerRow.defaultModel || getDefaultModel(providerRow.providerType);
 		const adapter = createProviderAdapter({
 			id: providerRow.id,
@@ -140,7 +141,7 @@ async function generateProjectName(): Promise<string> {
 			defaultModel: providerRow.defaultModel ?? null,
 		});
 		const result = await generateText({
-			model: adapter.createModel(modelId),
+			model: adapter.createModel(internalCallModelId(providerRow.providerType, modelId)),
 			system:
 				"You name software projects. Given a list of files, reply with ONLY a concise, descriptive " +
 				"project name of 2-4 words in Title Case. No quotes, no punctuation, no explanation.",

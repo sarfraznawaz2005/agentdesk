@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { broadcastToWebview } from "../engine-manager";
 import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
@@ -82,7 +83,7 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && (err.name === "AbortError" || err.message.toLowerCase().includes("aborted"));
 }
 
-async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string }> {
+async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; providerType: string; modelId: string }> {
   const providerRows = await db.select().from(aiProviders).where(eq(aiProviders.isDefault, 1)).limit(1);
   if (!providerRows[0]) throw new Error("No default AI provider configured");
 
@@ -96,7 +97,21 @@ async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeo
     defaultModel: p.defaultModel ?? null,
   });
 
-  return { adapter, modelId: p.defaultModel ?? "gpt-4o-mini" };
+  return { adapter, providerType: p.providerType, modelId: p.defaultModel ?? "gpt-4o-mini" };
+}
+
+// The SDK's query() takes a single prompt, not a ModelMessage[] — flatten the
+// conversation history into a text transcript, same approach engine.ts uses
+// for the PM's own CLI/SDK-routed transcript.
+function flattenHistoryForCli(history: ModelMessage[]): string {
+  return history.map((m) => {
+    const text = typeof m.content === "string"
+      ? m.content
+      : Array.isArray(m.content)
+        ? m.content.map((p) => (p && typeof p === "object" && "text" in p ? (p as { text?: string }).text ?? "" : "")).filter(Boolean).join("\n")
+        : "";
+    return `[${m.role}]\n${text}`;
+  }).join("\n\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -106,52 +121,113 @@ async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeo
 async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], signal: AbortSignal): Promise<void> {
   let fullContent = "";
   try {
-    const { adapter, modelId } = await getDefaultProviderAndModel();
-    const model = adapter.createModel(modelId);
+    const { adapter, providerType, modelId } = await getDefaultProviderAndModel();
     const tools = buildSkillsChatTools();
+    const systemPrompt = buildSystemPrompt();
 
-    const result = streamText({
-      model,
-      system: buildSystemPrompt(),
-      messages: modelHistory,
-      tools,
-      stopWhen: [stepCountIs(100)],
-      abortSignal: signal,
-    });
+    // Claude Subscription's direct-HTTP OAuth path 429s for anything but
+    // Haiku — non-Haiku models route through the official Agent SDK instead
+    // (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
+    if (providerType === "claude-subscription" && !isHaikuModel(modelId)) {
+      const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+      const toolStartTimes = new Map<string, string>();
 
-    const toolStartTimes = new Map<string, string>();
+      const cliResult = await runClaudeCliTask({
+        task: flattenHistoryForCli(modelHistory),
+        systemPrompt,
+        tools,
+        modelId,
+        timeoutMs: 900_000,
+        abortSignal: signal,
+        verifyToolCall: false, // skills chat is Q&A/search-driven — a turn may legitimately need zero tool calls
+        onText: (text) => {
+          fullContent += text;
+          broadcastToWebview("skillsChat.token", { messageId, token: text });
+        },
+        onReasoning: () => { /* skills chat doesn't surface reasoning today (same as the streamText path, which never handled 'reasoning' parts) */ },
+        onToolCallStart: (toolName, args) => {
+          const callId = crypto.randomUUID();
+          const timeStart = new Date().toISOString();
+          toolStartTimes.set(callId, timeStart);
+          broadcastToWebview("skillsChat.toolStart", {
+            toolCallId: callId,
+            toolName,
+            toolInput: JSON.stringify(args),
+            timeStart,
+          });
+          return callId;
+        },
+        onToolCallEnd: (callId, resultText, isError) => {
+          const timeStart = toolStartTimes.get(callId) ?? null;
+          toolStartTimes.delete(callId);
+          broadcastToWebview("skillsChat.toolDone", {
+            toolCallId: callId,
+            toolName: "",
+            toolOutput: resultText,
+            isError: isError ?? false,
+            timeStart,
+            timeEnd: new Date().toISOString(),
+          });
+        },
+      });
 
-    for await (const part of result.fullStream) {
-      if (part.type === "text-delta") {
-        const token = (part as { text?: string }).text ?? "";
-        fullContent += token;
-        broadcastToWebview("skillsChat.token", { messageId, token });
-      } else if (part.type === "tool-call") {
-        const tc = part as unknown as { toolCallId: string; toolName: string; input: Record<string, unknown> };
-        const timeStart = new Date().toISOString();
-        toolStartTimes.set(tc.toolCallId, timeStart);
-        broadcastToWebview("skillsChat.toolStart", {
-          toolCallId: tc.toolCallId,
-          toolName: tc.toolName,
-          toolInput: JSON.stringify(tc.input),
-          timeStart,
-        });
-      } else if (part.type === "tool-result") {
-        const tr = part as unknown as { toolCallId: string; toolName: string; output: unknown; isError?: boolean };
-        const timeStart = toolStartTimes.get(tr.toolCallId) ?? null;
-        const timeEnd = new Date().toISOString();
-        toolStartTimes.delete(tr.toolCallId);
-        const toolOutput = typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
-        broadcastToWebview("skillsChat.toolDone", {
-          toolCallId: tr.toolCallId,
-          toolName: tr.toolName,
-          toolOutput,
-          isError: tr.isError ?? false,
-          timeStart,
-          timeEnd,
-        });
-      } else if (part.type === "error") {
-        throw (part as { error: unknown }).error;
+      if (signal.aborted || cliResult.status === "cancelled") {
+        broadcastToWebview("skillsChat.stopped", {});
+        return;
+      }
+      if (cliResult.status === "timeout") {
+        throw Object.assign(new Error("This request hit the 15-minute time limit and was stopped. Send a follow-up to continue."), { name: "TimeoutError" });
+      }
+      if (cliResult.status === "failed") {
+        throw new Error(cliResult.summary);
+      }
+      if (!fullContent.trim()) fullContent = cliResult.summary;
+    } else {
+      const model = adapter.createModel(modelId);
+
+      const result = streamText({
+        model,
+        system: systemPrompt,
+        messages: modelHistory,
+        tools,
+        stopWhen: [stepCountIs(100)],
+        abortSignal: signal,
+      });
+
+      const toolStartTimes = new Map<string, string>();
+
+      for await (const part of result.fullStream) {
+        if (part.type === "text-delta") {
+          const token = (part as { text?: string }).text ?? "";
+          fullContent += token;
+          broadcastToWebview("skillsChat.token", { messageId, token });
+        } else if (part.type === "tool-call") {
+          const tc = part as unknown as { toolCallId: string; toolName: string; input: Record<string, unknown> };
+          const timeStart = new Date().toISOString();
+          toolStartTimes.set(tc.toolCallId, timeStart);
+          broadcastToWebview("skillsChat.toolStart", {
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            toolInput: JSON.stringify(tc.input),
+            timeStart,
+          });
+        } else if (part.type === "tool-result") {
+          const tr = part as unknown as { toolCallId: string; toolName: string; output: unknown; isError?: boolean };
+          const timeStart = toolStartTimes.get(tr.toolCallId) ?? null;
+          const timeEnd = new Date().toISOString();
+          toolStartTimes.delete(tr.toolCallId);
+          const toolOutput = typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
+          broadcastToWebview("skillsChat.toolDone", {
+            toolCallId: tr.toolCallId,
+            toolName: tr.toolName,
+            toolOutput,
+            isError: tr.isError ?? false,
+            timeStart,
+            timeEnd,
+          });
+        } else if (part.type === "error") {
+          throw (part as { error: unknown }).error;
+        }
       }
     }
 

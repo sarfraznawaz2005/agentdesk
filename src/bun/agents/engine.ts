@@ -13,6 +13,7 @@ import { messages, conversations, settings, aiProviders, projects, agents, kanba
 import { createProviderAdapter } from "../providers";
 import { recordModelUsageHandler } from "../rpc/providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { buildContext } from "./context";
 import { getPMSystemPrompt } from "./prompts";
 import { summarizeConversation } from "./summarizer";
@@ -317,7 +318,12 @@ export class AgentEngine {
 			}
 
 			// 5. Create provider adapter + model instance
-			const adapter = createProviderAdapter({
+			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
+			// Haiku (see isHaikuModel doc comment) — non-Haiku models route through
+			// the Agent SDK instead, mirroring the sub-agent path in agent-loop.ts.
+			const isClaudeSubscriptionViaCli =
+				providerRow.providerType === "claude-subscription" && !isHaikuModel(modelId);
+			const adapter = isClaudeSubscriptionViaCli ? null : createProviderAdapter({
 				id: providerRow.id,
 				name: providerRow.name,
 				providerType: providerRow.providerType,
@@ -330,7 +336,7 @@ export class AgentEngine {
 					? (THINKING_BUDGET_TOKENS[pmThinkingBudget] ?? 8000)
 					: undefined;
 			let reasoningEmittedFromStream = false;
-			const model = adapter.createModel(modelId, pmCustomThinkingTokens);
+			const model = adapter ? adapter.createModel(modelId, pmCustomThinkingTokens) : null;
 
 			// 6. Build inline agent callbacks that bridge to RPC broadcasts
 			const emit = (agentId: string, agentName: string, type: AgentActivityEvent["type"], data: Record<string, unknown>) => {
@@ -429,6 +435,17 @@ export class AgentEngine {
 						// Delay to let review cycle spawn (it does async DB lookups)
 						// and agent completion events propagate to frontend
 						await new Promise((r) => setTimeout(r, 500));
+
+						// A user-initiated cancellation must not auto-continue — clicking
+						// Stop means "stop everything," not "move on to the next task."
+						// Without this, only `status === "failed"` skipped the DISPATCH/
+						// next-task logic below, so a cancelled agent still fell through to
+						// it and the PM auto-continued to another task right after the user
+						// asked it to stop.
+						if (result.status === "cancelled") {
+							console.log(`[Engine] Agent cancelled by user (${agentName}) — not auto-continuing`);
+							return;
+						}
 
 						const summary = result.status === "completed"
 							? `${displayName} completed successfully: ${result.summary}`
@@ -568,6 +585,137 @@ export class AgentEngine {
 			let completionTokens = 0;
 			let accumulatedReasoning = ""; // Persisted in message metadata for UI replay
 			let planApprovalRequested = false; // Set by run_agent tool execute — stops PM after current step
+
+			// --- 8a. Claude Subscription non-Haiku models: execute via the Agent
+			// SDK instead of the streamText() loop below (see isClaudeSubscriptionViaCli
+			// above). Known, disclosed limitations vs. the normal PM loop — the SDK's
+			// query() runs its own opaque multi-step agent loop with no per-step hooks,
+			// so these streamText-loop-specific refinements are NOT reimplemented here
+			// (same tradeoff already accepted for the sub-agent path in agent-loop.ts):
+			// hallucination-retry/dispatch-enforcement, mid-stream plan-approval
+			// early-stop, and the post-stream dispatch correction (step 11 below). Core
+			// flow — response generation, real tool execution (including run_agent,
+			// which dispatches sub-agents exactly as it does on the normal path since
+			// it's the same Tool object), and persistence — all work.
+			if (isClaudeSubscriptionViaCli) {
+				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				// The SDK's query() takes a single prompt, not a ModelMessage[] — flatten
+				// the already-compacted conversation history into a text transcript.
+				const transcript = context.messages.map((m) => {
+					const text = typeof m.content === "string"
+						? m.content
+						: Array.isArray(m.content)
+							? m.content.map((p) => (p && typeof p === "object" && "text" in p ? (p as { text?: string }).text ?? "" : "")).filter(Boolean).join("\n")
+							: "";
+					return `[${m.role}]\n${text}`;
+				}).join("\n\n");
+
+				const emitActivity = (type: AgentActivityEvent["type"], data: Record<string, unknown>) => {
+					this.callbacks.onAgentActivity?.({
+						projectId: this.projectId, conversationId, agentId: "project-manager",
+						agentName: "project-manager", agentColor: pmColor, type, data,
+						timestamp: new Date().toISOString(),
+					});
+				};
+				const STATUS_CHECK_TOOLS = new Set(["list_tasks", "get_task"]);
+				const toolCallNames = new Map<string, string>();
+
+				this.callbacks.onStreamReset(conversationId, assistantMessageId);
+				await logPrompt("PM", context.system, context.messages, providerRow.defaultModel ?? "default");
+
+				const cliResult = await runClaudeCliTask({
+					task: transcript || content,
+					systemPrompt: context.system ?? "",
+					tools: pmTools,
+					modelId,
+					workspacePath,
+					timeoutMs: 1_800_000,
+					abortSignal: abortController?.signal,
+					// Most PM turns are plain conversation ("hi", explaining something from
+					// context) that legitimately need zero tool calls — unlike sub-agents,
+					// whose task always requires tool use. See ClaudeCliRunOpts.verifyToolCall.
+					verifyToolCall: false,
+					onText: (text) => {
+						fullText += text;
+						this.callbacks.onStreamToken(conversationId, assistantMessageId, text, null);
+					},
+					onReasoning: (text) => {
+						accumulatedReasoning += (accumulatedReasoning ? "\n\n" : "") + text;
+						emitActivity("thinking", { text, isPartial: false });
+					},
+					onToolCallStart: (toolName, args) => {
+						const callId = crypto.randomUUID();
+						toolCallNames.set(callId, toolName);
+						if (toolName !== "run_agent" && toolName !== "run_agents_parallel") {
+							const type = STATUS_CHECK_TOOLS.has(toolName) ? "status_check" : "tool_call";
+							emitActivity(type, { toolName, args, status: "completed" });
+						}
+						return callId;
+					},
+					onToolCallEnd: (callId, resultText, isError) => {
+						const toolName = toolCallNames.get(callId);
+						if (!toolName || toolName === "run_agent" || toolName === "run_agents_parallel" || STATUS_CHECK_TOOLS.has(toolName)) return;
+						emitActivity("tool_result", { toolName, result: resultText, isError });
+					},
+				});
+
+				if (abortController?.signal.aborted) {
+					await db.delete(messages).where(eq(messages.id, assistantMessageId)).catch(() => {});
+					this.callbacks.onStreamComplete(conversationId, assistantMessageId, { content: "", promptTokens: 0, completionTokens: 0 });
+					return;
+				}
+
+				if (cliResult.status !== "completed") {
+					throw new Error(cliResult.summary);
+				}
+
+				if (!fullText.trim()) fullText = cliResult.summary;
+				promptTokens = cliResult.usage.inputTokens;
+				completionTokens = cliResult.usage.outputTokens;
+
+				const msgMeta: Record<string, unknown> = { promptTokens, completionTokens, modelId };
+				// Real Anthropic prompt-cache telemetry — only available via this
+				// CLI/SDK path (other providers' usage objects don't report this
+				// breakdown today). Recorded even when 0 so it's distinguishable
+				// from "not measured" on older messages that predate this field.
+				if (cliResult.usage.cacheCreationInputTokens !== undefined) msgMeta.cacheCreationTokens = cliResult.usage.cacheCreationInputTokens;
+				if (cliResult.usage.cacheReadInputTokens !== undefined) msgMeta.cacheReadTokens = cliResult.usage.cacheReadInputTokens;
+				if (accumulatedReasoning) msgMeta.reasoning = accumulatedReasoning;
+				await db.update(messages).set({
+					content: fullText,
+					tokenCount: promptTokens + completionTokens,
+					metadata: JSON.stringify(msgMeta),
+					createdAt: new Date().toISOString(),
+				}).where(eq(messages.id, assistantMessageId));
+
+				try {
+					sqlite
+						.prepare(
+							`UPDATE messages
+							   SET rowid = (SELECT MAX(rowid) FROM messages) + 1
+							 WHERE id = ?
+							   AND EXISTS (
+							     SELECT 1 FROM messages m2
+							     WHERE m2.conversation_id = ?
+							       AND m2.rowid > messages.rowid
+							   )`,
+						)
+						.run(assistantMessageId, conversationId);
+				} catch (err) {
+					console.error("[Engine] Failed to re-position PM message by rowid:", err);
+				}
+
+				this.callbacks.onStreamComplete(conversationId, assistantMessageId, {
+					content: fullText, promptTokens, completionTokens, metadata: JSON.stringify(msgMeta),
+				});
+				this.lastPromptTokens.set(conversationId, promptTokens);
+				this._touchConversation(conversationId);
+				return;
+			}
+			// isClaudeSubscriptionViaCli returned above — model is guaranteed non-null below.
+			if (!model) {
+				throw new Error(`No language model resolved for PM (provider "${providerRow.providerType}")`);
+			}
 
 			// Whether this message expects PM to call run_agent.
 			// Only trust the explicit [Next Action] DISPATCH signal injected by the engine

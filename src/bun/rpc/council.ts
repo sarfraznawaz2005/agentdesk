@@ -15,11 +15,11 @@
  */
 
 import { generateText, streamText } from "ai";
-import type { LanguageModel } from "ai";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { createProviderAdapter, getDefaultModel } from "../providers";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { broadcastToWebview } from "../engine-manager";
 import { sendDesktopNotification } from "../notifications/desktop";
 
@@ -67,10 +67,13 @@ function emit(sessionId: string, payload: Record<string, unknown>): void {
   broadcastToWebview("councilEvent", { sessionId, ...payload });
 }
 
-async function resolveProvider(): Promise<{
-  model: LanguageModel;
+interface CouncilProvider {
+  adapter: ReturnType<typeof createProviderAdapter>;
+  providerType: string;
   modelId: string;
-}> {
+}
+
+async function resolveProvider(): Promise<CouncilProvider> {
   const rows = await db.select().from(aiProviders).where(eq(aiProviders.isDefault, 1)).limit(1);
   const providerRow = rows[0] ?? (await db.select().from(aiProviders).limit(1))[0];
   if (!providerRow) throw new Error("No AI provider configured");
@@ -85,7 +88,66 @@ async function resolveProvider(): Promise<{
     defaultModel: providerRow.defaultModel ?? null,
   });
 
-  return { model: adapter.createModel(modelId), modelId };
+  return { adapter, providerType: providerRow.providerType, modelId };
+}
+
+/**
+ * One text completion, used for every Council phase (PM selection/
+ * clarification/convergence/synthesis, per-agent round responses, per-agent
+ * Borda ranking). Claude Subscription's direct-HTTP OAuth path 429s for
+ * anything but Haiku, so non-Haiku models route through the official Agent
+ * SDK instead — each call spawns its own `claude` subprocess (no tools
+ * needed here, every Council phase is pure text), trading per-call overhead
+ * for using the user's actual configured Sonnet/Opus rather than silently
+ * downgrading to Haiku. onToken (if given) fires incrementally either way,
+ * so streaming call sites (runParallelRound, the final synthesis) don't need
+ * to branch themselves. Throws on failure, same contract generateText/
+ * streamText's consuming code here already expects.
+ */
+async function councilComplete(opts: {
+  provider: CouncilProvider;
+  system: string;
+  prompt: string;
+  signal: AbortSignal;
+  timeoutMs?: number;
+  onToken?: (token: string) => void;
+}): Promise<string> {
+  const { provider, system, prompt, signal, onToken } = opts;
+
+  if (provider.providerType === "claude-subscription" && !isHaikuModel(provider.modelId)) {
+    const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+    let fullText = "";
+    const cliResult = await runClaudeCliTask({
+      task: prompt,
+      systemPrompt: system,
+      tools: {},
+      modelId: provider.modelId,
+      timeoutMs: opts.timeoutMs ?? AGENT_STREAM_TIMEOUT_MS,
+      abortSignal: signal,
+      verifyToolCall: false, // no tools offered — every Council phase is a pure text completion
+      onText: (text) => { fullText += text; onToken?.(text); },
+      onReasoning: () => { /* Council doesn't surface reasoning today, same as the generateText/streamText path */ },
+      onToolCallStart: () => crypto.randomUUID(),
+      onToolCallEnd: () => {},
+    });
+    if (cliResult.status === "cancelled") throw new DOMException("Aborted", "AbortError");
+    if (cliResult.status === "failed" || cliResult.status === "timeout") throw new Error(cliResult.summary);
+    return fullText.trim() || cliResult.summary.trim();
+  }
+
+  const model = provider.adapter.createModel(provider.modelId);
+  if (onToken) {
+    const stream = streamText({ model, abortSignal: signal, system, messages: [{ role: "user", content: prompt }] });
+    let fullText = "";
+    for await (const chunk of stream.textStream) {
+      if (signal.aborted) break;
+      fullText += chunk;
+      onToken(chunk);
+    }
+    return fullText;
+  }
+  const result = await generateText({ model, abortSignal: signal, system, messages: [{ role: "user", content: prompt }] });
+  return result.text;
 }
 
 /** Truncate a response string for use as peer context. */
@@ -169,7 +231,7 @@ interface RoundResponse {
 async function runParallelRound(
   sessionId: string,
   signal: AbortSignal,
-  model: LanguageModel,
+  provider: CouncilProvider,
   round: number,
   agents: AgentEntry[],
   buildMessages: (agent: AgentEntry) => Array<{ role: "user"; content: string }>,
@@ -186,18 +248,19 @@ async function runParallelRound(
       let agentResponse = "";
 
       const streamPromise = (async () => {
-        const stream = streamText({
-          model,
-          abortSignal: signal,
+        const messages = buildMessages(agent);
+        const prompt = messages.map((m) => m.content).join("\n\n");
+        await councilComplete({
+          provider,
           system: buildSystem(agent),
-          messages: buildMessages(agent),
+          prompt,
+          signal,
+          onToken: (chunk) => {
+            if (signal.aborted) return;
+            agentResponse += chunk;
+            emit(sessionId, { type: "agent-token", agentName: agent.name, token: chunk, round });
+          },
         });
-
-        for await (const chunk of stream.textStream) {
-          if (signal.aborted) break;
-          agentResponse += chunk;
-          emit(sessionId, { type: "agent-token", agentName: agent.name, token: chunk, round });
-        }
       })();
 
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -244,7 +307,7 @@ async function runParallelRound(
  */
 async function runBordaRanking(
   signal: AbortSignal,
-  model: LanguageModel,
+  provider: CouncilProvider,
   responses: RoundResponse[],
 ): Promise<Record<string, number>> {
   const scores: Record<string, number> = {};
@@ -264,13 +327,12 @@ async function runBordaRanking(
 
       let rankingText: string;
       try {
-        const rankResult = await generateText({
-          model,
-          abortSignal: signal,
+        rankingText = (await councilComplete({
+          provider,
+          signal,
           system: `You are ${ranker.displayName}. Rank the following peer responses from best (most insightful and accurate) to worst. Reply with ONLY a JSON array of 1-indexed positions from best to worst. e.g. [2,1,3]`,
-          messages: [{ role: "user", content: `Peer responses to rank:\n\n${numbered}` }],
-        });
-        rankingText = rankResult.text.trim();
+          prompt: `Peer responses to rank:\n\n${numbered}`,
+        })).trim();
       } catch {
         // If ranking fails for this agent, skip — don't crash the whole phase
         return;
@@ -315,21 +377,21 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   emit(sessionId, { type: "session-started", query });
   emit(sessionId, { type: "pm-status", message: "PM is assembling the council..." });
 
-  const { model } = await resolveProvider();
+  const provider = await resolveProvider();
 
   // ── Phase 1: PM selects 3–5 relevant agents ────────────────────────────
   const agentListStr = COUNCIL_AGENTS.map((a) => a.name).join(", ");
 
-  const selectionResult = await generateText({
-    model,
-    abortSignal: signal,
+  const selectionText = await councilComplete({
+    provider,
+    signal,
     system: `You are the Project Manager for a council of AI experts. Select the most relevant experts to answer the user's question. Default target is 3 agents; select up to 5 for complex multi-domain questions. Respond with ONLY a valid JSON array of agent names, e.g.: ["backend-engineer","security-expert"]. No markdown, no explanation.`,
-    messages: [{ role: "user", content: `Available agents: ${agentListStr}\n\nUser question: ${effectiveQuery}\n\nWhich 3-5 agents should participate in this council?` }],
+    prompt: `Available agents: ${agentListStr}\n\nUser question: ${effectiveQuery}\n\nWhich 3-5 agents should participate in this council?`,
   });
 
   let selectedNames: string[];
   try {
-    const raw = selectionResult.text.trim();
+    const raw = selectionText.trim();
     const match = raw.match(/\[[\s\S]*\]/);
     selectedNames = JSON.parse(match ? match[0] : raw) as string[];
   } catch {
@@ -354,13 +416,12 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   emit(sessionId, { type: "pm-status", message: "PM is reviewing your question..." });
 
   // ── Phase 2: Optional PM clarification ────────────────────────────────
-  const clarificationResult = await generateText({
-    model,
-    abortSignal: signal,
+  const clarificationText = (await councilComplete({
+    provider,
+    signal,
     system: `You are the Project Manager facilitating an expert council discussion. Determine if the user's question is missing a critical technical detail that would meaningfully change the experts' recommendations. Ask ONLY about technical or domain constraints (e.g. scale, existing infrastructure, specific requirements) — never about team size, budget, or process. If a useful clarification exists, respond with "QUESTION: <one concise technical question>". If the question is sufficiently clear, respond with "PROCEED". When in doubt, prefer PROCEED.`,
-    messages: [{ role: "user", content: `User question: ${effectiveQuery}` }],
-  });
-  const clarificationText = clarificationResult.text.trim();
+    prompt: `User question: ${effectiveQuery}`,
+  })).trim();
 
   // Use a mutable local so clarification answers augment the effective query
   let activeQuery = effectiveQuery;
@@ -388,7 +449,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   const round1Responses = await runParallelRound(
     sessionId,
     signal,
-    model,
+    provider,
     1,
     selectedAgents,
     (agent) => [
@@ -412,18 +473,18 @@ async function runSession(session: CouncilSession, query: string, context?: stri
     .map((r, i) => `Position ${positionLabels[i] ?? i + 1}: ${truncate(r.content)}`)
     .join("\n\n---\n\n");
 
-  const convergenceResult = await generateText({
-    model,
-    abortSignal: signal,
+  const convergenceText = await councilComplete({
+    provider,
+    signal,
     system: `You are the Project Manager reviewing anonymous expert positions. Determine whether these positions agree on the core recommendation. Reply with ONLY valid JSON: {"converged": true/false, "summary": "<brief anonymized summary of all positions for agents to review>"}`,
-    messages: [{ role: "user", content: `User question: ${activeQuery}\n\nAnonymous positions:\n${anonymisedPositions}` }],
+    prompt: `User question: ${activeQuery}\n\nAnonymous positions:\n${anonymisedPositions}`,
   });
 
   let converged: boolean;
   let anonymisedSummary = anonymisedPositions;
 
   try {
-    const raw = convergenceResult.text.trim();
+    const raw = convergenceText.trim();
     const match = raw.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(match ? match[0] : raw) as {
       converged: boolean;
@@ -456,7 +517,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
     const round2Responses = await runParallelRound(
       sessionId,
       signal,
-      model,
+      provider,
       2,
       selectedAgents,
       (agent) => [
@@ -490,7 +551,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   // ── Phase 6: Borda ranking ─────────────────────────────────────────────
   emit(sessionId, { type: "pm-status", message: "Agents are peer-ranking responses..." });
 
-  const bordaScores = await runBordaRanking(signal, model, finalResponses);
+  const bordaScores = await runBordaRanking(signal, provider, finalResponses);
 
   // Agents that timed out / errored get a score of 0 so the sidebar shows ★0 for them
   for (const agent of selectedAgents) {
@@ -524,26 +585,20 @@ async function runSession(session: CouncilSession, query: string, context?: stri
 
   const didConverge = converged;
 
-  const finalStream = streamText({
-    model,
-    abortSignal: signal,
+  await councilComplete({
+    provider,
+    signal,
     system: `You are the Project Manager synthesizing a council discussion. The peer-ranked scores are: ${scoresStr}. The highest-scoring position should anchor your recommendation. ${
       !didConverge
         ? "If agents disagreed and did NOT converge, explicitly surface the disagreement: describe both positions and give a conditional recommendation."
         : ""
     } Use markdown with headers, bullet points, and code blocks where helpful.`,
-    messages: [
-      {
-        role: "user",
-        content: `User question: ${activeQuery}\n\nExpert discussion${didConverge ? " (converged after Round 1)" : " (two rounds)"}:\n${discussionContext}\n\nPlease provide the final council decision and recommendation.`,
-      },
-    ],
+    prompt: `User question: ${activeQuery}\n\nExpert discussion${didConverge ? " (converged after Round 1)" : " (two rounds)"}:\n${discussionContext}\n\nPlease provide the final council decision and recommendation.`,
+    onToken: (chunk) => {
+      if (signal.aborted) return;
+      emit(sessionId, { type: "final-answer-token", token: chunk });
+    },
   });
-
-  for await (const chunk of finalStream.textStream) {
-    if (signal.aborted) break;
-    emit(sessionId, { type: "final-answer-token", token: chunk });
-  }
 
   emit(sessionId, { type: "final-answer-complete" });
 

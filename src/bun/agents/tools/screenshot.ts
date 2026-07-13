@@ -74,7 +74,7 @@ export function extractImagePayload(output: unknown): { base64: string; mimeType
 	}
 }
 
-function imageToolModelOutput(output: string) {
+export function imageToolModelOutput(output: string) {
 	try {
 		const parsed = JSON.parse(output) as { image?: unknown; [key: string]: unknown };
 		if (parsed.image) {

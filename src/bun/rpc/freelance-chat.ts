@@ -4,6 +4,7 @@ import { eq, asc } from "drizzle-orm";
 import { db } from "../db";
 import { freelanceChatMessages, freelanceListings, aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { isHaikuModel } from "../providers/claude-subscription";
 import { broadcastToWebview } from "../engine-manager";
 import { getAllTools } from "../agents/tools/index";
 import { autoApprovedShellTool } from "../agents/tools/shell";
@@ -193,7 +194,7 @@ ${skillsSection}` : ""}`;
 // Load default provider + model
 // ---------------------------------------------------------------------------
 
-async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string }> {
+async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; providerType: string; modelId: string }> {
   const providerRows = await db
     .select()
     .from(aiProviders)
@@ -213,7 +214,14 @@ async function getDefaultProviderAndModel(): Promise<{ adapter: ReturnType<typeo
   });
 
   const modelId = p.defaultModel ?? "gpt-4o-mini";
-  return { adapter, modelId };
+  return { adapter, providerType: p.providerType, modelId };
+}
+
+// The SDK's query() takes a single prompt, not a message array — flatten the
+// conversation history into a text transcript, same approach engine.ts uses
+// for the PM's own CLI/SDK-routed transcript.
+function flattenHistoryForCli(history: Array<{ role: "user" | "assistant"; content: string }>): string {
+  return history.map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -272,64 +280,124 @@ async function streamAndPersist(
 ): Promise<void> {
   let fullContent = "";
   try {
-    const { adapter, modelId } = await getDefaultProviderAndModel();
+    const { adapter, providerType, modelId } = await getDefaultProviderAndModel();
 
     // Fetch + cache the full description on first use (shared with the bid
     // pipeline via ensureFullDescription). "" → fall back to RSS description.
     const fullDescription = await ensureFullDescription(listing, adapter, modelId, {
       onFetchStart: () => broadcastToWebview(FREELANCE_EVENTS.CHAT_FETCHING, { listingId }),
       onFetchDone: () => broadcastToWebview(FREELANCE_EVENTS.CHAT_FETCH_DONE, { listingId }),
-    });
+    }, providerType);
 
-    const model = adapter.createModel(modelId);
     const systemPrompt = await buildSystemPrompt(listing, fullDescription);
     const tools = await buildFreelanceTools();
-
-    const result = streamText({
-      model,
-      system: systemPrompt,
-      messages: history,
-      tools,
-      stopWhen: [stepCountIs(100)],
-      abortSignal: signal,
-    });
 
     // Track tool call start times for duration reporting
     const toolStartTimes = new Map<string, string>();
 
-    for await (const part of result.fullStream) {
-      if (part.type === "text-delta") {
-        const token = (part as { text?: string }).text ?? "";
-        fullContent += token;
-        broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token });
-      } else if (part.type === "tool-call") {
-        const tc = (part as unknown) as { toolCallId: string; toolName: string; input: Record<string, unknown> };
-        const timeStart = new Date().toISOString();
-        toolStartTimes.set(tc.toolCallId, timeStart);
-        broadcastToWebview(FREELANCE_EVENTS.CHAT_TOOL_START, {
-          listingId,
-          toolCallId: tc.toolCallId,
-          toolName: tc.toolName,
-          toolInput: JSON.stringify(tc.input),
-          timeStart,
-        });
-      } else if (part.type === "tool-result") {
-        const tr = (part as unknown) as { toolCallId: string; toolName: string; output: unknown; isError?: boolean };
-        const timeStart = toolStartTimes.get(tr.toolCallId) ?? null;
-        const timeEnd = new Date().toISOString();
-        toolStartTimes.delete(tr.toolCallId);
-        const toolOutput = typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
-        broadcastToWebview(FREELANCE_EVENTS.CHAT_TOOL_DONE, {
-          listingId,
-          toolCallId: tr.toolCallId,
-          toolName: tr.toolName,
-          toolOutput,
-          isError: tr.isError ?? false,
-          timeStart,
-          timeEnd,
-        });
-      } else if (part.type === "error") {
-        throw (part as { error: unknown }).error;
+    // Claude Subscription's direct-HTTP OAuth path 429s for anything but
+    // Haiku — non-Haiku models route through the official Agent SDK instead
+    // (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
+    if (providerType === "claude-subscription" && !isHaikuModel(modelId)) {
+      const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+      const cliResult = await runClaudeCliTask({
+        task: flattenHistoryForCli(history),
+        systemPrompt,
+        tools,
+        modelId,
+        timeoutMs: 900_000,
+        abortSignal: signal,
+        verifyToolCall: false, // freelance chat is advisory Q&A — a turn may legitimately need zero tool calls
+        onText: (text) => {
+          fullContent += text;
+          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token: text });
+        },
+        onReasoning: () => { /* freelance chat doesn't surface reasoning today (same as the streamText path, which never handled 'reasoning' parts) */ },
+        onToolCallStart: (toolName, args) => {
+          const callId = crypto.randomUUID();
+          const timeStart = new Date().toISOString();
+          toolStartTimes.set(callId, timeStart);
+          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOOL_START, {
+            listingId,
+            toolCallId: callId,
+            toolName,
+            toolInput: JSON.stringify(args),
+            timeStart,
+          });
+          return callId;
+        },
+        onToolCallEnd: (callId, resultText, isError) => {
+          const timeStart = toolStartTimes.get(callId) ?? null;
+          toolStartTimes.delete(callId);
+          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOOL_DONE, {
+            listingId,
+            toolCallId: callId,
+            toolName: "",
+            toolOutput: resultText,
+            isError: isError ?? false,
+            timeStart,
+            timeEnd: new Date().toISOString(),
+          });
+        },
+      });
+
+      if (signal.aborted || cliResult.status === "cancelled") {
+        broadcastToWebview(FREELANCE_EVENTS.CHAT_STOPPED, { listingId });
+        return;
+      }
+      if (cliResult.status === "timeout") {
+        throw Object.assign(new Error("This request hit the 15-minute time limit and was stopped. Send a follow-up to continue."), { name: "TimeoutError" });
+      }
+      if (cliResult.status === "failed") {
+        throw new Error(cliResult.summary);
+      }
+      if (!fullContent.trim()) fullContent = cliResult.summary;
+    } else {
+      const model = adapter.createModel(modelId);
+
+      const result = streamText({
+        model,
+        system: systemPrompt,
+        messages: history,
+        tools,
+        stopWhen: [stepCountIs(100)],
+        abortSignal: signal,
+      });
+
+      for await (const part of result.fullStream) {
+        if (part.type === "text-delta") {
+          const token = (part as { text?: string }).text ?? "";
+          fullContent += token;
+          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOKEN, { listingId, messageId, token });
+        } else if (part.type === "tool-call") {
+          const tc = (part as unknown) as { toolCallId: string; toolName: string; input: Record<string, unknown> };
+          const timeStart = new Date().toISOString();
+          toolStartTimes.set(tc.toolCallId, timeStart);
+          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOOL_START, {
+            listingId,
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            toolInput: JSON.stringify(tc.input),
+            timeStart,
+          });
+        } else if (part.type === "tool-result") {
+          const tr = (part as unknown) as { toolCallId: string; toolName: string; output: unknown; isError?: boolean };
+          const timeStart = toolStartTimes.get(tr.toolCallId) ?? null;
+          const timeEnd = new Date().toISOString();
+          toolStartTimes.delete(tr.toolCallId);
+          const toolOutput = typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
+          broadcastToWebview(FREELANCE_EVENTS.CHAT_TOOL_DONE, {
+            listingId,
+            toolCallId: tr.toolCallId,
+            toolName: tr.toolName,
+            toolOutput,
+            isError: tr.isError ?? false,
+            timeStart,
+            timeEnd,
+          });
+        } else if (part.type === "error") {
+          throw (part as { error: unknown }).error;
+        }
       }
     }
 

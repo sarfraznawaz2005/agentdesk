@@ -15,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { aiProviders } from "../../db/schema";
 import { createProviderAdapter } from "../../providers";
+import { internalCallModelId } from "../../providers/claude-subscription";
 import { join, isAbsolute, basename } from "node:path";
 import { Session } from "electrobun/bun";
 import { sqlite } from "../../db/connection";
@@ -342,7 +343,7 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 					});
 					const diff = (await runGit(["-C", ctx.workspacePath, "--no-pager", "diff", "--stat"], ctx.workspacePath)).out;
 					const { text } = await generateText({
-						model: adapter.createModel(row.defaultModel ?? "gpt-4o-mini"),
+						model: adapter.createModel(internalCallModelId(row.providerType, row.defaultModel ?? "gpt-4o-mini")),
 						system:
 							"You are a strict senior reviewer doing final QA before delivering paid freelance work to a client. " +
 							"Reply with a JSON object {\"pass\": boolean, \"issues\": string[]}. Fail (pass=false) if anything is " +

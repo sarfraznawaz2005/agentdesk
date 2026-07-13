@@ -26,7 +26,7 @@ import { rpc } from "@/lib/rpc";
 // Types
 // ---------------------------------------------------------------------------
 
-type ProviderType = "anthropic" | "openai" | "google" | "deepseek" | "groq" | "xai" | "ollama" | "openrouter" | "zai" | "opencode" | "custom";
+type ProviderType = "anthropic" | "openai" | "google" | "deepseek" | "groq" | "xai" | "ollama" | "openrouter" | "zai" | "opencode" | "claude-subscription" | "custom";
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 interface FormData {
@@ -58,6 +58,7 @@ const PROVIDERS: {
   Icon: React.ElementType;
 }[] = [
   { id: "opencode", label: "Free", description: "No API key needed — free models via OpenCode", Icon: Zap },
+  { id: "claude-subscription", label: "Claude Subscription", description: "Use your existing Claude Code login — no API key needed", Icon: Sparkles },
   { id: "anthropic", label: "Anthropic", description: "Claude models — fast, capable, safety-focused", Icon: Sparkles },
   { id: "deepseek", label: "DeepSeek", description: "DeepSeek V3/R1 — strong coding, very affordable", Icon: Bot },
   { id: "google", label: "Google Gemini", description: "Gemini models — large context, multimodal", Icon: Sparkles },
@@ -75,7 +76,7 @@ const PROVIDERS: {
 const FREE_TEXT_PROVIDERS: ProviderType[] = ["ollama", "custom"];
 
 // Provider types that do not require an API key from the user
-const NO_KEY_PROVIDERS: ProviderType[] = ["opencode"];
+const NO_KEY_PROVIDERS: ProviderType[] = ["opencode", "claude-subscription"];
 
 function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -570,7 +571,9 @@ function StepConfigure({
         {/* API Key */}
         {isNoKey ? (
           <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-            No API key needed — free models load automatically below.
+            {provider === "claude-subscription"
+              ? "No API key needed — uses your existing Claude Code login. Models load automatically below."
+              : "No API key needed — free models load automatically below."}
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -823,7 +826,7 @@ function StepConfirmation({
         <div className="flex justify-between gap-4 px-4 py-3">
           <dt className="font-medium text-muted-foreground">API Key</dt>
           <dd className="font-mono">
-            {formData.provider === "opencode"
+            {formData.provider && NO_KEY_PROVIDERS.includes(formData.provider)
               ? "No key required"
               : `${"•".repeat(8)}${formData.apiKey.slice(-4)}`}
           </dd>
@@ -915,7 +918,7 @@ export function OnboardingPage() {
         const saveResult = await rpc.saveProvider({
           name: PROVIDERS.find((p) => p.id === formData.provider)?.label ?? "Provider",
           providerType: formData.provider ?? "",
-          apiKey: formData.provider === "opencode" ? "public" : formData.apiKey,
+          apiKey: formData.provider && NO_KEY_PROVIDERS.includes(formData.provider) ? "public" : formData.apiKey,
           baseUrl: normalizedBaseUrl,
           defaultModel: formData.model || undefined,
           isDefault: true,

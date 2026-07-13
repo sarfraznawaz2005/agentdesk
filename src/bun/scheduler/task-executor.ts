@@ -380,12 +380,10 @@ export async function executeTask(
 				// Run agent with full tool set (skills, MCP, plugins, web) — no project/conversation needed
 				let responseText = "";
 				try {
-					const { generateText } = await import("ai");
 					const { getToolsForAgent } = await import("../agents/tools/index");
 					const { getPluginTools } = await import("../agents/engine-types");
 					const { getMcpTools } = await import("../mcp/client");
-
-					const adapter = createProviderAdapter(providerConfig);
+					const { isHaikuModel } = await import("../providers/claude-subscription");
 
 					// Assemble the same tool set runInlineAgent uses: agent-specific tools +
 					// plugin tools + MCP tools. Skills (read_skill, find_skills) are included
@@ -408,22 +406,55 @@ export async function executeTask(
 					}
 					allTools = wrapToolsWithCallLogging(allTools, agentId);
 
-					const result = await generateText({
-						model: adapter.createModel(modelId),
-						system: systemPrompt,
-						prompt: instructions,
-						tools: allTools,
-						abortSignal,
-						// Stop when the model produces a final text response with no tool calls
-						stopWhen: [
-							({ steps }) => {
-								if (steps.length === 0) return false;
-								const last = steps[steps.length - 1];
-								return !last.toolCalls || last.toolCalls.length === 0;
-							},
-						],
-					});
-					responseText = result.text.trim();
+					// Claude Subscription's direct-HTTP OAuth path 429s for anything but
+					// Haiku — non-Haiku models route through the official Agent SDK
+					// instead. This branch genuinely dispatches sub-agents and uses
+					// multi-step tool calls (not a bounded one-shot completion), so it
+					// gets full CLI/SDK routing like runInlineAgent, not a Haiku-swap.
+					if (providerRow.providerType === "claude-subscription" && !isHaikuModel(modelId)) {
+						const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+						const cliResult = await runClaudeCliTask({
+							task: instructions,
+							systemPrompt,
+							tools: allTools,
+							modelId,
+							timeoutMs: 1_800_000,
+							abortSignal,
+							verifyToolCall: false, // a scheduled task may legitimately need zero tool calls (e.g. a plain reminder/summary)
+							onText: (text) => { responseText += text; },
+							onReasoning: () => { /* not surfaced today — this branch has no live streaming UI, matching the generateText path below */ },
+							onToolCallStart: () => crypto.randomUUID(),
+							onToolCallEnd: () => { /* no live UI broadcast today, matching the generateText path below */ },
+						});
+						if (cliResult.status === "cancelled") {
+							responseText = "STOPPED BY USER";
+						} else if (cliResult.status === "failed" || cliResult.status === "timeout") {
+							responseText = `Error: ${cliResult.summary}`;
+						} else if (!responseText.trim()) {
+							responseText = cliResult.summary.trim();
+						} else {
+							responseText = responseText.trim();
+						}
+					} else {
+						const { generateText } = await import("ai");
+						const adapter = createProviderAdapter(providerConfig);
+						const result = await generateText({
+							model: adapter.createModel(modelId),
+							system: systemPrompt,
+							prompt: instructions,
+							tools: allTools,
+							abortSignal,
+							// Stop when the model produces a final text response with no tool calls
+							stopWhen: [
+								({ steps }) => {
+									if (steps.length === 0) return false;
+									const last = steps[steps.length - 1];
+									return !last.toolCalls || last.toolCalls.length === 0;
+								},
+							],
+						});
+						responseText = result.text.trim();
+					}
 				} catch (err) {
 					responseText = abortSignal?.aborted
 						? "STOPPED BY USER"

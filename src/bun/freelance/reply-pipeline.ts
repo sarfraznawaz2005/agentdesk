@@ -13,6 +13,7 @@ import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
+import { internalCallModelId } from "../providers/claude-subscription";
 import { getFreelanceSettings } from "./settings";
 import { getHumanizerRules } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
@@ -25,7 +26,7 @@ Write a concise, professional reply to the client's latest message — usually 2
 ${getHumanizerRules()}`;
 }
 
-async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string }> {
+async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof createProviderAdapter>; modelId: string; providerType: string }> {
 	// Prefer the freelance analysis provider if set, else the default provider.
 	const fl = await getFreelanceSettings();
 	let row = fl.analysisProviderId
@@ -43,7 +44,7 @@ async function resolveProviderAndModel(): Promise<{ adapter: ReturnType<typeof c
 		baseUrl: row.baseUrl ?? null,
 		defaultModel: row.defaultModel ?? null,
 	});
-	return { adapter, modelId: row.defaultModel ?? "gpt-4o-mini" };
+	return { adapter, modelId: row.defaultModel ?? "gpt-4o-mini", providerType: row.providerType };
 }
 
 interface ThreadCtx {
@@ -125,14 +126,14 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 	const conversation = buildConversationText(threadId, ctx.selfUserId);
 	const prompt = `Conversation so far (most recent last):\n${conversation || "(no messages captured yet)"}${listingBrief(ctx.listingId)}\n\nWrite my reply to the client's latest message.`;
 
-	const { adapter, modelId } = await resolveProviderAndModel();
+	const { adapter, modelId, providerType } = await resolveProviderAndModel();
 	const { text } = await generateText({
-		model: adapter.createModel(modelId),
+		model: adapter.createModel(internalCallModelId(providerType, modelId)),
 		system: buildStrategistSystem(),
 		prompt,
 		temperature: 0.7,
 	});
-	let draftBody = await qaRevise(adapter, modelId, "reply", text.trim());
+	let draftBody = await qaRevise(adapter, modelId, "reply", text.trim(), providerType);
 
 	// Template-variation guard (draft time): near-identical messages are a top
 	// spam signal. If this draft reads like a recent one, regenerate once with an
@@ -142,12 +143,12 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 	if (sim > DRAFT_SIMILARITY_MAX) {
 		try {
 			const { text: retry } = await generateText({
-				model: adapter.createModel(modelId),
+				model: adapter.createModel(internalCallModelId(providerType, modelId)),
 				system: buildStrategistSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: Your reply must clearly differ in structure and wording from your recent messages — vary the opening, sentence order, and phrasing.`,
 				temperature: 0.9,
 			});
-			const retryBody = await qaRevise(adapter, modelId, "reply", retry.trim());
+			const retryBody = await qaRevise(adapter, modelId, "reply", retry.trim(), providerType);
 			if (maxSimilarityAgainst(retryBody, priors) < sim) draftBody = retryBody;
 		} catch {
 			/* keep the original draft — the send-time gate is the backstop */
