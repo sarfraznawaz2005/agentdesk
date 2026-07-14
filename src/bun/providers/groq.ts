@@ -37,10 +37,10 @@ export class GroqAdapter implements ProviderAdapter {
 			});
 			if (!response.ok) return FALLBACK_MODELS;
 			const data = await response.json() as { data?: Array<{ id: string; object?: string }> };
-			const models = (data.data ?? [])
-				.map((m) => m.id)
-				.filter((id) => !id.includes("whisper") && !id.includes("tool-use") && !id.includes("guard"))
-				.sort();
+			// Non-chat models (whisper/tool-use/guard/etc.) are no longer
+			// filtered out here — the Models page now badges them by type
+			// instead of hiding them (see model-classification.ts).
+			const models = (data.data ?? []).map((m) => m.id).sort();
 			return models.length > 0 ? models : FALLBACK_MODELS;
 		} catch {
 			return FALLBACK_MODELS;

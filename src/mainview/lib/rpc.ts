@@ -510,6 +510,9 @@ export const rpc = {
   getConnectedProviderModels: () =>
     electroviewRpc.request.getConnectedProviderModels({}),
 
+  /** Fetch model-type badges for every connected provider's models (cached; see model-classification.ts). */
+  getModelTypes: () => electroviewRpc.request.getModelTypes({}),
+
   /** Check if the Claude Subscription provider type is enabled (requires 'claude' flag file). */
   getClaudeSubscriptionEnabled: () =>
     electroviewRpc.request.getClaudeSubscriptionEnabled({}),

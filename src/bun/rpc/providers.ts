@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
-import { aiProviders, modelPreferences } from "../db/schema";
+import { aiProviders, modelCapabilitiesCache, modelPreferences } from "../db/schema";
 import { createProviderAdapter, dedupeModels, type ProviderConfig } from "../providers";
+import { classifyModels, type ModelType } from "../providers/model-classification";
 import { logAudit } from "../db/audit";
 import { isClaudeSubscriptionEnabled } from "../claude/feature-flag";
 
@@ -104,6 +105,10 @@ export async function saveProviderHandler(
 				.update(aiProviders)
 				.set(updateFields)
 				.where(eq(aiProviders.id, params.id));
+			// Invalidate the model-type classification cache — an edited
+			// baseUrl/apiKey can change which models are even reachable,
+			// so force a full reclassify on this provider's next fetch.
+			await db.delete(modelCapabilitiesCache).where(eq(modelCapabilitiesCache.providerId, params.id));
 			sqlite.exec("COMMIT");
 		} catch (err) {
 			sqlite.exec("ROLLBACK");
@@ -287,6 +292,109 @@ export async function getConnectedProviderModelsHandler(): Promise<
 	}
 
 	return results;
+}
+
+/** Non-language types that shouldn't clutter the chat model picker by default. */
+const NON_CHAT_TYPES = new Set<ModelType>([
+	"embedding",
+	"image",
+	"video",
+	"transcription",
+	"speech",
+	"realtime",
+	"reranking",
+]);
+
+/**
+ * Resolve model-type badges for every connected provider's models.
+ *
+ * Reads the persistent classification cache first; only ids missing from it
+ * (first run, or a genuinely new model id) are classified via the two shared
+ * catalog fetches in providers/model-classification.ts and upserted back into
+ * the cache. So every call after the first is a pure DB read with zero
+ * network calls, until a provider is added/edited (cache cleared) or a new
+ * model id appears upstream.
+ *
+ * Newly-classified non-language models (embedding/image/etc.) are seeded as
+ * disabled in model_preferences — unless the user already has an explicit
+ * preference row for that model — so they don't clutter the chat picker.
+ */
+export async function getModelTypesHandler(): Promise<Record<string, Record<string, ModelType>>> {
+	const providerRows = await db.select().from(aiProviders);
+	const result: Record<string, Record<string, ModelType>> = {};
+
+	for (const row of providerRows) {
+		let modelIds: string[];
+		try {
+			const adapter = createProviderAdapter({
+				id: row.id,
+				name: row.name,
+				providerType: row.providerType,
+				apiKey: row.apiKey,
+				baseUrl: row.baseUrl,
+				defaultModel: row.defaultModel,
+			});
+			modelIds = dedupeModels(await adapter.listModels());
+		} catch {
+			modelIds = [];
+		}
+		if (row.defaultModel && !modelIds.includes(row.defaultModel)) modelIds.push(row.defaultModel);
+		if (modelIds.length === 0) {
+			result[row.id] = {};
+			continue;
+		}
+
+		const cachedRows = await db
+			.select()
+			.from(modelCapabilitiesCache)
+			.where(
+				and(
+					eq(modelCapabilitiesCache.providerId, row.id),
+					inArray(modelCapabilitiesCache.modelId, modelIds),
+				),
+			);
+		const cached = new Map(cachedRows.map((r) => [r.modelId, r.modelType as ModelType]));
+
+		const missingIds = modelIds.filter((id) => !cached.has(id));
+		if (missingIds.length > 0) {
+			const classified = await classifyModels(row.providerType, row.baseUrl, row.name, missingIds);
+
+			const existingPrefRows = await db
+				.select({ modelId: modelPreferences.modelId })
+				.from(modelPreferences)
+				.where(
+					and(
+						eq(modelPreferences.providerId, row.id),
+						inArray(modelPreferences.modelId, missingIds),
+					),
+				);
+			const hasExplicitPref = new Set(existingPrefRows.map((r) => r.modelId));
+
+			const now = new Date().toISOString();
+			for (const id of missingIds) {
+				const { type, source } = classified[id] ?? { type: "unknown" as ModelType, source: "default" as const };
+				cached.set(id, type);
+				await db
+					.insert(modelCapabilitiesCache)
+					.values({ providerId: row.id, modelId: id, modelType: type, source, computedAt: now })
+					.onConflictDoUpdate({
+						target: [modelCapabilitiesCache.providerId, modelCapabilitiesCache.modelId],
+						set: { modelType: type, source, computedAt: now },
+					});
+
+				if (NON_CHAT_TYPES.has(type) && !hasExplicitPref.has(id)) {
+					await db
+						.insert(modelPreferences)
+						.values({ providerId: row.id, modelId: id, isEnabled: 0, updatedAt: now })
+						.onConflictDoNothing();
+				}
+			}
+		}
+
+		result[row.id] = Object.fromEntries(cached);
+	}
+
+	return result;
 }
 
 /**

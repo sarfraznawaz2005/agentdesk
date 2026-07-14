@@ -55,6 +55,7 @@ export const handlers: Record<string, (params: any) => any> = {
 		return result;
 	},
 	getConnectedProviderModels: () => providersRpc.getConnectedProviderModelsHandler(),
+	getModelTypes: () => providersRpc.getModelTypesHandler(),
 	checkModelToolSupport: (params) => providersRpc.checkModelToolSupportHandler(params),
 	getClaudeSubscriptionEnabled: () => providersRpc.getClaudeSubscriptionEnabledHandler(),
 

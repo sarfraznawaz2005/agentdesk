@@ -1076,6 +1076,35 @@ export const modelPreferences = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
+// model_capabilities_cache (v58) — classification cache backing the model-type
+// badges on Settings → AI → Models. Separate from model_preferences (which is
+// sparse user-preference data, not classification metadata). Invalidated on
+// provider add/edit/delete — see rpc/providers.ts.
+// ---------------------------------------------------------------------------
+export const modelCapabilitiesCache = sqliteTable(
+	"model_capabilities_cache",
+	{
+		id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+		providerId: text("provider_id")
+			.notNull()
+			.references(() => aiProviders.id, { onDelete: "cascade" }),
+		modelId: text("model_id").notNull(),
+		// ModelType enum value: language | embedding | image | video |
+		// transcription | speech | realtime | reranking | unknown
+		modelType: text("model_type").notNull(),
+		// "gateway" | "models-dev" | "heuristic" | "default"
+		source: text("source").notNull(),
+		computedAt: text("computed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	},
+	(t) => ({
+		uniqProviderModel: uniqueIndex("idx_model_caps_provider_model").on(
+			t.providerId,
+			t.modelId,
+		),
+	}),
+);
+
+// ---------------------------------------------------------------------------
 // collections (v56) — personal, cross-project knowledge base
 // ---------------------------------------------------------------------------
 // Deliberately separate from `notes` (project docs, above): a collection is a

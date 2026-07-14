@@ -137,20 +137,10 @@ export class OpenAIAdapter implements ProviderAdapter {
 			});
 			if (!response.ok) return OPENAI_MODELS;
 			const data = await response.json() as { data?: Array<{ id: string }> };
-			const models = (data.data ?? [])
-				.map((m) => m.id)
-				.filter((id) => {
-					const lower = id.toLowerCase();
-					return !lower.includes("embed") &&
-						!lower.includes("whisper") &&
-						!lower.includes("tts") &&
-						!lower.includes("dall-e") &&
-						!lower.includes("moderation") &&
-						!lower.includes("realtime") &&
-						!lower.includes("audio") &&
-						!lower.includes("search");
-				})
-				.sort(naturalSort);
+			// Non-chat models (embed/whisper/tts/dall-e/etc.) are no longer
+			// filtered out here — the Models page now badges them by type
+			// instead of hiding them (see model-classification.ts).
+			const models = (data.data ?? []).map((m) => m.id).sort(naturalSort);
 			return models.length > 0 ? models : OPENAI_MODELS;
 		} catch {
 			return OPENAI_MODELS;

@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
+import { ModelTypeBadge } from "@/components/ui/model-type-badge";
+import { MODEL_TYPE_BADGE_STYLES, MODEL_TYPE_FILTER_LABELS, type ModelType } from "@/lib/model-types";
 
 interface ProviderModels {
   providerId: string;
@@ -16,6 +18,8 @@ interface ProviderModels {
 
 /** Per-model state keyed by `${providerId}|${modelId}`. */
 type ModelPrefMap = Record<string, { isEnabled: boolean; isFavorite: boolean }>;
+/** Model type keyed by providerId, then modelId. */
+type ModelTypeMap = Record<string, Record<string, ModelType>>;
 
 const prefKey = (providerId: string, model: string) => `${providerId}|${model}`;
 
@@ -31,10 +35,21 @@ const prefKey = (providerId: string, model: string) => `${providerId}|${model}`;
 export function ModelsSettings() {
   const [providers, setProviders] = useState<ProviderModels[]>([]);
   const [prefs, setPrefs] = useState<ModelPrefMap>({});
+  const [types, setTypes] = useState<ModelTypeMap>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTypeFilters, setActiveTypeFilters] = useState<Set<ModelType>>(new Set());
 
   // ---- Load on mount -------------------------------------------------------
+
+  const loadTypes = useCallback(async () => {
+    try {
+      const typesResult = await rpc.getModelTypes();
+      setTypes(typesResult as ModelTypeMap);
+    } catch {
+      // Non-fatal — badges/filter just stay empty if classification fails
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,12 +74,22 @@ export function ModelsSettings() {
       } finally {
         if (!cancelled) setLoading(false);
       }
+      // Fire-and-forget: badges/filter chips populate once classification
+      // finishes, without blocking the rest of the page on it.
+      if (!cancelled) loadTypes();
     }
     load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadTypes]);
+
+  // Provider add/edit/delete invalidates the type cache server-side —
+  // re-pull so badges/filters reflect the change.
+  useEffect(() => {
+    window.addEventListener("agentdesk:providers-changed", loadTypes);
+    return () => window.removeEventListener("agentdesk:providers-changed", loadTypes);
+  }, [loadTypes]);
 
   // Cross-view live sync: re-pull preferences when they change elsewhere (e.g.
   // a favourite toggled from the chat model picker), including across windows.
@@ -122,20 +147,51 @@ export function ModelsSettings() {
     if (!res?.success) toast("error", "Failed to update models.");
   }, []);
 
-  // ---- Search filter -------------------------------------------------------
+  // ---- Type + search filter --------------------------------------------------
+
+  const getModelType = useCallback(
+    (providerId: string, model: string): ModelType => types[providerId]?.[model] ?? "language",
+    [types],
+  );
+
+  // Type filter chips — only types actually present among the current models,
+  // with counts from the full (unfiltered-by-search) provider lists so chip
+  // counts stay stable while searching.
+  const typeFilterOptions = useMemo(() => {
+    const counts = new Map<ModelType, number>();
+    for (const p of providers) {
+      for (const m of p.models) {
+        const t = getModelType(p.providerId, m);
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .map(([type, count]) => ({ type, count, label: MODEL_TYPE_FILTER_LABELS[type] }))
+      .sort((a, b) => b.count - a.count);
+  }, [providers, getModelType]);
+
+  const toggleTypeFilter = useCallback((type: ModelType) => {
+    setActiveTypeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return providers;
     return providers
       .map((p) => ({
         ...p,
-        models: p.models.filter(
-          (m) => m.toLowerCase().includes(q) || p.providerName.toLowerCase().includes(q),
-        ),
+        models: p.models.filter((m) => {
+          if (activeTypeFilters.size > 0 && !activeTypeFilters.has(getModelType(p.providerId, m))) return false;
+          if (!q) return true;
+          return m.toLowerCase().includes(q) || p.providerName.toLowerCase().includes(q);
+        }),
       }))
       .filter((p) => p.models.length > 0);
-  }, [providers, search]);
+  }, [providers, search, activeTypeFilters, getModelType]);
 
   // Enabled/total counts from the FULL (unfiltered) provider lists, so the
   // headline + per-provider tallies stay stable while searching. A model counts
@@ -179,7 +235,8 @@ export function ModelsSettings() {
           Enable or disable individual models and mark favourites. Disabled
           models are hidden from the chat model picker; favourites appear in its
           Favorites section. Changes are saved automatically and apply across all
-          projects.
+          projects. Non-chat models (embedding, image, etc.) are badged by type
+          and disabled by default — use the filters below to find them.
         </p>
       </div>
 
@@ -205,6 +262,46 @@ export function ModelsSettings() {
         )}
       </div>
 
+      {/* Type filter chips — only types actually present in the current list */}
+      {typeFilterOptions.length > 1 && (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {typeFilterOptions.map(({ type, count, label }) => {
+              const active = activeTypeFilters.has(type);
+              const style = MODEL_TYPE_BADGE_STYLES[type];
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => toggleTypeFilter(type)}
+                  aria-pressed={active}
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-full border transition-colors",
+                    active
+                      ? cn(style?.className ?? "bg-foreground/10 text-foreground", "border-transparent")
+                      : "border-border text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {label} ({count})
+                </button>
+              );
+            })}
+            {activeTypeFilters.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTypeFilters(new Set())}
+                className="text-xs px-2.5 py-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground/70">
+            Types are guessed on a best-effort basis from public model catalogs and may be wrong or missing for obscure or renamed models.
+          </p>
+        </div>
+      )}
+
       {providers.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No providers configured. Add one under the Providers tab first.
@@ -212,7 +309,9 @@ export function ModelsSettings() {
       )}
 
       {providers.length > 0 && filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground">No models match “{search}”.</p>
+        <p className="text-sm text-muted-foreground">
+          {search ? `No models match "${search}".` : "No models match the selected type filter."}
+        </p>
       )}
 
       {filtered.map((provider) => {
@@ -276,6 +375,7 @@ export function ModelsSettings() {
                         >
                           {model}
                         </span>
+                        <ModelTypeBadge type={types[provider.providerId]?.[model]} />
                         <Switch
                           checked={enabled}
                           onCheckedChange={(v) => setEnabled(provider.providerId, model, v)}

@@ -56,6 +56,10 @@ export type ProvidersRequests = {
       models: string[];
     }>;
   };
+  getModelTypes: {
+    params: Record<string, never>;
+    response: Record<string, Record<string, string>>;
+  };
   checkModelToolSupport: {
     params: { providerType: string; apiKey?: string; providerId?: string; modelId: string };
     response: { supportsToolChoice: boolean; warning?: string };
