@@ -56,5 +56,9 @@ export async function initPlugins(): Promise<void> {
 
 	for (const plugin of all) {
 		await activatePlugin(plugin);
+		// Real event-loop yield between plugins (activatePlugin's own awaits are
+		// mostly synchronous bun:sqlite calls, so they don't actually free the JS
+		// thread) — keeps this loop from starving other async work mid-startup.
+		await new Promise((resolve) => setTimeout(resolve, 0));
 	}
 }

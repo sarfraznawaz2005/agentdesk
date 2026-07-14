@@ -578,6 +578,18 @@ export const rpc = {
   cloneProjectRepo: (projectId: string) =>
     electroviewRpc.request.cloneProjectRepo({ projectId }),
 
+  /** Open (or reuse) a Quick Chat project for an existing folder; always returns a fresh conversation. */
+  openQuickChatForPath: (workspacePath: string) =>
+    electroviewRpc.request.openQuickChatForPath({ workspacePath }),
+
+  /** Promote a Quick Chat project to a normal, visible project (no file copy). */
+  promoteQuickChatProject: (projectId: string) =>
+    electroviewRpc.request.promoteQuickChatProject({ projectId }),
+
+  /** Pull-based fallback: ask what Quick Chat route this window (by its own window.__electrobunWindowId) was opened for; null for a non-Quick-Chat window. */
+  getQuickChatRoute: (windowId: number) =>
+    electroviewRpc.request.getQuickChatRoute({ windowId }),
+
   /** Cascade-delete a project and all its data. */
   deleteProjectCascade: (id: string) =>
     electroviewRpc.request.deleteProjectCascade({ id }),

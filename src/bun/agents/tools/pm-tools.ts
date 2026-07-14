@@ -69,6 +69,8 @@ export interface PMToolsDeps {
 	onAgentDone?: (agentName: string, displayName: string, result: { status: string; summary: string; filesModified: string[] }) => void;
 	/** When true, only read-only agents may be dispatched and all agents get read-only tools. */
 	planMode?: boolean;
+	/** When true, this is a project-less Quick Chat session: no kanban/plan-approval PM tools, and dispatched sub-agents get no kanban tools either (see QUICK_CHAT_KANBAN_TOOL_NAMES below). */
+	quickChat?: boolean;
 	/**
 	 * The original user message that triggered this PM run.
 	 * Appended to sub-agent task prompts (when no kanban_task_id) so the agent
@@ -105,6 +107,30 @@ const AGENT_NAMES = [
 	"mobile-engineer",
 	"research-expert",
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Quick Chat sub-agent tool stripping — there is no kanban board in a Quick
+// Chat session (see PMToolsDeps.quickChat), so every kanban tool a normal
+// agent's `agent_tools` config would otherwise grant (see seed.ts's `KANBAN`/
+// `KANBAN_REVIEWER` constants) is meaningless without a kanban_task_id, which
+// quick-chat dispatches never pass. Stripped via runInlineAgent's excludeTools
+// at dispatch time — the same mechanism Playground/Issue Fixer already use.
+// ---------------------------------------------------------------------------
+const QUICK_CHAT_EXCLUDED_TOOLS = [
+	"create_task",
+	"update_task",
+	"move_task",
+	"delete_task",
+	"check_criteria",
+	"check_all_criteria",
+	"add_task_notes",
+	"submit_review",
+	"verify_implementation",
+	// define_tasks stages structured task definitions for create_tasks_from_plan
+	// to later convert into kanban tasks — a dead end in Quick Chat, where
+	// create_tasks_from_plan doesn't exist on the PM's own tool set either.
+	"define_tasks",
+];
 
 // ---------------------------------------------------------------------------
 // Direct DB helpers for todo items — bypass getSetting's auto-JSON-parse
@@ -249,7 +275,7 @@ export function createPMTools(deps: PMToolsDeps) {
 	let writeAgentRunning = false;
 	const effectiveAgentNames = deps.agentNames ?? AGENT_NAMES;
 
-	return {
+	const tools = {
 		...schedulerTools,
 		run_agent: tool({
 			description: `Run a specialist sub-agent to complete a task. The agent runs inline in the main chat — you and the user see all its tool calls and output. The agent gets a fresh context with your task description and explores the codebase itself. Use for implementation, review, debugging, testing, or any task needing specialist skills.
@@ -326,15 +352,21 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// Must happen before guard checks so we validate against the right project.
 					let effectiveProjectId = deps.projectId;
 					let effectiveWorkspacePath = deps.workspacePath;
+					// Whether the DISPATCHED agent's kanban tools should be stripped — based on
+					// the TARGET project (effectiveProjectId), not the origin conversation's own
+					// deps.quickChat, so a quick-chat PM cross-dispatching into a real project
+					// doesn't wrongly strip that project's kanban tools (and vice versa).
+					let effectiveQuickChat = deps.quickChat;
 					if (args.project_id && args.project_id !== deps.projectId) {
 						const projectRow = await db
-							.select({ id: projectsTable.id, workspacePath: projectsTable.workspacePath })
+							.select({ id: projectsTable.id, workspacePath: projectsTable.workspacePath, isQuickChat: projectsTable.isQuickChat })
 							.from(projectsTable)
 							.where(eq(projectsTable.id, args.project_id))
 							.limit(1);
 						if (projectRow.length > 0) {
 							effectiveProjectId = projectRow[0].id;
 							effectiveWorkspacePath = projectRow[0].workspacePath;
+							effectiveQuickChat = projectRow[0].isQuickChat === 1;
 						}
 					}
 					const isCrossProject = effectiveProjectId !== deps.projectId;
@@ -598,6 +630,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						projectId: effectiveProjectId,
 						// In plan mode all agents get read-only tools regardless of their type.
 						readOnly: deps.planMode || isReadOnly,
+						excludeTools: effectiveQuickChat ? QUICK_CHAT_EXCLUDED_TOOLS : undefined,
+						quickChat: effectiveQuickChat,
 					};
 
 					// Fire-and-forget: agent runs in background
@@ -924,6 +958,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 									workspacePath: deps.workspacePath,
 									projectId: deps.projectId,
 									readOnly: true,
+									excludeTools: deps.quickChat ? QUICK_CHAT_EXCLUDED_TOOLS : undefined,
+									quickChat: deps.quickChat,
 								});
 								return parallelResult;
 							} finally {
@@ -2895,4 +2931,22 @@ Reply with ONLY the branch name, nothing else.`,
 			},
 		}),
 	};
+
+	// Quick Chat has no kanban board and no plan-approval flow — strip the PM
+	// tools that only make sense with one. See QUICK_CHAT_SECTION in prompts.ts
+	// for the matching prompt-side instructions. verify_project is intentionally
+	// KEPT — it just runs the project's configured verify/lint command and
+	// reports pass/fail, which isn't inherently kanban-dependent and is still
+	// useful standalone ("does this build?") in a Quick Chat session.
+	if (deps.quickChat) {
+		const t = tools as Record<string, unknown>;
+		delete t.create_tasks_from_plan;
+		delete t.get_next_task;
+		delete t.get_kanban_stats;
+		delete t.request_plan_approval;
+		delete t.set_feature_branch;
+		delete t.clear_feature_branch;
+	}
+
+	return tools;
 }

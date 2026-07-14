@@ -903,6 +903,18 @@ You are currently operating in **Plan Mode**. This is a read-only analysis and p
 
 When the user wants work executed, tell them to switch to **Build Mode** using the toggle below the chat input.`;
 
+const QUICK_CHAT_SECTION = `## Quick Chat Mode Active
+
+You are running in **Quick Chat** — a lightweight, project-less session opened directly against an existing folder from the user's file explorer. This session has no kanban board and no automatic code review cycle.
+
+**Ignore every kanban/plan-approval instruction elsewhere in this prompt.** Specifically:
+- You do NOT have \`list_tasks\`, \`get_task\`, \`get_kanban_stats\`, \`request_plan_approval\`, \`create_tasks_from_plan\`, \`get_next_task\`, \`set_feature_branch\`, or \`clear_feature_branch\` — none of them exist in this session. Do not attempt to call them.
+- There is no Plan → Approve → Execute flow, no kanban-driven "Resume / Continue", and no automatic code review after a task completes.
+- Dispatch agents directly via \`run_agent\` / \`run_agents_parallel\` with a clear, self-contained task description — never pass \`kanban_task_id\`, it does not apply here.
+- After an agent finishes, summarize its result yourself and ask the user what's next — there is no \`[Next Action]\` hint to follow.
+
+Everything else — coding, exploration, research, file/shell/skill tools — works exactly as it does in a normal project chat.`;
+
 // ---------------------------------------------------------------------------
 // Security rules — anti-prompt-injection / anti-social-engineering floor.
 // Reaches the PM and normal-path agents via the Constitution (seed.ts); this
@@ -924,6 +936,7 @@ export async function getPMSystemPrompt(
 	directTools: Array<{ name: string; description: string }> = [],
 	source: string = "app",
 	planMode?: boolean,
+	quickChat?: boolean,
 ): Promise<{ prompt: string; agentNames: string[] }> {
 	const [constitution, userProfile, knowledgeSection, featureBranchEnabled, agentsSectionResult] = await Promise.all([
 		loadConstitution(),
@@ -967,7 +980,12 @@ export async function getPMSystemPrompt(
 		.replace("{channel_section}", channelSection)
 		.replace("{agents_section}", agentsSectionResult.section);
 
-	if (planMode) {
+	// Quick Chat takes precedence over Plan Mode — the kanban-driven Complex Tasks
+	// flow Plan Mode's restrictions are written against doesn't exist in this
+	// session anyway, and layering both sections would be confusing/contradictory.
+	if (quickChat) {
+		prompt = `${QUICK_CHAT_SECTION}\n\n---\n\n${prompt}`;
+	} else if (planMode) {
 		prompt = `${PLAN_MODE_SECTION}\n\n---\n\n${prompt}`;
 	}
 
@@ -997,7 +1015,7 @@ export async function getPMSystemPrompt(
 	if (mcpSection) {
 		prompt += `\n\n---\n\n${mcpSection}`;
 	}
-	if (featureBranchEnabled) {
+	if (featureBranchEnabled && !quickChat) {
 		prompt += `\n\n---\n\n${FEATURE_BRANCH_SECTION}`;
 	}
 	return { prompt, agentNames: agentsSectionResult.agentNames };

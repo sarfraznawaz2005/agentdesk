@@ -47,6 +47,9 @@ export const handlers: Record<string, (params: any) => any> = {
 	syncWorkspaceFolders: () => projectsRpc.syncWorkspaceFolders(),
 	getProjectRepoState: (params) => projectsRpc.getProjectRepoState(params.projectId),
 	cloneProjectRepo: (params) => projectsRpc.cloneProjectRepo(params.projectId),
+	openQuickChatForPath: (params) => projectsRpc.openQuickChatForPath(params.workspacePath),
+	promoteQuickChatProject: (params) => projectsRpc.promoteQuickChatProject(params.projectId),
+	getQuickChatRoute: (params) => projectsRpc.getQuickChatRoute(params.windowId),
 
 	// Deploy
 	getEnvironments: (params) => deployRpc.getEnvironments(params.projectId),

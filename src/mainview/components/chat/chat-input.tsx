@@ -296,9 +296,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     setTimeout(() => { refreshMcpStatus(); setMcpActionLoading(null); }, 500);
   }, [refreshMcpStatus]);
 
-  // Focus the textarea when the input becomes enabled
+  // Focus the textarea when the input becomes enabled. Deferred via
+  // requestAnimationFrame — every other imperative focus() call in this file
+  // already does this; this was the one holdout, calling focus() synchronously
+  // inside the effect. That's fine once the page has been open and painting
+  // for a while (normal project chat, opened by clicking inside an already-
+  // warm, already-focused main window), but on a brand-new Quick Chat window
+  // this effect can fire before the page's first paint has settled — the
+  // DOM-level focus() call still succeeds (document.activeElement genuinely
+  // becomes the textarea, confirmed by the CSS focus-within ring rendering),
+  // but WebView2 hadn't finished wiring up real keyboard input routing for
+  // the still-settling page yet, so typing silently did nothing until the
+  // user's own click forced a fresh, real focus event. Waiting a frame gives
+  // the first paint time to complete first.
   useEffect(() => {
-    if (!disabled) textareaRef.current?.focus();
+    if (!disabled) requestAnimationFrame(() => textareaRef.current?.focus());
   }, [disabled]);
 
   // Auto-resize textarea

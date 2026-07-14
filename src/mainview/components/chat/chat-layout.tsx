@@ -19,6 +19,15 @@ import { rpc } from "@/lib/rpc";
 
 interface ChatLayoutProps {
   projectId: string;
+  /** Quick Chat has no main app sidebar to collapse/restore, so the toggle is meaningless there. */
+  hideFocusToggle?: boolean;
+  /** Quick Chat has no separate project-switcher/dashboard to browse conversations from, so its
+   * conversation sidebar starts open rather than the normal collapsed-by-default. */
+  defaultSidebarOpen?: boolean;
+  /** Quick Chat's conversation sidebar should only open/close via its own toggle button — not
+   * auto-close on an outside click, which normal project chat relies on since the sidebar there
+   * is usually opened as a transient "look something up" action. */
+  sidebarManualOnly?: boolean;
 }
 
 const ACTIVITY_WIDTH_MIN = 300;
@@ -45,11 +54,11 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary);
 }
 
-export function ChatLayout({ projectId }: ChatLayoutProps) {
+export function ChatLayout({ projectId, hideFocusToggle, defaultSidebarOpen, sidebarManualOnly }: ChatLayoutProps) {
   const [isFocused, setIsFocused] = useState(() => {
     try { return localStorage.getItem(FOCUS_KEY) === "true"; } catch { return false; }
   });
-  const [sidebarOpen, setSidebarOpen] = useState(false); // always starts closed; user opens manually
+  const [sidebarOpen, setSidebarOpen] = useState(defaultSidebarOpen ?? false); // normally starts closed; user opens manually
   const [activityOpen, setActivityOpen] = useState(() => {
     try {
       // Collapsed by default on mobile — as an inline column it would squeeze/clip
@@ -104,9 +113,11 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
   const [activityWidth, setActivityWidth] = useState(ACTIVITY_WIDTH_DEFAULT);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
-  // Close conversation sidebar when clicking outside it (excluding the toggle button)
+  // Close conversation sidebar when clicking outside it (excluding the toggle button) — skipped
+  // entirely for Quick Chat (sidebarManualOnly), which wants the sidebar's open/closed state to
+  // only ever change via its own toggle button, not an incidental click anywhere else in the window.
   useEffect(() => {
-    if (!sidebarOpen) return;
+    if (!sidebarOpen || sidebarManualOnly) return;
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (
@@ -118,7 +129,7 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
     };
     document.addEventListener("mousedown", handleMouseDown);
     return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [sidebarOpen]);
+  }, [sidebarOpen, sidebarManualOnly]);
 
   // Store state
   const conversations = useChatStore((s) => s.conversations);
@@ -660,24 +671,26 @@ export function ChatLayout({ projectId }: ChatLayoutProps) {
             </button>
           </Tip>
 
-          <Tip content={isFocused ? "Restore sidebars" : "Focus mode — hide both sidebars"} side="bottom">
-            <button
-              type="button"
-              onClick={handleFocusToggle}
-              aria-label={isFocused ? "Restore sidebars" : "Focus mode"}
-              aria-pressed={isFocused}
-              className={cn(
-                "inline-flex items-center justify-center rounded-md p-1.5",
-                "text-muted-foreground hover:text-foreground hover:bg-muted",
-                "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                isFocused && "text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700",
-              )}
-            >
-              {isFocused
-                ? <UnfoldHorizontal className="h-4 w-4" aria-hidden="true" />
-                : <FoldHorizontal className="h-4 w-4" aria-hidden="true" />}
-            </button>
-          </Tip>
+          {!hideFocusToggle && (
+            <Tip content={isFocused ? "Restore sidebars" : "Focus mode — hide both sidebars"} side="bottom">
+              <button
+                type="button"
+                onClick={handleFocusToggle}
+                aria-label={isFocused ? "Restore sidebars" : "Focus mode"}
+                aria-pressed={isFocused}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-md p-1.5",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                  isFocused && "text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700",
+                )}
+              >
+                {isFocused
+                  ? <UnfoldHorizontal className="h-4 w-4" aria-hidden="true" />
+                  : <FoldHorizontal className="h-4 w-4" aria-hidden="true" />}
+              </button>
+            </Tip>
+          )}
 
           {/* Font size controls */}
           <div className="relative flex items-center gap-0.5">

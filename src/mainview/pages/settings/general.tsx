@@ -38,6 +38,7 @@ interface ApplicationSettings {
   globalWorkspacePath: string;
   preventSystemSleep: boolean;
   launchAtStartup: boolean;
+  allowQuickChat: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,6 +55,7 @@ const APPLICATION_DEFAULTS: ApplicationSettings = {
   globalWorkspacePath: "",
   preventSystemSleep: false,
   launchAtStartup: false,
+  allowQuickChat: true,
 };
 
 function isValidEmail(v: string): boolean {
@@ -259,6 +261,10 @@ export function GeneralSettings() {
             appData.launch_at_startup !== undefined
               ? appData.launch_at_startup !== false && appData.launch_at_startup !== "false"
               : APPLICATION_DEFAULTS.launchAtStartup,
+          allowQuickChat:
+            appData.allow_quick_chat !== undefined
+              ? appData.allow_quick_chat !== false && appData.allow_quick_chat !== "false"
+              : APPLICATION_DEFAULTS.allowQuickChat,
         });
       } catch {
         if (!cancelled) {
@@ -311,6 +317,7 @@ export function GeneralSettings() {
         rpc.saveSetting("global_workspace_path", application.globalWorkspacePath, "general"),
         rpc.saveSetting("prevent_system_sleep", application.preventSystemSleep, "general"),
         rpc.saveSetting("launch_at_startup", application.launchAtStartup, "general"),
+        rpc.saveSetting("allow_quick_chat", application.allowQuickChat, "general"),
       ]);
       setDirty(false);
       toast("success", "Settings saved.");
@@ -491,6 +498,22 @@ export function GeneralSettings() {
               id="launch-at-startup-toggle"
               checked={application.launchAtStartup}
               onCheckedChange={(val) => handleApplicationChange("launchAtStartup", val)}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="allow-quick-chat-toggle">Allow Quick Chat</Label>
+              <p className="text-xs text-muted-foreground">
+                Adds an "Open in AgentDesk" entry to your file explorer's right-click menu for folders, so you can chat with agents about an existing project without creating one first.
+              </p>
+            </div>
+            <Switch
+              id="allow-quick-chat-toggle"
+              checked={application.allowQuickChat}
+              onCheckedChange={(val) => handleApplicationChange("allowQuickChat", val)}
             />
           </div>
 

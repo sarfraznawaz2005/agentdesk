@@ -320,7 +320,7 @@ export async function openPreviewWindow(opts: OpenPreviewOptions): Promise<void>
 		// Reuse — navigate to new URL
 		try { previewWin.webview.loadURL(opts.proxyUrl); }
 		catch { /* webview gone, fall through to recreate */ }
-		try { previewWin.focus(); } catch { /* ignore */ }
+		try { previewWin.activate(); } catch { /* ignore */ }
 		try { previewWin.setTitle(opts.title ?? "AgentDesk Preview"); } catch { /* ignore */ }
 
 		// Reset watchers for the new project's workspace

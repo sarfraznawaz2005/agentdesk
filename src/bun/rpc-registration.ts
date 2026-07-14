@@ -28,21 +28,37 @@ function withErrorToast<T extends Record<string, (p: any) => any>>(handlers: T):
 	return wrapped as T;
 }
 
-// Define RPC handlers for Bun side
-export const rpc = BrowserView.defineRPC<AgentDeskRPC>({
-	// Agent operations can take several minutes — disable the 1 s default timeout.
-	maxRequestTime: Infinity,
-	handlers: {
-		requests: withErrorToast(requestHandlers),
-		messages: {
-			log: ({ level, message }: { level: string; message: string }) => {
-				const fn = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
-				fn(`[renderer] ${message}`);
-			},
-			logClientError: ({ type, message, stack }: { type: string; message: string; stack?: string }) => {
-				console.error(`[renderer:${type}] ${message}`);
-				logError("renderer", type, message, stack);
-			},
+const handlers = {
+	requests: withErrorToast(requestHandlers),
+	messages: {
+		log: ({ level, message }: { level: string; message: string }) => {
+			const fn = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
+			fn(`[renderer] ${message}`);
+		},
+		logClientError: ({ type, message, stack }: { type: string; message: string; stack?: string }) => {
+			console.error(`[renderer:${type}] ${message}`);
+			logError("renderer", type, message, stack);
 		},
 	},
-});
+};
+
+/**
+ * Mints a fresh RPC instance for a single BrowserWindow. Each call to
+ * BrowserView.defineRPC() creates its own independent transport/request-
+ * tracking state internally (see node_modules/electrobun/dist/api/shared/
+ * rpc.ts's createRPC — `transport` is a single mutable variable closed over
+ * by that one instance). Handlers are stateless and safe to share across
+ * instances; only the transport must NOT be shared. REQUIRED for any second
+ * (or later) window — see quick-chat/window.ts, which calls this once per
+ * Quick Chat window, instead of importing the singleton `rpc` below.
+ */
+export function createRpc() {
+	return BrowserView.defineRPC<AgentDeskRPC>({
+		// Agent operations can take several minutes — disable the 1 s default timeout.
+		maxRequestTime: Infinity,
+		handlers,
+	});
+}
+
+// Singleton RPC instance for the main window only.
+export const rpc = createRpc();

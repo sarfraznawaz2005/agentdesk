@@ -2,9 +2,32 @@ import { join, dirname } from "path";
 import { mkdirSync, rmSync, existsSync, appendFileSync } from "fs";
 import { tmpdir } from "os";
 import { Updater } from "electrobun/bun";
-import { broadcastToWebview } from "../engine-manager";
+import { broadcastToWebview, engines, abortAllAgents } from "../engine-manager";
 import { isPortableBuild } from "../lib/install-mode";
 import { portableDownloadUpdate, portableApplyUpdate } from "./updater-portable";
+
+/**
+ * Applying an update always ends with the process exiting (either our own
+ * process.exit(0) on Windows, or however Updater.applyUpdate() restarts the
+ * app on mac/Linux) — with no generic "recover an interrupted conversation"
+ * mechanism on the next launch (failInterruptedRuns in remote-sync/config.ts
+ * is specific to that one unrelated feature). Before Quick Chat, that only
+ * ever meant abruptly cutting off whatever the main window's PM was doing;
+ * now multiple windows (main + any number of Quick Chat windows) can each
+ * have their own PM/sub-agents running at once, all sharing the one process
+ * an update kills. Stop every project's agents gracefully first — the same
+ * stopAll()+abortAllAgents() pair the explicit Stop button and Quick Chat's
+ * own window-close handler already use — so at least the DB is left in a
+ * clean stopped state rather than a message frozen mid-write.
+ */
+function stopAllAgentsEverywhere(): void {
+	for (const projectId of engines.keys()) {
+		try {
+			engines.get(projectId)?.stopAll();
+			abortAllAgents(projectId);
+		} catch { /* best-effort — never block the update on this */ }
+	}
+}
 
 function relayStatus() {
 	Updater.onStatusChange((entry) => {
@@ -68,6 +91,7 @@ export async function downloadUpdate() {
 
 export async function applyUpdate() {
 	try {
+		stopAllAgentsEverywhere();
 		if (process.platform === "win32") {
 			const result = isPortableBuild() ? await portableApplyUpdate() : await windowsApplySetup();
 			if (!result.success) return result;

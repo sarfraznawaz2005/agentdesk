@@ -252,7 +252,7 @@ export class AgentEngine {
 
 			// 3. Load Project Manager system prompt and resolve provider / model
 			const [projectRows, pmAgentRows, projectBudgetRows, chatThinkingRows, planModeRows] = await Promise.all([
-				db.select({ name: projects.name, description: projects.description, workspacePath: projects.workspacePath, githubUrl: projects.githubUrl, workingBranch: projects.workingBranch }).from(projects).where(eq(projects.id, this.projectId)).limit(1),
+				db.select({ name: projects.name, description: projects.description, workspacePath: projects.workspacePath, githubUrl: projects.githubUrl, workingBranch: projects.workingBranch, isQuickChat: projects.isQuickChat }).from(projects).where(eq(projects.id, this.projectId)).limit(1),
 				db.select({ thinkingBudget: agents.thinkingBudget, color: agents.color }).from(agents).where(eq(agents.name, "project-manager")).limit(1),
 				db.select({ value: settings.value }).from(settings).where(eq(settings.key, `project:${this.projectId}:thinkingBudget`)).limit(1),
 				db.select({ value: settings.value }).from(settings).where(eq(settings.key, `project:${this.projectId}:chatThinkingLevel`)).limit(1),
@@ -261,6 +261,9 @@ export class AgentEngine {
 			const planMode = planModeRows[0]?.value === "true";
 			const projectRow = projectRows[0];
 			const workspacePath = projectRow?.workspacePath;
+			// Derived per-turn (not cached on the engine instance) so promoting a Quick
+			// Chat project to a normal one re-enables Kanban on the very next PM turn.
+			const quickChat = projectRow?.isQuickChat === 1;
 			const chatThinkingLevel: string | null = chatThinkingRows[0]?.value || null;
 			const projectThinkingBudget: string | null = projectBudgetRows[0]?.value ?? null;
 			// Chat-level thinking override takes priority over agent/project defaults
@@ -276,6 +279,7 @@ export class AgentEngine {
 				directTools,
 				this.activeMetadata?.source ?? "app",
 				planMode,
+				quickChat,
 			);
 			const { row: providerRow, modelId } = await this.getDefaultProviderRow();
 
@@ -433,6 +437,7 @@ export class AgentEngine {
 						console.log("[Engine] PM stream will stop after current step");
 					},
 					planMode,
+					quickChat,
 					agentNames: pmAgentNames.length > 0 ? pmAgentNames : undefined,
 					// Pass the original user message so sub-agents get the user's exact words
 					// appended to their task prompt (only for direct queries, not kanban tasks).
@@ -469,7 +474,9 @@ export class AgentEngine {
 						if (agentFailed) {
 							nextAction = `\n\n[Next Action] INVESTIGATE — ${displayName} failed. Review the error above and decide whether to retry, fix, or skip. Do NOT automatically re-dispatch without understanding the failure.`;
 						}
-						if (!agentFailed) {
+						// Quick Chat has no kanban board — skip the lookup entirely rather than
+						// let `allTasks.every(...)` on an empty array vacuously report "ALL DONE".
+						if (!agentFailed && !quickChat) {
 						try {
 							const { getRunningAgentCount } = await import("../engine-manager");
 							const agentsRunning = getRunningAgentCount(this.projectId);
@@ -513,7 +520,7 @@ export class AgentEngine {
 								}
 							}
 						} catch { /* non-fatal — PM can still call get_next_task */ }
-						} // end if (!agentFailed)
+						} // end if (!agentFailed && !quickChat)
 
 						// Auto-execute gate (read live so the Project Settings toggle
 						// applies immediately). When off, never auto-dispatch the NEXT
@@ -560,8 +567,11 @@ export class AgentEngine {
 				// Direct kanban access (read-only + commit-from-plan). The PM does NOT
 				// get create_task — task creation is restricted to the task-planner.
 				// To add a task, the PM spawns task-planner via run_agent.
-				list_tasks: kanbanTools.list_tasks.tool,
-				get_task: kanbanTools.get_task.tool,
+				// Omitted entirely in Quick Chat — there is no kanban board.
+				...(quickChat ? {} : {
+					list_tasks: kanbanTools.list_tasks.tool,
+					get_task: kanbanTools.get_task.tool,
+				}),
 				// Docs access
 				list_docs: notesTools.list_docs.tool,
 				get_doc: notesTools.get_doc.tool,

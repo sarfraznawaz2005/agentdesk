@@ -56,6 +56,7 @@ import * as v53 from "./migrations/v53_remove-enhanced-web-search";
 import * as v54 from "./migrations/v54_research-expert-tool-cleanup";
 import * as v55 from "./migrations/v55_inbox-favorites";
 import * as v56 from "./migrations/v56_collections";
+import * as v57 from "./migrations/v57_quick-chat-projects";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -136,6 +137,7 @@ const migrations: Migration[] = [
 	{ version: 54, name: v54.name, run: v54.run },
 	{ version: 55, name: v55.name, run: v55.run },
 	{ version: 56, name: v56.name, run: v56.run },
+	{ version: 57, name: v57.name, run: v57.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -332,6 +334,13 @@ function ensureRuntimeSchema(): void {
 		v55.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: inbox favorites column failed:", err);
+	}
+
+	// Defensive: ensure projects.is_quick_chat exists (v57 guards with PRAGMA).
+	try {
+		v57.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: quick-chat projects column failed:", err);
 	}
 
 	// Defensive: ensure the freelance hot-path indexes exist (v50 is all

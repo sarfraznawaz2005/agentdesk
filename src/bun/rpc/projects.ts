@@ -1,4 +1,4 @@
-import { eq, like, sql } from "drizzle-orm";
+import { eq, and, like, sql } from "drizzle-orm";
 import { mkdirSync, existsSync, readdirSync, statSync, readFileSync, symlinkSync, lstatSync, rmSync, readlinkSync, unlinkSync } from "fs";
 import { readdir } from "fs/promises";
 import { join, relative, resolve, basename } from "path";
@@ -36,9 +36,15 @@ export interface ProjectListItem {
  * OneDrive Files-on-Demand, NAS) are returned with workspaceOffline=true so the
  * dashboard can show a warning — they are NEVER auto-deleted just because a path
  * check fails. Only projects explicitly deleted by the user are removed.
+ *
+ * Excludes Quick Chat projects (isQuickChat=1) — they're created ad hoc via the
+ * OS Explorer "Open in AgentDesk" entry and stay invisible to the Dashboard, the
+ * project switcher, and the PM's own list_projects/search_projects tools (both
+ * of which call this function) until explicitly promoted via the Quick Chat
+ * window's "Create Project" button (see openQuickChatForPath/promoteQuickChatProject).
  */
 export async function getProjectsList(): Promise<ProjectListItem[]> {
-	const rows = await db.select().from(projects);
+	const rows = await db.select().from(projects).where(eq(projects.isQuickChat, 0));
 
 	// Check all non-deleted project paths concurrently with retry for cloud paths.
 	const results = await Promise.all(
@@ -74,6 +80,8 @@ export interface CreateProjectParams {
 	workspacePath?: string;
 	githubUrl?: string;
 	workingBranch?: string;
+	/** Internal-only: creates the project hidden (see getProjectsList). Not exposed over RPC. */
+	isQuickChat?: boolean;
 }
 
 // Default values for project-scoped AI/behaviour settings.
@@ -84,6 +92,60 @@ const DEFAULT_PROJECT_SETTINGS: Record<string, string> = {
 	constitutionMode: "inherit",
 	maxReviewRounds: "3",
 };
+
+/**
+ * If workspacePath is outside the configured global workspace, create a
+ * junction inside the workspace pointing at it, so the folder is
+ * discoverable under one root without being copied. No-op (not an error) if
+ * no global workspace is configured, or the path is already inside it, or a
+ * junction to this exact target already exists.
+ */
+async function createSymlinkForExternalPath(workspacePath: string): Promise<void> {
+	let globalWorkspacePath = "";
+	try {
+		const gwpRows = await db.select({ value: settings.value }).from(settings)
+			.where(eq(settings.key, "global_workspace_path")).limit(1);
+		if (gwpRows.length > 0) {
+			try { globalWorkspacePath = JSON.parse(gwpRows[0].value) as string; } catch { globalWorkspacePath = gwpRows[0].value; }
+		}
+	} catch { /* non-fatal */ }
+
+	if (!globalWorkspacePath) return;
+
+	const resolvedWorkspace = resolve(globalWorkspacePath);
+	const resolvedPath = resolve(workspacePath);
+	const rel = relative(resolvedWorkspace, resolvedPath);
+	const isOutside = rel.startsWith("..") || resolve(rel) === resolvedPath;
+	if (!isOutside) return;
+
+	// Ensure the external directory exists
+	try { mkdirSync(resolvedPath, { recursive: true }); } catch { /* may already exist */ }
+
+	// Create symlink inside workspace: workspace/project-name → external/path
+	const linkName = basename(resolvedPath);
+	let linkPath = join(resolvedWorkspace, linkName);
+	let suffix = 1;
+	while (existsSync(linkPath)) {
+		// Check if existing path is already a symlink to our target
+		try {
+			const stat = lstatSync(linkPath);
+			if (stat.isSymbolicLink()) return; // already linked — nothing to do
+		} catch { /* ignore */ }
+		linkPath = join(resolvedWorkspace, `${linkName}-${suffix}`);
+		suffix++;
+	}
+
+	try {
+		mkdirSync(resolvedWorkspace, { recursive: true });
+		if (!existsSync(linkPath)) {
+			symlinkSync(resolvedPath, linkPath, "junction");
+			console.log(`[projects] Created symlink: ${linkPath} → ${resolvedPath}`);
+		}
+	} catch (err) {
+		console.warn(`[projects] Failed to create symlink for external project:`, err);
+		// Non-fatal — project still works, just won't be visible under workspace root
+	}
+}
 
 /**
  * Insert a new project record and seed its default settings.
@@ -136,50 +198,15 @@ export async function createProjectHandler(
 	// If the chosen path is outside the global workspace, create a symlink
 	// inside the workspace pointing to the external path. This keeps all
 	// projects discoverable under one root while allowing external folders.
-	let globalWorkspacePath = "";
-	try {
-		const gwpRows = await db.select({ value: settings.value }).from(settings)
-			.where(eq(settings.key, "global_workspace_path")).limit(1);
-		if (gwpRows.length > 0) {
-			try { globalWorkspacePath = JSON.parse(gwpRows[0].value) as string; } catch { globalWorkspacePath = gwpRows[0].value; }
-		}
-	} catch { /* non-fatal */ }
-
-	if (globalWorkspacePath) {
-		const resolvedWorkspace = resolve(globalWorkspacePath);
-		const resolvedPath = resolve(workspacePath);
-		const rel = relative(resolvedWorkspace, resolvedPath);
-		const isOutside = rel.startsWith("..") || resolve(rel) === resolvedPath;
-
-		if (isOutside) {
-			// Ensure the external directory exists
-			try { mkdirSync(resolvedPath, { recursive: true }); } catch { /* may already exist */ }
-
-			// Create symlink inside workspace: workspace/project-name → external/path
-			const linkName = basename(resolvedPath);
-			let linkPath = join(resolvedWorkspace, linkName);
-			let suffix = 1;
-			while (existsSync(linkPath)) {
-				// Check if existing path is already a symlink to our target
-				try {
-					const stat = lstatSync(linkPath);
-					if (stat.isSymbolicLink()) break;
-				} catch { /* ignore */ }
-				linkPath = join(resolvedWorkspace, `${linkName}-${suffix}`);
-				suffix++;
-			}
-
-			try {
-				mkdirSync(resolvedWorkspace, { recursive: true });
-				if (!existsSync(linkPath)) {
-					symlinkSync(resolvedPath, linkPath, "junction");
-					console.log(`[projects] Created symlink: ${linkPath} → ${resolvedPath}`);
-				}
-			} catch (err) {
-				console.warn(`[projects] Failed to create symlink for external project:`, err);
-				// Non-fatal — project still works, just won't be visible under workspace root
-			}
-		}
+	// Skipped for Quick Chat: those are ad hoc, often-abandoned sessions on
+	// arbitrary folders with no delete/cleanup UI exposed anywhere (hidden
+	// from the Dashboard and PM tools), so every quick-chatted external
+	// folder would otherwise leave a permanent, orphaned junction sitting in
+	// the workspace root forever. createSymlinkForExternalPath is called
+	// again from promoteQuickChatProject so a promoted project still gets
+	// adopted under the workspace root, same as a normal external project.
+	if (!params.isQuickChat) {
+		await createSymlinkForExternalPath(workspacePath);
 	}
 
 	if (params.githubUrl?.trim()) {
@@ -237,6 +264,7 @@ export async function createProjectHandler(
 			workspacePath,
 			githubUrl: params.githubUrl ?? null,
 			workingBranch: params.workingBranch ?? null,
+			isQuickChat: params.isQuickChat ? 1 : 0,
 		});
 	} catch (err) {
 		// Atomic backstop for the name pre-check race (v51 case-insensitive index).
@@ -262,12 +290,117 @@ export async function createProjectHandler(
 	// Notify any open webview so a newly created project appears live without a
 	// navigation/restart. Matters most for background creators that have no UI
 	// round-trip of their own — channel global-mode auto-create and workspace sync.
-	try {
-		const { broadcastToWebview } = await import("../engine-manager");
-		broadcastToWebview("projectsUpdated", { id, name: params.name });
-	} catch { /* non-fatal — window may be closed */ }
+	// Skipped for Quick Chat projects — they're hidden from getProjectsList, so
+	// there's nothing for the main window's project list to refresh.
+	if (!params.isQuickChat) {
+		try {
+			const { broadcastToWebview } = await import("../engine-manager");
+			broadcastToWebview("projectsUpdated", { id, name: params.name });
+		} catch { /* non-fatal — window may be closed */ }
+	}
 
 	return { success: true, id };
+}
+
+/**
+ * Open (or reuse) a Quick Chat project for an arbitrary existing folder — the
+ * entry point used by the OS Explorer "Open in AgentDesk" context menu and by
+ * the single-instance handoff when AgentDesk is already running.
+ *
+ * Reuses an existing Quick Chat project row for the same resolved workspace
+ * path so repeat right-clicks on a folder don't pile up duplicate projects,
+ * and always starts a fresh conversation (createConversation still reuses an
+ * untouched empty "New conversation" if one is sitting there, same as the
+ * main app's "New conversation" button) so prior quick-chat history for that
+ * folder stays visible in the sidebar rather than being silently continued.
+ */
+export async function openQuickChatForPath(
+	workspacePath: string,
+): Promise<{ success: boolean; projectId: string; conversationId: string; error?: string }> {
+	const resolvedPath = resolve(workspacePath.trim());
+	if (!existsSync(resolvedPath) || !statSync(resolvedPath).isDirectory()) {
+		return { success: false, projectId: "", conversationId: "", error: `Not a folder: ${resolvedPath}` };
+	}
+
+	const existing = await db
+		.select({ id: projects.id })
+		.from(projects)
+		.where(and(eq(projects.workspacePath, resolvedPath), eq(projects.isQuickChat, 1)))
+		.limit(1);
+
+	let projectId: string;
+	if (existing.length > 0) {
+		projectId = existing[0].id;
+	} else {
+		// createProjectHandler de-dupes colliding *paths* with a numeric suffix, but
+		// not colliding *names* — folder basenames collide often (many repos named
+		// "frontend", "api", etc), so retry with a suffix on name-uniqueness errors.
+		const baseName = basename(resolvedPath) || "Quick Chat";
+		let result: { success: boolean; id: string; error?: string } | undefined;
+		for (let suffix = 0; suffix < 50; suffix++) {
+			const name = suffix === 0 ? baseName : `${baseName}-${suffix + 1}`;
+			result = await createProjectHandler({ name, workspacePath: resolvedPath, isQuickChat: true });
+			if (result.success || !result.error?.includes("already exists")) break;
+		}
+		if (!result?.success) {
+			return { success: false, projectId: "", conversationId: "", error: result?.error ?? "Failed to create Quick Chat project." };
+		}
+		projectId = result.id;
+	}
+
+	const { createConversation } = await import("./conversations");
+	const conv = await createConversation(projectId);
+
+	return { success: true, projectId, conversationId: conv.id };
+}
+
+/**
+ * Promote a Quick Chat project to a normal, visible project — the "Create
+ * Project" button in the Quick Chat window. The folder is already the real
+ * workspace (adopted in place by createProjectHandler, no copy needed), so
+ * promotion is mostly just flipping the flag — except Quick Chat projects
+ * deliberately skip the workspace-root junction createProjectHandler would
+ * otherwise create (see its own comment), so a promoted project needs it
+ * created now, matching what a normal external project gets at creation time.
+ */
+export async function promoteQuickChatProject(
+	projectId: string,
+): Promise<{ success: boolean; error?: string }> {
+	const rows = await db
+		.select({ isQuickChat: projects.isQuickChat, workspacePath: projects.workspacePath })
+		.from(projects)
+		.where(eq(projects.id, projectId))
+		.limit(1);
+	if (rows.length === 0) return { success: false, error: "Project not found." };
+	if (rows[0].isQuickChat !== 1) return { success: false, error: "Project is not a Quick Chat project." };
+
+	await db
+		.update(projects)
+		.set({ isQuickChat: 0, updatedAt: new Date().toISOString() })
+		.where(eq(projects.id, projectId));
+
+	await createSymlinkForExternalPath(rows[0].workspacePath);
+
+	logAudit({ action: "project.promote_quick_chat", entityType: "project", entityId: projectId });
+
+	try {
+		const { broadcastToWebview } = await import("../engine-manager");
+		broadcastToWebview("projectsUpdated", { id: projectId });
+	} catch { /* non-fatal — window may be closed */ }
+
+	return { success: true };
+}
+
+/**
+ * Pull-based fallback for a Quick Chat window's initial route — see
+ * src/bun/quick-chat/window.ts's pendingRoutes map for why this exists.
+ * Lazy import (like the engine-manager import above) avoids a static import
+ * cycle: window.ts imports `rpc` from rpc-registration.ts, which pulls in
+ * this file via the projects-system rpc group.
+ */
+export async function getQuickChatRoute(windowId: number): Promise<{ projectId: string; conversationId: string } | null> {
+	const { getPendingQuickChatRoute } = await import("../quick-chat/window");
+	return getPendingQuickChatRoute(windowId);
 }
 
 /**

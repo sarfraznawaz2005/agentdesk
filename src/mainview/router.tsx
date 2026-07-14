@@ -20,6 +20,7 @@ import { DbViewerPage } from "./pages/plugin-db-viewer";
 import { CouncilPage } from "./pages/council";
 import { FreelancePage } from "./pages/freelance";
 import { PlaygroundPage } from "./pages/playground";
+import { QuickChatPage } from "./pages/quick-chat";
 
 // Use hash-based history so Electrobun's webview doesn't need a server
 // for navigation. URLs look like: app://index.html#/settings
@@ -120,6 +121,12 @@ const playgroundRoute = createRoute({
   component: PlaygroundPage,
 });
 
+const quickChatRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/quick-chat/$projectId",
+  component: QuickChatPage,
+});
+
 const routeTree = rootRoute.addChildren([
   onboardingRoute,
   indexRoute,
@@ -137,6 +144,7 @@ const routeTree = rootRoute.addChildren([
   councilRoute,
   freelanceRoute,
   playgroundRoute,
+  quickChatRoute,
 ]);
 
 export const router = createRouter({

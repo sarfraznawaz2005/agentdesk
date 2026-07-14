@@ -33,6 +33,11 @@ export default {
 		name: "AgentDesk",
 		identifier: "com.sarfrazai.agentdesk",
 		version: "2.6.4",
+		// macOS Quick Chat deep link — the Finder Quick Action bundle
+		// (quick-chat/os-integration.ts) invokes `open agentdesk://quick-chat?path=...`,
+		// which macOS delivers to a running AgentDesk instance (or launches one) via
+		// Electrobun's open-url event, handled in index.ts. Windows/Linux ignore this.
+		urlSchemes: ["agentdesk"],
 	},
 	build: {
 		// Vite builds to dist/, we copy from there
@@ -41,7 +46,13 @@ export default {
 			"dist/assets": "views/mainview/assets",
 			"assets/icon.png": "views/assets/icon.png",
 			"assets/tray-icon.png": "views/assets/tray-icon.png",
-			"assets/icon.ico": "views/assets/icon.ico",
+			// Read at runtime as appIconPath (src/bun/lib/app-icon.ts) for the Explorer
+			// "Open in AgentDesk" registry entry's icon, and by scripts/postbuild-win-
+			// icon.ts for the rcedit embed. `copy` is keyed by source path (one dest
+			// per source), so this used to also list a "views/assets/icon.ico" mapping
+			// under the same "assets/icon.ico" key — object keys can't collide, so that
+			// entry silently never applied, and nothing in the app ever read it from
+			// there anyway (the frontend favicon uses icon.png, not icon.ico) — removed.
 			"assets/icon.ico": "app.ico",
 			"plugins": "plugins",
 			"skills": "skills",
@@ -73,6 +84,12 @@ export default {
 		watchIgnore: ["dist/**", "src/mainview/**"],
 		mac: {
 			bundleCEF: false,
+			// .iconset folder (generated from assets/icon.png via sharp — see PR that
+			// added this) — Electrobun converts it to .icns via iconutil during the
+			// mac build. iconutil only exists on macOS, so this is a no-op warning on
+			// any non-mac build host; harmless here since mac builds only ever run on
+			// macos-latest CI (see the onnxruntime-node comment above for why).
+			icons: "assets/icon.iconset",
 			// WKWebView requires this entitlement to even prompt for the mic (voice input).
 			entitlements: {
 				"com.apple.security.device.audio-input": "Microphone access for voice-to-text input",
@@ -80,15 +97,38 @@ export default {
 		},
 		linux: {
 			bundleCEF: true,
+			icon: "assets/icon.png",
 		},
 		win: {
 			bundleCEF: false,
+			// Embedded into launcher.exe/bun.exe via rcedit during the build. Confirmed
+			// via live UI inspection this only brands File Explorer / the exe file
+			// itself — Electrobun's native window class does NOT pick this up for the
+			// running window's taskbar/titlebar icon, so src/bun/lib/app-icon.ts's
+			// runtime user32.dll WM_SETICON call is still required for that (called
+			// from index.ts and quick-chat/window.ts on dom-ready) — keep both. NOTE:
+			// Electrobun's own embed step for this currently fails silently on Windows
+			// (its precompiled CLI binary's require.resolve for "rcedit" resolves
+			// against its own CI build path, not this project's node_modules) —
+			// scripts.postBuild below redoes it as a plain `bun` process, which
+			// resolves rcedit correctly. See that script's comment.
+			icon: "assets/icon.ico",
 		},
+	},
+	scripts: {
+		postBuild: "scripts/postbuild-win-icon.ts",
 	},
 	// Update distribution — point to your GitHub Releases page.
 	// Format: "https://github.com/YOUR_ORG/YOUR_REPO/releases/latest/download"
 	// The updater fetches {baseUrl}/{channel}-{os}-{arch}-update.json to check for updates.
 	release: {
 		baseUrl: "https://github.com/sarfraznawaz2005/agentdesk/releases/latest/download",
+		// A non-dev Electrobun build downloads the CURRENTLY-PUBLISHED release
+		// tarball from baseUrl to compute a binary diff (so the auto-updater can
+		// ship small incremental patches to real users) — real for CI release
+		// builds (release.yml), but a local dev build (build.ps1) has no need
+		// for that: it just wants a fast, offline, runnable build of whatever's
+		// on disk right now. build.ps1 sets AGENTDESK_SKIP_PATCH=1 to skip it.
+		generatePatch: process.env.AGENTDESK_SKIP_PATCH !== "1",
 	},
 } satisfies ElectrobunConfig;

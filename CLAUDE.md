@@ -76,6 +76,7 @@ The four wiring anchors — trace any feature from here: `src/bun/index.ts` (lif
 - **Feature Branch Workflow**: PM calls `set_feature_branch` (AI-named) before dispatch; `autoCommitTask` (in `review-cycle.ts`) switches/creates the branch before committing.
 - **Context & caching**: progressive compaction at 60/70/85/90% of `getContextLimit(modelId)`, no iteration cap; Anthropic/OpenRouter system prompts use cache-control metadata.
 - **Playground** (`src/bun/playground/`): isolated Artifacts-style live-preview builder driven by the `playground-agent`, fully decoupled from the PM/kanban/review paths.
+- **Quick Chat** (`src/bun/quick-chat/`): OS Explorer/Finder "Open in AgentDesk" entry opens a reduced-chrome window against an arbitrary folder without creating a project first. Reuses the normal PM/engine, gated by a per-turn `quickChat` boolean (derived from `projects.isQuickChat`) that strips kanban/plan-approval PM tools and dispatched-agent kanban tools — no separate engine path. See `docs/quick-chat-plan.md` and `docs/workflow.md`'s Quick Chat section.
 
 ---
 
@@ -88,6 +89,7 @@ Operational essentials:
 - `agent_sessions` / `agent_session_messages` were created in v3 and **dropped in v4** when the inline-agent model replaced persistent sessions.
 - `github_issues` is **deprecated** (read-only), superseded by `external_issues` (unified multi-source store).
 - Feature-branch name is persisted in `settings` under key `currentFeatureBranch:<projectId>` (category `git`).
+- `projects.isQuickChat` (migration v57) flags a project created via the Quick Chat OS-Explorer entry; `getProjectsList` filters it out everywhere (Dashboard, PM `list_projects`/`search_projects`) until promoted via the Quick Chat window's "Create Project" button.
 
 ---
 

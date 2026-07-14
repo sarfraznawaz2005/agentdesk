@@ -750,6 +750,7 @@ export function InboxPage() {
         prev.map((m) => (m.id === msg.id ? { ...m, isRead: 1 } : m))
       );
       setUnreadCount((c) => Math.max(0, c - 1));
+      window.dispatchEvent(new CustomEvent("agentdesk:inbox-unread-changed"));
     } catch {
       toast("error", "Failed to mark message as read.");
     }
@@ -758,7 +759,6 @@ export function InboxPage() {
   function handleRowClick(msg: InboxMessage) {
     suppressAutoSelectRef.current = false;
     setSelectedId(msg.id);
-    handleMarkAsRead(msg);
   }
 
   async function handleDeleteMessage(id: string) {
@@ -835,6 +835,7 @@ export function InboxPage() {
       await rpc.markAllAsRead(projectId);
       setMessages((prev) => prev.map((m) => ({ ...m, isRead: 1 })));
       setUnreadCount(0);
+      window.dispatchEvent(new CustomEvent("agentdesk:inbox-unread-changed"));
       toast("success", "All messages marked as read.");
     } catch {
       toast("error", "Failed to mark all as read.");
@@ -882,6 +883,7 @@ export function InboxPage() {
       setMessages((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, isRead: 1 } : m));
       setSelectedIds(new Set());
       loadUnreadCount();
+      window.dispatchEvent(new CustomEvent("agentdesk:inbox-unread-changed"));
       toast("success", `Marked ${ids.length} messages as read.`);
     } catch {
       toast("error", "Failed to mark messages as read.");
@@ -959,8 +961,7 @@ export function InboxPage() {
     : null;
 
   // Auto-select the first message so the preview pane isn't empty (mirrors the
-  // Docs tab). Selection alone never marks a message read — only a row click
-  // does. displayMessages is recomputed each render (not memoized), so the
+  // Docs tab). displayMessages is recomputed each render (not memoized), so the
   // guards below (not the deps) are what prevent redundant setState calls.
   useEffect(() => {
     if (loading || suppressAutoSelectRef.current) return;
@@ -969,6 +970,17 @@ export function InboxPage() {
       setSelectedId(displayMessages[0].id);
     }
   }, [loading, displayMessages, selectedId]);
+
+  // Mark a message read the instant it's opened in the detail pane — whether
+  // it got there via an explicit row click or auto-selection (first load,
+  // filter change). Keyed on the id (not the object) so the isRead:1 patch
+  // this triggers doesn't cause a second run.
+  useEffect(() => {
+    if (selectedMessage && selectedMessage.isRead === 0) {
+      handleMarkAsRead(selectedMessage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMessage?.id]);
 
   const hasActiveFilter =
     channelFilter !== "all" ||

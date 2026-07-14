@@ -147,32 +147,25 @@ function formatAiSdkWarning(
  * (see `ai/src/logger/log-warnings.ts`). Installing our own function also
  * suppresses the SDK's one-time "To turn off warning logging…" info banner.
  *
- * - **Dev** (`dev` channel): print to the backend console so they surface in
- *   the `run.ps1` terminal during development.
- * - **Production / canary**: append to `error.log` with a `[WARNING]` prefix
- *   (non-fatal — recorded like a soft error, not crashed on).
+ * Always prints to the backend console (dev: visible in the `run.ps1`
+ * terminal; prod: harmless even with no attached console) AND appends to
+ * error.log with a `[WARNING]` prefix (non-fatal — recorded like a soft
+ * error, not crashed on) — so a warning is never visible in only one place.
  *
  * Call once, early in startup, before the first AI inference.
  */
-export function installAiSdkWarningHandler(isDevMode: boolean): void {
+export function installAiSdkWarningHandler(): void {
 	const handler: LogWarningsFunction = ({ warnings, provider, model }) => {
 		if (warnings.length === 0) return;
 		for (const warning of warnings) {
 			const message = formatAiSdkWarning(warning, provider, model);
-			if (isDevMode) {
-				console.warn(message);
-			} else {
-				logError("bun", "ai-sdk-warning", `[WARNING] ${message}`);
-			}
+			console.warn(message);
+			logError("bun", "ai-sdk-warning", `[WARNING] ${message}`);
 		}
 	};
 
 	globalThis.AI_SDK_LOG_WARNINGS = handler;
-	console.log(
-		`[error-logger] AI SDK warning handler installed (${
-			isDevMode ? "console" : "error.log [WARNING]"
-		} mode).`,
-	);
+	console.log("[error-logger] AI SDK warning handler installed (console + error.log).");
 }
 
 /**

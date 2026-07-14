@@ -195,6 +195,15 @@ export interface InlineAgentOptions {
 	 * chosen for every other chat surface. Leave unset to use the global setting.
 	 */
 	streamingModeOverride?: StreamingMode;
+	/**
+	 * Quick Chat has no kanban board and thus no review-cycle auto-commit — the
+	 * global `autoCommitEnabled` setting's usual assumption ("review-cycle
+	 * commits for you, so strip git_commit from agents") doesn't hold here, and
+	 * would otherwise leave a Quick Chat agent unable to commit at all. When
+	 * true, keeps `git_commit` regardless of that setting. Set by pm-tools.ts's
+	 * run_agent/run_agents_parallel when `deps.quickChat` is true.
+	 */
+	quickChat?: boolean;
 }
 
 export interface InlineAgentResult {
@@ -1038,13 +1047,18 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	}
 
 	// When auto-commit is enabled, remove git_commit from agent tools — the
-	// review cycle commits on task completion automatically.
-	try {
-		const autoCommitEnabled = await getSetting("autoCommitEnabled", "git");
-		if (autoCommitEnabled === "true") {
-			delete tools.git_commit;
-		}
-	} catch { /* non-fatal */ }
+	// review cycle commits on task completion automatically. Skipped for Quick
+	// Chat: there is no kanban board and thus no review cycle to ever fire that
+	// auto-commit, so stripping git_commit here would leave the agent with no
+	// way to commit at all.
+	if (!opts.quickChat) {
+		try {
+			const autoCommitEnabled = await getSetting("autoCommitEnabled", "git");
+			if (autoCommitEnabled === "true") {
+				delete tools.git_commit;
+			}
+		} catch { /* non-fatal */ }
+	}
 
 	// Apply pre/post tool hooks if configured for this project
 	const [preHook, postHook] = await Promise.all([

@@ -64,6 +64,7 @@ export function applySchema(sqlite: Database): void {
       workspace_path  TEXT NOT NULL,
       github_url      TEXT,
       working_branch  TEXT,
+      is_quick_chat   INTEGER NOT NULL DEFAULT 0,
       created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );

@@ -278,29 +278,83 @@ export function registerRemoteBroadcastSink(sink: RemoteBroadcastSink): () => vo
 	return () => remoteBroadcastSinks.delete(sink);
 }
 
+// ---------------------------------------------------------------------------
+// Quick Chat window registry — a Quick Chat project's engine callbacks and
+// shell-approval/user-question prompts route to its own BrowserWindow instead
+// of the main window, so its stream/tool events never leak into (or get lost
+// from) whichever window the main app happens to have open. Populated by
+// src/bun/quick-chat/window.ts when a Quick Chat window opens/closes. Every
+// other (non-Quick-Chat) project has no entry here and falls back to the main
+// window, which is the existing, unchanged behavior.
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const projectWindows = new Map<string, any>();
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function registerProjectWindow(projectId: string, win: any): void {
+	projectWindows.set(projectId, win);
+}
+
+export function unregisterProjectWindow(projectId: string): void {
+	projectWindows.delete(projectId);
+}
+
+/** Additive fan-out to remote transports, shared by broadcastToWebview and broadcastToProject. */
+function fanOutToRemote(method: string, payload: unknown): void {
+	if (remoteBroadcastSinks.size === 0) return;
+	for (const sink of remoteBroadcastSinks) {
+		try {
+			sink(method, payload);
+		} catch {
+			// A remote sink must never break the webview broadcast.
+		}
+	}
+}
+
 /**
  * Safely send a message to the webview via RPC. At runtime the rpc
  * object has `send.<method>()` helpers created by BrowserView.defineRPC,
  * but Electrobun's exported types don't expose them statically on
  * BrowserWindow. We route through an any-typed ref to keep TS happy.
+ *
+ * Fans out to the main window AND every open Quick Chat window — this is for
+ * genuinely global, project-less events (showToast, settingsChanged,
+ * projectsUpdated, etc). Over-delivery to a Quick Chat window is harmless:
+ * the frontend already filters project/conversation-scoped events by ID, and
+ * global events have no such filtering to begin with. For anything scoped to
+ * a single project, use broadcastToProject instead.
  */
 export function broadcastToWebview(method: string, payload: unknown): void {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const targets = new Set<any>([mainWindowRef, ...projectWindows.values()].filter(Boolean));
+	for (const target of targets) {
+		try {
+			target?.webview?.rpc?.send?.[method]?.(payload);
+		} catch {
+			// Window may have been closed — silently ignore
+		}
+	}
+	// Additive fan-out to remote transports. Runs after the webview sends and
+	// never lets a sink failure affect the in-app path.
+	fanOutToRemote(method, payload);
+}
+
+/**
+ * Like broadcastToWebview, but routes to a project's own Quick Chat window
+ * when one is registered (see projectWindows above), falling back to the main
+ * window otherwise — the normal case for every non-Quick-Chat project. Use
+ * this instead of broadcastToWebview for any event scoped to a single project
+ * (stream tokens, tool parts, shell-approval/user-question prompts) so a Quick
+ * Chat run's events land only in the window that owns it.
+ */
+export function broadcastToProject(projectId: string, method: string, payload: unknown): void {
+	const target = projectWindows.get(projectId) ?? mainWindowRef;
 	try {
-		mainWindowRef?.webview?.rpc?.send?.[method]?.(payload);
+		target?.webview?.rpc?.send?.[method]?.(payload);
 	} catch {
 		// Window may have been closed — silently ignore
 	}
-	// Additive fan-out to remote transports. Runs after the webview send and
-	// never lets a sink failure affect the in-app path.
-	if (remoteBroadcastSinks.size > 0) {
-		for (const sink of remoteBroadcastSinks) {
-			try {
-				sink(method, payload);
-			} catch {
-				// A remote sink must never break the webview broadcast.
-			}
-		}
-	}
+	fanOutToRemote(method, payload);
 }
 
 // ---------------------------------------------------------------------------
@@ -402,7 +456,7 @@ function installShellApprovalHandler(): void {
 		const timestamp = new Date().toISOString();
 		const payload = { requestId, projectId, conversationId, agentId, agentName, command, timestamp };
 
-		broadcastToWebview("shellApprovalRequest", payload);
+		broadcastToProject(projectId, "shellApprovalRequest", payload);
 
 		// Write through to the DB so a reconnecting web client can re-render this
 		// pending request, and a restart can emit a clean expiry signal (TASK-478).
@@ -442,7 +496,7 @@ function installShellApprovalHandler(): void {
 				deletePendingApproval(requestId);
 				// Tell the frontend to mark the stale card as expired (clean re-request
 				// UX instead of a stuck spinner) — see AC: expired approvals signal.
-				broadcastToWebview("shellApprovalExpired", { requestId, projectId, reason: "timeout" });
+				broadcastToProject(projectId, "shellApprovalExpired", { requestId, projectId, reason: "timeout" });
 				resolve("deny");
 			}, SHELL_APPROVAL_TIMEOUT_MS);
 
@@ -547,7 +601,7 @@ export function askUserQuestion(payload: {
 		timestamp: new Date().toISOString(),
 	};
 
-	broadcastToWebview("userQuestionRequest", requestPayload);
+	broadcastToProject(projectId, "userQuestionRequest", requestPayload);
 
 	// Write through so a reconnecting web client can re-render the question
 	// (TASK-478). Background autonomous questions (short timeoutMs) are also
@@ -581,7 +635,7 @@ export function askUserQuestion(payload: {
 			pendingUserQuestions.delete(requestId);
 			deletePendingApproval(requestId);
 			// Tell the frontend to close the stale dialog — the agent has moved on.
-			broadcastToWebview("userQuestionCancel", { requestId });
+			broadcastToProject(projectId, "userQuestionCancel", { requestId });
 			const mins = Math.round(timeoutMs / 60000);
 			resolve(
 				timeoutMs < 60000
@@ -639,9 +693,9 @@ export function reconcilePendingApprovalsOnStartup(): void {
 	for (const row of stale) {
 		const projectId = row.projectId;
 		if (row.kind === "shell") {
-			broadcastToWebview("shellApprovalExpired", { requestId: row.id, projectId, reason: "restart" });
+			broadcastToProject(projectId, "shellApprovalExpired", { requestId: row.id, projectId, reason: "restart" });
 		} else if (row.kind === "question") {
-			broadcastToWebview("userQuestionCancel", { requestId: row.id });
+			broadcastToProject(projectId, "userQuestionCancel", { requestId: row.id });
 		}
 	}
 	deleteAllInteractiveApprovals();
@@ -653,7 +707,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 		evictOldestIdleEngine();
 		const callbacks: AgentEngineCallbacks = {
 			onStreamToken: (cid, mid, token, agentId) => {
-				broadcastToWebview("streamToken", {
+				broadcastToProject(projectId, "streamToken", {
 					conversationId: cid,
 					messageId: mid,
 					token,
@@ -661,13 +715,13 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				});
 			},
 			onStreamReset: (cid, mid) => {
-				broadcastToWebview("streamReset", {
+				broadcastToProject(projectId, "streamReset", {
 					conversationId: cid,
 					messageId: mid,
 				});
 			},
 			onStreamComplete: (cid, mid, usage) => {
-				broadcastToWebview("streamComplete", {
+				broadcastToProject(projectId, "streamComplete", {
 					conversationId: cid,
 					messageId: mid,
 					content: usage.content,
@@ -707,7 +761,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					// project the frontend is currently displaying.
 					const queued = dequeueMessage(projectId, cid);
 					if (queued) {
-						broadcastToWebview("messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
+						broadcastToProject(projectId, "messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
 						e.sendMessage(cid, queued.content, undefined);
 						return;
 					}
@@ -723,7 +777,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					// when the user is away entirely). Skipped if the PM never actually
 					// dispatched an agent this turn — a plain chat reply isn't a "session".
 					if (hadAgentActivity) {
-						broadcastToWebview("agentSessionComplete", { projectId, projectName: name });
+						broadcastToProject(projectId, "agentSessionComplete", { projectId, projectName: name });
 					}
 
 					// Skip if app window is in focus — notification only useful when user is away
@@ -740,7 +794,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				}, 0);
 			},
 			onStreamError: (cid, error) => {
-				broadcastToWebview("streamError", {
+				broadcastToProject(projectId, "streamError", {
 					conversationId: cid,
 					error,
 				});
@@ -753,7 +807,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					if (!e || e.isProcessing() || getRunningAgentCount(projectId) > 0 || e.getQueuedAgentsSnapshot().length > 0) return;
 					const queued = dequeueMessage(projectId, cid);
 					if (queued) {
-						broadcastToWebview("messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
+						broadcastToProject(projectId, "messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
 						e.sendMessage(cid, queued.content, undefined);
 					}
 				}, 0);
@@ -793,23 +847,23 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				).catch(() => {});
 			},
 			onNewMessage: (params) => {
-				broadcastToWebview("newMessage", params);
+				broadcastToProject(projectId, "newMessage", params);
 			},
 			onAgentStatus: (pid, aid, status) => {
-				broadcastToWebview("agentStatus", {
+				broadcastToProject(pid, "agentStatus", {
 					projectId: pid,
 					agentId: aid,
 					status,
 				});
 			},
 			onAgentInlineStart: (conversationId, messageId, agentName, agentDisplayName, task) => {
-				broadcastToWebview("agentInlineStart", { conversationId, messageId, agentName, agentDisplayName, task });
+				broadcastToProject(projectId, "agentInlineStart", { conversationId, messageId, agentName, agentDisplayName, task });
 			},
 			onContextUsage: (conversationId, promptTokens, contextLimit) => {
-				broadcastToWebview("contextUsage", { conversationId, promptTokens, contextLimit });
+				broadcastToProject(projectId, "contextUsage", { conversationId, promptTokens, contextLimit });
 			},
 			onAgentInlineComplete: (conversationId, messageId, agentName, status, summary, tokensUsed) => {
-				broadcastToWebview("agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
+				broadcastToProject(projectId, "agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
 				// A sub-agent finished work in the main chat (skip user-cancelled runs).
 				if (status !== "cancelled") {
 					recordActivity(projectId, "chat").catch(() => {});
@@ -820,7 +874,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				}
 			},
 			onPartCreated: (conversationId, part) => {
-				broadcastToWebview("partCreated", {
+				broadcastToProject(projectId, "partCreated", {
 					conversationId,
 					messageId: part.messageId,
 					part: {
@@ -839,7 +893,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				});
 			},
 			onPartUpdated: (conversationId, messageId, partId, updates) => {
-				broadcastToWebview("partUpdated", {
+				broadcastToProject(projectId, "partUpdated", {
 					conversationId,
 					messageId,
 					partId,
@@ -852,30 +906,30 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				});
 			},
 			onKanbanTaskMove: (pid, taskId, _column) => {
-				broadcastToWebview("kanbanTaskUpdated", {
+				broadcastToProject(pid, "kanbanTaskUpdated", {
 					projectId: pid,
 					taskId,
 					action: "moved",
 				});
 			},
 			onConversationTitleChanged: (conversationId, title) => {
-				broadcastToWebview("conversationTitleChanged", {
+				broadcastToProject(projectId, "conversationTitleChanged", {
 					conversationId,
 					title,
 				});
 			},
 			onConversationUpdated: (conversationId, updatedAt) => {
-				broadcastToWebview("conversationUpdated", {
+				broadcastToProject(projectId, "conversationUpdated", {
 					conversationId,
 					updatedAt,
 					projectId,
 				});
 			},
 			onCompactionStarted: (conversationId) => {
-				broadcastToWebview("compactionStarted", { conversationId });
+				broadcastToProject(projectId, "compactionStarted", { conversationId });
 			},
 			onConversationCompacted: (conversationId, remainingTokens) => {
-				broadcastToWebview("conversationCompacted", {
+				broadcastToProject(projectId, "conversationCompacted", {
 					conversationId,
 					remainingTokens,
 				});
@@ -883,7 +937,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 			onAgentActivity(event) {
 				// Only forward PM thinking events — other activity types were removed in v2
 				if (event.type === "thinking" && event.data?.text) {
-					broadcastToWebview("pmThinking", {
+					broadcastToProject(projectId, "pmThinking", {
 						conversationId: event.conversationId,
 						text: event.data.text,
 						isPartial: event.data.isPartial ?? false,

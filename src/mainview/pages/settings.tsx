@@ -47,7 +47,33 @@ function SubTabs({ tabs }: { tabs: { value: string; label: string; content: Reac
   );
 }
 
-export function SettingsPage() {
+interface SettingsPageProps {
+  /**
+   * Quick Chat has no "project" to configure general/channels/integrations/
+   * plugins for — it only ever needs AI provider/model config. When true,
+   * renders just the AI sub-tabs directly (no outer tab list, since it's the
+   * only section) instead of the full General/AI/Channels/... tab set.
+   */
+  aiOnly?: boolean;
+}
+
+export function SettingsPage({ aiOnly }: SettingsPageProps = {}) {
+  if (aiOnly) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <SubTabs tabs={[
+          { value: "providers", label: "Providers", content: <ProvidersSettings /> },
+          { value: "models", label: "Models", content: <ModelsSettings /> },
+          { value: "streaming", label: "Streaming", content: <StreamingSettings /> },
+          { value: "mcp", label: "MCP Servers", content: <McpSettings /> },
+          { value: "constitution", label: "Constitution", content: <ConstitutionSettings /> },
+          { value: "env-vars", label: "Env Vars", content: <EnvVarsSettings /> },
+          { value: "debug", label: "Debug", content: <AiDebugSettings /> },
+        ]} />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <Tabs defaultValue="general" className="w-full">

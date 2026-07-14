@@ -330,8 +330,11 @@ export function MessageList({
             </div>
           )}
 
-          {/* Scroll anchor — browser keeps this in view when content above changes */}
-          <div style={{ overflowAnchor: "auto", height: 1 }} />
+          {/* Scroll anchor — browser keeps this in view when content above changes.
+              Omitted when there's nothing to show: it would add 1px past the empty
+              state's h-full, overflowing the container by exactly 1px and forcing a
+              phantom scrollbar. */}
+          {itemCount > 0 && <div style={{ overflowAnchor: "auto", height: 1 }} />}
           </div>{/* end zoom wrapper */}
         </div>
 

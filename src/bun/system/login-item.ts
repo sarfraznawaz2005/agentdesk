@@ -24,7 +24,9 @@ const APP_NAME = "AgentDesk";
 // that binary, not bun directly, to match what a normal double-click/Start
 // Menu launch does. Falls back to argv0 if no sibling launcher is found
 // (shouldn't happen in a real build, but never block on this).
-function getLauncherPath(): string {
+// Exported so quick-chat/os-integration.ts's Explorer context-menu "command"
+// value points at the same native front door, not the bun runtime directly.
+export function getLauncherPath(): string {
 	const launcherName = process.platform === "win32" ? "launcher.exe" : "launcher";
 	const candidate = join(dirname(process.argv0), launcherName);
 	return existsSync(candidate) ? candidate : process.argv0;

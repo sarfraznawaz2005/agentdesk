@@ -5,7 +5,7 @@
  * database so no filesystem state leaks between runs.
  */
 
-import { mock, describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { mock, describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test";
 import { createTestDb } from "../helpers/db";
 
 // Electrobun must be mocked before any import that pulls it transitively.
@@ -50,6 +50,8 @@ const {
 	saveProjectSetting,
 	getProjectSettings,
 	isAutoExecuteEnabled,
+	openQuickChatForPath,
+	promoteQuickChatProject,
 } = await import("../../src/bun/rpc/projects");
 
 // -------------------------------------------------------------------------
@@ -59,6 +61,26 @@ const {
 function randomPath(): string {
 	return `/tmp/test-workspace-${crypto.randomUUID()}`;
 }
+
+// openQuickChatForPath requires the folder to actually exist on disk (unlike
+// createProjectHandler above, which accepts a non-existent path freely), so
+// its tests need a real temp directory rather than randomPath()'s fake one.
+const realTempDirs: string[] = [];
+async function makeRealTempDir(): Promise<string> {
+	const { mkdtempSync } = await import("fs");
+	const { tmpdir } = await import("os");
+	const { join } = await import("path");
+	const dir = mkdtempSync(join(tmpdir(), "agentdesk-quickchat-test-"));
+	realTempDirs.push(dir);
+	return dir;
+}
+
+afterAll(async () => {
+	const { rmSync } = await import("fs");
+	for (const dir of realTempDirs) {
+		try { rmSync(dir, { recursive: true, force: true }); } catch { /* best-effort cleanup */ }
+	}
+});
 
 // -------------------------------------------------------------------------
 
@@ -245,5 +267,120 @@ describe("saveProjectSetting / getProjectSettings", () => {
 
 		expect(s1["alpha"]).toBe("first");
 		expect(s2["alpha"]).toBe("second");
+	});
+});
+
+describe("getProjectsList (Quick Chat visibility)", () => {
+	it("excludes Quick Chat projects", async () => {
+		const dir = await makeRealTempDir();
+		await createProjectHandler({ name: "NormalProject", workspacePath: randomPath() });
+		const { projectId } = await openQuickChatForPath(dir);
+
+		const list = await getProjectsList();
+		expect(list.some((p) => p.name === "NormalProject")).toBe(true);
+		expect(list.some((p) => p.id === projectId)).toBe(false);
+	});
+});
+
+describe("openQuickChatForPath", () => {
+	it("fails for a path that does not exist on disk", async () => {
+		const result = await openQuickChatForPath(`/tmp/does-not-exist-${crypto.randomUUID()}`);
+		expect(result.success).toBe(false);
+		expect(result.error).toBeTruthy();
+	});
+
+	it("creates a hidden (is_quick_chat) project for a real folder", async () => {
+		const dir = await makeRealTempDir();
+		const result = await openQuickChatForPath(dir);
+		expect(result.success).toBe(true);
+		expect(result.projectId).toBeTruthy();
+		expect(result.conversationId).toBeTruthy();
+
+		const project = await getProject(result.projectId);
+		expect(project).not.toBeNull();
+		expect(project!.workspacePath).toBe(dir);
+	});
+
+	it("reuses the same project on a repeat call for the same folder", async () => {
+		const dir = await makeRealTempDir();
+		const first = await openQuickChatForPath(dir);
+		const second = await openQuickChatForPath(dir);
+		expect(second.projectId).toBe(first.projectId);
+	});
+
+	it("still creates a NEW conversation on a repeat call (not the same one)", async () => {
+		const dir = await makeRealTempDir();
+		const first = await openQuickChatForPath(dir);
+		// Simulate the first conversation having real messages, so createConversation's
+		// own "reuse an empty untouched conversation" logic doesn't collapse this into
+		// the same row — matches how a genuinely-used quick-chat session behaves.
+		const { messages } = await import("../../src/bun/db/schema");
+		await testDb.insert(messages).values({
+			id: crypto.randomUUID(),
+			conversationId: first.conversationId,
+			role: "user",
+			content: "hello",
+		});
+
+		const second = await openQuickChatForPath(dir);
+		expect(second.conversationId).not.toBe(first.conversationId);
+		expect(second.projectId).toBe(first.projectId);
+	});
+
+	it("retries with a numeric suffix when the derived name collides", async () => {
+		const parentA = await makeRealTempDir();
+		const { mkdirSync } = await import("fs");
+		const { join, basename } = await import("path");
+		// Two different folders that happen to share a basename ("shared-name")
+		// under two different parent temp dirs — createProjectHandler's own
+		// path-collision suffixing doesn't apply here since these are two
+		// distinct, pre-existing real paths.
+		const dirA = join(parentA, "shared-name");
+		mkdirSync(dirA);
+		const parentB = await makeRealTempDir();
+		const dirB = join(parentB, "shared-name");
+		mkdirSync(dirB);
+		expect(basename(dirA)).toBe(basename(dirB));
+
+		const resultA = await openQuickChatForPath(dirA);
+		const resultB = await openQuickChatForPath(dirB);
+		expect(resultA.success).toBe(true);
+		expect(resultB.success).toBe(true);
+		expect(resultB.projectId).not.toBe(resultA.projectId);
+
+		const projectA = await getProject(resultA.projectId);
+		const projectB = await getProject(resultB.projectId);
+		expect(projectA!.name).not.toBe(projectB!.name);
+	});
+});
+
+describe("promoteQuickChatProject", () => {
+	it("flips is_quick_chat off so the project appears in getProjectsList", async () => {
+		const dir = await makeRealTempDir();
+		const { projectId } = await openQuickChatForPath(dir);
+		expect((await getProjectsList()).some((p) => p.id === projectId)).toBe(false);
+
+		const result = await promoteQuickChatProject(projectId);
+		expect(result.success).toBe(true);
+		expect((await getProjectsList()).some((p) => p.id === projectId)).toBe(true);
+	});
+
+	it("does not touch the workspace path (no file copy)", async () => {
+		const dir = await makeRealTempDir();
+		const { projectId } = await openQuickChatForPath(dir);
+		await promoteQuickChatProject(projectId);
+		const project = await getProject(projectId);
+		expect(project!.workspacePath).toBe(dir);
+	});
+
+	it("returns an error for a project that was never a Quick Chat project", async () => {
+		const { id } = await createProjectHandler({ name: "AlreadyNormal", workspacePath: randomPath() });
+		const result = await promoteQuickChatProject(id);
+		expect(result.success).toBe(false);
+	});
+
+	it("returns an error for a non-existent project", async () => {
+		const result = await promoteQuickChatProject("does-not-exist");
+		expect(result.success).toBe(false);
 	});
 });

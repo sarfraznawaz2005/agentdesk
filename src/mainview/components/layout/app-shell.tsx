@@ -235,9 +235,16 @@ function AppShellContent() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  // Redirect to onboarding if no providers exist (first launch or after reset)
+  // Redirect to onboarding if no providers exist (first launch or after reset).
+  // Skipped for Quick Chat windows: onboarding's own completion flow navigates
+  // to "/" (the Dashboard), which would pull full Sidebar/TopNav chrome into
+  // what's supposed to stay a lightweight, chrome-less window. A user whose
+  // very first-ever AgentDesk interaction happens to be via Quick Chat (no
+  // provider configured yet) instead sees the normal chat error path when
+  // they send a message, and can configure a provider directly in Quick
+  // Chat's own Settings → AI tab — no need to leave the window.
   useEffect(() => {
-    if (location.pathname === "/onboarding") {
+    if (location.pathname === "/onboarding" || location.pathname.startsWith("/quick-chat")) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCheckingFirstLaunch(false);
       return;
@@ -310,6 +317,34 @@ function AppShellContent() {
         <Outlet />
         <Toaster />
       </>
+    );
+  }
+
+  // Quick Chat windows are a separate, reduced-chrome native window — no
+  // Sidebar, no TopNav/project switcher, no dashboard chat widgets. Keep the
+  // dialogs a chat session actually needs (shell-approval/user-question cards
+  // render inline in ChatLayout itself; these two are the app-level modal/
+  // toast forms). See docs/quick-chat-plan.md.
+  if (location.pathname.startsWith("/quick-chat")) {
+    // h-screen is required here, not cosmetic — QuickChatPage's own root is
+    // `h-full`, and every h-full/flex-1 descendant (ChatLayout, NotesTab,
+    // their Files/Docs side panels) needs SOME ancestor with a definite
+    // height to resolve against. The normal app path gets this for free from
+    // its own wrapping div below (`h-screen` on app-background-root); this
+    // bypass rendered `<Outlet/>` with no wrapper at all, so the whole tree
+    // silently fell back to content-height instead of filling the window —
+    // invisible with a normally-tall conversation, but very visible as a
+    // collapsed-to-a-few-hundred-px layout with a big blank gap below for a
+    // genuinely empty project (no files, no docs, fresh "New conversation").
+    return (
+      <TooltipProvider>
+        <div className="h-screen overflow-hidden">
+          <Outlet />
+        </div>
+        <Toaster />
+        <UserQuestionDialog />
+        <CrossProjectApprovalToast />
+      </TooltipProvider>
     );
   }
 

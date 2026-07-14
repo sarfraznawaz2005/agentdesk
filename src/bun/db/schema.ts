@@ -70,6 +70,11 @@ export const projects = sqliteTable("projects", {
 	workspacePath: text("workspace_path").notNull(),
 	githubUrl: text("github_url"),
 	workingBranch: text("working_branch"),
+	// Created via the OS Explorer "Open in AgentDesk" Quick Chat entry rather than
+	// explicit user project creation. Hidden from the Dashboard and from the PM's
+	// list_projects/search_projects tools (see getProjectsList) until promoted via
+	// the Quick Chat window's "Create Project" button (see v57 migration).
+	isQuickChat: integer("is_quick_chat").notNull().default(0),
 	createdAt: text("created_at")
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`),

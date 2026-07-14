@@ -44,25 +44,18 @@ jobs:
       - name: Build frontend (Vite)
         run: bun run vite build
 
-      # First build: downloads electrobun's dist-win-x64 binaries (launcher.exe, etc.)
-      # and produces the initial build output. The app bundle folder is deleted after
-      # packaging, so we cannot embed the icon post-build without repacking manually.
-      - name: Build app — first pass
-        run: bunx electrobun build --env=stable
-
-      # Now that launcher.exe exists in node_modules, embed the icon before rebuilding.
-      # The second build will copy this icon-embedded launcher into the app bundle and
-      # pack it into the tar.zst automatically — no manual repacking needed.
-      - name: Embed icon into launcher
-        shell: pwsh
-        run: |
-          $rcedit = "node_modules\rcedit\bin\rcedit-x64.exe"
-          & $rcedit "node_modules\electrobun\dist-win-x64\launcher.exe" --set-icon "assets\icon.ico"
-          if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on launcher.exe"; exit 1 }
-          Write-Host "Icon embedded into node_modules launcher.exe"
-
-      # Second build: uses the icon-embedded launcher. Overwrites first build output.
-      - name: Build app — second pass (with icon-embedded launcher)
+      # A single pass is enough now: electrobun.config.ts's scripts.postBuild
+      # (scripts/postbuild-win-icon.ts) embeds the icon into launcher.exe/
+      # bun.exe itself, directly inside this build's own output folder,
+      # before Electrobun tars/packages it — no need to pre-seed
+      # node_modules/electrobun's copy and rebuild a second time to pick it
+      # up. (That two-pass dance existed because Electrobun's OWN built-in
+      # build.win.icon embed step fails on Windows — its precompiled CLI
+      # binary's require.resolve("rcedit") resolves against ITS OWN CI
+      # checkout path, not this project's node_modules — postbuild-win-
+      # icon.ts redoes the same rcedit call as a plain `bun` process instead,
+      # where require.resolve works correctly.)
+      - name: Build app
         run: bunx electrobun build --env=stable
 
       - name: Embed icon into installer exe

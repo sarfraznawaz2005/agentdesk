@@ -99,4 +99,30 @@ export type ProjectsRequests = {
     params: { projectId: string };
     response: { success: boolean; error?: string };
   };
+  /**
+   * Open (or reuse) a Quick Chat project for an existing folder — the OS
+   * Explorer "Open in AgentDesk" entry point. Always returns a fresh
+   * conversation for the resolved project.
+   */
+  openQuickChatForPath: {
+    params: { workspacePath: string };
+    response: { success: boolean; projectId: string; conversationId: string; error?: string };
+  };
+  /** Promote a Quick Chat project to a normal, visible project (no file copy). */
+  promoteQuickChatProject: {
+    params: { projectId: string };
+    response: { success: boolean; error?: string };
+  };
+  /**
+   * Pull-based fallback for the Quick Chat window's initial route: a window
+   * asks (by its own window.__electrobunWindowId) what {projectId,
+   * conversationId} it was opened for. Null for any non-Quick-Chat window
+   * (including the main window) or an unrecognized id. Only needed if the
+   * `preload`-delivered initial hash didn't survive — see
+   * src/bun/quick-chat/window.ts's pendingRoutes map.
+   */
+  getQuickChatRoute: {
+    params: { windowId: number };
+    response: { projectId: string; conversationId: string } | null;
+  };
 };

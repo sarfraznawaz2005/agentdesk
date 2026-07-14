@@ -196,12 +196,16 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
     fetchUnread();
     const intervalId = setInterval(fetchUnread, 30_000);
 
-    // Also refresh on real-time inbox events
+    // Also refresh on real-time inbox events — new messages arriving, and
+    // messages being marked read (opened, mark-all-read, bulk mark-read) —
+    // so the badge doesn't wait for the next 30s poll to catch up.
     const handler = () => fetchUnread();
     window.addEventListener("agentdesk:inbox-message-received", handler);
+    window.addEventListener("agentdesk:inbox-unread-changed", handler);
     return () => {
       clearInterval(intervalId);
       window.removeEventListener("agentdesk:inbox-message-received", handler);
+      window.removeEventListener("agentdesk:inbox-unread-changed", handler);
     };
   }, []);
 
