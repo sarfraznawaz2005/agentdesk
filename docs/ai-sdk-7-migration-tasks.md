@@ -9,6 +9,13 @@
 > **Two stages, checkpoint between them**: Stage A (Phase 0-1) is upgrade +
 > automated codemods only. Do not start Stage B (Phase 2 onward) until the
 > Stage A checkpoint is explicitly reviewed and checked off below.
+>
+> **Updated 2026-07-15** per the migration doc's new §12: two feature
+> commits (model-type badges, text-to-image chat support) landed on `main`
+> after the original sweep and added real new AI-SDK surface (a
+> `generate_image` tool, a new `image-generation.ts` helper, new PM-side
+> media message_parts logic). Folded into Phase 2.2/2.7 and §5.4 below —
+> search "§12" for every touch point.
 
 ---
 
@@ -41,6 +48,10 @@
 - [ ] **2.2** `media-followup.ts` — rebuild `buildMediaFollowUpMessage()`'s content parts against v7's canonical `file`/`file-data`/`file-url` shape (§5.5, highest-risk item)
   - [ ] Update `screenshot.ts`'s `toModelOutput` callback in lockstep
   - [ ] Update `audio.ts`'s `toModelOutput` callback in lockstep
+  - [ ] Update `image-gen.ts`'s `toModelOutput` callback in lockstep (§12.3 — added 2026-07-15, third name in `IMAGE_TOOL_NAMES`)
+  - [ ] Update `engine.ts`'s new `MEDIA_TOOLS` message_parts persistence logic (§12.3 — both the CLI-path branch and the normal `streamText` branch write `tool_call`/`tool_result` message_parts for `generate_image`/`read_image`/`read_audio` directly from the PM loop now)
+  - [ ] Verify `dashboard.ts`'s `dashboardPMToolResult` broadcast (built on `extractImagePayload()`) still correctly detects image payloads post-migration
+  - [ ] Verify `dashboard-agent.ts`'s `dashboardAgentToolResult` broadcast (same `extractImagePayload()` dependency) still correctly detects image payloads post-migration
 - [ ] **2.3** `claude-subscription-cli-runner.ts` (~lines 355-371) — keep the independent media-stripping mirror conceptually in sync with 2.2 (not touched by the AI SDK rename itself)
 - [ ] **2.4** `engine.ts` + `agent-loop.ts` core loops:
   - [ ] Rename `system` → `instructions`
@@ -71,7 +82,7 @@
   - [ ] `claude-subscription.ts` — verify `interceptFetch`'s wrapped-`fetch` signature is unchanged
 - [ ] **2.7** `zai.ts` rebuild (§5.4, §11.1, decided) — remove `zhipu-ai-provider` dependency entirely
   - [ ] Confirm Z.AI's current API base URL / auth-header shape against their docs (don't assume unchanged from the third-party package)
-  - [ ] Rebuild `ZaiAdapter` on `@ai-sdk/openai-compatible`'s `createOpenAICompatible(...)`, matching the `ollama.ts`/`openrouter.ts`/`opencode.ts` pattern
+  - [ ] Rebuild `ZaiAdapter` on `@ai-sdk/openai-compatible`'s `createOpenAICompatible(...)`, matching the `ollama.ts`/`openrouter.ts`/`opencode.ts` pattern — note (§12.4): `zai.ts` already has a working `generateImage()` method built on `@ai-sdk/openai-compatible` (added 2026-07-15 for text-to-image support), so this is "extend the same pattern to chat," not starting from zero
   - [ ] Remove `zhipu-ai-provider` from `package.json`
 - [ ] **2.8** Stable tool ordering (§6.4, §7.2, §11.3, decided — build in-house)
   - [ ] Implement stable-prefix / stable-tail partitioning in `tools/index.ts`'s `getToolsForAgent()`/`getAllTools()`
@@ -208,6 +219,10 @@ Run once after Phase 2 (behavior-preserving) and again after Phase 3/4 (new capa
 - [ ] `take_screenshot` round trip on an OpenAI-compatible model (Ollama or OpenRouter)
 - [ ] `read_image` round trip
 - [ ] `read_audio` round trip (WAV/MP3)
+- [ ] `generate_image` round trip in the main chat, on an OpenAI-compatible provider (§12.3/§12.5, added 2026-07-15) — confirms the image-content shape from `image-generation.ts`'s `generateImage()` call renders correctly post-migration
+- [ ] `generate_image` round trip in the PM's own direct tool call (not via a dispatched sub-agent) — confirms `engine.ts`'s new `MEDIA_TOOLS` message_parts persistence (§12.3) survives the migration
+- [ ] `generate_image` round trip in the Dashboard PM chat widget and Dashboard agent chat widget — confirms `dashboardPMToolResult`/`dashboardAgentToolResult` broadcasts (built on `extractImagePayload()`) still detect the image payload correctly
+- [ ] `generate_image` failure path (e.g. a zero-balance/unentitled provider) surfaces as a readable tool-result error, not a crash — per `text-to-image-chat-support-plan.md`'s own finding that most real-world attempts fail this way, not the happy path
 - [ ] Chat file-upload attachment (image) reaches the model correctly
 - [ ] Claude Subscription CLI path: image tool result reaches the model via the MCP content-block bridge
 

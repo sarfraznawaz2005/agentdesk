@@ -15,6 +15,13 @@
 > Track execution against
 > [`docs/ai-sdk-7-migration-tasks.md`](./ai-sdk-7-migration-tasks.md) — a
 > flat checkbox list mirroring every actionable item in this document.
+>
+> **Updated 2026-07-15 (§12)**: two feature commits landed on `main` after
+> the original sweep — a `generate_image` tool + `image-generation.ts`
+> helper, new PM-side media message_parts logic in `engine.ts`, and a
+> `generateImage()` method on several provider adapters (incl. `zai.ts`).
+> No phase/decision changes, but real new touch points inside already-planned
+> work — see §12 for the full breakdown.
 
 ---
 
@@ -27,11 +34,13 @@ RPC broadcast system, see §2). That significantly *shrinks* the migration
 surface: no UI message-part types to update, no React hook behavior to
 re-verify.
 
-What's left is still substantial: **~62 files** touch `ai`/`@ai-sdk/*`, split
-across **12 provider adapters**, **2 core streaming loops** (`engine.ts` for
-the PM, `agent-loop.ts` for sub-agents) that must move in lockstep, and
-**9 independent chat/agent surfaces** that each re-implement their own
-`streamText`/`generateText` loop outside the PM system. One provider
+What's left is still substantial: **~64 files** touch `ai`/`@ai-sdk/*` as of
+2026-07-15 (62 from the original sweep + `image-generation.ts` and
+`image-gen.ts`, added since — see §12), split across **12 provider
+adapters**, **2 core streaming loops** (`engine.ts` for the PM, `agent-loop.ts`
+for sub-agents) that must move in lockstep, and **9 independent chat/agent
+surfaces** that each re-implement their own `streamText`/`generateText` loop
+outside the PM system. One provider
 (`zai.ts`, via the third-party `zhipu-ai-provider` package) is an **external
 blocker** — it's pinned to `ai@^6.0.35` and won't compile against v7 until
 upstream ships a compatible release, unless we replace it (recommended, see
@@ -856,6 +865,128 @@ it does, not just what it says.
    (Phase 3.7), strictly scoped as evaluation against the Claude Subscription
    two-path branching, not a production switch. Whatever it finds gets
    logged in `claude-subscription-architecture.md`.
+
+---
+
+## 12. Codebase Changes Since This Doc Was Written (2026-07-15)
+
+Two feature commits (`81c48f5` "model capabilities cache and classification",
+`bddfb5a` "media tool support for inline rendering") landed on `main` after
+this document's original codebase sweep (§2, Appendix A). Both are unrelated
+in *purpose* to the AI SDK migration — they implement
+[`docs/model-type-badges-plan.md`](./model-type-badges-plan.md) and
+[`docs/text-to-image-chat-support-plan.md`](./text-to-image-chat-support-plan.md)
+— but `bddfb5a` adds real new AI-SDK-touching surface that the original
+sweep couldn't have seen. Verified directly against the current `main` on
+2026-07-15 (not from the plan docs' own claims, which were written mid-way
+through the now-reverted v7 experiment and are stale on that point — see
+below).
+
+### 12.1 `model-classification.ts` (from `81c48f5`) — no migration impact
+
+Confirmed via direct grep: zero imports from `ai` or `@ai-sdk/*`. It's pure
+`fetch()` against two external catalogs (Vercel AI Gateway, models.dev). Not
+part of the migration surface. The new `model_capabilities_cache` DB table
+(migration v58) is likewise unrelated to AI SDK version.
+
+### 12.2 `image-generation.ts` (from `bddfb5a`) — new AI-SDK call site, one correction to §5.9
+
+New shared helper (`src/bun/providers/image-generation.ts`), imported by
+`openai.ts`, `ollama.ts`, `openrouter.ts`, `opencode.ts`, and `zai.ts`.
+`generateImageOpenAICompatible()` calls **`generateImage`** (imported
+directly from `"ai"`, alongside `APICallError`) — the stable v7 name, not
+`experimental_generateImage`. Two raw-fetch strategies
+(`generateImageNvidia`, `generateImageMistral`) have no AI SDK dependency at
+all (plain `fetch`).
+
+**Correction to §5.9's table row**: that row said "None used — grep
+confirmed zero hits for `experimental_customProvider`/
+`experimental_generateImage`/..." — no longer accurate for
+`experimental_generateImage`'s stable counterpart specifically. Verified
+directly: **the currently-installed `ai@6.0.158` already exports the stable
+`generateImage` name** (confirmed via `node_modules/ai`'s type
+declarations), and `image-generation.ts` already uses it, not the
+`experimental_` prefix. Practical effect: **this is a non-event for the real
+v7 upgrade** — no rename needed here when Phase 1's codemod runs, since the
+code is already on the post-graduation name. Worth noting only so a future
+reader isn't confused by §5.9 saying "none used" when a real, working
+`generateImage()` call site now exists.
+
+### 12.3 `image-gen.ts` (the `generate_image` tool) — extends the §5.5 highest-risk item
+
+New tool file (`src/bun/agents/tools/image-gen.ts`) follows the exact
+`tool()` + Zod `inputSchema` + `toModelOutput` pattern documented in §2.2/§8.4
+for `screenshot.ts`/`audio.ts` — confirmed via direct read, not assumed.
+Concretely, this is a **third name added to the media-content-part shim**:
+
+- `media-followup.ts`'s `IMAGE_TOOL_NAMES` set is now
+  `["read_image", "take_screenshot", "generate_image"]` (was two names when
+  this doc's original sweep ran).
+- `agent-loop.ts`'s truncation allowlist (`isImageTool` check, giving
+  media-tool output a 500,000-char limit instead of the default 10,000) now
+  also matches `generate_image`.
+- **New**: `engine.ts` (the PM's own loop) gained a parallel `MEDIA_TOOLS`
+  set (`generate_image`, `read_image`, `read_audio`) with its own
+  `message_parts` persistence logic — in *both* the CLI-path branch (§8a,
+  `onToolCallStart`/`onToolCallEnd` callbacks) and the normal `streamText`
+  branch (§8b, step-processing loop) — so the PM's own direct media-tool
+  calls render inline in the main chat, not just sub-agent calls routed
+  through `agent-loop.ts`. **This corrects §11.2's verified finding**: that
+  finding stated "zero PM messages have any associated `tool_call`
+  message_parts" in the dev DB — true when checked (2026-07-14), but
+  `bddfb5a` (2026-07-15) adds the *first* code path where the PM directly
+  writes `tool_call` message_parts, specifically and only for these three
+  media tools. Doesn't change the `result.usage`/final-step-only finding
+  (unrelated code path, no usage data involved), but **it does mean §5.5's
+  media-content-part canonicalization work now touches `engine.ts` too**,
+  not just `agent-loop.ts`/`media-followup.ts` — add it explicitly to the
+  Phase 2.2 hand-migration list (done in the tasks file).
+- **Dashboard chat widgets** (`dashboard.ts`, `dashboard-agent.ts`, part of
+  the "9 independent surfaces" in §2.2) now also register `generate_image`
+  (reusing `imageGenTools.generate_image.tool`) and broadcast new events
+  (`dashboardPMToolResult`, `dashboardAgentToolResult`) built on
+  `extractImagePayload()` from `screenshot.ts` — another two spots that now
+  depend on the media tool-output shape and need re-verification once §5.5
+  is migrated.
+
+### 12.4 `zai.ts` gained a `generateImage()` method — relevant to the §5.4/§11.1 replacement plan
+
+`zai.ts`'s new `generateImage()` builds "a throwaway openai-compatible
+instance just for this call" via `generateImageOpenAICompatible()` — meaning
+`zai.ts` **already contains working `@ai-sdk/openai-compatible`-based code**
+for its image path, even though chat generation still goes through the
+third-party `zhipu-ai-provider` package. This doesn't change the §5.4/§11.1
+decision (still: replace `zhipu-ai-provider` with an in-house
+`@ai-sdk/openai-compatible` adapter, Phase 2.7) — if anything it **de-risks
+it slightly**, since the pattern is already proven working for this exact
+provider on one code path; Phase 2.7 is "extend this same approach to chat,"
+not "prove it works from scratch."
+
+`google.ts`, `deepseek.ts`, `groq.ts`, `xai.ts`, `anthropic.ts`, and
+`claude-subscription.ts` were **not** touched by `bddfb5a` — no
+`generateImage()` was added to those adapters (matches
+`text-to-image-chat-support-plan.md`'s own live-tested finding that those
+providers aren't confirmed image-capable). No new migration surface there.
+
+### 12.5 Net effect on the migration plan
+
+No phase numbering changes — these are additions *within* already-planned
+phases, not new phases:
+
+- Phase 2.2 (`media-followup.ts` rebuild) now explicitly includes
+  `image-gen.ts`'s `toModelOutput` and `engine.ts`'s new `MEDIA_TOOLS`
+  message_parts logic, not just `screenshot.ts`/`audio.ts`.
+- Phase 2.7 (`zai.ts` rebuild) is marginally lower-risk than originally
+  scoped — half the file already proves the target pattern works.
+- §8.4 (multimodal smoke testing) needs `generate_image` added to its
+  round-trip test list, on both the main chat and the Dashboard widgets, and
+  specifically testing the failure path (per
+  `text-to-image-chat-support-plan.md`'s own finding that most
+  image-capable candidates fail with billing/entitlement errors in
+  practice — confirm those failures still surface as readable tool-result
+  errors post-migration, not crashes).
+- No new provider adapters, no new breaking-change categories, no change to
+  the Decision Log (§11) resolutions themselves.
 
 ---
 
