@@ -98,7 +98,7 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
           isDeleted
             ? "opacity-50 cursor-default"
             : workspaceOffline
-              ? "cursor-pointer border-amber-400/60 hover:border-amber-400 hover:shadow-md"
+              ? "cursor-pointer border-red-500/60 hover:border-red-500 hover:shadow-md"
               : "cursor-pointer hover:border-primary/40 hover:shadow-lg",
           // Animated multi-color border while agents are actively working.
           !isDeleted && activeAgentCount > 0 && "card-agent-working border-transparent hover:border-transparent",
@@ -129,10 +129,10 @@ export function ProjectCard({ project, onDelete, onRestore, onPermanentDelete, o
               </h3>
               {unread && !isDeleted && <UnreadDot />}
               {workspaceOffline && (
-                <Tip content="Workspace folder is temporarily unreachable (cloud or network path offline). The project is safe — it will reappear normally once the path is available again." side="top">
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <Tip content="Workspace folder is missing or unreachable (cloud/network path offline, or the folder was moved or deleted). The project is safe — it will reappear normally once the path is available again." side="top">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
                     <CloudOff className="h-2.5 w-2.5" />
-                    Offline
+                    Path missing
                   </span>
                 </Tip>
               )}

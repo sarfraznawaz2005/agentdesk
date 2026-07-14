@@ -2,6 +2,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { PROVIDER_HEADERS } from "./headers";
+import { generateImageOpenAICompatible } from "./image-generation";
 
 const OPENCODE_BASE_URL = "https://opencode.ai/zen/v1";
 const MODELS_DEV_URL = "https://models.dev/api.json";
@@ -79,13 +80,14 @@ async function fetchFreeModels(): Promise<string[]> {
 
 export class OpenCodeAdapter implements ProviderAdapter {
 	private provider: ReturnType<typeof createOpenAICompatible>;
+	private apiKey: string;
 
 	constructor(config: ProviderConfig) {
-		const apiKey =
+		this.apiKey =
 			config.apiKey && config.apiKey !== "public" ? config.apiKey : "public";
 		this.provider = createOpenAICompatible({
 			name: "opencode",
-			apiKey,
+			apiKey: this.apiKey,
 			baseURL: OPENCODE_BASE_URL,
 			headers: PROVIDER_HEADERS,
 		});
@@ -121,5 +123,9 @@ export class OpenCodeAdapter implements ProviderAdapter {
 				error: err instanceof Error ? err.message : String(err),
 			};
 		}
+	}
+
+	async generateImage(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }> {
+		return generateImageOpenAICompatible(OPENCODE_BASE_URL, this.apiKey, modelId, prompt);
 	}
 }

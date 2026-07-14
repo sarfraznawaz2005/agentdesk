@@ -20,6 +20,7 @@ import {
 	Trash2,
 	Copy as CopyIcon,
 	FolderOpen,
+	Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UnifiedDiffCard } from "@/components/ui/unified-diff";
@@ -28,7 +29,7 @@ import { UnifiedDiffCard } from "@/components/ui/unified-diff";
 // Inline image with click-to-lightbox
 // ---------------------------------------------------------------------------
 
-function InlineImage({ src, caption }: { src: string; caption?: string }) {
+export function InlineImage({ src, caption }: { src: string; caption?: string }) {
 	const [lightboxOpen, setLightboxOpen] = useState(false);
 	return (
 		<div className="flex flex-col gap-1.5">
@@ -74,6 +75,7 @@ const TOOL_META: Record<string, { Icon: React.ElementType; summary: (input: Reco
 	find_dead_code: { Icon: Search, summary: (a) => `find_dead_code ${shortPath(a.directory)}` },
 	is_binary: { Icon: FileText, summary: (a) => `is_binary ${shortPath(a.path)}` },
 	download_file: { Icon: Globe, summary: (a) => `download_file ${truncate(String(a.url ?? ""), 50)}` },
+	generate_image: { Icon: ImageIcon, summary: (a) => `generate_image ${truncate(String(a.prompt ?? ""), 50)}` },
 	checksum: { Icon: FileText, summary: (a) => `checksum ${shortPath(a.path)}` },
 	batch_rename: { Icon: Pencil, summary: () => "batch_rename" },
 	archive: { Icon: FileText, summary: (a) => `archive ${shortPath(a.output_path)}` },
@@ -177,7 +179,7 @@ function StateIcon({ state }: { state: string | null }) {
 	}
 }
 
-const IMAGE_TOOL_NAMES = new Set(["take_screenshot", "read_image"]);
+const IMAGE_TOOL_NAMES = new Set(["take_screenshot", "read_image", "generate_image"]);
 function isImageTool(name: string) {
 	return IMAGE_TOOL_NAMES.has(name) || name.includes("screenshot");
 }
@@ -378,7 +380,7 @@ function ToolOutputDisplay({ toolName, rawOutput, rawInput, isError }: { toolNam
 	// Handles two formats:
 	//   1. MCP content envelope: {"content":[{"type":"image","data":"base64...","mimeType":"..."}]}
 	//   2. Built-in tool format: {"success":true,"image":{"type":"image","mimeType":"...","base64":"..."},"url":"...","path":"..."}
-	if (!isError && (toolName.includes("take_screenshot") || toolName.includes("screenshot") || toolName === "read_image")) {
+	if (!isError && (toolName.includes("take_screenshot") || toolName.includes("screenshot") || toolName === "read_image" || toolName === "generate_image")) {
 		try {
 			const parsed = JSON.parse(rawOutput) as {
 				content?: Array<{ type: string; data?: string; mimeType?: string; text?: string }>;

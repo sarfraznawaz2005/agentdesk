@@ -76,10 +76,19 @@ export interface SaveProviderParams {
  */
 export async function saveProviderHandler(
 	params: SaveProviderParams,
-): Promise<{ success: boolean; id: string }> {
+): Promise<{ success: boolean; id: string; error?: string }> {
 	const now = new Date().toISOString();
 
 	if (params.id) {
+		// Duplicate name check before updating (excluding this provider itself)
+		const existingForUpdate = await db.select().from(aiProviders);
+		const nameCollisionOnUpdate = existingForUpdate.find(
+			(r) => r.id !== params.id && r.name.toLowerCase() === params.name.trim().toLowerCase(),
+		);
+		if (nameCollisionOnUpdate) {
+			return { success: false, id: params.id, error: `A provider named "${params.name.trim()}" already exists.` };
+		}
+
 		// Normalize baseUrl before updating
 		const normalizedBaseUrl = params.baseUrl ? normalizeBaseUrl(params.baseUrl) : null;
 		const updateFields: Record<string, unknown> = {
@@ -125,18 +134,24 @@ export async function saveProviderHandler(
 
 	// Duplicate check before inserting
 	const existing = await db.select().from(aiProviders);
+	const nameCollision = existing.find(
+		(r) => r.name.toLowerCase() === params.name.trim().toLowerCase(),
+	);
+	if (nameCollision) {
+		return { success: false, id: nameCollision.id, error: `A provider named "${params.name.trim()}" already exists.` };
+	}
 	if (params.baseUrl) {
 		const normalizedNew = normalizeUrlForComparison(params.baseUrl);
 		const duplicate = existing.find(
 			(r) => r.baseUrl && normalizeUrlForComparison(r.baseUrl) === normalizedNew,
 		);
 		if (duplicate) {
-			return { success: false, id: duplicate.id, error: "A provider with this base URL already exists." } as never;
+			return { success: false, id: duplicate.id, error: "A provider with this base URL already exists." };
 		}
 	} else {
 		const duplicate = existing.find((r) => r.providerType === params.providerType && !r.baseUrl);
 		if (duplicate) {
-			return { success: false, id: duplicate.id, error: `A ${params.providerType} provider already exists.` } as never;
+			return { success: false, id: duplicate.id, error: `A ${params.providerType} provider already exists.` };
 		}
 	}
 

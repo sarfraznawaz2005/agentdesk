@@ -1679,6 +1679,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						// so the frontend can render the actual image instead of truncated JSON.
 						const isImageTool = tc.toolName === "read_image"
 							|| tc.toolName === "take_screenshot"
+							|| tc.toolName === "generate_image"
 							|| tc.toolName.includes("screenshot");
 						const toolOutputLimit = isImageTool ? 500_000 : 10_000;
 						const updates: Partial<MessagePart> = {

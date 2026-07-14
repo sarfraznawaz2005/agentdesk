@@ -26,6 +26,7 @@ import { buildContext } from "../context";
 import type { MessageMetadata } from "../engine";
 import { createProjectHandler, getProjectsList } from "../../rpc/projects";
 import { schedulerTools } from "./scheduler";
+import { imageGenTools } from "./image-gen";
 import { getConversations, createConversation, deleteConversation, getMessages } from "../../rpc/conversations";
 import { getInboxMessages, searchInboxMessages } from "../../rpc/inbox";
 import { getSettings, getSetting, saveSetting } from "../../rpc/settings";
@@ -277,6 +278,7 @@ export function createPMTools(deps: PMToolsDeps) {
 
 	const tools = {
 		...schedulerTools,
+		generate_image: imageGenTools.generate_image.tool,
 		run_agent: tool({
 			description: `Run a specialist sub-agent to complete a task. The agent runs inline in the main chat — you and the user see all its tool calls and output. The agent gets a fresh context with your task description and explores the codebase itself. Use for implementation, review, debugging, testing, or any task needing specialist skills.
 

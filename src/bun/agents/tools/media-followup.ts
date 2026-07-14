@@ -15,7 +15,7 @@ import { extractAudioPayload } from "./audio";
 // media input.
 // ---------------------------------------------------------------------------
 
-const IMAGE_TOOL_NAMES = new Set(["read_image", "take_screenshot"]);
+const IMAGE_TOOL_NAMES = new Set(["read_image", "take_screenshot", "generate_image"]);
 const AUDIO_TOOL_NAMES = new Set(["read_audio"]);
 
 type MediaFollowUpPart =
@@ -25,9 +25,9 @@ type MediaFollowUpPart =
 
 /**
  * Build a synthetic user message carrying the real bytes for any
- * read_image/take_screenshot/read_audio calls in a completed step, so the
- * model actually sees the media on the next step. Returns null if the step
- * had no successful media-tool results.
+ * read_image/take_screenshot/generate_image/read_audio calls in a completed
+ * step, so the model actually sees the media on the next step. Returns null
+ * if the step had no successful media-tool results.
  */
 export function buildMediaFollowUpMessage(
 	toolResults: Array<{ toolName: string; output?: unknown; result?: unknown }> | undefined,

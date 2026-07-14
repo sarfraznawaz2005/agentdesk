@@ -17,6 +17,7 @@ import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
 import { QuickAttachBar } from "./quick-attach-bar";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { VoiceInputButton } from "@/components/chat/voice-input-button";
+import { InlineImage } from "@/components/chat/tool-call-card";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,6 +94,10 @@ const MD_COMPONENTS = {
 function sessionStorageKey(agentName: string)  { return `dashboard-agent-session-${agentName}-v1`; }
 function messagesStorageKey(agentName: string) { return `dashboard-agent-messages-${agentName}-v1`; }
 function unreadStorageKey(agentName: string)   { return `dashboard-agent-unread-${agentName}-v1`; }
+// Only the media tools (generate_image/read_image/read_audio) produce a
+// payload worth surviving a refresh — everything else in this in-memory-only
+// chat intentionally stays ephemeral, matching the widget's existing design.
+function imagesStorageKey(agentName: string)   { return `dashboard-agent-images-${agentName}-v1`; }
 
 function loadPersistedUnread(agentName: string): boolean {
   try { return localStorage.getItem(unreadStorageKey(agentName)) === "1"; } catch { return false; }
@@ -131,6 +136,20 @@ function persistMessages(agentName: string, messages: ChatMessage[]) {
   catch { /* quota exceeded — ignore */ }
 }
 
+function loadPersistedImages(agentName: string): Record<string, Array<{ base64: string; mimeType: string }>> {
+  try {
+    const raw = localStorage.getItem(imagesStorageKey(agentName));
+    return raw ? (JSON.parse(raw) as Record<string, Array<{ base64: string; mimeType: string }>>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistImages(agentName: string, images: Record<string, Array<{ base64: string; mimeType: string }>>) {
+  try { localStorage.setItem(imagesStorageKey(agentName), JSON.stringify(images)); }
+  catch { /* quota exceeded (base64 images are large) — drop silently */ }
+}
+
 function persistSessionId(agentName: string, sessionId: string) {
   try { localStorage.setItem(sessionStorageKey(agentName), sessionId); }
   catch { /* ignore */ }
@@ -162,6 +181,10 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   const [input, setInput] = useState("");
   const [lastSent, setLastSent] = useState("");
   const [toolCalls, setToolCalls] = useState<Array<{ id: string; toolName: string; isSkill: boolean }>>([]);
+  // Generated images, keyed by the assistant messageId that produced them —
+  // NOT cleared when toolCalls resets on turn completion, so the image stays
+  // visible attached to that message bubble for the rest of the session.
+  const [images, setImages] = useState<Record<string, Array<{ base64: string; mimeType: string }>>>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   // Unread = a reply arrived while the panel was closed. Cleared on open.
@@ -205,6 +228,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     // One-time hydration from localStorage on mount — intentional setState in effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(msgs);
+    setImages(loadPersistedImages(agentName));
     setUnread(loadPersistedUnread(agentName));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -281,12 +305,28 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     };
 
     const onToolCall = (e: Event) => {
-      const { sessionId: sid, agentName: an, toolName } =
-        (e as CustomEvent<{ sessionId: string; agentName: string; toolName: string }>).detail;
+      const { sessionId: sid, agentName: an, callId, toolName } =
+        (e as CustomEvent<{ sessionId: string; agentName: string; callId?: string; toolName: string }>).detail;
       if (sid !== sessionId.current || an !== agentName) return;
       setIsStreaming(true);
       const isSkill = toolName === "read_skill" || toolName === "find_skills" || toolName === "read_skill_file";
-      setToolCalls((prev) => [...prev, { id: crypto.randomUUID(), toolName, isSkill }]);
+      setToolCalls((prev) => [...prev, { id: callId ?? crypto.randomUUID(), toolName, isSkill }]);
+    };
+
+    const onToolResult = (e: Event) => {
+      const { sessionId: sid, agentName: an, messageId, output } =
+        (e as CustomEvent<{ sessionId: string; agentName: string; messageId: string; callId?: string; toolName: string; output: string }>).detail;
+      if (sid !== sessionId.current || an !== agentName || !messageId) return;
+      try {
+        const parsed = JSON.parse(output) as { image?: { mimeType?: string; base64?: string } };
+        if (!parsed.image?.base64) return;
+        const image = { base64: parsed.image.base64, mimeType: parsed.image.mimeType ?? "image/png" };
+        setImages((prev) => {
+          const next = { ...prev, [messageId]: [...(prev[messageId] ?? []), image] };
+          persistImages(agentName, next);
+          return next;
+        });
+      } catch { /* not JSON — ignore */ }
     };
 
     const onComplete = (e: Event) => {
@@ -326,15 +366,17 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       if (!openRef.current && !expandedOpenRef.current) { setUnread(true); persistUnread(agentName, true); }
     };
 
-    window.addEventListener("agentdesk:dashboard-agent-chunk",     onChunk);
-    window.addEventListener("agentdesk:dashboard-agent-tool-call", onToolCall);
-    window.addEventListener("agentdesk:dashboard-agent-complete",  onComplete);
-    window.addEventListener("agentdesk:dashboard-agent-error",     onError);
+    window.addEventListener("agentdesk:dashboard-agent-chunk",       onChunk);
+    window.addEventListener("agentdesk:dashboard-agent-tool-call",   onToolCall);
+    window.addEventListener("agentdesk:dashboard-agent-tool-result", onToolResult);
+    window.addEventListener("agentdesk:dashboard-agent-complete",    onComplete);
+    window.addEventListener("agentdesk:dashboard-agent-error",       onError);
     return () => {
-      window.removeEventListener("agentdesk:dashboard-agent-chunk",     onChunk);
-      window.removeEventListener("agentdesk:dashboard-agent-tool-call", onToolCall);
-      window.removeEventListener("agentdesk:dashboard-agent-complete",  onComplete);
-      window.removeEventListener("agentdesk:dashboard-agent-error",     onError);
+      window.removeEventListener("agentdesk:dashboard-agent-chunk",       onChunk);
+      window.removeEventListener("agentdesk:dashboard-agent-tool-call",   onToolCall);
+      window.removeEventListener("agentdesk:dashboard-agent-tool-result", onToolResult);
+      window.removeEventListener("agentdesk:dashboard-agent-complete",    onComplete);
+      window.removeEventListener("agentdesk:dashboard-agent-error",       onError);
     };
   }, [agentName]);
 
@@ -520,8 +562,9 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
     const newSid = `dashboard-agent-${agentName}-${crypto.randomUUID()}`;
     sessionId.current = newSid;
     persistSessionId(agentName, newSid);
-    try { localStorage.removeItem(messagesStorageKey(agentName)); } catch { /* ignore */ }
+    try { localStorage.removeItem(messagesStorageKey(agentName)); localStorage.removeItem(imagesStorageKey(agentName)); } catch { /* ignore */ }
     setMessages([]);
+    setImages({});
     setUnread(false);
     persistUnread(agentName, false);
   };
@@ -695,6 +738,11 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                       </ReactMarkdown>
                     </div>
                   )}
+                  {images[msg.id]?.map((img, i) => (
+                    <div key={i} className="w-full max-w-[85%]">
+                      <InlineImage src={`data:${img.mimeType};base64,${img.base64}`} />
+                    </div>
+                  ))}
                   {/* Copy + regenerate buttons (hidden until hover) */}
                   {!msg.isError && !msg.streaming && (
                     <div className="flex items-center gap-0.5 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -912,6 +960,11 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                       </ReactMarkdown>
                     </div>
                   )}
+                  {images[msg.id]?.map((img, i) => (
+                    <div key={i} className="w-full max-w-[80%]">
+                      <InlineImage src={`data:${img.mimeType};base64,${img.base64}`} />
+                    </div>
+                  ))}
                   {!msg.isError && !msg.streaming && (
                     <div className="flex items-center gap-0.5 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Tip content={copiedId === msg.id ? "Copied!" : "Copy"} side="top">

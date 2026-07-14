@@ -715,6 +715,29 @@ function onConversationCompacted(e: Event): void {
   toast("info", "Conversation compacted — older messages summarized.");
 }
 
+// The PM's own message row starts with hasParts=0 (unlike a dispatched
+// sub-agent's, which is seeded with hasParts=1 up front) since the PM may
+// call zero, one, or several media tools during a turn — it only actually
+// gets parts the moment (if ever) it calls one directly (generate_image,
+// read_image, read_audio; see engine.ts's MEDIA_TOOLS). Without this, the
+// store's copy of hasParts never flips to 1 during the live turn: (a) a
+// message-content-empty message-list filter hides the message entirely
+// until text starts streaming (common when the tool call comes first, with
+// no preceding text), and (b) MessageBubble's own hasParts-gated fetch
+// effect never fires on mount, since onStreamComplete's payload doesn't
+// carry hasParts either — so the image silently never appears until a full
+// reload re-fetches the true DB state. This keeps the store in sync live,
+// closing both gaps at once.
+function onPartCreatedForHasParts(e: Event): void {
+  const { messageId } = (e as CustomEvent<{ conversationId: string; messageId: string }>).detail;
+  useChatStore.setState((prev) => {
+    const idx = prev.messages.findIndex((m) => m.id === messageId);
+    if (idx < 0 || prev.messages[idx].hasParts === 1) return {};
+    const updated = { ...prev.messages[idx], hasParts: 1 as const };
+    return { messages: prev.messages.map((m, i) => (i === idx ? updated : m)) };
+  });
+}
+
 // Live context-meter update: the PM or a sub-agent reports its real per-step
 // prompt-token usage as it runs, so the bar climbs in real time instead of only
 // jumping at completion. The denominator (Context Window Limit) is read by the
@@ -780,4 +803,5 @@ export function initChatEventHandlers(): void {
   window.addEventListener("agentdesk:agent-inline-complete", onAgentInlineComplete);
   window.addEventListener("agentdesk:context-usage", onContextUsage);
   window.addEventListener("agentdesk:pm-thinking", onPmThinking);
+  window.addEventListener("agentdesk:part-created", onPartCreatedForHasParts);
 }

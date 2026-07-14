@@ -16,6 +16,7 @@ import { useDashboardLauncherStore } from "@/stores/dashboard-launcher-store";
 import { QuickAttachBar } from "./quick-attach-bar";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { VoiceInputButton } from "@/components/chat/voice-input-button";
+import { InlineImage } from "@/components/chat/tool-call-card";
 
 // Stable id for the sidebar chat launcher registry (mirrors bg-indigo-600 = #4f46e5).
 const PM_LAUNCHER_ID = "pm";
@@ -98,6 +99,10 @@ const MD_COMPONENTS = {
 const LS_SESSION_KEY = "dashboard-pm-sessionId-v1";
 const LS_MESSAGES_KEY = "dashboard-pm-messages-v1";
 const LS_UNREAD_KEY = "dashboard-pm-unread-v1";
+// Only the media tools (generate_image/read_image/read_audio) produce a
+// payload worth surviving a refresh — everything else in this in-memory-only
+// chat intentionally stays ephemeral, matching the widget's existing design.
+const LS_IMAGES_KEY = "dashboard-pm-images-v1";
 
 function loadPersistedUnread(): boolean {
   try { return localStorage.getItem(LS_UNREAD_KEY) === "1"; } catch { return false; }
@@ -137,6 +142,25 @@ function persistMessages(messages: ChatMessage[]) {
   }
 }
 
+function loadPersistedImages(): Record<string, Array<{ base64: string; mimeType: string }>> {
+  try {
+    const raw = localStorage.getItem(LS_IMAGES_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, Array<{ base64: string; mimeType: string }>>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistImages(images: Record<string, Array<{ base64: string; mimeType: string }>>) {
+  try {
+    localStorage.setItem(LS_IMAGES_KEY, JSON.stringify(images));
+  } catch {
+    // Quota exceeded (base64 images are large) or private browsing — drop
+    // silently, same as persistMessages. Images just won't survive a refresh
+    // in that case, which is a graceful degrade, not a crash.
+  }
+}
+
 function persistSessionId(sessionId: string) {
   try {
     localStorage.setItem(LS_SESSION_KEY, sessionId);
@@ -164,6 +188,10 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
   const [input, setInput] = useState("");
   const [lastSent, setLastSent] = useState("");
   const [toolCalls, setToolCalls] = useState<Array<{ id: string; toolName: string; isSkill: boolean }>>([]);
+  // Generated images, keyed by the assistant messageId that produced them —
+  // NOT cleared when toolCalls resets on turn completion, so the image stays
+  // visible attached to that message bubble for the rest of the session.
+  const [images, setImages] = useState<Record<string, Array<{ base64: string; mimeType: string }>>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   // Unread = a reply arrived while the panel was closed. Cleared on open.
   const [unread, setUnread] = useState(false);
@@ -180,6 +208,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     const { sessionId: sid, messages: msgs } = loadPersistedSession();
     sessionId.current = sid;
     setMessages(msgs);
+    setImages(loadPersistedImages());
     setUnread(loadPersistedUnread());
   }, []);
 
@@ -275,12 +304,27 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     };
 
     const onToolCall = (e: Event) => {
-      const { sessionId: sid, toolName } = (e as CustomEvent<{ sessionId: string; toolName: string; args: Record<string, unknown> }>).detail;
+      const { sessionId: sid, callId, toolName } = (e as CustomEvent<{ sessionId: string; callId?: string; toolName: string; args: Record<string, unknown> }>).detail;
       if (sid !== sessionId.current) return;
       // Recover isStreaming if this component remounted mid-stream
       setIsStreaming(true);
       const isSkill = toolName === "read_skill" || toolName === "find_skills";
-      setToolCalls((prev) => [...prev, { id: crypto.randomUUID(), toolName, isSkill }]);
+      setToolCalls((prev) => [...prev, { id: callId ?? crypto.randomUUID(), toolName, isSkill }]);
+    };
+
+    const onToolResult = (e: Event) => {
+      const { sessionId: sid, messageId, output } = (e as CustomEvent<{ sessionId: string; messageId: string; callId?: string; toolName: string; output: string }>).detail;
+      if (sid !== sessionId.current || !messageId) return;
+      try {
+        const parsed = JSON.parse(output) as { image?: { mimeType?: string; base64?: string } };
+        if (!parsed.image?.base64) return;
+        const image = { base64: parsed.image.base64, mimeType: parsed.image.mimeType ?? "image/png" };
+        setImages((prev) => {
+          const next = { ...prev, [messageId]: [...(prev[messageId] ?? []), image] };
+          persistImages(next);
+          return next;
+        });
+      } catch { /* not JSON — ignore */ }
     };
 
     const onComplete = (e: Event) => {
@@ -320,11 +364,13 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
 
     window.addEventListener("agentdesk:dashboard-pm-chunk", onChunk);
     window.addEventListener("agentdesk:dashboard-pm-tool-call", onToolCall);
+    window.addEventListener("agentdesk:dashboard-pm-tool-result", onToolResult);
     window.addEventListener("agentdesk:dashboard-pm-complete", onComplete);
     window.addEventListener("agentdesk:dashboard-pm-error", onError);
     return () => {
       window.removeEventListener("agentdesk:dashboard-pm-chunk", onChunk);
       window.removeEventListener("agentdesk:dashboard-pm-tool-call", onToolCall);
+      window.removeEventListener("agentdesk:dashboard-pm-tool-result", onToolResult);
       window.removeEventListener("agentdesk:dashboard-pm-complete", onComplete);
       window.removeEventListener("agentdesk:dashboard-pm-error", onError);
     };
@@ -510,8 +556,9 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
     const newSid = `dashboard-pm-${crypto.randomUUID()}`;
     sessionId.current = newSid;
     persistSessionId(newSid);
-    try { localStorage.removeItem(LS_MESSAGES_KEY); } catch { /* ignore */ }
+    try { localStorage.removeItem(LS_MESSAGES_KEY); localStorage.removeItem(LS_IMAGES_KEY); } catch { /* ignore */ }
     setMessages([]);
+    setImages({});
     setUnread(false);
     persistUnread(false);
   };
@@ -692,6 +739,11 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                       </ReactMarkdown>
                     </div>
                   )}
+                  {images[msg.id]?.map((img, i) => (
+                    <div key={i} className="w-full max-w-[85%]">
+                      <InlineImage src={`data:${img.mimeType};base64,${img.base64}`} />
+                    </div>
+                  ))}
                   {/* Copy + regenerate buttons (hidden until hover) */}
                   {!msg.isError && !msg.streaming && (
                     <div className="flex items-center gap-0.5 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -899,6 +951,11 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                       </ReactMarkdown>
                     </div>
                   )}
+                  {images[msg.id]?.map((img, i) => (
+                    <div key={i} className="w-full max-w-[80%]">
+                      <InlineImage src={`data:${img.mimeType};base64,${img.base64}`} />
+                    </div>
+                  ))}
                   {!msg.isError && !msg.streaming && (
                     <div className="flex items-center gap-0.5 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Tip content={copiedId === msg.id ? "Copied!" : "Copy"} side="top">

@@ -104,7 +104,10 @@ export function MessageList({
   // Memoize visible messages — avoids re-filtering + JSON.parse on every render
   const visibleMessages = useMemo(
     () => messages.filter((msg) => {
-      if (!msg.content.trim()) return false;
+      // A PM turn that calls a media tool (generate_image, etc.) before saying
+      // anything has empty content but real parts worth showing — don't hide it
+      // just because there's no text yet (see onPartCreatedForHasParts).
+      if (!msg.content.trim() && !msg.hasParts) return false;
       try {
         const meta = msg.metadata ? JSON.parse(msg.metadata) : null;
         if (meta?.type === "sub_agent_result") return false;

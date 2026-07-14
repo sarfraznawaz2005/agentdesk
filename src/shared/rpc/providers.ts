@@ -21,7 +21,7 @@ export type ProvidersRequests = {
       defaultModel?: string;
       isDefault?: boolean;
     };
-    response: { success: boolean; id: string };
+    response: { success: boolean; id: string; error?: string };
   };
   testProvider: {
     params: { id: string };

@@ -21,4 +21,12 @@ export interface ProviderAdapter {
 	createModel(modelId: string, thinkingBudgetTokens?: number): LanguageModel;
 	listModels(): Promise<string[]>;
 	testConnection(): Promise<{ success: boolean; error?: string }>;
+	/**
+	 * Generate an image from a text prompt. Optional — omitted entirely by
+	 * providers with no image-generation capability. Implementations throw a
+	 * human-readable Error on failure (auth/balance/entitlement/timeout); the
+	 * generate_image tool catches it and surfaces it as a normal failed tool
+	 * result instead of crashing the agent turn.
+	 */
+	generateImage?(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }>;
 }

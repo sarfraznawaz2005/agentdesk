@@ -9,7 +9,7 @@ function getPreviewPrompt(_projectId: string): string {
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
-import { messages, conversations, settings, aiProviders, projects, agents, kanbanTasks, modelPreferences } from "../db/schema";
+import { messages, conversations, settings, aiProviders, projects, agents, kanbanTasks, modelPreferences, messageParts } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { recordModelUsageHandler } from "../rpc/providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
@@ -603,6 +603,19 @@ export class AgentEngine {
 			let accumulatedReasoning = ""; // Persisted in message metadata for UI replay
 			let planApprovalRequested = false; // Set by run_agent tool execute — stops PM after current step
 
+			// Media tools the PM can call directly (generate_image, read_image, read_audio)
+			// get persisted as message_parts so they render inline in the main chat exactly
+			// like sub-agent tool calls already do (message-parts.tsx/tool-call-card.tsx are
+			// fully generic over this — zero frontend changes needed). Deliberately narrow to
+			// media tools only: every other PM tool call intentionally stays "thinking"-only,
+			// per the v2 declutter decision (see emitActivity below) — this isn't reintroducing
+			// that, just carving out the one category that has real visual content to show.
+			// Shared across both the CLI-path branch (8a) and the streamText branch (8b) below.
+			const MEDIA_TOOLS = new Set(["generate_image", "read_image", "read_audio"]);
+			let mediaPartSortOrder = 0;
+			const mediaPartIdByCallId = new Map<string, string>();
+			let pmHasPartsSet = false;
+
 			// --- 8a. Claude Subscription non-Haiku models: execute via the Agent
 			// SDK instead of the streamText() loop below (see isClaudeSubscriptionViaCli
 			// above). Known, disclosed limitations vs. the normal PM loop — the SDK's
@@ -705,12 +718,58 @@ export class AgentEngine {
 							const type = STATUS_CHECK_TOOLS.has(toolName) ? "status_check" : "tool_call";
 							emitActivity(type, { toolName, args, status: "completed" });
 						}
+
+						if (MEDIA_TOOLS.has(toolName)) {
+							const partId = crypto.randomUUID();
+							mediaPartIdByCallId.set(callId, partId);
+							const part: MessagePart = {
+								id: partId,
+								messageId: assistantMessageId,
+								type: "tool_call",
+								content: toolName,
+								toolName,
+								toolInput: JSON.stringify(args),
+								toolState: "running",
+								sortOrder: mediaPartSortOrder++,
+								timeStart: new Date().toISOString(),
+							};
+							db.insert(messageParts).values({
+								id: part.id, messageId: part.messageId, type: part.type, content: part.content,
+								toolName: part.toolName, toolInput: part.toolInput, toolState: part.toolState,
+								sortOrder: part.sortOrder, timeStart: part.timeStart,
+							}).catch(() => {});
+							if (!pmHasPartsSet) {
+								pmHasPartsSet = true;
+								db.update(messages).set({ hasParts: 1 }).where(eq(messages.id, assistantMessageId)).catch(() => {});
+							}
+							this.callbacks.onPartCreated?.(conversationId, part);
+						}
+
 						return callId;
 					},
 					onToolCallEnd: (callId, resultText, isError) => {
 						const toolName = toolCallNames.get(callId);
 						if (!toolName || toolName === "run_agent" || toolName === "run_agents_parallel" || STATUS_CHECK_TOOLS.has(toolName)) return;
 						emitActivity("tool_result", { toolName, result: resultText, isError });
+
+						if (MEDIA_TOOLS.has(toolName)) {
+							const partId = mediaPartIdByCallId.get(callId);
+							if (partId) {
+								mediaPartIdByCallId.delete(callId);
+								// Media tools return large base64 payloads — same higher limit
+								// agent-loop.ts uses, so the frontend can render the actual image.
+								const toolOutputLimit = 500_000;
+								const updates: Partial<MessagePart> = {
+									toolOutput: resultText.length > toolOutputLimit ? resultText.slice(0, toolOutputLimit) + "\n... (truncated)" : resultText,
+									toolState: isError ? "error" : "success",
+									timeEnd: new Date().toISOString(),
+								};
+								db.update(messageParts).set({
+									toolOutput: updates.toolOutput, toolState: updates.toolState, timeEnd: updates.timeEnd,
+								}).where(eq(messageParts.id, partId)).catch(() => {});
+								this.callbacks.onPartUpdated?.(conversationId, assistantMessageId, partId, updates);
+							}
+						}
 					},
 				});
 
@@ -843,8 +902,8 @@ export class AgentEngine {
 						const stepAny = stepResult as {
 							text?: string;
 							reasoningText?: string;
-							toolCalls?: Array<{ toolName: string; input?: unknown; args?: unknown }>;
-							toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }>;
+							toolCalls?: Array<{ toolName: string; toolCallId?: string; input?: unknown; args?: unknown }>;
+							toolResults?: Array<{ toolName: string; toolCallId?: string; output?: unknown; result?: unknown }>;
 						};
 						const emitActivity = (type: AgentActivityEvent["type"], data: Record<string, unknown>) => {
 							this.callbacks.onAgentActivity?.({
@@ -874,6 +933,32 @@ export class AgentEngine {
 							if (tc.toolName === "read_skill" && (tcArgs as Record<string, unknown>)?.name) {
 								console.log(`[skills] PM loaded skill "${(tcArgs as Record<string, unknown>).name}" (project: ${this.projectId})`);
 							}
+
+							if (MEDIA_TOOLS.has(tc.toolName) && tc.toolCallId) {
+								const partId = crypto.randomUUID();
+								mediaPartIdByCallId.set(tc.toolCallId, partId);
+								const part: MessagePart = {
+									id: partId,
+									messageId: assistantMessageId,
+									type: "tool_call",
+									content: tc.toolName,
+									toolName: tc.toolName,
+									toolInput: JSON.stringify(tcArgs),
+									toolState: "running",
+									sortOrder: mediaPartSortOrder++,
+									timeStart: new Date().toISOString(),
+								};
+								db.insert(messageParts).values({
+									id: part.id, messageId: part.messageId, type: part.type, content: part.content,
+									toolName: part.toolName, toolInput: part.toolInput, toolState: part.toolState,
+									sortOrder: part.sortOrder, timeStart: part.timeStart,
+								}).catch(() => {});
+								if (!pmHasPartsSet) {
+									pmHasPartsSet = true;
+									db.update(messages).set({ hasParts: 1 }).where(eq(messages.id, assistantMessageId)).catch(() => {});
+								}
+								this.callbacks.onPartCreated?.(conversationId, part);
+							}
 						}
 						for (const tr of stepAny.toolResults ?? []) {
 							if (tr.toolName === "run_agent" || tr.toolName === "run_agents_parallel") continue;
@@ -884,6 +969,25 @@ export class AgentEngine {
 							const resultStr = typeof trResult === "string" ? trResult : JSON.stringify(trResult);
 							const isError = toolResultIsError(tr.toolName, resultStr);
 							emitActivity("tool_result", { toolName: tr.toolName, result: trResult, isError });
+
+							if (MEDIA_TOOLS.has(tr.toolName) && tr.toolCallId) {
+								const partId = mediaPartIdByCallId.get(tr.toolCallId);
+								if (partId) {
+									mediaPartIdByCallId.delete(tr.toolCallId);
+									// Media tools return large base64 payloads — same higher limit
+									// agent-loop.ts uses, so the frontend can render the actual image.
+									const toolOutputLimit = 500_000;
+									const updates: Partial<MessagePart> = {
+										toolOutput: resultStr.length > toolOutputLimit ? resultStr.slice(0, toolOutputLimit) + "\n... (truncated)" : resultStr,
+										toolState: isError ? "error" : "success",
+										timeEnd: new Date().toISOString(),
+									};
+									db.update(messageParts).set({
+										toolOutput: updates.toolOutput, toolState: updates.toolState, timeEnd: updates.timeEnd,
+									}).where(eq(messageParts.id, partId)).catch(() => {});
+									this.callbacks.onPartUpdated?.(conversationId, assistantMessageId, partId, updates);
+								}
+							}
 						}
 						// Live context-bar update each PM step (real last-step prompt tokens),
 						// so a multi-step PM turn climbs the bar in real time too.

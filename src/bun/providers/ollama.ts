@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { PROVIDER_HEADERS } from "./headers";
+import { generateImageOpenAICompatible } from "./image-generation";
 
 const OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 const OLLAMA_TAGS_URL = "http://localhost:11434/api/tags";
@@ -99,5 +100,9 @@ export class OllamaAdapter implements ProviderAdapter {
 			const error = err instanceof Error ? err.message : String(err);
 			return { success: false, error };
 		}
+	}
+
+	async generateImage(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }> {
+		return generateImageOpenAICompatible(this.config.baseUrl ?? OLLAMA_DEFAULT_BASE_URL, "ollama", modelId, prompt);
 	}
 }

@@ -23,6 +23,7 @@ import { getStreamingMode } from "../agents/streaming-mode";
 import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { getAgentSystemPrompt } from "../agents/prompts";
 import { getToolsForAgent } from "../agents/tools/index";
+import { extractImagePayload } from "../agents/tools/screenshot";
 import { broadcastToWebview } from "../engine-manager";
 import { saveLastMessage, loadLastMessage, removeLastMessage, buildLastMsgInjection } from "../agents/last-msg-store";
 
@@ -147,6 +148,10 @@ export async function sendDashboardAgentMessage(
 			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
 			if (provider.providerType === "claude-subscription" && !isHaikuModel(modelId)) {
 				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				// onToolCallEnd only carries the callId, not the toolName — track it
+				// from onToolCallStart so the image-tool-result broadcast below can
+				// tell which tool produced a given result.
+				const cliToolNameByCallId = new Map<string, string>();
 				// Full Streaming only — broadcastToWebview appends client-side, so
 				// only the slice new since the last throttled flush is ever sent.
 				let flushedLength = 0;
@@ -171,10 +176,20 @@ export async function sendDashboardAgentMessage(
 					onTextToken: (delta) => textAcc?.push(delta),
 					onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
 					onToolCallStart: (toolName, args) => {
-						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName, args });
-						return crypto.randomUUID();
+						const callId = crypto.randomUUID();
+						cliToolNameByCallId.set(callId, toolName);
+						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, callId, toolName, args });
+						return callId;
 					},
-					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
+					onToolCallEnd: (callId, resultText, isError) => {
+						const toolName = cliToolNameByCallId.get(callId);
+						cliToolNameByCallId.delete(callId);
+						// Only image tools carry a payload worth broadcasting today — avoid
+						// blowing up widget state with every other tool's raw output.
+						if (!isError && toolName && extractImagePayload(resultText)) {
+							broadcastToWebview("dashboardAgentToolResult", { sessionId, agentName, messageId, callId, toolName, output: resultText });
+						}
+					},
 				});
 				textAcc?.flushNow();
 
@@ -213,7 +228,15 @@ export async function sendDashboardAgentMessage(
 						if (!isNoStreaming) broadcastToWebview("dashboardAgentChunk", { sessionId, agentName, messageId, token: text });
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
-						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, toolName: part.toolName, args: tcInput });
+						broadcastToWebview("dashboardAgentToolCall", { sessionId, agentName, callId: part.toolCallId, toolName: part.toolName, args: tcInput });
+					} else if (part.type === "tool-result") {
+						// Only image tools carry a payload worth broadcasting today — avoid
+						// blowing up widget state with every other tool's raw output.
+						const trOutput = (part as Record<string, unknown>).output ?? (part as Record<string, unknown>).result;
+						const resultStr = typeof trOutput === "string" ? trOutput : JSON.stringify(trOutput);
+						if (extractImagePayload(resultStr)) {
+							broadcastToWebview("dashboardAgentToolResult", { sessionId, agentName, messageId, callId: part.toolCallId, toolName: part.toolName, output: resultStr });
+						}
 					} else if (part.type === "error") {
 						const err = (part as { error: unknown }).error;
 						throw err instanceof Error ? err : new Error(String(err));

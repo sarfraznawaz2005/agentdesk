@@ -15,6 +15,7 @@ import { webTools } from "./web";
 import { systemTools } from "./system";
 import { processTools } from "./process";
 import { screenshotTools } from "./screenshot";
+import { imageGenTools } from "./image-gen";
 import { audioTools } from "./audio";
 import { lspTools } from "./lsp";
 import { skillTools } from "./skills";
@@ -87,6 +88,7 @@ const toolRegistry: Record<string, ToolRegistryEntry> = {
 	...systemTools,
 	...processTools,
 	...screenshotTools,
+	...imageGenTools,
 	...audioTools,
 	...lspTools,
 	...skillTools,

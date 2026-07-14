@@ -494,7 +494,7 @@ function ProviderDialog({
         onOpenChange(false);
         onSaved();
       } else {
-        toast("error", "Failed to save provider. Please try again.");
+        toast("error", result.error ?? "Failed to save provider. Please try again.");
       }
     } catch {
       toast("error", "An unexpected error occurred while saving.");

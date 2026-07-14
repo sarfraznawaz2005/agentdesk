@@ -199,6 +199,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       dashboardPMToolCall: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-tool-call", { detail: payload }));
       },
+      dashboardPMToolResult: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-tool-result", { detail: payload }));
+      },
       dashboardPMError: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-error", { detail: payload }));
       },
@@ -222,6 +225,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       dashboardAgentToolCall: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-tool-call", { detail: payload }));
+      },
+      dashboardAgentToolResult: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-tool-result", { detail: payload }));
       },
       dashboardAgentError: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-agent-error", { detail: payload }));

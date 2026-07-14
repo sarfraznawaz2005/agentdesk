@@ -37,6 +37,8 @@ import { fileOpsTools } from "../agents/tools/file-ops";
 import { processTools } from "../agents/tools/process";
 import { notesTools } from "../agents/tools/notes";
 import { systemTools } from "../agents/tools/system";
+import { imageGenTools } from "../agents/tools/image-gen";
+import { extractImagePayload } from "../agents/tools/screenshot";
 import { skillRegistry } from "../skills/registry";
 import { broadcastToWebview } from "../engine-manager";
 import { buildUserProfileSection, loadUserTimezone, SECURITY_RULES_SECTION } from "../agents/prompts";
@@ -249,6 +251,10 @@ function createDashboardTools() {
 
 		// Additional web tools
 		http_request: webTools.http_request.tool,
+
+		// Image generation — same tool as the main chat, picks an eligible
+		// provider/model automatically (see agents/tools/image-gen.ts).
+		generate_image: imageGenTools.generate_image.tool,
 
 		// System tools
 		environment_info: systemTools.environment_info.tool,
@@ -640,6 +646,10 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 			// instead (see providers/claude-subscription.ts / claude-subscription-cli-runner.ts).
 			if (providerRow.providerType === "claude-subscription" && !isHaikuModel(modelId)) {
 				const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
+				// onToolCallEnd only carries the callId, not the toolName — track it
+				// from onToolCallStart so the image-tool-result broadcast below can
+				// tell which tool produced a given result.
+				const cliToolNameByCallId = new Map<string, string>();
 				// Full Streaming only — broadcastToWebview("dashboardPMChunk", {token})
 				// appends client-side, so only the slice new since the last throttled
 				// flush is ever sent (not the full accumulated text).
@@ -667,13 +677,23 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					onTextToken: (delta) => textAcc?.push(delta),
 					onRetract: () => { textAcc?.cancel(); flushedLength = 0; },
 					onToolCallStart: (toolName, args) => {
-						broadcastToWebview("dashboardPMToolCall", { sessionId, toolName, args });
+						const callId = crypto.randomUUID();
+						cliToolNameByCallId.set(callId, toolName);
+						broadcastToWebview("dashboardPMToolCall", { sessionId, callId, toolName, args });
 						if (toolName === "read_skill" && (args as Record<string, unknown>)?.name) {
 							console.log(`[skills] Dashboard PM loaded skill "${(args as Record<string, unknown>).name}"`);
 						}
-						return crypto.randomUUID();
+						return callId;
 					},
-					onToolCallEnd: () => { /* no tool-result broadcast today, matching the streamText path */ },
+					onToolCallEnd: (callId, resultText, isError) => {
+						const toolName = cliToolNameByCallId.get(callId);
+						cliToolNameByCallId.delete(callId);
+						// Only image tools carry a payload worth broadcasting today — avoid
+						// blowing up widget state with every other tool's raw output.
+						if (!isError && toolName && extractImagePayload(resultText)) {
+							broadcastToWebview("dashboardPMToolResult", { sessionId, messageId, callId, toolName, output: resultText });
+						}
+					},
 				});
 				textAcc?.flushNow();
 
@@ -713,9 +733,17 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 						if (!isNoStreaming) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
-						broadcastToWebview("dashboardPMToolCall", { sessionId, toolName: part.toolName, args: tcInput });
+						broadcastToWebview("dashboardPMToolCall", { sessionId, callId: part.toolCallId, toolName: part.toolName, args: tcInput });
 						if (part.toolName === "read_skill" && (tcInput as Record<string, unknown>)?.name) {
 							console.log(`[skills] Dashboard PM loaded skill "${(tcInput as Record<string, unknown>).name}"`);
+						}
+					} else if (part.type === "tool-result") {
+						// Only image tools carry a payload worth broadcasting today — avoid
+						// blowing up widget state with every other tool's raw output.
+						const trOutput = (part as Record<string, unknown>).output ?? (part as Record<string, unknown>).result;
+						const resultStr = typeof trOutput === "string" ? trOutput : JSON.stringify(trOutput);
+						if (extractImagePayload(resultStr)) {
+							broadcastToWebview("dashboardPMToolResult", { sessionId, messageId, callId: part.toolCallId, toolName: part.toolName, output: resultStr });
 						}
 					} else if (part.type === "error") {
 						const err = (part as { error: unknown }).error;

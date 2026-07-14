@@ -14,7 +14,7 @@
  */
 
 import { isPathAccessible } from "../lib/path-utils";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
 import { aiProviders, projects } from "../db/schema";
@@ -201,13 +201,16 @@ async function checkAiProviderSubsystem(): Promise<HealthStatus["aiProvider"]> {
  * to tolerate cloud/network paths (OneDrive, Dropbox, NAS) that may be slow
  * to respond. Projects with unreachable paths are reported as warnings but
  * are NEVER auto-deleted — only explicit user action removes a project.
+ * Excludes Quick Chat projects (isQuickChat=1) — same scoping as
+ * getProjectsList in rpc/projects.ts, since they stay invisible to the
+ * Dashboard until explicitly promoted.
  */
 async function checkWorkspaceSubsystem(): Promise<HealthStatus["workspace"]> {
 	try {
 		const rows = await db
 			.select({ id: projects.id, workspacePath: projects.workspacePath })
 			.from(projects)
-			.where(eq(projects.status, "active"));
+			.where(and(eq(projects.status, "active"), eq(projects.isQuickChat, 0)));
 
 		const missingPaths: string[] = [];
 		await Promise.all(

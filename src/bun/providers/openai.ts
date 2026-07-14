@@ -5,6 +5,7 @@ import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { getDefaultModel } from "./models";
 import { PROVIDER_HEADERS } from "./headers";
+import { generateImageOpenAICompatible, generateImageNvidia, generateImageMistral, hostnameOf } from "./image-generation";
 
 /**
  * Endpoints (keyed by normalized base URL) that have rejected the non-standard
@@ -198,5 +199,24 @@ export class OpenAIAdapter implements ProviderAdapter {
 			if (error.includes("timeout")) return { success: false, error: "Connection timed out." };
 			return { success: false, error };
 		}
+	}
+
+	/**
+	 * Standard `POST {baseURL}/images/generations` for real OpenAI and any
+	 * custom OpenAI-compatible provider whose image endpoint matches that
+	 * shape (e.g. zenmux) — the generic default so a newly-added custom
+	 * provider works without any provider-specific code. NVIDIA and Mistral
+	 * are the two verified exceptions: their real image-generation surface is
+	 * a genuinely different host/shape (NVIDIA) or not a single-call model
+	 * endpoint at all (Mistral) — routed to their dedicated implementations
+	 * instead of erroring against the generic path.
+	 */
+	async generateImage(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }> {
+		const host = this.normalizedBaseUrl ? hostnameOf(this.normalizedBaseUrl) : "";
+		if (host.includes("nvidia.com")) return generateImageNvidia(this.config.apiKey, modelId, prompt);
+		if (host.includes("mistral.ai")) return generateImageMistral(this.config.apiKey, prompt);
+
+		const baseURL = this.isCustom ? (this.normalizedBaseUrl ?? "") : "https://api.openai.com/v1";
+		return generateImageOpenAICompatible(baseURL, this.config.apiKey, modelId, prompt);
 	}
 }

@@ -1373,7 +1373,7 @@ const SYSTEM = ["environment_info", "get_env", "get_agentdesk_paths", "sleep"] a
 const NOTES = ["create_doc", "update_doc", "list_docs", "get_doc", "delete_doc"] as const;
 const PLANNING = ["define_tasks"] as const;
 const COMMUNICATION = ["request_human_input"] as const;
-const SCREENSHOT = ["take_screenshot", "read_image"] as const;
+const SCREENSHOT = ["take_screenshot", "read_image", "generate_image"] as const;
 const SKILLS = ["read_skill", "read_skill_file", "find_skills", "validate_skill"] as const;
 const MEMORY = ["save_memory", "recall_memory", "delete_memory"] as const;
 
@@ -1401,7 +1401,8 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	// FILE_WRITE added: system prompt explicitly says "apply security fixes" using write/edit tools
 	"security-expert": [...FILE_READ, ...FILE_WRITE, ...SHELL, ...KANBAN, ...GIT_READ, ...LSP, ...WEB, ...SYSTEM, ...NOTES, ...SKILLS],
 	// SHELL added: needed to run doc generators (typedoc, mkdocs, openapi-generator, etc.)
-	"documentation-expert": [...FILE_READ, ...FILE_WRITE, ...KANBAN, ...NOTES, ...GIT_READ, ...SYSTEM, ...SKILLS, ...SHELL],
+	// generate_image added: illustrative diagrams/hero images/visuals for docs
+	"documentation-expert": [...FILE_READ, ...FILE_WRITE, ...KANBAN, ...NOTES, ...GIT_READ, ...SYSTEM, ...SKILLS, ...SHELL, "generate_image"],
 	// git_stash added: listed as Key Tool in system prompt; read_audio added: review voice notes/recordings attached to a task
 	"debugging-specialist": [...FILE_READ, ...FILE_WRITE, ...FILE_COMMON_ADVANCED, ...SHELL, ...KANBAN, ...LSP, ...PROCESS, ...SCREENSHOT, ...GIT_READ, ...SYSTEM, ...NOTES, ...SKILLS, "git_stash", "read_audio"],
 	// WEB added: performance engineers look up benchmarks, profiling tools; SCREENSHOT added: capture flamegraphs; read_audio added: review voice notes/recordings attached to a task

@@ -4,6 +4,7 @@ import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { getDefaultModel } from "./models";
 import { PROVIDER_HEADERS } from "./headers";
+import { generateImageOpenAICompatible } from "./image-generation";
 
 const ZAI_BASE_URL = "https://api.z.ai/api/paas/v4";
 
@@ -50,5 +51,12 @@ export class ZaiAdapter implements ProviderAdapter {
 			const error = err instanceof Error ? err.message : String(err);
 			return { success: false, error };
 		}
+	}
+
+	// Z.AI's real image endpoint (POST {ZAI_BASE_URL}/images/generations) is
+	// standard OpenAI-shaped even though chat goes through the zhipu-ai-provider
+	// package — build a throwaway openai-compatible instance just for this call.
+	async generateImage(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }> {
+		return generateImageOpenAICompatible(ZAI_BASE_URL, this.config.apiKey, modelId, prompt);
 	}
 }

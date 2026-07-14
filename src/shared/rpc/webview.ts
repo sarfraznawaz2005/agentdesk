@@ -310,8 +310,16 @@ export type WebviewSchema = RPCSchema<{
     };
     dashboardPMToolCall: {
       sessionId: string;
+      callId?: string;
       toolName: string;
       args: Record<string, unknown>;
+    };
+    dashboardPMToolResult: {
+      sessionId: string;
+      messageId: string;
+      callId?: string;
+      toolName: string;
+      output: string;
     };
     dashboardPMError: {
       sessionId: string;
@@ -356,8 +364,17 @@ export type WebviewSchema = RPCSchema<{
     dashboardAgentToolCall: {
       sessionId: string;
       agentName: string;
+      callId?: string;
       toolName: string;
       args: Record<string, unknown>;
+    };
+    dashboardAgentToolResult: {
+      sessionId: string;
+      agentName: string;
+      messageId: string;
+      callId?: string;
+      toolName: string;
+      output: string;
     };
     dashboardAgentError: {
       sessionId: string;

@@ -13,7 +13,6 @@ import { rpc } from "@/lib/rpc";
 import {
   Database,
   Brain,
-  FolderOpen,
   Clock,
   Plug,
   Cpu,
@@ -56,12 +55,16 @@ function LevelIcon({ level }: { level: Level }) {
   return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
 }
 
-/** Returns true if every subsystem is "healthy". */
+/**
+ * Returns true if every subsystem this dialog cares about is "healthy".
+ * Workspace path issues are excluded on purpose — they're surfaced as a
+ * red-bordered indicator + tooltip directly on the affected Dashboard
+ * project card instead of interrupting startup with a blocking popup.
+ */
 function isAllHealthy(h: HealthStatus): boolean {
   return (
     h.database.status === "healthy" &&
     h.aiProvider.status === "healthy" &&
-    h.workspace.status === "healthy" &&
     h.scheduler.status === "healthy" &&
     (h.integrations.status === "healthy" || h.integrations.channels.length === 0) &&
     h.engines.status === "healthy" &&
@@ -185,7 +188,6 @@ export function StartupHealthDialog() {
     ? [
         health.database.status !== "healthy",
         health.aiProvider.status !== "healthy",
-        health.workspace.status !== "healthy",
         health.scheduler.status !== "healthy",
         health.integrations.status !== "healthy" && health.integrations.channels.length > 0,
         health.engines.status !== "healthy",
@@ -196,7 +198,7 @@ export function StartupHealthDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-lg w-full bg-background border-border text-foreground gap-0 p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
+        <DialogHeader className="px-6 pt-6 pb-4 pr-10 border-b border-border">
           <DialogTitle className="flex items-center gap-2 text-base">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             System Health Check
@@ -229,19 +231,6 @@ export function StartupHealthDialog() {
                 level={toLevel(health.aiProvider.status)}
                 detail={health.aiProvider.message ?? "Provider configuration issue."}
                 hint="Go to Settings > AI Providers to configure a default provider."
-              />
-
-              {/* Workspace Paths */}
-              <Row
-                icon={<FolderOpen className="h-4 w-4" />}
-                label="Workspace Paths"
-                level={toLevel(health.workspace.status)}
-                detail={
-                  health.workspace.missingPaths.length > 0
-                    ? `Missing: ${health.workspace.missingPaths.join(", ")}`
-                    : health.workspace.message ?? "Workspace issue."
-                }
-                hint="Check that the project directories exist on disk, or update the project path in settings."
               />
 
               {/* Scheduler */}

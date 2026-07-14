@@ -4,6 +4,7 @@ import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { getDefaultModel } from "./models";
 import { PROVIDER_HEADERS } from "./headers";
+import { generateImageOpenAICompatible } from "./image-generation";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
@@ -58,5 +59,9 @@ export class OpenRouterAdapter implements ProviderAdapter {
 			const error = err instanceof Error ? err.message : String(err);
 			return { success: false, error };
 		}
+	}
+
+	async generateImage(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }> {
+		return generateImageOpenAICompatible(OPENROUTER_BASE_URL, this.config.apiKey, modelId, prompt);
 	}
 }
