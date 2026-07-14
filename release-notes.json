@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.7.0",
+        "title":  "New Chat Features and UI Improvements",
+        "changes":  [
+                        "Introducing a quick chat feature for easier communication.",
+                        "Control the visibility of the chat widget for a more customized experience."
+                    ]
+    },
+    {
         "version":  "2.6.4",
         "title":  "Chat Component Improvements",
         "changes":  [
