@@ -451,6 +451,16 @@ This is genuinely low-risk (no new dependency needed — it's built into `ai`
 itself) and high-value: it's the foundation for the "AI Usage / Cost
 Analytics" page idea in §9.1. Recommend adopting per the analysis in §7.1.
 
+**Implemented 2026-07-15, upgraded over this plan**: the actual installed v7
+ships a first-class `Telemetry` integration interface (`registerTelemetry()`)
+rather than requiring hand-parsing of the raw tracing-channel envelope — its
+own types confirm telemetry is "enabled by default when a telemetry
+integration is registered," giving the same zero-call-site-changes property
+with structured, typed lifecycle events instead. Used that instead of the raw
+`node:diagnostics_channel` subscription shown above. Full implementation
+detail (schema, sink, prompt-logger.ts's decided fate) in
+`ai-sdk-7-migration-tasks.md` §3.1.
+
 ### 6.4 Stable tool ordering (protect existing prompt-cache investment)
 
 AgentDesk already uses Anthropic prompt caching (`applyAnthropicCaching()`,

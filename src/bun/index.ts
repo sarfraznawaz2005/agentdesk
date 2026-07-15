@@ -2,7 +2,9 @@ import Electrobun from "electrobun/bun";
 import { BrowserWindow, Utils, Screen, ApplicationMenu } from "electrobun/bun";
 import { existsSync, mkdirSync } from "fs";
 import { basename } from "path";
+import { registerTelemetry } from "ai";
 import { initGlobalErrorHandlers, installAiSdkWarningHandler } from "./db/error-logger";
+import { telemetrySink } from "./agents/telemetry-sink";
 import { runMigrations } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
 import { closeDatabase } from "./db";
@@ -432,6 +434,14 @@ installAiSdkWarningHandler();
 // ---------------------------------------------------------------------------
 runMigrations();
 await seedDatabase();
+
+// Global AI SDK v7 telemetry — registered once, here, so every streamText/
+// generateText call across all 9+ independent surfaces reports automatically
+// (v7 telemetry is "enabled by default" once any integration is registered).
+// See docs/ai-sdk-7-migration.md §6.3/§9.1 and telemetry-sink.ts. Must come
+// after runMigrations() — the sink writes to ai_telemetry_events.
+registerTelemetry(telemetrySink);
+
 await loadCustomEnvVarsIntoProcess();
 await encryptExistingSecrets();
 

@@ -146,6 +146,13 @@ export type PromptLogEntry = {
 /**
  * Parse prompt log and return per-entry stats (most recent first).
  * Only parses header lines — does not read full prompt bodies.
+ *
+ * Superseded for analytics purposes by ai_telemetry_events (see
+ * telemetry-sink.ts and docs/ai-sdk-7-migration.md §6.3/§9.1) — this
+ * regex-parsed path is not being extended further and its only remaining
+ * consumer (analytics.tsx's Settings "Analytics" view) is scheduled for
+ * retirement in Phase 4.1 once the new telemetry-backed Analytics page
+ * lands. Left as-is until then; do not build new features on this path.
  */
 export function getPromptLogStats(limit = 50): { entries: PromptLogEntry[]; fileSize: number } {
 	try {

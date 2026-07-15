@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, uniqueIndex, blob } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex, index, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -1211,3 +1211,64 @@ export const collectionNoteLinks = sqliteTable("collection_note_links", {
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`),
 });
+
+// ---------------------------------------------------------------------------
+// ai_telemetry_events (v59) — AI SDK v7 global telemetry sink
+// ---------------------------------------------------------------------------
+// Populated by src/bun/agents/telemetry-sink.ts's Telemetry integration,
+// registered once globally via registerTelemetry() in src/bun/index.ts — see
+// docs/ai-sdk-7-migration.md §6.3/§9.1. Foundation for the AI Usage/Cost
+// Analytics page (Phase 4.1); supersedes prompt-logger.ts's regex-parsed
+// stats path for that purpose (raw prompt-content debug logging in
+// prompt-logger.ts is unaffected and stays as-is).
+//
+// One row per lifecycle event, not one row per call — event_kind
+// discriminates ('start' | 'language_model_call_end' | 'tool_execution_end' |
+// 'end' | 'error' | 'abort'); call_id correlates every event within one
+// generateText/streamText invocation. Deliberately a single wide table for a
+// v1 sink rather than a normalized per-event-type schema — every column is
+// nullable except the always-present identifying fields, since which columns
+// are populated depends entirely on event_kind.
+//
+// runtime_context is a nullable JSON blob, empty until Phase 3.2 (runtime
+// context) lands — no future migration needed once call sites start setting
+// it, since v7's telemetry events already carry `runtimeContext` whenever a
+// call provides one.
+export const aiTelemetryEvents = sqliteTable(
+	"ai_telemetry_events",
+	{
+		id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+		callId: text("call_id").notNull(),
+		eventKind: text("event_kind").notNull(),
+		operationId: text("operation_id"),
+		provider: text("provider"),
+		modelId: text("model_id"),
+		functionId: text("function_id"),
+		stepNumber: integer("step_number"),
+		inputTokens: integer("input_tokens"),
+		outputTokens: integer("output_tokens"),
+		totalTokens: integer("total_tokens"),
+		cacheReadTokens: integer("cache_read_tokens"),
+		cacheWriteTokens: integer("cache_write_tokens"),
+		reasoningTokens: integer("reasoning_tokens"),
+		finishReason: text("finish_reason"),
+		responseTimeMs: integer("response_time_ms"),
+		timeToFirstOutputMs: integer("time_to_first_output_ms"),
+		outputTokensPerSecond: real("output_tokens_per_second"),
+		toolName: text("tool_name"),
+		toolExecutionMs: integer("tool_execution_ms"),
+		toolSuccess: integer("tool_success"),
+		errorMessage: text("error_message"),
+		runtimeContext: text("runtime_context"),
+		createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	},
+	(t) => ({
+		callIdIdx: index("idx_ai_telemetry_call_id").on(t.callId),
+		kindTimeIdx: index("idx_ai_telemetry_kind_time").on(t.eventKind, t.createdAt),
+		providerModelTimeIdx: index("idx_ai_telemetry_provider_model_time").on(
+			t.provider,
+			t.modelId,
+			t.createdAt,
+		),
+	}),
+);
