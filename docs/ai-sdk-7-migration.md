@@ -438,6 +438,18 @@ shell-approval gate as-is rather than forcing a bad fit — this phase is
 allowed to conclude "not now" on the generalization specifically, same as
 §6.8's spike.
 
+**Evaluated 2026-07-15 — concluded "not now."** `toolApproval` is a
+stop-and-resume-via-new-call mechanism (an approval-pending tool call
+terminates the whole `streamText`/`generateText` call; resuming means issuing
+a brand-new call with a `tool-approval-response` message appended), whereas
+AgentDesk's existing gate is an in-band `await` inside the tool's own
+`execute()` — the surrounding call, stream, step loop, and telemetry `callId`
+never stop. Adopting the native shape would mean re-architecting both step
+loops (`agent-loop.ts`, `engine.ts`) to persist/resume state and would
+fragment telemetry correlation, for no capability the existing gate lacks.
+Kept the shell-approval gate as-is; no code changes. Full detail in
+`ai-sdk-7-migration-tasks.md` §3.4.
+
 ### 6.3 Global telemetry + Node.js tracing channel
 
 **The single biggest opportunity in this migration.** AgentDesk today has
@@ -789,13 +801,13 @@ TUI shows, right in the AgentDesk chat window.
 
 ### 9.3 Native tool-approval UI, generalized beyond shell commands
 
-Per §6.2 (Phase 3.4) — if the evaluation shows `toolApproval` composes
-cleanly with the existing approval-modal wiring, generalize gating to
-`git_push`/`git_pr` for regular worker agents (currently ungated outside
-Issue Fixer, which excludes those tools entirely rather than gating them)
-and file deletes outside the workspace root. Approval events (approved/
-denied/timed-out) flow into the same telemetry sink as §9.1, giving the
-analytics page an "approval activity" view for free.
+**Dropped 2026-07-15** — §6.2 (Phase 3.4)'s evaluation concluded
+`toolApproval` doesn't compose cleanly with the existing approval-modal
+wiring (it's a stop-and-resume-via-new-call mechanism, not a drop-in for the
+in-band `await` AgentDesk's shell gate already uses), so there's no native
+approval-event stream to feed a UI or the analytics page. `git_push`/`git_pr`
+generalization and file-delete gating remain un-scoped, unrelated future
+work, not a consequence of this migration.
 
 ### 9.4 Provider health / status page
 
