@@ -1,12 +1,16 @@
 /**
  * agent-loop.test.ts
  *
- * Tests for READ_ONLY_AGENTS, WRITE_TOOLS constants, filterReadOnlyTools, and
- * pruneAgentToolResults. All external dependencies are mocked so no real LLM
- * calls or filesystem access is needed.
+ * Tests for READ_ONLY_AGENTS, WRITE_TOOLS constants, filterReadOnlyTools,
+ * pruneAgentToolResults, and tool-map order preservation (wrapToolsWithHooks /
+ * wrapToolsWithCallLogging — AI SDK v7 migration Phase 2.8, protects Anthropic
+ * prompt-cache hit rate, which depends on a byte-identical tool array across
+ * requests). All external dependencies are mocked so no real LLM calls or
+ * filesystem access is needed.
  */
 
 import { mock, describe, it, expect, beforeEach, afterEach, beforeAll, spyOn } from "bun:test";
+import type { Tool } from "ai";
 import { createTestDb } from "../helpers/db";
 
 // Must mock electrobun/bun before any import that transitively pulls it in.
@@ -55,7 +59,7 @@ mock.module("../../src/bun/providers/models", () => ({
 }));
 mock.module("../../src/bun/agents/engine-types", () => ({
 	getPluginTools: async () => ({}),
-	applyAnthropicCaching: (_: string, system: string, messages: unknown[]) => ({ instructions, messages }),
+	applyAnthropicCaching: (_: string, system: string, messages: unknown[]) => ({ instructions: system, messages }),
 }));
 // rpc/settings, file-tracker, and file-ops are NOT mocked here to avoid
 // contaminating settings.test.ts, file-tracker.test.ts, and validate-path.test.ts.
@@ -73,11 +77,17 @@ mock.module("../../src/bun/agents/tools/notes", () => ({
 mock.module("../../src/bun/agents/prompt-logger", () => ({
 	logPrompt: async () => {},
 }));
+// wrapToolsWithHooks calls spawnAsync for PreToolUse/PostToolUse hooks — mock it
+// so the order-preservation tests below don't depend on real shell execution.
+mock.module("../../src/bun/lib/spawn-async", () => ({
+	spawnAsync: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+}));
 
 // Import the module under test after all mocks are registered.
 const agentLoopModule = await import("../../src/bun/agents/agent-loop");
+const { wrapToolsWithCallLogging } = await import("../../src/bun/agents/tool-call-logging");
 
-const { READ_ONLY_AGENTS, WRITE_TOOLS, READ_ONLY_WRITE_EXCEPTIONS, pruneAgentToolResults } =
+const { READ_ONLY_AGENTS, WRITE_TOOLS, READ_ONLY_WRITE_EXCEPTIONS, pruneAgentToolResults, wrapToolsWithHooks } =
 	agentLoopModule as typeof agentLoopModule & {
 		WRITE_TOOLS?: Set<string>;
 		READ_ONLY_WRITE_EXCEPTIONS?: Record<string, ReadonlySet<string>>;
@@ -305,5 +315,62 @@ describe("pruneAgentToolResults", () => {
 
 		const count = await pruneAgentToolResults([ids.mid]);
 		expect(count).toBe(0);
+	});
+});
+
+// AI SDK v7 migration Phase 2.8: Anthropic prompt caching requires the tool
+// array to be byte-identical (order included) across requests to hit the
+// cache. These lock in that every tool-map transform in the pipeline
+// preserves relative key order — investigation found the current code
+// already does this by construction (Object.fromEntries(filter), `delete`,
+// and rebuild-via-for...of are all order-preserving), so this is a
+// regression guard against a future change silently breaking that
+// invariant, not a fix for a live bug.
+describe("tool-map order preservation (prompt-cache stability)", () => {
+	/** Build a fake tool map in a specific key order; values only need an optional execute(). */
+	function toolMap(...names: string[]): Record<string, Tool> {
+		const m: Record<string, Tool> = {};
+		for (const n of names) m[n] = { execute: async () => "ok" } as unknown as Tool;
+		return m;
+	}
+
+	it("wrapToolsWithCallLogging preserves key order", () => {
+		const input = toolMap("read_file", "write_file", "git_status", "run_shell", "git_commit");
+		const wrapped = wrapToolsWithCallLogging(input, "test-actor");
+		expect(Object.keys(wrapped)).toEqual(Object.keys(input));
+	});
+
+	it("wrapToolsWithCallLogging preserves order for a filtered (non-contiguous) subset", () => {
+		// Simulates the real pipeline: getToolsForAgent already filtered the base
+		// registry down to a subset before this wrap runs.
+		const input = toolMap("read_file", "git_commit", "run_shell");
+		const wrapped = wrapToolsWithCallLogging(input, "test-actor");
+		expect(Object.keys(wrapped)).toEqual(["read_file", "git_commit", "run_shell"]);
+	});
+
+	it("wrapToolsWithHooks preserves key order when no hooks are configured (early-return path)", async () => {
+		const input = toolMap("read_file", "write_file", "git_status");
+		const wrapped = wrapToolsWithHooks(input, null, null);
+		expect(Object.keys(wrapped)).toEqual(Object.keys(input));
+	});
+
+	it("wrapToolsWithHooks preserves key order when hooks are configured (rebuild path)", async () => {
+		const input = toolMap("read_file", "write_file", "git_status", "run_shell", "git_commit");
+		const wrapped = wrapToolsWithHooks(input, "echo pre", "echo post");
+		expect(Object.keys(wrapped)).toEqual(Object.keys(input));
+	});
+
+	it("order survives the full realistic pipeline: filter -> hooks -> call logging", async () => {
+		// Mirrors agent-loop.ts's real sequence: getToolsForAgent's base order,
+		// excludeTools-style filtering (Object.fromEntries + filter), then
+		// wrapToolsWithHooks, then wrapToolsWithCallLogging.
+		const base = toolMap("read_file", "write_file", "git_status", "run_shell", "git_commit", "delete_file");
+		const excluded = new Set(["git_status"]);
+		const filtered = Object.fromEntries(
+			Object.entries(base).filter(([k]) => !excluded.has(k)),
+		) as Record<string, Tool>;
+		const hooked = wrapToolsWithHooks(filtered, "echo pre", null);
+		const logged = wrapToolsWithCallLogging(hooked, "test-actor");
+		expect(Object.keys(logged)).toEqual(["read_file", "write_file", "run_shell", "git_commit", "delete_file"]);
 	});
 });

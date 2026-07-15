@@ -717,7 +717,7 @@ async function getHookCommand(projectId: string | undefined, hookType: "preToolU
  * - PostToolUse: runs after the tool with output. Non-fatal.
  * - Env vars: HOOK_TOOL_NAME, HOOK_TOOL_INPUT, HOOK_TOOL_OUTPUT, HOOK_TOOL_IS_ERROR
  */
-function wrapToolsWithHooks(
+export function wrapToolsWithHooks(
 	tools: Record<string, Tool>,
 	preHook: string | null,
 	postHook: string | null,
