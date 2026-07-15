@@ -28,6 +28,8 @@ interface ChatLayoutProps {
    * auto-close on an outside click, which normal project chat relies on since the sidebar there
    * is usually opened as a transient "look something up" action. */
   sidebarManualOnly?: boolean;
+  /** Show the model id that produced each response, next to Copy. Main project chat only — not Quick Chat. */
+  showModelName?: boolean;
 }
 
 const ACTIVITY_WIDTH_MIN = 300;
@@ -54,7 +56,7 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary);
 }
 
-export function ChatLayout({ projectId, hideFocusToggle, defaultSidebarOpen, sidebarManualOnly }: ChatLayoutProps) {
+export function ChatLayout({ projectId, hideFocusToggle, defaultSidebarOpen, sidebarManualOnly, showModelName }: ChatLayoutProps) {
   const [isFocused, setIsFocused] = useState(() => {
     try { return localStorage.getItem(FOCUS_KEY) === "true"; } catch { return false; }
   });
@@ -796,6 +798,7 @@ export function ChatLayout({ projectId, hideFocusToggle, defaultSidebarOpen, sid
               loading={messagesLoading}
               onSend={handleSend}
               fontSizePercent={fontSizePercent}
+              showModelName={showModelName}
             />
           </div>
         ) : (

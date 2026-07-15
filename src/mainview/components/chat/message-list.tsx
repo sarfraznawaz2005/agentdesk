@@ -73,6 +73,8 @@ interface MessageListProps {
   loading?: boolean;
   onSend?: (text: string) => void;
   fontSizePercent?: number;
+  /** Show the model id that produced each response, next to Copy — main project chat only. */
+  showModelName?: boolean;
 }
 
 export function MessageList({
@@ -87,6 +89,7 @@ export function MessageList({
   loading = false,
   onSend,
   fontSizePercent = 100,
+  showModelName = false,
 }: MessageListProps) {
   const isCompacting = useChatStore((s) => s.isCompacting);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -309,6 +312,7 @@ export function MessageList({
                     allMessages={visibleMessages}
                     searchQuery={searchQuery}
                     isLastMessage={msg.id === lastAssistantMessageId}
+                    showModelName={showModelName}
                   />
                 </MessageErrorBoundary>
               </div>

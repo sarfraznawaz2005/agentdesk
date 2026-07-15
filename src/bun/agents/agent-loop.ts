@@ -1304,6 +1304,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			await db.update(messages).set({
 				content: cliResult.summary,
 				tokenCount: Math.ceil(cliResult.summary.length / 4),
+				metadata: JSON.stringify({ modelId: effectiveModelId }),
 			}).where(eq(messages.id, startMsgId));
 		}
 		callbacks.onPartCreated(endPart);
@@ -1784,6 +1785,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				.set({
 					content: summary,
 					tokenCount: contentTokenEstimate,
+					metadata: JSON.stringify({ modelId: effectiveModelId }),
 				})
 				.where(eq(messages.id, startMsgId));
 		}
@@ -1874,7 +1876,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 
 		// Update message — tokenCount reflects content size for context indicator
 		if (persist) await db.update(messages)
-			.set({ content: summary, tokenCount: Math.ceil(summary.length / 4) })
+			.set({ content: summary, tokenCount: Math.ceil(summary.length / 4), metadata: JSON.stringify({ modelId: effectiveModelId }) })
 			.where(eq(messages.id, startMsgId))
 			.catch(() => {});
 

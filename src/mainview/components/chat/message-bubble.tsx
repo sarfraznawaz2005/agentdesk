@@ -32,6 +32,8 @@ interface MessageBubbleProps {
   thinkingContent?: string;
   /** Whether this is the last message in the conversation — controls retry button visibility. */
   isLastMessage?: boolean;
+  /** Show the model id that produced this response, next to Copy — main project chat only. */
+  showModelName?: boolean;
 }
 
 // Highlight matching search terms in text
@@ -280,7 +282,7 @@ const PLAN_MD_COMPONENTS = {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export const MessageBubble = memo(function MessageBubble({ message, projectId, isStreaming = false, allMessages, searchQuery = "", thinkingContent, isLastMessage = false }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, projectId, isStreaming = false, allMessages, searchQuery = "", thinkingContent, isLastMessage = false, showModelName = false }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -380,6 +382,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
     }
   }, [message.metadata]);
   const isPlan = parsedMeta?.type === "plan";
+  const modelName: string | null = typeof parsedMeta?.modelId === "string" ? parsedMeta.modelId : null;
   // For plan messages: find the previous plan in the same conversation so we
   // can offer a diff view. Uses allMessages prop from parent (no store subscription).
   const previousPlanContent = useMemo(() => {
@@ -835,6 +838,14 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                 </button>
               </Tip>
               <span className="text-xs text-muted-foreground/60 ml-1">{relativeTimeVerbose(message.createdAt)}</span>
+              {showModelName && modelName && (
+                <span
+                  className="text-xs text-muted-foreground/60 font-mono ml-1.5 truncate max-w-[180px]"
+                  title={modelName}
+                >
+                  {modelName}
+                </span>
+              )}
             </>
           )}
         </div>

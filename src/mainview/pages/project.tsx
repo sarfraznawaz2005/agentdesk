@@ -372,7 +372,7 @@ export function ProjectPage() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "chat" && <ChatLayout projectId={projectId} />}
+        {activeTab === "chat" && <ChatLayout projectId={projectId} showModelName />}
         {activeTab === "kanban" && (
           <KanbanBoard
             projectId={projectId}

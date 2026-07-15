@@ -905,6 +905,14 @@ input — verify current Web Speech coverage across all chat surfaces (in-app,
 Quick Chat, Dashboard, etc.) before deciding whether `transcribe` is worth
 adding as a fallback anywhere.
 
+**Implemented 2026-07-15, scope changed by user decision** — see
+`ai-sdk-7-migration-tasks.md` §4.5. Web Speech coverage was verified complete
+across all 7 target surfaces. Both `generateSpeech` (read-aloud) and
+`transcribe` (fallback) were explicitly declined by the user rather than
+built. In their place, the user redirected to a different, smaller feature:
+a model-name label next to the Copy button on PM/sub-agent responses, main
+project chat only.
+
 ---
 
 ## 10. Things Upstream Improved/Fixed That We Should Incorporate
