@@ -1,4 +1,4 @@
-import { streamText, stepCountIs, type ModelMessage } from "ai";
+import { streamText, isStepCount, type ModelMessage } from "ai";
 
 // ---------------------------------------------------------------------------
 // /preview slash-command — full instructions passed silently to the PM
@@ -593,7 +593,7 @@ export class AgentEngine {
 				validate_skill: skillTools.validate_skill.tool,
 				// Preview tool
 				preview_project: createPreviewTool(this.projectId, workspacePath ?? "", conversationId, providerConfig),
-				...await getPluginTools(),
+				...(await getPluginTools()),
 			}, "project-manager");
 
 			// 8. Stream Project Manager response
@@ -651,7 +651,7 @@ export class AgentEngine {
 				const toolCallNames = new Map<string, string>();
 
 				this.callbacks.onStreamReset(conversationId, assistantMessageId);
-				await logPrompt("PM", context.system, context.messages, providerRow.defaultModel ?? "default");
+				await logPrompt("PM", context.instructions, context.messages, providerRow.defaultModel ?? "default");
 
 				// Full Streaming support — only ever active when the user has opted
 				// in; Hybrid/No Streaming leave onText/onReasoning below completely
@@ -676,7 +676,7 @@ export class AgentEngine {
 
 				const cliResult = await runClaudeCliTask({
 					task: transcript || content,
-					systemPrompt: context.system ?? "",
+					systemPrompt: context.instructions ?? "",
 					tools: pmTools,
 					modelId,
 					workspacePath,
@@ -874,14 +874,14 @@ export class AgentEngine {
 				// Notify frontend immediately so PM placeholder is in the messages array
 				// BEFORE any tool calls or agent dispatches happen.
 				this.callbacks.onStreamReset(conversationId, assistantMessageId);
-				await logPrompt("PM", context.system, context.messages, providerRow.defaultModel ?? "default");
-				const cached = applyAnthropicCaching(providerRow.providerType, context.system, context.messages);
+				await logPrompt("PM", context.instructions, context.messages, providerRow.defaultModel ?? "default");
+				const cached = applyAnthropicCaching(providerRow.providerType, context.instructions, context.messages);
 				result = streamText({
 					model,
-					system: cached.system,
+					instructions: cached.instructions,
 					messages: cached.messages,
 					tools: activeTools,
-					stopWhen: [stepCountIs(100)],
+					stopWhen: [isStepCount(100)],
 					abortSignal: abortController?.signal,
 					...pmThinkingOptions,
 					// Deliver real media bytes from a read_image/take_screenshot/read_audio call
@@ -893,12 +893,12 @@ export class AgentEngine {
 						const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
 						if (!mediaFollowUp) return undefined;
 						context.messages = [...context.messages, mediaFollowUp as ModelMessage];
-						const recached = applyAnthropicCaching(providerRow.providerType, context.system, context.messages);
-						return recached.system !== undefined
-							? { messages: recached.messages, system: recached.system }
+						const recached = applyAnthropicCaching(providerRow.providerType, context.instructions, context.messages);
+						return recached.instructions !== undefined
+							? { messages: recached.messages, instructions: recached.instructions }
 							: { messages: recached.messages };
 					},
-					onStepFinish: (stepResult) => {
+					onStepEnd: (stepResult) => {
 						const stepAny = stepResult as {
 							text?: string;
 							reasoningText?: string;
@@ -1037,7 +1037,7 @@ export class AgentEngine {
 				// requests where no [Next Action] hint was injected.
 				let agentDispatchedThisTurn = false;
 
-				for await (const part of result.fullStream) {
+				for await (const part of result.stream) {
 					if (part.type === "reasoning-start" || part.type === "reasoning-end") {
 						// Track reasoning boundaries — skip, handled by reasoning-delta
 					} else if (part.type === "reasoning-delta") {

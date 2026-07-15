@@ -133,7 +133,7 @@ async function triageMessage(config: ProviderConfig, modelId: string, body: stri
 		const adapter = createProviderAdapter(config);
 		const { text } = await generateText({
 			model: adapter.createModel(internalCallModelId(config.providerType, modelId)),
-			system: `Classify a client's freelance message into exactly ONE category:
+			instructions: `Classify a client's freelance message into exactly ONE category:
 - payment: anything about money, invoices, deposits, releasing/holding funds, payment methods.
 - contract: signing agreements, NDAs, or legal terms.
 - off_platform: asking to move to WhatsApp/email/phone/Telegram, or to share contact details.

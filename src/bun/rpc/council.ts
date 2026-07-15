@@ -114,7 +114,7 @@ async function councilComplete(opts: {
   timeoutMs?: number;
   onToken?: (token: string) => void;
 }): Promise<string> {
-  const { provider, system, prompt, signal, onToken } = opts;
+  const { provider, instructions: system, prompt, signal, onToken } = opts;
   const streamingMode = await getStreamingMode();
 
   if (provider.providerType === "claude-subscription" && !isHaikuModel(provider.modelId)) {
@@ -153,7 +153,7 @@ async function councilComplete(opts: {
 
   const model = provider.adapter.createModel(provider.modelId);
   if (onToken) {
-    const stream = streamText({ model, abortSignal: signal, system, messages: [{ role: "user", content: prompt }] });
+    const stream = streamText({ model, abortSignal: signal, instructions, messages: [{ role: "user", content: prompt }] });
     let fullText = "";
     for await (const chunk of stream.textStream) {
       if (signal.aborted) break;
@@ -162,7 +162,7 @@ async function councilComplete(opts: {
     }
     return fullText;
   }
-  const result = await generateText({ model, abortSignal: signal, system, messages: [{ role: "user", content: prompt }] });
+  const result = await generateText({ model, abortSignal: signal, instructions, messages: [{ role: "user", content: prompt }] });
   return result.text;
 }
 
@@ -273,7 +273,7 @@ async function runParallelRound(
         // drop the whole response in that mode.
         agentResponse = await councilComplete({
           provider,
-          system: buildSystem(agent),
+          instructions: buildSystem(agent),
           prompt,
           signal,
           onToken: (chunk) => {
@@ -350,7 +350,7 @@ async function runBordaRanking(
         rankingText = (await councilComplete({
           provider,
           signal,
-          system: `You are ${ranker.displayName}. Rank the following peer responses from best (most insightful and accurate) to worst. Reply with ONLY a JSON array of 1-indexed positions from best to worst. e.g. [2,1,3]`,
+          instructions: `You are ${ranker.displayName}. Rank the following peer responses from best (most insightful and accurate) to worst. Reply with ONLY a JSON array of 1-indexed positions from best to worst. e.g. [2,1,3]`,
           prompt: `Peer responses to rank:\n\n${numbered}`,
         })).trim();
       } catch {
@@ -405,7 +405,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   const selectionText = await councilComplete({
     provider,
     signal,
-    system: `You are the Project Manager for a council of AI experts. Select the most relevant experts to answer the user's question. Default target is 3 agents; select up to 5 for complex multi-domain questions. Respond with ONLY a valid JSON array of agent names, e.g.: ["backend-engineer","security-expert"]. No markdown, no explanation.`,
+    instructions: `You are the Project Manager for a council of AI experts. Select the most relevant experts to answer the user's question. Default target is 3 agents; select up to 5 for complex multi-domain questions. Respond with ONLY a valid JSON array of agent names, e.g.: ["backend-engineer","security-expert"]. No markdown, no explanation.`,
     prompt: `Available agents: ${agentListStr}\n\nUser question: ${effectiveQuery}\n\nWhich 3-5 agents should participate in this council?`,
   });
 
@@ -439,7 +439,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   const clarificationText = (await councilComplete({
     provider,
     signal,
-    system: `You are the Project Manager facilitating an expert council discussion. Determine if the user's question is missing a critical technical detail that would meaningfully change the experts' recommendations. Ask ONLY about technical or domain constraints (e.g. scale, existing infrastructure, specific requirements) — never about team size, budget, or process. If a useful clarification exists, respond with "QUESTION: <one concise technical question>". If the question is sufficiently clear, respond with "PROCEED". When in doubt, prefer PROCEED.`,
+    instructions: `You are the Project Manager facilitating an expert council discussion. Determine if the user's question is missing a critical technical detail that would meaningfully change the experts' recommendations. Ask ONLY about technical or domain constraints (e.g. scale, existing infrastructure, specific requirements) — never about team size, budget, or process. If a useful clarification exists, respond with "QUESTION: <one concise technical question>". If the question is sufficiently clear, respond with "PROCEED". When in doubt, prefer PROCEED.`,
     prompt: `User question: ${effectiveQuery}`,
   })).trim();
 
@@ -496,7 +496,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   const convergenceText = await councilComplete({
     provider,
     signal,
-    system: `You are the Project Manager reviewing anonymous expert positions. Determine whether these positions agree on the core recommendation. Reply with ONLY valid JSON: {"converged": true/false, "summary": "<brief anonymized summary of all positions for agents to review>"}`,
+    instructions: `You are the Project Manager reviewing anonymous expert positions. Determine whether these positions agree on the core recommendation. Reply with ONLY valid JSON: {"converged": true/false, "summary": "<brief anonymized summary of all positions for agents to review>"}`,
     prompt: `User question: ${activeQuery}\n\nAnonymous positions:\n${anonymisedPositions}`,
   });
 
@@ -611,7 +611,7 @@ async function runSession(session: CouncilSession, query: string, context?: stri
   const finalAnswer = await councilComplete({
     provider,
     signal,
-    system: `You are the Project Manager synthesizing a council discussion. The peer-ranked scores are: ${scoresStr}. The highest-scoring position should anchor your recommendation. ${
+    instructions: `You are the Project Manager synthesizing a council discussion. The peer-ranked scores are: ${scoresStr}. The highest-scoring position should anchor your recommendation. ${
       !didConverge
         ? "If agents disagreed and did NOT converge, explicitly surface the disagreement: describe both positions and give a conditional recommendation."
         : ""

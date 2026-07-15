@@ -41,7 +41,7 @@ export function buildMediaFollowUpMessage(
 		if (IMAGE_TOOL_NAMES.has(tr.toolName)) {
 			const image = extractImagePayload(raw);
 			if (image) {
-				mediaParts.push({ type: "image", image: image.base64, mediaType: image.mimeType });
+				mediaParts.push({ type: 'file', data: image.base64, mediaType: image.mimeType });
 				toolNamesUsed.add(tr.toolName);
 			}
 		} else if (AUDIO_TOOL_NAMES.has(tr.toolName)) {

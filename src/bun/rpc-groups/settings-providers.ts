@@ -116,7 +116,7 @@ export const handlers: Record<string, (params: any) => any> = {
 
 		const result = await generateText({
 			model,
-			system: `You are an expert prompt engineer specializing in AI coding assistants. Your job is to transform vague or brief user prompts into clear, detailed, well-structured prompts that will get significantly better results from an AI agent.
+			instructions: `You are an expert prompt engineer specializing in AI coding assistants. Your job is to transform vague or brief user prompts into clear, detailed, well-structured prompts that will get significantly better results from an AI agent.
 
 When enhancing a prompt:
 - Expand vague requirements into specific, actionable details

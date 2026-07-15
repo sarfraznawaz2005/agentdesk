@@ -666,7 +666,7 @@ async function aiCompactConversation(
 
 		const compactionResult = await generateText({
 			model,
-			system: cached.system,
+			instructions: cached.instructions,
 			messages: cached.messages,
 		});
 
@@ -1443,7 +1443,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		// implementation to keep in sync with this one.
 		const result = streamText({
 			model,
-			system: cached.system,
+			instructions: cached.instructions,
 			messages: cached.messages,
 			tools,
 			abortSignal: compositeController.signal,
@@ -1475,8 +1475,8 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				if (mediaFollowUp) {
 					agentMessages.push(mediaFollowUp as ModelMessage);
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
-					return recached.system !== undefined
-						? { messages: recached.messages, system: recached.system }
+					return recached.instructions !== undefined
+						? { messages: recached.messages, instructions: recached.instructions }
 						: { messages: recached.messages };
 				}
 
@@ -1486,8 +1486,8 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 					pendingStuckWarning = null;
 					agentMessages.push({ role: "user" as const, content: warning });
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
-					return recached.system !== undefined
-						? { messages: recached.messages, system: recached.system }
+					return recached.instructions !== undefined
+						? { messages: recached.messages, instructions: recached.instructions }
 						: { messages: recached.messages };
 				}
 
@@ -1528,16 +1528,16 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 					}
 					// Return compacted messages
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
-					return recached.system !== undefined
-						? { messages: recached.messages, system: recached.system }
+					return recached.instructions !== undefined
+						? { messages: recached.messages, instructions: recached.instructions }
 						: { messages: recached.messages };
 				} else if (contextRatio > 0.85 && aiCompactionDone) {
 					logAgent(`${agentName} compaction=post-compact-strip (${Math.round(contextRatio * 100)}%)`);
 					compactToolResultsInMessages(agentMessages, 5);
 					stripOldAssistantText(agentMessages);
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
-					return recached.system !== undefined
-						? { messages: recached.messages, system: recached.system }
+					return recached.instructions !== undefined
+						? { messages: recached.messages, instructions: recached.instructions }
 						: { messages: recached.messages };
 				} else if (contextRatio > 0.60) {
 					logAgent(`${agentName} compaction=aggressive (${Math.round(contextRatio * 100)}%, keep 5)`);
@@ -1550,7 +1550,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			},
 
 			// --- Step callbacks for broadcasting + guardrails ---
-			onStepFinish: (stepResult) => {
+			onStepEnd: (stepResult) => {
 				const step = stepResult as {
 					text?: string;
 					reasoningText?: string;
@@ -1709,7 +1709,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		// "full" mode, feeds live text/reasoning deltas into the same progressive-
 		// part mechanism the CLI branch uses. onStepFinish above (unchanged) still
 		// creates/finalizes the authoritative MessagePart once each step completes.
-		for await (const part of result.fullStream) {
+		for await (const part of result.stream) {
 			if (part.type === "text-delta") {
 				pushLiveDelta("text", part.text ?? "");
 			} else if (part.type === "reasoning-delta") {

@@ -440,7 +440,7 @@ export async function executeTask(
 						const adapter = createProviderAdapter(providerConfig);
 						const result = await generateText({
 							model: adapter.createModel(modelId),
-							system: systemPrompt,
+							instructions: systemPrompt,
 							prompt: instructions,
 							tools: allTools,
 							abortSignal,

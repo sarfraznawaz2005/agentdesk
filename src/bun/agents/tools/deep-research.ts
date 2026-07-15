@@ -258,7 +258,7 @@ export function createDeepResearchTool(ctx: DeepResearchContext): Record<string,
 					model,
 					abortSignal: signal,
 					maxRetries: LLM_MAX_RETRIES,
-					system: plannerSystem(today),
+					instructions: plannerSystem(today),
 					prompt: `Research topic:\n${topic}`,
 				});
 				const plan = coercePlan(
@@ -287,7 +287,7 @@ export function createDeepResearchTool(ctx: DeepResearchContext): Record<string,
 						model,
 						abortSignal: signal,
 						maxRetries: LLM_MAX_RETRIES,
-						system: evaluatorSystem(today),
+						instructions: evaluatorSystem(today),
 						prompt: evalPrompt,
 					});
 					const evaluation = coerceEvaluation(
@@ -331,7 +331,7 @@ export function createDeepResearchTool(ctx: DeepResearchContext): Record<string,
 					model,
 					abortSignal: signal,
 					maxRetries: LLM_MAX_RETRIES,
-					system: synthesisSystem(today),
+					instructions: synthesisSystem(today),
 					prompt: `Topic: ${topic}\n\nInterpretation: ${interpretation}\n\nSources:\n${sourcesBlock}`,
 				});
 

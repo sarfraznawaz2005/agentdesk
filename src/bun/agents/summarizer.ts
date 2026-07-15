@@ -152,7 +152,7 @@ export async function summarizeConversation(options: {
 
       const result = await generateText({
         model,
-        system: SUMMARIZER_SYSTEM_PROMPT,
+        instructions: SUMMARIZER_SYSTEM_PROMPT,
         messages: [{ role: "user", content: parts.join("\n\n") }],
       });
 

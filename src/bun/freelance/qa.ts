@@ -26,7 +26,7 @@ export async function qaRevise(
 	try {
 		const { text: out } = await generateText({
 			model: adapter.createModel(providerType ? internalCallModelId(providerType, modelId) : modelId),
-			system: `You are a strict editor reviewing a freelancer's client ${kind} before it is sent. Remove or soften: any over-promise (guarantees, "100%", "best", unrealistic timelines), any unverifiable boast (specific past clients, numbers, or credentials you were not explicitly given), and any AI giveaway phrasing. Preserve the meaning, tone, and roughly the length. Do NOT add new claims or new information. Output ONLY the corrected ${kind} text — no preamble, no quotes, no notes. If it is already clean, return it unchanged.`,
+			instructions: `You are a strict editor reviewing a freelancer's client ${kind} before it is sent. Remove or soften: any over-promise (guarantees, "100%", "best", unrealistic timelines), any unverifiable boast (specific past clients, numbers, or credentials you were not explicitly given), and any AI giveaway phrasing. Preserve the meaning, tone, and roughly the length. Do NOT add new claims or new information. Output ONLY the corrected ${kind} text — no preamble, no quotes, no notes. If it is already clean, return it unchanged.`,
 			prompt: trimmed,
 			temperature: 0.2,
 		});

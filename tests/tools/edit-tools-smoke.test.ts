@@ -22,7 +22,7 @@ import { describe, it, expect, mock } from "bun:test";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { generateText, stepCountIs, type Tool } from "ai";
+import { generateText, isStepCount, type Tool } from "ai";
 
 const SMOKE = process.env.OPENCODE_SMOKE === "1";
 const maybe = SMOKE ? it : it.skip;
@@ -69,7 +69,7 @@ describe("edit_file — live free-model smoke (OpenCode)", () => {
 					result = await generateText({
 						model: adapter.createModel(modelId),
 						tools,
-						stopWhen: [stepCountIs(6)],
+						stopWhen: [isStepCount(6)],
 						prompt:
 							`Use the edit_file tool to change the VERSION constant from 1 to 2 in the file at ` +
 							`"${file}". Read it first if you need to. Change only that number.`,

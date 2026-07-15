@@ -145,7 +145,7 @@ export async function draftBidForListing(platform: string, listingId: string, hu
 	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${description}${answersBlock}\n\nWrite my proposal for this job.`;
 	const { text } = await generateText({
 		model: adapter.createModel(internalCallModelId(providerType, modelId)),
-		system: buildProposalSystem(),
+		instructions: buildProposalSystem(),
 		prompt,
 		temperature: 0.75,
 	});
@@ -160,7 +160,7 @@ export async function draftBidForListing(platform: string, listingId: string, hu
 		try {
 			const { text: retry } = await generateText({
 				model: adapter.createModel(internalCallModelId(providerType, modelId)),
-				system: buildProposalSystem(),
+				instructions: buildProposalSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: This proposal must clearly differ in structure and wording from your recent proposals — different opening, different ordering, different phrasing. Anchor it in the specifics of THIS job.`,
 				temperature: 0.9,
 			});

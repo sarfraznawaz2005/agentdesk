@@ -71,7 +71,7 @@ export async function extractDescription(
   const { text } = await generateText({
     model: adapter.createModel(providerType ? internalCallModelId(providerType, modelId) : modelId),
     abortSignal,
-    system:
+    instructions:
       "You are a precise data extraction assistant. Extract ONLY the job or project description from the page content provided. " +
       "Return only the actual project requirements and description the client wrote. " +
       "EXCLUDE everything else: the project title, budget, price, hourly rate, project status, posted date, deadline, bid counts, platform navigation, sidebar content, skill tags, and any Freelancer.com UI text. " +

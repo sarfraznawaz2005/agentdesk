@@ -86,7 +86,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   kanban: "Kanban",
   git: "Git",
   web: "Web",
-  system: "System",
+  instructions: "System",
   process: "Process",
   notes: "Notes",
   communication: "Communication",

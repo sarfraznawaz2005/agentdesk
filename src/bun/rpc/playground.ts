@@ -142,7 +142,7 @@ async function generateProjectName(): Promise<string> {
 		});
 		const result = await generateText({
 			model: adapter.createModel(internalCallModelId(providerRow.providerType, modelId)),
-			system:
+			instructions:
 				"You name software projects. Given a list of files, reply with ONLY a concise, descriptive " +
 				"project name of 2-4 words in Title Case. No quotes, no punctuation, no explanation.",
 			messages: [{ role: "user", content: `Files in the project:\n${files.join("\n")}\n\nProject name:` }],

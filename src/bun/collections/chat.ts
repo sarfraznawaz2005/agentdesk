@@ -10,7 +10,7 @@
 // tool. Saving a note stays a deliberate human UI action (docs/collections-plan.md §"Agent
 // write access").
 
-import { streamText, tool, stepCountIs, type ModelMessage } from "ai";
+import { streamText, tool, isStepCount, type ModelMessage } from "ai";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db";
@@ -344,14 +344,14 @@ export async function sendCollectionsChatMessage(params: {
 
 				const result = streamText({
 					model,
-					system: systemPrompt,
+					instructions: systemPrompt,
 					messages: newHistory,
 					tools,
-					stopWhen: [stepCountIs(20)],
+					stopWhen: [isStepCount(20)],
 					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
 				});
 
-				for await (const part of result.fullStream) {
+				for await (const part of result.stream) {
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;

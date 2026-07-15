@@ -312,7 +312,7 @@ const ROLE_STYLES: Record<string, { label: string; badge: string; container: str
   user: { label: "User", badge: "bg-indigo-600 text-white", container: "border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/20" },
   assistant: { label: "Assistant", badge: "bg-emerald-600 text-white", container: "border-border bg-background" },
   tool: { label: "Tool", badge: "bg-amber-500 text-white", container: "border-amber-200 dark:border-amber-700/50 bg-amber-50/40 dark:bg-amber-950/20" },
-  system: { label: "System", badge: "bg-gray-500 text-white", container: "border-border bg-muted/30" },
+  instructions: { label: "System", badge: "bg-gray-500 text-white", container: "border-border bg-muted/30" },
 };
 
 function roleStyle(role: string) {

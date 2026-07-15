@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from "ai";
+import { streamText, isStepCount } from "ai";
 import type { Tool } from "ai";
 import { eq, asc } from "drizzle-orm";
 import { db } from "../db";
@@ -373,14 +373,14 @@ async function streamAndPersist(
 
       const result = streamText({
         model,
-        system: systemPrompt,
+        instructions: systemPrompt,
         messages: history,
         tools,
-        stopWhen: [stepCountIs(100)],
+        stopWhen: [isStepCount(100)],
         abortSignal: signal,
       });
 
-      for await (const part of result.fullStream) {
+      for await (const part of result.stream) {
         if (part.type === "text-delta") {
           const token = (part as { text?: string }).text ?? "";
           fullContent += token;

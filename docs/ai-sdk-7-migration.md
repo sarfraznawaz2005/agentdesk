@@ -207,6 +207,23 @@ loops) → the 9 independent surfaces → provider adapters → tools.
 > document to match reality before proceeding — don't silently work around a
 > stale plan. Do not start Phase 2 in the same sitting as Phase 0-1 without
 > confirming this checkpoint passed.
+>
+> **Checkpoint reached 2026-07-15** on branch `ai-sdk-7-migration`: codemod
+> touched 30 real source files cleanly (exit 0; the only transform failures
+> were on a gitignored `dist-web/` build artifact the ignore-patterns missed).
+> `bun run typecheck` — 37 errors / 10 files, 86% one root cause (leftover
+> `system`→`instructions` shorthand-property fallout the codemod couldn't
+> mechanize, squarely Phase 2.4 scope). `bun test` — 712 pass / 20 fail / 1
+> skip, all failures cascading from the same `instructions`-undefined bug at
+> `council.ts:165`, plus two independent secondary bugs surfaced
+> (`council.ts:81` duplicate provider-config error; `channels/manager.ts:626`
+> `engine.sendMessage is not a function`). `bun run lint` — **fully clean**,
+> which corrects this section's implicit assumption: ESLint's configured
+> rules here aren't type-aware enough to catch breaking API-shape renames, so
+> lint is not a useful Phase 2 progress signal going forward — rely on
+> typecheck + tests. Full detail in `ai-sdk-7-migration-tasks.md`'s Phase 1
+> section. No other §5 table predictions need correction. **Go/no-go on Stage
+> B: pending user decision.**
 
 ### Phase 2 — Hand-migrate what the codemod can't reach
 

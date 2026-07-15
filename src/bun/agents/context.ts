@@ -79,7 +79,7 @@ export async function buildContext(options: ContextOptions): Promise<BuiltContex
     );
 
   return {
-    system: systemContent,
+    instructions: systemContent,
     messages: coreMessages,
     tokenCount,
     contextLimit,

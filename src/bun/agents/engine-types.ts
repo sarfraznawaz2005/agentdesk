@@ -103,7 +103,7 @@ export function applyAnthropicCaching(
 	messages: ModelMessage[],
 ): { system: string | undefined; messages: ModelMessage[] } {
 	if (providerType !== "anthropic" && providerType !== "openrouter") {
-		return { system, messages };
+		return { instructions, messages };
 	}
 
 	const systemMessage: ModelMessage = {
@@ -115,7 +115,7 @@ export function applyAnthropicCaching(
 	};
 
 	return {
-		system: undefined,
+		instructions: undefined,
 		messages: [systemMessage, ...messages],
 	};
 }

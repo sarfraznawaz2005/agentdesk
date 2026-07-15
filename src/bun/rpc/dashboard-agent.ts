@@ -11,7 +11,7 @@
  *     agentName included so the matching widget can filter.
  */
 
-import { streamText, stepCountIs, type ModelMessage, tool } from "ai";
+import { streamText, isStepCount, type ModelMessage, tool } from "ai";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
@@ -214,14 +214,14 @@ export async function sendDashboardAgentMessage(
 
 				const result = streamText({
 					model: adapter.createModel(modelId),
-					system,
+					instructions,
 					messages:    newHistory,
 					tools,
-					stopWhen:    [stepCountIs(100)],
+					stopWhen:    [isStepCount(100)],
 					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
 				});
 
-				for await (const part of result.fullStream) {
+				for await (const part of result.stream) {
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;

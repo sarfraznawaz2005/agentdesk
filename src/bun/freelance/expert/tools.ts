@@ -344,7 +344,7 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 					const diff = (await runGit(["-C", ctx.workspacePath, "--no-pager", "diff", "--stat"], ctx.workspacePath)).out;
 					const { text } = await generateText({
 						model: adapter.createModel(internalCallModelId(row.providerType, row.defaultModel ?? "gpt-4o-mini")),
-						system:
+						instructions:
 							"You are a strict senior reviewer doing final QA before delivering paid freelance work to a client. " +
 							"Reply with a JSON object {\"pass\": boolean, \"issues\": string[]}. Fail (pass=false) if anything is " +
 							"incomplete, untested, low quality, or does not meet the stated requirements. Be honest and demanding.",

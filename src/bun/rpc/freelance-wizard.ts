@@ -1,5 +1,5 @@
 import he from "he";
-import { generateText, stepCountIs } from "ai";
+import { generateText, isStepCount } from "ai";
 import { z } from "zod";
 import { eq, and, notInArray, desc, gte, isNull } from "drizzle-orm";
 import { parse as parseHtml } from "node-html-parser";
@@ -838,11 +838,11 @@ async function analyzeListingWorkability(
   let phase1Result = await generateText({
     model: adapter.createModel(internalModelId),
     abortSignal,
-    system: buildAnalysisSystemPrompt(),
+    instructions: buildAnalysisSystemPrompt(),
     messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
     tools,
     toolChoice: "auto",
-    stopWhen: [stepCountIs(8)],
+    stopWhen: [isStepCount(8)],
   });
 
   const collectToolResults = (r: typeof phase1Result): string[] => {
@@ -866,11 +866,11 @@ async function analyzeListingWorkability(
       phase1Result = await generateText({
         model: adapter.createModel(internalModelId),
         abortSignal,
-        system: buildAnalysisSystemPrompt(),
+        instructions: buildAnalysisSystemPrompt(),
         messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
         tools,
         toolChoice: "required",
-        stopWhen: [stepCountIs(6)],
+        stopWhen: [isStepCount(6)],
       });
       toolResultLines = collectToolResults(phase1Result);
     } catch (forceErr) {
@@ -894,7 +894,7 @@ async function analyzeListingWorkability(
       const written = await generateText({
         model: adapter.createModel(internalModelId),
         abortSignal,
-        system: buildAnalysisWritePrompt(),
+        instructions: buildAnalysisWritePrompt(),
         messages: [{
           role: "user",
           content: `${userMessage}\n\n---\n\n## Verified system results (ground truth — summarise in prose, never list raw)\n${toolContext}\n\nNow write the analysis in the required format.`,
@@ -914,7 +914,7 @@ async function analyzeListingWorkability(
   const { text: verdictText } = await generateText({
     model: adapter.createModel(internalModelId),
     abortSignal,
-    system:
+    instructions:
       "You are a strict data extractor. Read the provided feasibility analysis and return ONLY a JSON object — " +
       "no markdown, no explanation, no code fences. Use exactly these field names:\n" +
       '{"workable": boolean, "confidence": "high"|"medium"|"low", "coveragePercent": number 0-100, "reason": "one or two sentence summary", "blockers": ["blocker 1", "blocker 2"]}\n\n' +

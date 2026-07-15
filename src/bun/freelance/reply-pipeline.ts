@@ -129,7 +129,7 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 	const { adapter, modelId, providerType } = await resolveProviderAndModel();
 	const { text } = await generateText({
 		model: adapter.createModel(internalCallModelId(providerType, modelId)),
-		system: buildStrategistSystem(),
+		instructions: buildStrategistSystem(),
 		prompt,
 		temperature: 0.7,
 	});
@@ -144,7 +144,7 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 		try {
 			const { text: retry } = await generateText({
 				model: adapter.createModel(internalCallModelId(providerType, modelId)),
-				system: buildStrategistSystem(),
+				instructions: buildStrategistSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: Your reply must clearly differ in structure and wording from your recent messages — vary the opening, sentence order, and phrasing.`,
 				temperature: 0.9,
 			});

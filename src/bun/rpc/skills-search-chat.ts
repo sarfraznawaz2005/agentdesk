@@ -7,7 +7,7 @@
  * mirroring the Dashboard PM chatbot (src/bun/rpc/dashboard.ts) — there is no
  * per-entity key here, just one global conversation.
  */
-import { streamText, stepCountIs, type ModelMessage } from "ai";
+import { streamText, isStepCount, type ModelMessage } from "ai";
 import type { Tool } from "ai";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
@@ -203,16 +203,16 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
 
       const result = streamText({
         model,
-        system: systemPrompt,
+        instructions: systemPrompt,
         messages: modelHistory,
         tools,
-        stopWhen: [stepCountIs(100)],
+        stopWhen: [isStepCount(100)],
         abortSignal: signal,
       });
 
       const toolStartTimes = new Map<string, string>();
 
-      for await (const part of result.fullStream) {
+      for await (const part of result.stream) {
         if (part.type === "text-delta") {
           const token = (part as { text?: string }).text ?? "";
           fullContent += token;

@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogle } from "@ai-sdk/google";
 import { generateText } from "ai";
 import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
@@ -15,11 +15,11 @@ const FALLBACK_MODELS = [
 
 export class GoogleAdapter implements ProviderAdapter {
 	private config: ProviderConfig;
-	private provider: ReturnType<typeof createGoogleGenerativeAI>;
+	private provider: ReturnType<typeof createGoogle>;
 
 	constructor(config: ProviderConfig) {
 		this.config = config;
-		this.provider = createGoogleGenerativeAI({
+		this.provider = createGoogle({
 			apiKey: config.apiKey,
 			headers: PROVIDER_HEADERS,
 		});
