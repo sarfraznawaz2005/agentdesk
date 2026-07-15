@@ -120,16 +120,14 @@ async function findEligibleImageModel(): Promise<ResolvedImageModel | { error: s
 const generateImageInputSchema = z.object({
 	prompt: z.string().min(1).describe("What to generate, e.g. 'a cute cat, simple illustration'"),
 });
-type GenerateImageInput = z.infer<typeof generateImageInputSchema>;
-
-const generateImageTool = tool<GenerateImageInput, string>({
+const generateImageTool = tool({
 	description:
 		"Generate an image from a text prompt and show it inline in the chat. " +
 		"Automatically picks an image-capable model from your configured AI providers — " +
 		"no need to specify a provider or model. Fails gracefully with a readable error " +
 		"(e.g. insufficient balance, not entitled) if the provider can't generate the image right now.",
 	inputSchema: generateImageInputSchema,
-	execute: async ({ prompt }): Promise<string> => {
+	execute: async ({ prompt }: { prompt: string }): Promise<string> => {
 		const resolved = await findEligibleImageModel();
 		if ("error" in resolved) {
 			return JSON.stringify({ success: false, error: resolved.error });

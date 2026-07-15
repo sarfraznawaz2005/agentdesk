@@ -13,7 +13,7 @@ interface ContextOptions {
 }
 
 interface BuiltContext {
-  system: string;
+  instructions: string;
   messages: ModelMessage[];
   tokenCount: number;
   contextLimit: number;
@@ -48,7 +48,7 @@ export async function buildContext(options: ContextOptions): Promise<BuiltContex
   allMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const recentMessages = allMessages.slice(-maxRecent);
 
-  // 3. Build system string (used via the dedicated `system` parameter in streamText)
+  // 3. Build system string (used via the dedicated `instructions` parameter in streamText)
   const systemParts = [systemPrompt];
   if (constitution) systemParts.push(`## Constitution\n${constitution}`);
   if (summaries.length > 0) {

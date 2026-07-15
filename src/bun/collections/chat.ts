@@ -1,7 +1,7 @@
 // Collections Chat — streaming, tool-calling assistant over the user's saved notes.
 //
 // Mirrors src/bun/rpc/dashboard.ts's dashboard PM chat: in-memory session history +
-// abort controllers keyed by sessionId, streamText() + tool() + stepCountIs, tokens/tool
+// abort controllers keyed by sessionId, streamText() + tool() + isStepCount, tokens/tool
 // calls broadcast to the webview via broadcastToWebview. No DB persistence, no kanban
 // AgentEngine — this is a single fixed built-in assistant, same positioning as the
 // dashboard widgets, not a DB-configurable custom agent.

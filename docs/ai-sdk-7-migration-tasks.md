@@ -44,31 +44,34 @@
 
 ## Stage B — Phase 2: Hand-migrate what the codemod can't reach (§4 Phase 2)
 
-- [ ] **2.1** `engine-types.ts` — update `extractPMReasoning()`'s fallback chain for `outputTokenDetails.reasoningTokens`; verify `providerOptions.anthropic.thinking` still applies correctly (§5.7)
-- [ ] **2.2** `media-followup.ts` — rebuild `buildMediaFollowUpMessage()`'s content parts against v7's canonical `file`/`file-data`/`file-url` shape (§5.5, highest-risk item)
+- [ ] **2.1** `engine-types.ts` — update `extractPMReasoning()`'s fallback chain for `outputTokenDetails.reasoningTokens`; verify `providerOptions.anthropic.thinking` still applies correctly (§5.7) — **not started.** A different bug in the same file was fixed 2026-07-15 (see note below); `extractPMReasoning()` itself is untouched
+  - **Note (2026-07-15)**: `applyAnthropicCaching()` in this file was left broken by the codemod — its return type/statements still said `system` while every call site (`engine.ts`, `agent-loop.ts`) already expected `.instructions` on the return value. Fixed: return type + body now produce `{ instructions, messages }`. `BuiltContext` in `context.ts` had the identical bug (interface said `system`, return statement said `instructions`) — fixed the same way. These two fixes alone resolved 22 of the 37 post-codemod typecheck errors (`agent-loop.ts` ×10, `engine.ts` ×8, `engine-types.ts` ×3, `context.ts` ×1)
+- [ ] **2.2** `media-followup.ts` — rebuild `buildMediaFollowUpMessage()`'s content parts against v7's canonical `file`/`file-data`/`file-url` shape (§5.5, highest-risk item) — **not started, still the highest-risk open item.** Typechecks clean post-codemod, but that only proves the *names* compile — the actual v6→v7 content-part *shape* change (image parts → file parts) has not been verified against real provider calls yet; needs the §8.4 multimodal round-trip tests, not just tsc
   - [ ] Update `screenshot.ts`'s `toModelOutput` callback in lockstep
   - [ ] Update `audio.ts`'s `toModelOutput` callback in lockstep
   - [ ] Update `image-gen.ts`'s `toModelOutput` callback in lockstep (§12.3 — added 2026-07-15, third name in `IMAGE_TOOL_NAMES`)
   - [ ] Update `engine.ts`'s new `MEDIA_TOOLS` message_parts persistence logic (§12.3 — both the CLI-path branch and the normal `streamText` branch write `tool_call`/`tool_result` message_parts for `generate_image`/`read_image`/`read_audio` directly from the PM loop now)
   - [ ] Verify `dashboard.ts`'s `dashboardPMToolResult` broadcast (built on `extractImagePayload()`) still correctly detects image payloads post-migration
   - [ ] Verify `dashboard-agent.ts`'s `dashboardAgentToolResult` broadcast (same `extractImagePayload()` dependency) still correctly detects image payloads post-migration
-- [ ] **2.3** `claude-subscription-cli-runner.ts` (~lines 355-371) — keep the independent media-stripping mirror conceptually in sync with 2.2 (not touched by the AI SDK rename itself)
-- [ ] **2.4** `engine.ts` + `agent-loop.ts` core loops:
-  - [ ] Rename `system` → `instructions`
-  - [ ] Rename `fullStream` → `stream`
-  - [ ] Rename `onStepFinish` → `onStepEnd`
-  - [ ] Rename `stepCountIs` → `isStepCount` (engine.ts only — agent-loop.ts uses custom predicates)
-  - [ ] Re-verify the hallucination guard (`step.reasoningText` regex) still works post-rename
-  - [ ] Re-verify the transient-error retry loop against the new `finalStep`/`usage` split
-- [ ] **2.5** The 9 independent surfaces — same renames as 2.4:
-  - [ ] `rpc/dashboard.ts`
-  - [ ] `rpc/dashboard-agent.ts`
-  - [ ] `rpc/council.ts`
-  - [ ] `rpc/skills-search-chat.ts`
-  - [ ] `rpc/freelance-chat.ts`
-  - [ ] `collections/chat.ts`
-  - [ ] `rpc/freelance-wizard.ts` (×2 `stepCountIs` call sites)
-  - [ ] `scheduler/task-executor.ts` — dynamic `await import("ai")`, check by hand (codemod may not reach it)
+  - [x] Fixed a distinct, unpredicted issue in the 4 media tool definitions (`audio.ts`, `image-gen.ts`, `screenshot.ts` ×2) — **done 2026-07-15**: v7's `tool<INPUT, OUTPUT, CONTEXT>()` generic signature added a required 3rd `CONTEXT extends Context` type param; the old 2-arg call form `tool<Input, string>({...})` now binds the 2nd arg to `CONTEXT` instead of `OUTPUT`, which fails (`string` doesn't extend `Context = Record<string, unknown>`). Fixed by dropping explicit generics entirely (matching the other 62 `tool({...})` call sites elsewhere in the codebase, which already rely on inference) — but bidirectional inference alone still failed on these 4 specifically (the only ones using `toModelOutput`), surfacing as "no overload matches" pointing at the wrong (last) overload. Root fix: explicitly annotate `execute`'s destructured parameter type (e.g. `async ({ path }: { path: string })`) so overload resolution has enough to commit to the first (correct) overload. Removed the now-orphaned standalone `type XInput = z.infer<...>` aliases these tools no longer needed
+- [ ] **2.3** `claude-subscription-cli-runner.ts` (~lines 355-371) — keep the independent media-stripping mirror conceptually in sync with 2.2 (not touched by the AI SDK rename itself) — not started
+- [x] **2.4** `engine.ts` + `agent-loop.ts` core loops — **renames done 2026-07-15**, behavioral re-verification still pending:
+  - [x] Rename `system` → `instructions` — codemod handled all real call sites; broken only by the `applyAnthropicCaching`/`BuiltContext` bug above, now fixed. Also cleaned up 8 stale comments in `engine.ts`/`agent-loop.ts` still referencing `fullStream`/`onStepFinish` by name (mechanical, not code)
+  - [x] Rename `fullStream` → `stream` — codemod handled this cleanly, zero live code hits remain (confirmed via full-tree grep, only stale comments found and fixed)
+  - [x] Rename `onStepFinish` → `onStepEnd` — same, codemod-clean
+  - [x] Rename `stepCountIs` → `isStepCount` (engine.ts only — agent-loop.ts uses custom predicates) — codemod-clean; one stale comment in `collections/chat.ts` also fixed
+  - [ ] Re-verify the hallucination guard (`step.reasoningText` regex) still works post-rename — needs runtime check, not just typecheck
+  - [ ] Re-verify the transient-error retry loop against the new `finalStep`/`usage` split — needs runtime check
+- [x] **2.5** The 9 independent surfaces — same renames as 2.4 — **codemod + typecheck clean on all 9, 2026-07-15**; `council.ts` additionally needed a hand-fix (see Decision log below), the other 8 needed none beyond the codemod:
+  - [x] `rpc/dashboard.ts` — clean, already correctly used `instructions: systemPrompt` (its local var was never named `system`, so no shorthand-property trap here)
+  - [x] `rpc/dashboard-agent.ts` — **hand-fixed 2026-07-15**: same shorthand-property gap as `council.ts` (local var `system`, codemod left a dangling `instructions,` shorthand in the `streamText` call at line 217) — fixed to `instructions: system`
+  - [x] `rpc/council.ts` — **hand-fixed 2026-07-15, see Decision log** — the codemod over-applied the rename to `councilComplete()`, an internal AgentDesk helper (not an AI SDK call) whose own `opts.system` field only coincidentally shares the name
+  - [x] `rpc/skills-search-chat.ts` — codemod-clean
+  - [x] `rpc/freelance-chat.ts` — codemod-clean
+  - [x] `collections/chat.ts` — codemod-clean (one stale `stepCountIs` comment fixed)
+  - [x] `rpc/freelance-wizard.ts` (×2 `stepCountIs` call sites) — codemod-clean
+  - [x] `scheduler/task-executor.ts` — codemod-clean, dynamic `await import("ai")` was reached correctly
+  - [x] `rpc/playground.ts` — the "9th" surface (not enumerated by file name in the original doc, identified during codemod monitoring) — codemod-clean
 - [ ] **2.6** Provider adapters — mechanical pass on all `src/bun/providers/*.ts`:
   - [ ] `anthropic.ts`
   - [ ] `openai.ts`
@@ -105,20 +108,20 @@
 
 ### Breaking-change verification sweep (§5 table — confirm each, even the "no action needed" rows)
 
-- [ ] 5.1 `system`→`instructions` rename complete everywhere; confirmed `context.ts` never persists system-role messages into `messages[]` (no `allowSystemInMessages` needed)
-- [ ] 5.2 Usage-semantics flip — before/after token comparison run against Phase 0 snapshot; cutover marker plan confirmed (see Phase 4 analytics page)
-- [ ] 5.3 `fullStream`→`stream` renamed in both core loops
-- [ ] 5.4 `zhipu-ai-provider` removed (tracked in 2.7 above)
-- [ ] 5.5 Media/file content-part canonicalization — tested against both an Anthropic-native model and an OpenAI-compatible model (tracked in full in §8.4 below)
-- [ ] 5.6 `onFinish`/`onStepFinish` renamed to `onEnd`/`onStepEnd`
-- [ ] 5.7 `usage.reasoningTokens`→`usage.outputTokenDetails.reasoningTokens` read updated
-- [ ] 5.8 `stepCountIs`→`isStepCount` — all 9 call sites confirmed renamed
-- [ ] 5.9 Confirmed zero usage of `experimental_customProvider`/`experimental_generateImage`/`experimental_output`/`experimental_prepareStep`/`experimental_telemetry` (no action expected, verify still true post-codemod)
-- [ ] 5.10 Google provider rename confirmed in `google.ts` (duplicate of 2.6 sub-item, check off together)
-- [ ] 5.11 `bun run typecheck` clean of any `CallSettings`-related errors
-- [ ] 5.12 Confirmed no code reads `result.request`/`result.response` bodies (no action expected)
-- [ ] 5.13 Confirmed Bun/Node-22/ESM non-issue (duplicate of Phase 0 item, check off together)
-- [ ] 5.15 Confirmed `ai@7`'s zod peer range against installed `zod@3.25.76`; bumped zod if the range narrowed
+- [x] 5.1 `system`→`instructions` rename complete everywhere — **done 2026-07-15**; confirmed `context.ts` never persists system-role messages into `messages[]` (no `allowSystemInMessages` needed)
+- [ ] 5.2 Usage-semantics flip — before/after token comparison run against Phase 0 snapshot; cutover marker plan confirmed (see Phase 4 analytics page) — not started, needs live provider calls
+- [x] 5.3 `fullStream`→`stream` renamed in both core loops — **done 2026-07-15** (codemod-clean, stale comments fixed)
+- [ ] 5.4 `zhipu-ai-provider` removed (tracked in 2.7 above) — not started
+- [ ] 5.5 Media/file content-part canonicalization — tested against both an Anthropic-native model and an OpenAI-compatible model (tracked in full in §8.4 below) — not started, the highest-risk remaining item (see 2.2 note)
+- [x] 5.6 `onFinish`/`onStepFinish` renamed to `onEnd`/`onStepEnd` — **done 2026-07-15** (codemod-clean, stale comments fixed)
+- [ ] 5.7 `usage.reasoningTokens`→`usage.outputTokenDetails.reasoningTokens` read updated — not started (tracked under 2.1)
+- [x] 5.8 `stepCountIs`→`isStepCount` — all 9 call sites confirmed renamed — **done 2026-07-15**
+- [x] 5.9 Confirmed zero usage of `experimental_customProvider`/`experimental_generateImage`/`experimental_output`/`experimental_prepareStep`/`experimental_telemetry` — **verified 2026-07-15**, full-tree grep, zero hits (prediction holds)
+- [x] 5.10 Google provider rename confirmed in `google.ts` — **verified 2026-07-15**: already uses `createGoogle` from `@ai-sdk/google` (current v7 name), no codemod/hand-fix needed (duplicate of 2.6 sub-item)
+- [x] 5.11 `bun run typecheck` clean of any `CallSettings`-related errors — **done 2026-07-15**, 0 typecheck errors overall
+- [x] 5.12 Confirmed no code reads `result.request`/`result.response` bodies — **verified 2026-07-15**, full-tree grep, zero hits (no action needed, prediction holds)
+- [x] 5.13 Confirmed Bun/Node-22/ESM non-issue (duplicate of Phase 0 item, check off together)
+- [x] 5.15 Confirmed `ai@7`'s zod peer range against installed zod — **done 2026-07-15**: `ai@7` requires `zod@^3.25.76 || ^4.1.8`; our own `package.json` declared the looser `^3.24.0` (only satisfied v7's actual requirement by incidental transitive resolution). Tightened to `^3.25.76` to make the real constraint explicit for future clean installs; `bun install` re-verified with no resolution conflicts
 
 ---
 
@@ -265,3 +268,32 @@ Run once after Phase 2 (behavior-preserving) and again after Phase 3/4 (new capa
 - Tool ordering → in-house (tracked as Phase 2.8 above)
 - Feature adoption scope → everything in this initiative (reflected in Phase 3/4 above)
 - HarnessAgent → spike now, not a switch (tracked as Phase 3.7 above)
+
+## New findings from Phase 2 hand-migration (2026-07-15)
+
+- **Codemod over-application in `council.ts`**: `councilComplete()` is an internal
+  AgentDesk helper (not an AI SDK call) whose own options type declares a `system:
+  string` field that only coincidentally shares AI SDK's old field name. The
+  codemod's `rename-system-to-instructions` transform renamed this function's
+  destructuring and all 6 of its call sites' object literals to `instructions:`,
+  which is wrong (that field isn't AI SDK's), while simultaneously leaving the
+  function's own two *genuine* `streamText`/`generateText` calls broken (shorthand
+  `instructions` referencing a variable the same over-rename had renamed away from
+  `system`). Fixed by reverting the 6 call sites + the destructuring back to
+  `system:`, and explicitly writing `instructions: system` at the two real AI SDK
+  call sites. **Lesson for any future codemod pass**: don't trust a codemod's
+  identifier-based rename to distinguish "this object literal targets an AI SDK
+  call" from "this object literal happens to have a same-named field for an
+  unrelated internal function" — grep every touched file's diff for renamed fields
+  feeding non-AI-SDK functions before trusting a clean typecheck.
+- **`error-logger.ts`**: unrelated-to-rename but genuine v7 API change —
+  `LogWarningsFunction`'s `provider`/`model` fields became optional in v7 (were
+  required in v6). Fixed `formatAiSdkWarning()`'s signature + prefix string to
+  handle `undefined` (falls back to "unknown").
+- **`channels/manager.ts:626` `engine.sendMessage is not a function`**: investigated
+  and confirmed **pre-existing on `main`, unrelated to this migration** — reproduces
+  identically with the Phase 1 codemod changes stashed out, and identically again on
+  a clean `main` checkout. Caught internally by `manager.ts`'s own try/catch so it
+  doesn't fail any test, but it is a real broken call site. **Out of scope for this
+  migration** — flagging here so it isn't mistaken for migration-introduced breakage
+  and doesn't get silently fixed as a drive-by.

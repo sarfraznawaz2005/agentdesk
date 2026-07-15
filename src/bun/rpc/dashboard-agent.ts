@@ -214,7 +214,7 @@ export async function sendDashboardAgentMessage(
 
 				const result = streamText({
 					model: adapter.createModel(modelId),
-					instructions,
+					instructions: system,
 					messages:    newHistory,
 					tools,
 					stopWhen:    [isStepCount(100)],

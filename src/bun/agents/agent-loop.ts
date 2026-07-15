@@ -1070,7 +1070,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	}
 
 	// Record REAL tool execution timing — start when execute() is entered, end when
-	// it returns — keyed by toolCallId. onStepFinish runs AFTER execute, so without
+	// it returns — keyed by toolCallId. onStepEnd runs AFTER execute, so without
 	// this its timeStart/timeEnd are stamped post-hoc and every tool shows ~0-2ms.
 	// Reading from this map lets the UI display actual durations (e.g. a 10s sleep).
 	const toolTimings = new Map<string, { start: number; end: number }>();
@@ -1218,7 +1218,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 
 	// --- 4b. Claude Subscription non-Haiku models: execute via the Agent SDK
 	// instead of the generateText() loop below (see isClaudeSubscriptionViaCli
-	// above) — persists the same MessagePart shapes onStepFinish produces, but
+	// above) — persists the same MessagePart shapes onStepEnd produces, but
 	// driven by runClaudeCliTask's callbacks instead of AI SDK step results.
 	if (isClaudeSubscriptionViaCli) {
 		const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
@@ -1439,7 +1439,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		// identical to generateText for every consumer below (same final
 		// aggregate fields, just awaited instead of synchronous), and it's what
 		// lets "full" mode read live text-delta/reasoning-delta parts off
-		// fullStream without a second, duplicated call-and-retry-loop
+		// stream without a second, duplicated call-and-retry-loop
 		// implementation to keep in sync with this one.
 		const result = streamText({
 			model,
@@ -1480,7 +1480,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						: { messages: recached.messages };
 				}
 
-				// Inject stuck loop warning if set by onStepFinish
+				// Inject stuck loop warning if set by onStepEnd
 				if (pendingStuckWarning) {
 					const warning = pendingStuckWarning;
 					pendingStuckWarning = null;
@@ -1591,7 +1591,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 					}
 					if (count >= STUCK_WARN_THRESHOLD) {
 						logAgent(`${agentName}: stuck loop warning — ${tc.toolName} called ${count}x with same args`);
-						// Schedule warning injection via prepareStep (onStepFinish can't return messages).
+						// Schedule warning injection via prepareStep (onStepEnd can't return messages).
 						// The agent will see this before its next step and can self-correct.
 						pendingStuckWarning = `[SYSTEM WARNING] You have called "${tc.toolName}" ${count} times in a row with identical arguments and received the same result each time. This tool is not making progress. Do NOT call "${tc.toolName}" again with the same arguments. Try a completely different approach: read the relevant source file directly or use a different verification method.`;
 					}
@@ -1704,10 +1704,10 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			},
 		});
 
-		// Consuming fullStream both drives the generation to completion (streamText
+		// Consuming stream both drives the generation to completion (streamText
 		// is otherwise inert — nothing above happens without a consumer) and, in
 		// "full" mode, feeds live text/reasoning deltas into the same progressive-
-		// part mechanism the CLI branch uses. onStepFinish above (unchanged) still
+		// part mechanism the CLI branch uses. onStepEnd above (unchanged) still
 		// creates/finalizes the authoritative MessagePart once each step completes.
 		for await (const part of result.stream) {
 			if (part.type === "text-delta") {

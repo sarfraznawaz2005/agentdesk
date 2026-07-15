@@ -195,16 +195,14 @@ const takeScreenshotInputSchema = z.object({
 		.default(720)
 		.describe("Viewport height in pixels (default: 720)"),
 });
-type TakeScreenshotInput = z.infer<typeof takeScreenshotInputSchema>;
-
-const takeScreenshotTool = tool<TakeScreenshotInput, string>({
+const takeScreenshotTool = tool({
 	description:
 		"Take a screenshot of a web page at the given URL. Returns a base64-encoded PNG image. " +
 		"If no URL is provided, uses the project's configured Dev Server URL. " +
 		"Useful for visually verifying UI changes, catching layout bugs, and comparing before/after states. " +
 		"Requires Chrome/Chromium to be installed on the system.",
 	inputSchema: takeScreenshotInputSchema,
-	execute: async (args): Promise<string> => {
+	execute: async (args: z.infer<typeof takeScreenshotInputSchema>): Promise<string> => {
 		let targetUrl = args.url;
 
 		if (!targetUrl) {
@@ -285,16 +283,14 @@ async function resizeToFit(buffer: Buffer): Promise<{ data: Buffer; mimeType: st
 const readImageInputSchema = z.object({
 	path: z.string().describe("Absolute or relative path to the image file"),
 });
-type ReadImageInput = z.infer<typeof readImageInputSchema>;
-
-const readImageTool = tool<ReadImageInput, string>({
+const readImageTool = tool({
 	description:
 		"Read an image file and return its base64-encoded content. Supports PNG, JPG, GIF, WebP, BMP, and SVG. " +
 		"Use this to analyze screenshots, mockups, diagrams, or any visual asset. " +
 		"Requires a vision-capable AI model to interpret the image content. " +
 		"Max file size: 20 MB.",
 	inputSchema: readImageInputSchema,
-	execute: async ({ path: imagePath }): Promise<string> => {
+	execute: async ({ path: imagePath }: { path: string }): Promise<string> => {
 		try {
 			const { extname: getExt, resolve } = await import("node:path");
 			const resolvedPath = resolve(imagePath);

@@ -101,9 +101,9 @@ export function applyAnthropicCaching(
 	providerType: string,
 	system: string,
 	messages: ModelMessage[],
-): { system: string | undefined; messages: ModelMessage[] } {
+): { instructions: string | undefined; messages: ModelMessage[] } {
 	if (providerType !== "anthropic" && providerType !== "openrouter") {
-		return { instructions, messages };
+		return { instructions: system, messages };
 	}
 
 	const systemMessage: ModelMessage = {

@@ -51,16 +51,14 @@ function audioToolModelOutput(output: string) {
 const readAudioInputSchema = z.object({
 	path: z.string().describe("Absolute or relative path to the audio file"),
 });
-type ReadAudioInput = z.infer<typeof readAudioInputSchema>;
-
-const readAudioTool = tool<ReadAudioInput, string>({
+const readAudioTool = tool({
 	description:
 		"Read an audio file and return its base64-encoded content. Only WAV and MP3 are supported — " +
 		"other formats (m4a, ogg, flac, aac, opus, etc.) are rejected, since there is no transcoding step. " +
 		"Requires an audio-capable AI model to interpret the content; most models cannot. " +
 		"Max file size: 20 MB.",
 	inputSchema: readAudioInputSchema,
-	execute: async ({ path: audioPath }): Promise<string> => {
+	execute: async ({ path: audioPath }: { path: string }): Promise<string> => {
 		try {
 			const { extname: getExt, resolve } = await import("node:path");
 			const resolvedPath = resolve(audioPath);

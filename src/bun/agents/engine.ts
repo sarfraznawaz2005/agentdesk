@@ -999,7 +999,7 @@ export class AgentEngine {
 					},
 				});
 
-				// Use fullStream for real-time reasoning emission
+				// Use stream for real-time reasoning emission
 				let allReasoning = "";
 				let reasoningFlushTimer: ReturnType<typeof setTimeout> | null = null;
 				const emitThinking = (isPartial: boolean) => {
@@ -1095,7 +1095,7 @@ export class AgentEngine {
 				}
 				emitThinking(false);
 
-				// Persist reasoning captured from stream (onStepFinish won't duplicate it
+				// Persist reasoning captured from stream (onStepEnd won't duplicate it
 				// because reasoningEmittedFromStream is true)
 				if (allReasoning && !accumulatedReasoning.includes(allReasoning)) {
 					accumulatedReasoning += (accumulatedReasoning ? "\n\n" : "") + allReasoning;
@@ -1108,7 +1108,7 @@ export class AgentEngine {
 					console.log(`[PM] Restored retracted fallback text (${retractedFallback.length} chars) — model did not regenerate`);
 				}
 
-				// Fallback: if fullStream deltas were empty, try result.text (v6 accumulates internally).
+				// Fallback: if stream deltas were empty, try result.text (v6 accumulates internally).
 				// Skip when an agent was dispatched — result.text holds any narration the model
 				// generated before/after calling run_agent, which we don't want to show.
 				if (!fullText.trim() && !planApprovalRequested) {

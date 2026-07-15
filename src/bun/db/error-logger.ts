@@ -122,10 +122,10 @@ export function logError(
  */
 function formatAiSdkWarning(
 	warning: Warning,
-	provider: string,
-	model: string,
+	provider: string | undefined,
+	model: string | undefined,
 ): string {
-	const prefix = `AI SDK Warning (${provider} / ${model}):`;
+	const prefix = `AI SDK Warning (${provider ?? "unknown"} / ${model ?? "unknown"}):`;
 	switch (warning.type) {
 		case "unsupported":
 			return `${prefix} The feature "${warning.feature}" is not supported.${
