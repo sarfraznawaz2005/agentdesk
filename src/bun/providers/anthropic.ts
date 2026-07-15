@@ -35,6 +35,10 @@ export class AnthropicAdapter implements ProviderAdapter {
 		return this.provider(modelId);
 	}
 
+	getFilesApi() {
+		return this.provider.files();
+	}
+
 	async listModels(): Promise<string[]> {
 		try {
 			const response = await fetch("https://api.anthropic.com/v1/models", {

@@ -896,7 +896,7 @@ export class AgentEngine {
 					prepareStep: async ({ steps }) => {
 						if (steps.length === 0) return undefined;
 						const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
-						const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
+						const mediaFollowUp = await buildMediaFollowUpMessage(lastStep.toolResults, adapter?.getFilesApi?.());
 						if (!mediaFollowUp) return undefined;
 						context.messages = [...context.messages, mediaFollowUp];
 						const recached = applyAnthropicCaching(providerRow.providerType, context.instructions, context.messages);

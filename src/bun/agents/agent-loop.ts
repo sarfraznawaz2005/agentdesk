@@ -1461,7 +1461,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				// as a follow-up user message — the only wire format every provider actually
 				// supports as vision/audio input (see buildMediaFollowUpMessage in media-followup.ts).
 				const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
-				const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
+				const mediaFollowUp = await buildMediaFollowUpMessage(lastStep.toolResults, adapter?.getFilesApi?.());
 				if (mediaFollowUp) {
 					agentMessages.push(mediaFollowUp);
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);

@@ -1,4 +1,5 @@
 import type { LanguageModel } from "ai";
+import type { FilesV4 } from "@ai-sdk/provider";
 
 export interface ProviderConfig {
 	id: string;
@@ -29,4 +30,13 @@ export interface ProviderAdapter {
 	 * result instead of crashing the agent turn.
 	 */
 	generateImage?(modelId: string, prompt: string): Promise<{ base64: string; mimeType: string }>;
+	/**
+	 * Returns a Files API interface for `uploadFile()` (AI SDK v7, §6.7),
+	 * enabling upload-once/reference-later media instead of resending full
+	 * base64 payloads on every step (see media-followup.ts). Only real
+	 * Anthropic and OpenAI accounts expose a Files API — omitted entirely by
+	 * every OpenAI-compatible custom provider (Ollama, OpenRouter, Z.AI,
+	 * OpenCode, etc.), which have no such endpoint.
+	 */
+	getFilesApi?(): FilesV4 | undefined;
 }

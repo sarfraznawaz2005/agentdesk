@@ -193,7 +193,12 @@ export class ClaudeSubscriptionAdapter implements ProviderAdapter {
     this.config = config;
   }
 
-  createModel(modelId: string, _thinkingBudgetTokens?: number): LanguageModel {
+  /**
+   * Shared by createModel() and getFilesApi() — both need the same
+   * OAuth-header-impersonating Anthropic provider instance, just calling a
+   * different member on it (model factory vs. `.files()`).
+   */
+  private buildProvider(): ReturnType<typeof createAnthropic> {
     const token = loadOAuthToken();
     // authToken sets Authorization: Bearer <token>.
     // Headers mirror what Claude Code sends so the API applies the correct OAuth
@@ -245,7 +250,21 @@ export class ClaudeSubscriptionAdapter implements ProviderAdapter {
         "user-agent": "claude-cli/2.1.207 (external, cli)",
       },
       fetch: interceptFetch as unknown as typeof fetch,
-    })(modelId);
+    });
+  }
+
+  createModel(modelId: string, _thinkingBudgetTokens?: number): LanguageModel {
+    return this.buildProvider()(modelId);
+  }
+
+  /**
+   * Confirmed live (2026-07-15, §6.7 prototype): Anthropic's separate Files
+   * REST endpoint accepts this same OAuth bearer token, not just
+   * `/v1/messages` — upload-once/reference-later works over the Claude
+   * Subscription path exactly as it does for a real Anthropic API key.
+   */
+  getFilesApi() {
+    return this.buildProvider().files();
   }
 
   /**

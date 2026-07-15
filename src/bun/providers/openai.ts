@@ -128,6 +128,15 @@ export class OpenAIAdapter implements ProviderAdapter {
 		return provider.chat(modelId);
 	}
 
+	/**
+	 * Only real OpenAI has a Files API — every custom/OpenAI-compatible
+	 * backend (§6.7) uses createOpenAICompatible, which has no `.files()`.
+	 */
+	getFilesApi() {
+		if (this.isCustom) return undefined;
+		return createOpenAI({ apiKey: this.config.apiKey, headers: PROVIDER_HEADERS }).files();
+	}
+
 	async listModels(): Promise<string[]> {
 		const baseUrl = this.normalizedBaseUrl ?? "https://api.openai.com/v1";
 		try {

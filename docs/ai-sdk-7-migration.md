@@ -565,6 +565,19 @@ support; won't help local Ollama). **Decided 2026-07-14: in scope now**
 is validated, since they touch the same code — building this before §5.5
 lands would mean rebuilding it twice.
 
+**Prototyped and productionized 2026-07-15.** Confirmed live against
+Anthropic — via the Claude Subscription OAuth path, since no direct Anthropic
+API key exists in this dev environment — that Anthropic's Files REST endpoint
+accepts the same OAuth bearer token as chat completions, so upload-once/
+reference-later genuinely works there. OpenAI remains unverified (no real key
+available; every OpenAI-*compatible* custom provider confirmed to have no
+Files API at all, so this only ever helps real Anthropic/OpenAI accounts).
+Built into production: `ProviderAdapter.getFilesApi?()` (Anthropic, Claude
+Subscription, real OpenAI only), wired through `media-followup.ts` with a
+transparent fallback to the original inline-base64 path whenever no Files API
+is available or an upload fails. Full detail in
+`ai-sdk-7-migration-tasks.md` §3.6.
+
 ### 6.8 HarnessAgent (experimental) — spike, don't switch yet
 
 v7 introduces `HarnessAgent` for wrapping external harnesses (Claude Code,
