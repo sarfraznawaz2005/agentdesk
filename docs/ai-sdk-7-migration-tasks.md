@@ -76,10 +76,10 @@
   - [x] `anthropic.ts` / `openai.ts` / `deepseek.ts` / `groq.ts` / `xai.ts` / `openrouter.ts` / `ollama.ts` / `opencode.ts` — no AI-SDK call-shape surface, confirmed clean
   - [x] `google.ts` — already uses `createGoogle` (current v7 name), confirmed under §5.10
   - [x] `claude-subscription.ts` — `interceptFetch`'s signature is typed against the global `Parameters<typeof fetch>` (Web Fetch API), not any AI-SDK-exported type — entirely independent of the `ai` package version, confirmed unaffected
-- [ ] **2.7** `zai.ts` rebuild (§5.4, §11.1, decided) — remove `zhipu-ai-provider` dependency entirely
-  - [ ] Confirm Z.AI's current API base URL / auth-header shape against their docs (don't assume unchanged from the third-party package)
-  - [ ] Rebuild `ZaiAdapter` on `@ai-sdk/openai-compatible`'s `createOpenAICompatible(...)`, matching the `ollama.ts`/`openrouter.ts`/`opencode.ts` pattern — note (§12.4): `zai.ts` already has a working `generateImage()` method built on `@ai-sdk/openai-compatible` (added 2026-07-15 for text-to-image support), so this is "extend the same pattern to chat," not starting from zero
-  - [ ] Remove `zhipu-ai-provider` from `package.json`
+- [x] **2.7** `zai.ts` rebuild (§5.4, §11.1, decided) — **done 2026-07-15.**
+  - [x] Confirmed Z.AI's current API base URL / auth-header shape by inspecting `zhipu-ai-provider`'s own compiled source (`node_modules/zhipu-ai-provider/dist/index.js`) rather than assuming: it hits `{baseURL}/chat/completions` with `Authorization: Bearer <apiKey>` — standard OpenAI-compatible shape, and its own hardcoded default (`baseURL: "https://api.z.ai/api/paas/v4"`) matches our existing `ZAI_BASE_URL` exactly. Also found the concrete reason this needed rebuilding, not just "decided in principle": `zhipu-ai-provider` depends on `@ai-sdk/provider@^3.0.3`/`@ai-sdk/provider-utils@^4.0.6`, a full major version behind our v7 stack's `@ai-sdk/provider@4.0.3`/`provider-utils@5.0.10` — bun couldn't hoist a shared version and nested zhipu's own old copies (`3.0.8`/`4.0.23`) instead, a live version-skew risk, not a hypothetical one
+  - [x] Rebuilt `ZaiAdapter` on `@ai-sdk/openai-compatible`'s `createOpenAICompatible(...)`, matching the `opencode.ts` pattern exactly — `createModel()`/`listModels()`/`testConnection()` logic otherwise unchanged, `generateImage()` (already built on the same helper per §12.4) untouched
+  - [x] Removed `zhipu-ai-provider` from `package.json` (`bun remove`) — confirmed zero remaining source references (the one `model-classification.ts` hit is an unrelated catalog-name-alias string, not an import)
 - [ ] **2.8** Stable tool ordering (§6.4, §7.2, §11.3, decided — build in-house)
   - [ ] Implement stable-prefix / stable-tail partitioning in `tools/index.ts`'s `getToolsForAgent()`/`getAllTools()`
   - [ ] Feed the result through `prepareStep` consistently in `engine.ts`
@@ -97,7 +97,7 @@
 - [x] 5.1 `system`→`instructions` rename complete everywhere — **done 2026-07-15**; confirmed `context.ts` never persists system-role messages into `messages[]` (no `allowSystemInMessages` needed)
 - [ ] 5.2 Usage-semantics flip — before/after token comparison run against Phase 0 snapshot; cutover marker plan confirmed (see Phase 4 analytics page) — not started, needs live provider calls
 - [x] 5.3 `fullStream`→`stream` renamed in both core loops — **done 2026-07-15** (codemod-clean, stale comments fixed)
-- [ ] 5.4 `zhipu-ai-provider` removed (tracked in 2.7 above) — not started
+- [x] 5.4 `zhipu-ai-provider` removed — **done 2026-07-15** (tracked in 2.7 above)
 - [ ] 5.5 Media/file content-part canonicalization — tested against both an Anthropic-native model and an OpenAI-compatible model (tracked in full in §8.4 below) — not started, the highest-risk remaining item (see 2.2 note)
 - [x] 5.6 `onFinish`/`onStepFinish` renamed to `onEnd`/`onStepEnd` — **done 2026-07-15** (codemod-clean, stale comments fixed)
 - [ ] 5.7 `usage.reasoningTokens`→`usage.outputTokenDetails.reasoningTokens` read updated — not started (tracked under 2.1)
