@@ -1473,7 +1473,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
 				const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
 				if (mediaFollowUp) {
-					agentMessages.push(mediaFollowUp as ModelMessage);
+					agentMessages.push(mediaFollowUp);
 					const recached = applyAnthropicCaching(effectiveProviderConfig.providerType, systemPrompt, agentMessages);
 					return recached.instructions !== undefined
 						? { messages: recached.messages, instructions: recached.instructions }

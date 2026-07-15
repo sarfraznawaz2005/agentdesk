@@ -1,4 +1,4 @@
-import { streamText, isStepCount, type ModelMessage } from "ai";
+import { streamText, isStepCount } from "ai";
 
 // ---------------------------------------------------------------------------
 // /preview slash-command — full instructions passed silently to the PM
@@ -892,7 +892,7 @@ export class AgentEngine {
 						const lastStep = steps[steps.length - 1] as { toolResults?: Array<{ toolName: string; output?: unknown; result?: unknown }> };
 						const mediaFollowUp = buildMediaFollowUpMessage(lastStep.toolResults);
 						if (!mediaFollowUp) return undefined;
-						context.messages = [...context.messages, mediaFollowUp as ModelMessage];
+						context.messages = [...context.messages, mediaFollowUp];
 						const recached = applyAnthropicCaching(providerRow.providerType, context.instructions, context.messages);
 						return recached.instructions !== undefined
 							? { messages: recached.messages, instructions: recached.instructions }
