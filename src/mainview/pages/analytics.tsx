@@ -173,6 +173,12 @@ function formatTokens(n: number): string {
   return `~${(n / 1000).toFixed(1)}k`;
 }
 
+function formatUsd(n: number | null): string {
+  if (n == null) return "—";
+  if (n < 0.01 && n > 0) return "<$0.01";
+  return `$${n.toFixed(2)}`;
+}
+
 const DAY_OPTIONS = [7, 14, 30, 90];
 
 function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> }) {
@@ -245,15 +251,27 @@ function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> 
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard
+          label="Est. cost"
+          value={formatUsd(data.totals.costUsd)}
+          sub={data.totals.costCoveragePct < 0.99 ? `${Math.round(data.totals.costCoveragePct * 100)}% of tokens priced` : undefined}
+          accent="text-foreground"
+        />
         <StatCard label="Calls" value={data.totals.calls} />
         <StatCard label="Input tokens" value={formatTokens(data.totals.inputTokens)} />
         <StatCard label="Output tokens" value={formatTokens(data.totals.outputTokens)} />
         <StatCard label="Cache hit rate" value={`${Math.round(data.totals.cacheHitRate * 100)}%`} accent="text-green-500" />
+        <StatCard label="Saved by caching" value={formatUsd(data.totals.costSavedUsd)} accent="text-green-500" />
         <StatCard label="Reasoning tokens" value={formatTokens(data.totals.reasoningTokens)} />
         <StatCard label="Latency p50" value={formatMs(data.latency.p50Ms)} />
         <StatCard label="Latency p95" value={formatMs(data.latency.p95Ms)} />
         <StatCard label="Avg time-to-first-output" value={formatMs(data.latency.avgTimeToFirstOutputMs)} />
       </div>
+      {data.totals.costCoveragePct < 0.99 && (
+        <p className="text-[10px] text-muted-foreground -mt-4">
+          Cost pricing{data.pricingAsOf ? ` as of ${new Date(data.pricingAsOf).toLocaleDateString()}` : ""} from models.dev. Ollama is free (local); custom/OpenAI-compatible providers and unrecognized models have no known rate and are excluded from the total, not counted as $0.
+        </p>
+      )}
 
       {/* Tokens over time */}
       <section>
@@ -295,6 +313,35 @@ function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> 
           </div>
         </section>
       </div>
+
+      {/* Cost by model */}
+      {data.byModel.length > 0 && (
+        <section>
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Cost by model</h3>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left font-medium px-3 py-2">Provider</th>
+                  <th className="text-left font-medium px-3 py-2">Model</th>
+                  <th className="text-right font-medium px-3 py-2">Tokens</th>
+                  <th className="text-right font-medium px-3 py-2">Est. cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...data.byModel].sort((a, b) => (b.costUsd ?? -1) - (a.costUsd ?? -1)).map((m) => (
+                  <tr key={`${m.provider}-${m.modelId}`} className="border-b border-border last:border-0">
+                    <td className="px-3 py-1.5 font-mono">{m.provider}</td>
+                    <td className="px-3 py-1.5 font-mono text-muted-foreground truncate max-w-[220px]">{m.modelId}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{formatTokens(m.totalTokens)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{formatUsd(m.costUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Throughput */}
       {data.throughputByModel.length > 0 && (

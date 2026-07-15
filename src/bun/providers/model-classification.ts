@@ -48,6 +48,9 @@ interface ModelsDevModel {
 	id: string;
 	family?: string;
 	modalities?: { input?: string[]; output?: string[] };
+	// $ per million tokens. Only present for hosted, metered models — absent
+	// for free/open-weight entries.
+	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
 }
 
 interface ModelsDevProvider {
@@ -278,4 +281,75 @@ export async function classifyModels(
 	}
 
 	return result;
+}
+
+// --- Model pricing (§9.1 cost view) -----------------------------------------
+//
+// Reuses the same models.dev catalog fetch/cache as classification above —
+// deliberately not a second fetcher or a persistent DB cache, since the
+// existing 24h in-memory TTL already solves "don't hit models.dev on every
+// analytics query."
+
+export interface ModelCostRate {
+	inputPerMillion: number;
+	outputPerMillion: number;
+	cacheReadPerMillion?: number;
+	cacheWritePerMillion?: number;
+}
+
+/**
+ * Look up $/million-token rates for a telemetry (provider, modelId) pair.
+ *
+ * `rawProvider` is the AI SDK's own telemetry provider string, which is
+ * always `${baseProviderName}.${suffix}` (e.g. "openai.chat",
+ * "anthropic.messages", "zai.chat" — confirmed against the installed SDK's
+ * compiled source; `@ai-sdk/openai-compatible` itself normalizes the same
+ * way via `provider.split(".")[0]`) or occasionally bare (e.g. "google").
+ * Splitting on "." recovers AgentDesk's own provider-type string, which
+ * matches models.dev's top-level catalog keys directly for every provider
+ * except "ollama" (self-hosted, not in the catalog — genuinely free, not
+ * unknown) and "custom" (an arbitrary OpenAI-compatible endpoint — telemetry
+ * rows carry no baseUrl/providerId to guess a vendor from, unlike
+ * classifyModels() above, so cost is unknowable here by design, not a bug).
+ *
+ * "claude-subscription" is mapped to the "anthropic" catalog entry since its
+ * Haiku direct-HTTP path is a real `@ai-sdk/anthropic` instance — but this is
+ * a known imprecision: that path is a flat monthly subscription, not metered
+ * per-token, so a project using Claude Subscription will show a per-token $
+ * figure here that doesn't reflect actual marginal cost. Telemetry has no way
+ * to distinguish Claude Subscription's Anthropic calls from a real Anthropic
+ * API key's calls (both emit provider="anthropic.messages"), so this can't be
+ * corrected without a schema change; documented rather than silently wrong.
+ *
+ * Returns "free" for known-zero-cost providers (Ollama), a rate object when
+ * a metered rate is known, or null when pricing genuinely can't be
+ * determined (custom providers, or a model id absent from the catalog).
+ */
+export async function getModelCostRate(rawProvider: string | null | undefined, modelId: string | null | undefined): Promise<ModelCostRate | "free" | null> {
+	if (!rawProvider || !modelId) return null;
+	const baseProvider = rawProvider.split(".")[0].trim();
+	if (baseProvider === "ollama") return "free";
+	if (baseProvider === "custom") return null;
+
+	const modelsDev = await getModelsDevCatalog();
+	if (!modelsDev) return null;
+
+	const catalogKey = baseProvider === "claude-subscription" ? "anthropic" : baseProvider;
+	if (!modelsDev.catalogKeys.has(catalogKey)) return null;
+
+	const models = modelsDev.data[catalogKey]?.models ?? {};
+	const entry = models[modelId] ?? models[modelId.split("/").pop() ?? modelId];
+	if (!entry?.cost?.input || entry.cost.output == null) return null;
+
+	return {
+		inputPerMillion: entry.cost.input,
+		outputPerMillion: entry.cost.output,
+		cacheReadPerMillion: entry.cost.cache_read,
+		cacheWritePerMillion: entry.cost.cache_write,
+	};
+}
+
+/** Age of the in-memory models.dev catalog, for a UI "pricing as of" note. Null if never successfully fetched. */
+export function getModelsDevCatalogFetchedAt(): number | null {
+	return modelsDevCache?.fetchedAt ?? null;
 }

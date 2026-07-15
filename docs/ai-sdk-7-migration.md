@@ -776,12 +776,17 @@ backend adoption — same initiative, not a someday-later backlog.
 
 ### 9.1 AI Usage / Cost Analytics page — what telemetry actually buys it
 
-**Implemented 2026-07-15**, with two scoping narrowings vs. this plan — no
-per-model $ pricing exists anywhere in the schema, so "cost" landed as
-token-based, not dollar-based; and the error/retry-rate view isn't
-buildable from telemetry's `onError` (no callId/provider on that event) — a
-partial finish-reason-derived substitute landed on §9.4's tab instead. See
-`ai-sdk-7-migration-tasks.md` §4.1 for the full breakdown.
+**Implemented 2026-07-15**, including real $ cost — added after initially
+scoping it out, by extending `model-classification.ts`'s existing `models.dev`
+catalog integration (a free, public pricing source) rather than adopting
+`@ai-sdk/gateway`'s cost data, which only works by routing traffic through
+Vercel's hosted, paid Gateway proxy instead of AgentDesk's direct provider
+adapters. One remaining narrowing vs. this plan: the error/retry-rate view
+isn't buildable from telemetry's `onError` (no callId/provider on that
+event) — a partial finish-reason-derived substitute landed on §9.4's tab
+instead. See `ai-sdk-7-migration-tasks.md` §4.1 for the full breakdown,
+including three known cost-accuracy caveats (Ollama, custom providers,
+Claude Subscription).
 
 This is the direct answer to "does telemetry help the analytics page": **it
 is the analytics page's entire data source.** Today, the only thing close to

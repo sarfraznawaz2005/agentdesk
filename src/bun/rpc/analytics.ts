@@ -4,6 +4,7 @@
  * Queries run against kanban_tasks, kanban_task_activity, messages, and cost_budgets.
  */
 import { sqlite } from "../db/connection";
+import { getModelCostRate, getModelsDevCatalogFetchedAt } from "../providers/model-classification";
 
 // ── Project Dashboard ─────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ function percentile(sorted: number[], p: number): number | null {
 	return sorted[idx];
 }
 
-export function getTelemetryUsage(filters: TelemetryFilters & { days?: number }) {
+export async function getTelemetryUsage(filters: TelemetryFilters & { days?: number }) {
 	const days = filters.days ?? 30;
 	const since = new Date(Date.now() - days * 86400_000).toISOString();
 	const { clause: endClause, params: endParams } = endEventFilter(filters);
@@ -207,6 +208,55 @@ export function getTelemetryUsage(filters: TelemetryFilters & { days?: number })
 	`).all() as Array<{ provider: string }>;
 	const sinceRow = sqlite.prepare(`SELECT MIN(created_at) AS since FROM ai_telemetry_events`).get() as { since: string | null };
 
+	// ── Cost (§9.1) — grouped by (provider, model) so each group can be priced
+	// individually via models.dev rates (see model-classification.ts's
+	// getModelCostRate). Groups with no known rate (custom providers, or a
+	// model id absent from the catalog) are excluded from costUsd but counted
+	// toward costCoveragePct so the $ figure never silently understates itself
+	// as complete.
+	interface ModelTokenRow {
+		provider: string | null; model_id: string | null;
+		input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; total_tokens: number;
+	}
+	const modelTokenRows = sqlite.prepare(`
+		SELECT provider, model_id,
+			COALESCE(SUM(input_tokens), 0) AS input_tokens,
+			COALESCE(SUM(output_tokens), 0) AS output_tokens,
+			COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,
+			COALESCE(SUM(cache_write_tokens), 0) AS cache_write_tokens,
+			COALESCE(SUM(total_tokens), 0) AS total_tokens
+		FROM ai_telemetry_events
+		WHERE event_kind = 'end' AND created_at >= ? AND provider IS NOT NULL AND model_id IS NOT NULL ${endClause}
+		GROUP BY provider, model_id
+	`).all(since, ...endParams) as ModelTokenRow[];
+
+	let costUsd = 0;
+	let pricedTokens = 0;
+	// $ saved by prompt caching (proves out the §6.4/Phase 2.8 stable-tool-
+	// ordering fix): the delta between what cache-read tokens actually cost
+	// vs. what they would have cost at the full input rate. Only computed
+	// when both the input and cache-read rates are known for that model.
+	let costSavedUsd = 0;
+	const byModel = await Promise.all(modelTokenRows.map(async (r) => {
+		const rate = await getModelCostRate(r.provider, r.model_id);
+		let rowCostUsd: number | null = null;
+		if (rate === "free") {
+			rowCostUsd = 0;
+		} else if (rate) {
+			rowCostUsd =
+				(r.input_tokens * rate.inputPerMillion) / 1_000_000 +
+				(r.output_tokens * rate.outputPerMillion) / 1_000_000 +
+				(rate.cacheReadPerMillion != null ? (r.cache_read_tokens * rate.cacheReadPerMillion) / 1_000_000 : 0) +
+				(rate.cacheWritePerMillion != null ? (r.cache_write_tokens * rate.cacheWritePerMillion) / 1_000_000 : 0);
+			if (rate.cacheReadPerMillion != null) {
+				costSavedUsd += (r.cache_read_tokens * (rate.inputPerMillion - rate.cacheReadPerMillion)) / 1_000_000;
+			}
+		}
+		if (rowCostUsd != null) { costUsd += rowCostUsd; pricedTokens += r.total_tokens; }
+		return { provider: r.provider as string, modelId: r.model_id as string, totalTokens: r.total_tokens, costUsd: rowCostUsd };
+	}));
+	const totalTokensForCoverage = modelTokenRows.reduce((s, r) => s + r.total_tokens, 0);
+
 	return {
 		totals: {
 			calls: totalsRow.calls,
@@ -216,7 +266,15 @@ export function getTelemetryUsage(filters: TelemetryFilters & { days?: number })
 			cacheWriteTokens: totalsRow.cache_write_tokens,
 			reasoningTokens: totalsRow.reasoning_tokens,
 			cacheHitRate,
+			costUsd: pricedTokens > 0 || modelTokenRows.length === 0 ? costUsd : null,
+			costCoveragePct: totalTokensForCoverage > 0 ? pricedTokens / totalTokensForCoverage : 0,
+			costSavedUsd,
 		},
+		byModel,
+		pricingAsOf: (() => {
+			const fetchedAt = getModelsDevCatalogFetchedAt();
+			return fetchedAt != null ? new Date(fetchedAt).toISOString() : null;
+		})(),
 		tokensPerDay: tokensPerDay.map((r) => ({
 			day: r.day, inputTokens: r.input_tokens, outputTokens: r.output_tokens,
 			cacheReadTokens: r.cache_read_tokens, reasoningTokens: r.reasoning_tokens,
