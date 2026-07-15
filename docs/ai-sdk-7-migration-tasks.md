@@ -44,7 +44,7 @@
 
 ## Stage B — Phase 2: Hand-migrate what the codemod can't reach (§4 Phase 2)
 
-- [ ] **2.1** `engine-types.ts` — update `extractPMReasoning()`'s fallback chain for `outputTokenDetails.reasoningTokens`; verify `providerOptions.anthropic.thinking` still applies correctly (§5.7) — **not started.** A different bug in the same file was fixed 2026-07-15 (see note below); `extractPMReasoning()` itself is untouched
+- [x] **2.1** `engine-types.ts` — **done 2026-07-15.** §5.7's actual concern (`usage.reasoningTokens`→`usage.outputTokenDetails.reasoningTokens`) turned out moot — grepped the whole codebase, nothing reads `usage.reasoningTokens` at all, so there was nothing to rename. `providerOptions.anthropic.thinking` (built in `buildPMThinkingOptions()`) is structurally unchanged in v7 — not a breaking rename, just the existing provider-specific option (the new v7 feature is the separate unified `reasoning` option, tracked as new work under Phase 3.3, not a Phase 2 fix). Found and fixed a **real, pre-existing bug** while reviewing this exact function (confirmed via `git show main` that it predates this migration): `extractPMReasoning()`'s provider-metadata fallback read `step.experimental_providerMetadata`, but v7's types confirm the field is just `providerMetadata` (no prefix) — since `stepResult` is cast through `unknown`, `tsc` couldn't catch this, so the fallback silently never fired (OpenRouter/OpenAI reasoning display was dead code, only Anthropic's primary `step.reasoningText` path ever worked). User confirmed fixing it now since already in this exact function. One-line rename applied
   - **Note (2026-07-15)**: `applyAnthropicCaching()` in this file was left broken by the codemod — its return type/statements still said `system` while every call site (`engine.ts`, `agent-loop.ts`) already expected `.instructions` on the return value. Fixed: return type + body now produce `{ instructions, messages }`. `BuiltContext` in `context.ts` had the identical bug (interface said `system`, return statement said `instructions`) — fixed the same way. These two fixes alone resolved 22 of the 37 post-codemod typecheck errors (`agent-loop.ts` ×10, `engine.ts` ×8, `engine-types.ts` ×3, `context.ts` ×1)
 - [ ] **2.2** `media-followup.ts` — rebuild `buildMediaFollowUpMessage()`'s content parts against v7's canonical `file`/`file-data`/`file-url` shape (§5.5, highest-risk item) — **not started, still the highest-risk open item.** Typechecks clean post-codemod, but that only proves the *names* compile — the actual v6→v7 content-part *shape* change (image parts → file parts) has not been verified against real provider calls yet; needs the §8.4 multimodal round-trip tests, not just tsc
   - [ ] Update `screenshot.ts`'s `toModelOutput` callback in lockstep
@@ -54,7 +54,7 @@
   - [ ] Verify `dashboard.ts`'s `dashboardPMToolResult` broadcast (built on `extractImagePayload()`) still correctly detects image payloads post-migration
   - [ ] Verify `dashboard-agent.ts`'s `dashboardAgentToolResult` broadcast (same `extractImagePayload()` dependency) still correctly detects image payloads post-migration
   - [x] Fixed a distinct, unpredicted issue in the 4 media tool definitions (`audio.ts`, `image-gen.ts`, `screenshot.ts` ×2) — **done 2026-07-15**: v7's `tool<INPUT, OUTPUT, CONTEXT>()` generic signature added a required 3rd `CONTEXT extends Context` type param; the old 2-arg call form `tool<Input, string>({...})` now binds the 2nd arg to `CONTEXT` instead of `OUTPUT`, which fails (`string` doesn't extend `Context = Record<string, unknown>`). Fixed by dropping explicit generics entirely (matching the other 62 `tool({...})` call sites elsewhere in the codebase, which already rely on inference) — but bidirectional inference alone still failed on these 4 specifically (the only ones using `toModelOutput`), surfacing as "no overload matches" pointing at the wrong (last) overload. Root fix: explicitly annotate `execute`'s destructured parameter type (e.g. `async ({ path }: { path: string })`) so overload resolution has enough to commit to the first (correct) overload. Removed the now-orphaned standalone `type XInput = z.infer<...>` aliases these tools no longer needed
-- [ ] **2.3** `claude-subscription-cli-runner.ts` (~lines 355-371) — keep the independent media-stripping mirror conceptually in sync with 2.2 (not touched by the AI SDK rename itself) — not started
+- [ ] **2.3** `claude-subscription-cli-runner.ts` (~lines 355-371) — keep the independent media-stripping mirror conceptually in sync with 2.2 (not touched by the AI SDK rename itself) — **blocked on 2.2**, not started
 - [x] **2.4** `engine.ts` + `agent-loop.ts` core loops — **renames done 2026-07-15**, behavioral re-verification still pending:
   - [x] Rename `system` → `instructions` — codemod handled all real call sites; broken only by the `applyAnthropicCaching`/`BuiltContext` bug above, now fixed. Also cleaned up 8 stale comments in `engine.ts`/`agent-loop.ts` still referencing `fullStream`/`onStepFinish` by name (mechanical, not code)
   - [x] Rename `fullStream` → `stream` — codemod handled this cleanly, zero live code hits remain (confirmed via full-tree grep, only stale comments found and fixed)
@@ -72,17 +72,10 @@
   - [x] `rpc/freelance-wizard.ts` (×2 `stepCountIs` call sites) — codemod-clean
   - [x] `scheduler/task-executor.ts` — codemod-clean, dynamic `await import("ai")` was reached correctly
   - [x] `rpc/playground.ts` — the "9th" surface (not enumerated by file name in the original doc, identified during codemod monitoring) — codemod-clean
-- [ ] **2.6** Provider adapters — mechanical pass on all `src/bun/providers/*.ts`:
-  - [ ] `anthropic.ts`
-  - [ ] `openai.ts`
-  - [ ] `google.ts` — specifically verify `GoogleGenerativeAI` → `Google` rename (§5.10)
-  - [ ] `deepseek.ts`
-  - [ ] `groq.ts`
-  - [ ] `xai.ts`
-  - [ ] `openrouter.ts`
-  - [ ] `ollama.ts`
-  - [ ] `opencode.ts`
-  - [ ] `claude-subscription.ts` — verify `interceptFetch`'s wrapped-`fetch` signature is unchanged
+- [x] **2.6** Provider adapters — **verified 2026-07-15, zero changes needed.** Full-tree grep for `system:`/`fullStream`/`onStepFinish`/`onFinish`/`stepCountIs`/`experimental_*`/`GoogleGenerativeAI`/`.request`/`.response` across all 10 files: zero hits. Root reason: these files are pure provider-*instantiation* wrappers (`createAnthropic()`, `createOpenAI()`, etc.) — none of them call `streamText`/`generateText` directly, so there's no v6→v7 rename surface inside them at all; the actual generation calls live in `engine.ts`/`agent-loop.ts`/`council.ts`/etc., already covered above
+  - [x] `anthropic.ts` / `openai.ts` / `deepseek.ts` / `groq.ts` / `xai.ts` / `openrouter.ts` / `ollama.ts` / `opencode.ts` — no AI-SDK call-shape surface, confirmed clean
+  - [x] `google.ts` — already uses `createGoogle` (current v7 name), confirmed under §5.10
+  - [x] `claude-subscription.ts` — `interceptFetch`'s signature is typed against the global `Parameters<typeof fetch>` (Web Fetch API), not any AI-SDK-exported type — entirely independent of the `ai` package version, confirmed unaffected
 - [ ] **2.7** `zai.ts` rebuild (§5.4, §11.1, decided) — remove `zhipu-ai-provider` dependency entirely
   - [ ] Confirm Z.AI's current API base URL / auth-header shape against their docs (don't assume unchanged from the third-party package)
   - [ ] Rebuild `ZaiAdapter` on `@ai-sdk/openai-compatible`'s `createOpenAICompatible(...)`, matching the `ollama.ts`/`openrouter.ts`/`opencode.ts` pattern — note (§12.4): `zai.ts` already has a working `generateImage()` method built on `@ai-sdk/openai-compatible` (added 2026-07-15 for text-to-image support), so this is "extend the same pattern to chat," not starting from zero
@@ -93,18 +86,11 @@
   - [ ] Feed the result through `prepareStep` consistently in `agent-loop.ts`
   - [ ] Verify ordering survives `wrapToolsWithHooks`
   - [ ] Verify ordering survives `wrapToolsWithCallLogging`
-- [ ] **2.9** One-shot `generateText` call sites — `system`→`instructions` rename only:
-  - [ ] `summarizer.ts`
-  - [ ] `handoff.ts`
-  - [ ] `deep-research.ts`
-  - [ ] `preview.ts`
-  - [ ] `freelance/bid-pipeline.ts`
-  - [ ] `freelance/description.ts`
-  - [ ] `freelance/qa.ts`
-  - [ ] `freelance/reply-pipeline.ts`
-  - [ ] `freelance/expert/tools.ts`
-  - [ ] `freelance/expert/orchestrator.ts`
-- [ ] **2.10** `src/bun/mcp/client.ts` — verify `dynamicTool`/`jsonSchema` signatures unchanged
+- [x] **2.9** One-shot `generateText` call sites — **verified 2026-07-15, zero changes needed.**
+  - [x] `summarizer.ts` / `deep-research.ts` / `freelance/bid-pipeline.ts` / `freelance/description.ts` / `freelance/qa.ts` / `freelance/reply-pipeline.ts` / `freelance/expert/tools.ts` / `freelance/expert/orchestrator.ts` — all 8 were already codemod-touched and typecheck clean
+  - [x] `handoff.ts` — **doc's file inventory was stale**: this file doesn't import from `"ai"` at all, never called `generateText` in the first place
+  - [x] `preview.ts` — does call `generateText`, but its call never used a `system` param to begin with (only `messages`) — nothing to rename
+- [x] **2.10** `src/bun/mcp/client.ts` — **verified 2026-07-15, zero changes needed.** `dynamicTool()`'s shape is unchanged in v7; `Tool` is used with default (unspecified) generics via `Record<string, Tool>`, which resolves fine against v7's `Tool<INPUT=any, OUTPUT=any, CONTEXT=any>` defaults
 
 ### Breaking-change verification sweep (§5 table — confirm each, even the "no action needed" rows)
 

@@ -67,7 +67,7 @@ export function extractPMReasoning(stepResult: unknown): string {
 	const step = stepResult as Record<string, unknown>;
 	if (typeof step.reasoningText === "string" && step.reasoningText) return step.reasoningText;
 
-	const meta = step.experimental_providerMetadata as Record<string, unknown> | undefined;
+	const meta = step.providerMetadata as Record<string, unknown> | undefined;
 	if (!meta) return "";
 	for (const ns of ["anthropic", "openrouter", "openai"]) {
 		const nsMeta = meta[ns] as Record<string, unknown> | undefined;
