@@ -862,6 +862,9 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 			onContextUsage: (conversationId, promptTokens, contextLimit) => {
 				broadcastToProject(projectId, "contextUsage", { conversationId, promptTokens, contextLimit });
 			},
+			onStreamPerformance: (conversationId, tokensPerSecond, timeToFirstOutputMs) => {
+				broadcastToProject(projectId, "streamPerformance", { conversationId, tokensPerSecond, timeToFirstOutputMs });
+			},
 			onAgentInlineComplete: (conversationId, messageId, agentName, status, summary, tokensUsed) => {
 				broadcastToProject(projectId, "agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
 				// A sub-agent finished work in the main chat (skip user-cancelled runs).

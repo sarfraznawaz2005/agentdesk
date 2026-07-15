@@ -258,6 +258,12 @@ export type WebviewSchema = RPCSchema<{
       promptTokens: number;
       contextLimit: number;
     };
+    // Live streaming throughput (§9.2), emitted once per completed language-model call.
+    streamPerformance: {
+      conversationId: string;
+      tokensPerSecond: number;
+      timeToFirstOutputMs: number | undefined;
+    };
 
     // Conversation title auto-generated
     conversationTitleChanged: {

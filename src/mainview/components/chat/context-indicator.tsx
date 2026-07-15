@@ -35,6 +35,7 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
   // (auto-compaction fires at 100% of this on the next turn).
   const [contextLimit, setContextLimit] = useState(DEFAULT_CONTEXT_LIMIT);
   const liveContextTokens = useChatStore((s) => s.liveContextTokens);
+  const liveTokensPerSecond = useChatStore((s) => s.liveTokensPerSecond);
   // This component lives inside ChatLayout, which stays mounted across a
   // project switch (ProjectPage always force-selects the Chat tab on a
   // project change) — track the latest projectId so a rapid switch can't let
@@ -129,6 +130,11 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
             <span className={cn("text-[11px] font-semibold tabular-nums whitespace-nowrap shrink-0", textColor)}>
               {utilization.toFixed(0)}%
             </span>
+            {liveTokensPerSecond > 0 && (
+              <span className="text-[11px] text-muted-foreground/70 tabular-nums whitespace-nowrap shrink-0">
+                {Math.round(liveTokensPerSecond)} tok/s
+              </span>
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top">{tooltipContent}</TooltipContent>

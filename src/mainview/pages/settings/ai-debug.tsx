@@ -105,7 +105,7 @@ export function AiDebugSettings() {
         <CardHeader>
           <CardTitle>Debug Prompts</CardTitle>
           <CardDescription>
-            Log all prompts sent to AI providers to a file for inspection. Token usage and prompt details are shown in the Analytics page under the Prompts tab. Log rotates automatically at 5 MB.
+            Log all prompts sent to AI providers to a file for inspection (raw prompt text, for debugging). Token usage, cost, and latency breakdowns are on the Analytics page's AI Usage tab instead. Log rotates automatically at 5 MB.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

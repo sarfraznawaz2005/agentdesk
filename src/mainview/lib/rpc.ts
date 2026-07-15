@@ -109,6 +109,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       contextUsage: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:context-usage", { detail: payload }));
       },
+      streamPerformance: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:stream-performance", { detail: payload }));
+      },
       presentPlan: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:plan-presented", { detail: payload }));
       },
@@ -1198,12 +1201,6 @@ export const rpc = {
   /** Open the prompt debug log file in the OS default editor. */
   openPromptLog: () => electroviewRpc.request.openPromptLog({}),
 
-  /** Get token usage stats from the prompt debug log. */
-  getPromptLogStats: (limit?: number) => electroviewRpc.request.getPromptLogStats({ limit }),
-
-  /** Get full content of a specific prompt log entry by timestamp. */
-  getPromptLogEntry: (timestamp: string) => electroviewRpc.request.getPromptLogEntry({ timestamp }),
-
   // ---- WhatsApp ------------------------------------------------------------
 
   /** Fetch all WhatsApp channel configurations. */
@@ -1402,6 +1399,10 @@ export const rpc = {
     electroviewRpc.request.getProjectStats({ projectId, days }),
   getAnalyticsSummary: (projectId: string) =>
     electroviewRpc.request.getAnalyticsSummary({ projectId }),
+  getTelemetryUsage: (params: { projectId?: string; agentName?: string; provider?: string; days?: number }) =>
+    electroviewRpc.request.getTelemetryUsage(params),
+  getProviderHealth: (days?: number) =>
+    electroviewRpc.request.getProviderHealth({ days }),
 
   // MCP
   getMcpConfig: () => electroviewRpc.request.getMcpConfig({}),

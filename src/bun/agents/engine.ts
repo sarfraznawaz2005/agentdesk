@@ -386,6 +386,9 @@ export class AgentEngine {
 				onStepUsage: (promptTokens: number, contextLimit: number) => {
 					this.callbacks.onContextUsage?.(conversationId, promptTokens, contextLimit);
 				},
+				onStreamPerformance: (tokensPerSecond: number, timeToFirstOutputMs: number | undefined) => {
+					this.callbacks.onStreamPerformance?.(conversationId, tokensPerSecond, timeToFirstOutputMs);
+				},
 			};
 
 			// 7. Create PM tools — inline execution via run_agent / run_agents_parallel
@@ -1010,6 +1013,13 @@ export class AgentEngine {
 						if (typeof pmStepTokens === "number" && pmStepTokens > 0) {
 							this.callbacks.onContextUsage?.(conversationId, pmStepTokens, getContextLimit(modelId, this.projectId));
 						}
+					},
+
+					// Live streaming-performance readout (§9.2) — see agent-loop.ts's
+					// identical addition for the full rationale.
+					onLanguageModelCallEnd: (event) => {
+						const tps = event.performance.outputTokensPerSecond ?? event.performance.effectiveOutputTokensPerSecond;
+						this.callbacks.onStreamPerformance?.(conversationId, tps, event.performance.timeToFirstOutputMs);
 					},
 				});
 

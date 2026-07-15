@@ -5,7 +5,7 @@ import * as resetRpc from "../rpc/reset";
 import * as updaterRpc from "../rpc/updater";
 import * as envVarsRpc from "../rpc/env-vars";
 import * as recommendationsRpc from "../rpc/recommendations";
-import { invalidatePromptLogCache, clearPromptLog, openPromptLog, getPromptLogStats, getPromptLogEntry } from "../agents/prompt-logger";
+import { invalidatePromptLogCache, clearPromptLog, openPromptLog } from "../agents/prompt-logger";
 import { broadcastToWebview } from "../engine-manager";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
@@ -81,8 +81,6 @@ export const handlers: Record<string, (params: any) => any> = {
 	// Prompt Debug Log
 	clearPromptLog: () => clearPromptLog(),
 	openPromptLog: () => openPromptLog(),
-	getPromptLogStats: (params) => getPromptLogStats(params.limit),
-	getPromptLogEntry: (params) => getPromptLogEntry(params.timestamp),
 
 	// Prompt Enhancer
 	enhancePrompt: async (params) => {

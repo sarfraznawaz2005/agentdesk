@@ -143,6 +143,8 @@ export interface InlineAgentCallbacks {
 	 * agent works — not just jump at completion.
 	 */
 	onStepUsage?(promptTokens: number, contextLimit: number): void;
+	/** Fired once each language-model call completes with its throughput/TTFO (§9.2). */
+	onStreamPerformance?(tokensPerSecond: number, timeToFirstOutputMs: number | undefined): void;
 }
 
 export interface InlineAgentOptions {
@@ -1705,6 +1707,14 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						callbacks.onPartUpdated(startMsgId, toolCallPart.id, { toolState: "success", timeEnd: endTime } as Partial<MessagePart>);
 					}
 				}
+			},
+
+			// Live streaming-performance readout (§9.2) — a per-call option
+			// (distinct from the global Telemetry sink, which has no route back
+			// to a specific conversationId to broadcast to).
+			onLanguageModelCallEnd: (event) => {
+				const tps = event.performance.outputTokensPerSecond ?? event.performance.effectiveOutputTokensPerSecond;
+				callbacks.onStreamPerformance?.(tps, event.performance.timeToFirstOutputMs);
 			},
 		});
 

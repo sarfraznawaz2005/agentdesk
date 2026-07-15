@@ -172,6 +172,8 @@ export interface AgentEngineCallbacks {
 	onAgentInlineComplete?(conversationId: string, messageId: string, agentName: string, status: string, summary: string, tokensUsed?: { prompt: number; completion: number; contextLimit?: number }): void;
 	/** Live context size (real prompt tokens) emitted each step by the PM or a sub-agent, so the meter climbs in real time. */
 	onContextUsage?(conversationId: string, promptTokens: number, contextLimit: number): void;
+	/** Per-step streaming throughput (§9.2), emitted from streamText's onLanguageModelCallEnd once each language-model call completes. */
+	onStreamPerformance?(conversationId: string, tokensPerSecond: number, timeToFirstOutputMs: number | undefined): void;
 	onConversationTitleChanged?(conversationId: string, title: string): void;
 	onConversationUpdated?(conversationId: string, updatedAt: string): void;
 	onConversationCompacted?(conversationId: string, remainingTokens?: number): void;

@@ -74,6 +74,10 @@ interface ChatState {
   liveContextTokens: number;
   liveContextLimit: number;
 
+  // Live streaming throughput (§9.2) — most recent completed language-model call
+  liveTokensPerSecond: number;
+  liveTimeToFirstOutputMs: number | null;
+
   // Collapsed agent blocks — keyed by message part id (persists across tab switches)
   collapsedAgentBlocks: Record<string, true>;
 
@@ -190,6 +194,8 @@ const initialState = {
   isCompacting: false,
   liveContextTokens: 0,
   liveContextLimit: 0,
+  liveTokensPerSecond: 0,
+  liveTimeToFirstOutputMs: null,
   collapsedAgentBlocks: {} as Record<string, true>,
   drafts: loadDrafts(),
 };
@@ -231,7 +237,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   setActiveConversation: (id: string | null) => {
     const prevId = get().activeConversationId;
     if (id === prevId) {
-      set({ liveContextTokens: 0, liveContextLimit: 0 });
+      set({ liveContextTokens: 0, liveContextLimit: 0, liveTokensPerSecond: 0, liveTimeToFirstOutputMs: null });
       return;
     }
     // A genuine switch: any in-flight streaming state (buffered-but-unflushed
@@ -253,6 +259,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       activeConversationId: id,
       liveContextTokens: 0,
       liveContextLimit: 0,
+      liveTokensPerSecond: 0,
+      liveTimeToFirstOutputMs: null,
       isStreaming: false,
       streamingMessageId: null,
       streamingContent: "",
@@ -528,7 +536,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   clearActivity: () => {
-    set({ activeAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0 });
+    set({ activeAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0, liveTokensPerSecond: 0, liveTimeToFirstOutputMs: null });
   },
 
   // Re-sync activeAgents from backend — called after navigation back to a project page.

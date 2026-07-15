@@ -753,6 +753,23 @@ function onContextUsage(e: Event): void {
   if (promptTokens > 0) useChatStore.setState({ liveContextTokens: promptTokens });
 }
 
+// Live streaming-performance readout (§9.2): most recent completed
+// language-model call's throughput, so the chat UI can show a small
+// tokens/sec indicator alongside the context meter while streaming.
+function onStreamPerformance(e: Event): void {
+  const { conversationId, tokensPerSecond, timeToFirstOutputMs } = (e as CustomEvent<{
+    conversationId: string;
+    tokensPerSecond: number;
+    timeToFirstOutputMs: number | undefined;
+  }>).detail;
+  const state = useChatStore.getState();
+  if (state.activeConversationId !== conversationId) return;
+  useChatStore.setState({
+    liveTokensPerSecond: tokensPerSecond,
+    liveTimeToFirstOutputMs: timeToFirstOutputMs ?? null,
+  });
+}
+
 function onPmThinking(e: Event): void {
   const { conversationId, text } = (e as CustomEvent<{
     conversationId: string;
@@ -802,6 +819,7 @@ export function initChatEventHandlers(): void {
   window.addEventListener("agentdesk:agent-inline-start", onAgentInlineStart);
   window.addEventListener("agentdesk:agent-inline-complete", onAgentInlineComplete);
   window.addEventListener("agentdesk:context-usage", onContextUsage);
+  window.addEventListener("agentdesk:stream-performance", onStreamPerformance);
   window.addEventListener("agentdesk:pm-thinking", onPmThinking);
   window.addEventListener("agentdesk:part-created", onPartCreatedForHasParts);
 }

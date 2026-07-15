@@ -82,6 +82,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   agentInlineStart: "agentdesk:agent-inline-start",
   agentInlineComplete: "agentdesk:agent-inline-complete",
   contextUsage: "agentdesk:context-usage",
+  streamPerformance: "agentdesk:stream-performance",
   presentPlan: "agentdesk:plan-presented",
   kanbanTaskUpdated: "agentdesk:kanban-task-updated",
   agentSessionComplete: "agentdesk:agent-session-complete",

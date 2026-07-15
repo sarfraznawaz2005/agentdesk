@@ -776,6 +776,13 @@ backend adoption — same initiative, not a someday-later backlog.
 
 ### 9.1 AI Usage / Cost Analytics page — what telemetry actually buys it
 
+**Implemented 2026-07-15**, with two scoping narrowings vs. this plan — no
+per-model $ pricing exists anywhere in the schema, so "cost" landed as
+token-based, not dollar-based; and the error/retry-rate view isn't
+buildable from telemetry's `onError` (no callId/provider on that event) — a
+partial finish-reason-derived substitute landed on §9.4's tab instead. See
+`ai-sdk-7-migration-tasks.md` §4.1 for the full breakdown.
+
 This is the direct answer to "does telemetry help the analytics page": **it
 is the analytics page's entire data source.** Today, the only thing close to
 this is `prompt-logger.ts`'s regex-parsed "Analytics" settings view — opt-in,
@@ -832,6 +839,12 @@ still opt-in/dev-only) and stop extending its regex-parsed stats path.
 
 ### 9.2 Streaming performance indicator (tokens/sec, time-to-first-token)
 
+**Implemented 2026-07-15.** Routed through a call-level `onLanguageModelCallEnd`
+option on each `streamText` call (not the global telemetry sink, which has no
+`conversationId` to route a value back to a specific chat window), reusing
+the `onContextUsage` broadcast path exactly as scoped. See
+`ai-sdk-7-migration-tasks.md` §4.2 for the full wiring.
+
 v7's per-step performance stats feed directly into the existing
 `onContextUsage` callback path already wired to the chat UI's context-usage
 indicator — a small, low-risk addition once telemetry is wired up (Phase
@@ -849,6 +862,15 @@ generalization and file-delete gating remain un-scoped, unrelated future
 work, not a consequence of this migration.
 
 ### 9.4 Provider health / status page
+
+**Implemented 2026-07-15, narrower than scoped here.** Landed as a tab on the
+Analytics page (not a standalone page — avoids colliding with the existing,
+unrelated "System Health" settings page) showing per-provider call volume,
+latency, and finish-reason-derived error rate. `createProviderAdapterWithFallback()`
+turned out to be dead code — never called anywhere in the codebase, and it
+only `console.warn`s even when invoked — so "surfaces when/why a fallback
+triggered" isn't buildable without new backend instrumentation, which is out
+of scope for a UI-only phase. See `ai-sdk-7-migration-tasks.md` §4.4.
 
 New, using the same telemetry sink as §9.1: per-provider uptime and
 error-rate trend over time, built from the error/retry-rate data telemetry

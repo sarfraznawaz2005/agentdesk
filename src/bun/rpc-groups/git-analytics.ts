@@ -74,6 +74,8 @@ export const handlers: Record<string, (params: any) => any> = {
 	// Analytics
 	getProjectStats: (params) => analyticsRpc.getProjectStats(params.projectId, params.days),
 	getAnalyticsSummary: (params) => analyticsRpc.getAnalyticsSummary(params.projectId),
+	getTelemetryUsage: (params) => analyticsRpc.getTelemetryUsage(params),
+	getProviderHealth: (params) => analyticsRpc.getProviderHealth(params.days),
 
 	// Audit Log
 	getAuditLog: (params) => auditRpc.getAuditLog(params),
