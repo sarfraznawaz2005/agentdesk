@@ -37,7 +37,7 @@ import { wrapToolsWithCallLogging } from "./tool-call-logging";
 import {
 	getPluginTools,
 	THINKING_BUDGET_TOKENS,
-	buildPMThinkingOptions,
+	buildReasoningOptions,
 	extractPMReasoning,
 	applyAnthropicCaching,
 	DEFAULT_METADATA,
@@ -860,7 +860,7 @@ export class AgentEngine {
 			let postStreamCorrectionNeeded = false;
 			let postStreamDetectionSource = "";
 
-			const pmThinkingOptions = buildPMThinkingOptions(pmThinkingBudget, providerRow.providerType);
+			const pmThinkingOptions = buildReasoningOptions(pmThinkingBudget);
 
 			const MAX_PM_RETRIES = 3;
 			let pmAttempt = 0;

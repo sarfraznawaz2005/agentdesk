@@ -25,42 +25,39 @@ export async function getPluginTools(): Promise<Record<string, import("ai").Tool
 // Thinking budget helpers
 // ---------------------------------------------------------------------------
 
+// Still used by the "custom" provider's separate, complementary model-creation
+// -time thinking injection (see ProviderAdapter.createModel()'s
+// thinkingBudgetTokens param) — that mechanism solves a different problem
+// (some self-hosted models need a non-standard enable_thinking-style flag
+// baked into model config, not expressible via a per-call option) and is
+// unaffected by the reasoning-option migration below.
 export const THINKING_BUDGET_TOKENS: Record<string, number> = {
 	low: 2000,
 	medium: 8000,
 	high: 16000,
 };
 
-export function buildPMThinkingOptions(budget: string | null, providerType: string): Record<string, unknown> {
-	if (!budget) return {};
-	const budgetTokens = THINKING_BUDGET_TOKENS[budget] ?? 8000;
-	const safeMaxTokens = budgetTokens + 1000;
+const REASONING_LEVELS = new Set(["low", "medium", "high"]);
 
-	if (providerType === "anthropic" || providerType === "claude-subscription") {
-		return {
-			maxTokens: safeMaxTokens,
-			providerOptions: {
-				anthropic: { thinking: { type: "enabled", budgetTokens } },
-			},
-		};
-	}
-
-	if (providerType === "openrouter") {
-		// OpenRouter proxies Claude and forwards anthropic providerOptions
-		return {
-			maxTokens: safeMaxTokens,
-			providerOptions: {
-				anthropic: { thinking: { type: "enabled", budgetTokens } },
-			},
-		};
-	}
-
-	if (providerType === "custom") {
-		// enable_thinking is injected at model creation level via OpenAIAdapter.createModel()
-		return { maxTokens: safeMaxTokens };
-	}
-
-	return {};
+/**
+ * AI SDK v7 unified `reasoning` option (§6.5) — provider-agnostic, replacing
+ * the old per-provider `providerOptions.anthropic.thinking` branching.
+ * Confirmed (by reading each provider package's own source, not just docs)
+ * that @ai-sdk/anthropic, @ai-sdk/openai, @ai-sdk/openai-compatible (covers
+ * Ollama/OpenCode/OpenRouter/Z.AI), @ai-sdk/google, @ai-sdk/groq,
+ * @ai-sdk/deepseek, and @ai-sdk/xai all forward it — unsupported
+ * providers/models just get a non-fatal `warnings` entry (routed through
+ * installAiSdkWarningHandler()), not an error.
+ *
+ * Known, accepted behavior change for Anthropic specifically: the SDK maps
+ * reasoning levels to a PERCENTAGE of maxOutputTokens (10/30/60% for
+ * low/medium/high) rather than AgentDesk's old fixed token counts
+ * (2000/8000/16000) — so actual thinking depth per level now scales with
+ * whatever maxOutputTokens the call resolves to, instead of being constant.
+ */
+export function buildReasoningOptions(budget: string | null): Record<string, unknown> {
+	if (!budget || !REASONING_LEVELS.has(budget)) return {};
+	return { reasoning: budget };
 }
 
 export function extractPMReasoning(stepResult: unknown): string {

@@ -218,35 +218,26 @@ export interface InlineAgentResult {
 // Thinking budget helpers (reused from sub-agent pattern)
 // ---------------------------------------------------------------------------
 
+// Still used by the "custom" provider's separate, complementary model-creation
+// -time thinking injection (see effectiveProviderConfig.providerType ===
+// "custom" below, and ProviderAdapter.createModel()'s thinkingBudgetTokens
+// param) — unaffected by the reasoning-option migration below.
 const THINKING_BUDGET_TOKENS: Record<string, number> = {
 	low: 2000,
 	medium: 8000,
 	high: 16000,
 };
 
-function buildThinkingOptions(
-	budget: string | null,
-	providerType: string,
-	maxTokens?: number,
-): Record<string, unknown> {
-	if (!budget) return {};
-	const budgetTokens = THINKING_BUDGET_TOKENS[budget] ?? 8000;
-	const safeMaxTokens = Math.max(maxTokens ?? 0, budgetTokens + 1000);
+const REASONING_LEVELS = new Set(["low", "medium", "high"]);
 
-	if (providerType === "anthropic" || providerType === "openrouter" || providerType === "claude-subscription") {
-		return {
-			maxTokens: safeMaxTokens,
-			providerOptions: {
-				anthropic: { thinking: { type: "enabled", budgetTokens } },
-			},
-		};
-	}
-
-	if (providerType === "custom") {
-		return { maxTokens: safeMaxTokens };
-	}
-
-	return {};
+// AI SDK v7 unified `reasoning` option (§6.5 of the migration doc) — see
+// engine-types.ts's buildReasoningOptions() for the full rationale (identical
+// logic, kept as a separate local copy to match this file's existing
+// THINKING_BUDGET_TOKENS duplication rather than introducing a new
+// cross-module dependency for a one-line function).
+function buildThinkingOptions(budget: string | null): Record<string, unknown> {
+	if (!budget || !REASONING_LEVELS.has(budget)) return {};
+	return { reasoning: budget };
 }
 
 // ---------------------------------------------------------------------------
@@ -1448,7 +1439,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			abortSignal: compositeController.signal,
 			...(effectiveTemperature !== undefined && { temperature: effectiveTemperature }),
 			...(effectiveMaxTokens !== undefined && { maxTokens: effectiveMaxTokens }),
-			...buildThinkingOptions(effectiveThinkingBudget, effectiveProviderConfig.providerType, effectiveMaxTokens),
+			...buildThinkingOptions(effectiveThinkingBudget),
 
 			// --- Stop when no more tool calls or guardrails trigger ---
 			stopWhen: [

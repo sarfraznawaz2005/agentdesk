@@ -511,6 +511,21 @@ explicitly special-cases `openrouter`). Keep the existing fallback chain as a
 safety net for any provider the unified option doesn't cover rather than
 deleting it outright.
 
+**Implemented 2026-07-15, full replacement (user-confirmed).** Confirmed by
+reading each provider package's own source that `@ai-sdk/anthropic`,
+`@ai-sdk/openai`, `@ai-sdk/openai-compatible` (covers Ollama/OpenCode/
+OpenRouter/Z.AI), `@ai-sdk/google`, `@ai-sdk/groq`, `@ai-sdk/deepseek`, and
+`@ai-sdk/xai` all genuinely forward it — a bigger win than "simplification,"
+since providers that previously got zero reasoning configuration now get real
+control. **Known, accepted trade-off**: Anthropic's mapping is percentage-of-
+`maxOutputTokens` (10/30/60% for low/medium/high) rather than AgentDesk's old
+fixed token counts (2000/8000/16000) — flagged to the user before
+implementing since there's no `maxOutputTokens` value that reproduces all
+three old levels simultaneously (the ratios don't match), confirmed to
+proceed anyway. Live-verified against two real providers (Claude Haiku,
+OpenCode) — accepted cleanly, no errors or warnings. `extractPMReasoning()`
+untouched, as planned. Full detail in `ai-sdk-7-migration-tasks.md` §3.3.
+
 ### 6.6 First-class timeouts
 
 `agent-loop.ts` hand-rolls `TIMEOUT_MS` (default 30 min) and
