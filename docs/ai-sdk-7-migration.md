@@ -618,6 +618,16 @@ outcome, not a failure of the spike. Whatever the outcome, add a dated entry
 to `claude-subscription-architecture.md`'s "if a future session wants to
 revisit this" section recording what was found.
 
+**Evaluated 2026-07-15 — concluded "not yet."** Didn't need a full
+streaming/tools/abort prototype: `HarnessAgent` itself isn't exported by any
+published `ai` package version (stable or canary — checked both directly).
+The Claude Code harness adapter that does exist requires a network-sandbox
+bridge (WebSocket, port exposure, cloud-sandbox-shaped contract) —
+fundamentally mismatched with AgentDesk's need for direct, unsandboxed access
+to the real local project directory. Full detail and the re-check condition
+for a future session are in `claude-subscription-architecture.md`'s
+2026-07-15 addendum.
+
 ---
 
 ## 7. Analysis: Should We Integrate the Referenced Sources?

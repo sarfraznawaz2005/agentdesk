@@ -231,3 +231,63 @@ on:
 None of the above were show-stoppers in the prototypes — they were simply not
 in scope for a feasibility investigation. If revisited, budget for a real
 implementation-and-hardening pass, not a quick swap.
+
+## 2026-07-15 addendum: `HarnessAgent` (AI SDK v7) evaluated — not yet available
+
+AI SDK v7 (§6.8 of `ai-sdk-7-migration.md`, Phase 3.7) documents a `HarnessAgent`
+abstraction specifically for wrapping "established agent harnesses" — Claude
+Code, Codex, Deep Agents, OpenCode, Pi — behind a normal AI SDK `Agent`
+interface, which reads on paper like exactly the unification mechanism this
+doc's original investigation was looking for. Evaluated for real rather than
+taken at face value, following the same "docs alone can be disqualifying"
+precedent as mechanism #1 above:
+
+- **`HarnessAgent` itself is not exported by any published version of the
+  `ai` package** — confirmed by grepping the installed stable release
+  (`ai@7.0.28`, current for this migration) and separately installing and
+  grepping the `canary` dist-tag (`ai@7.0.0-canary.176`) in an isolated
+  scratch project: zero matches in either. The class the docs describe using
+  (`node_modules/ai/docs/03-ai-sdk-harnesses/*.mdx`, bundled with the package)
+  does not exist in installable code yet, in stable or canary. Not a
+  version-pinning issue on AgentDesk's side — there is currently no version to
+  pin to.
+- **The dependency packages are real and do exist** — `@ai-sdk/harness`
+  (types/schemas only, no `HarnessAgent` class) and
+  `@ai-sdk/harness-claude-code@1.0.34` (a genuine, actively-published adapter,
+  confirmed via `npm view`) are both installable. Its own capability table
+  lists the Claude Code adapter's "Runtime location" as **"Sandbox bridge"**
+  — every adapter is, except Pi ("Host process"). Confirmed by reading its
+  `.d.ts`: the adapter opens a WebSocket bridge to a port inside a
+  `HarnessV1SandboxProvider`-supplied sandbox (a real, versioned
+  `harness-sandbox-v1` protocol — port exposure, `getPortUrl`, bootstrap
+  recipes, network policy, snapshot-based sandbox identity — modeled directly
+  on cloud sandbox products; the adapter's own default working-directory doc
+  comment names Vercel Sandbox's `/vercel/sandbox` explicitly).
+- **This is a fundamentally worse fit than the mechanisms already
+  investigated above, even setting the missing `HarnessAgent` class aside.**
+  AgentDesk's requirement is the opposite of what this adapter is built for —
+  direct, unsandboxed access to the user's real local project directory (the
+  entire reason `claude-subscription-cli-runner.ts` spawns the CLI directly
+  today). Making the Claude Code harness adapter work against a bare local
+  host would mean building a custom `HarnessV1SandboxProvider` that
+  "wraps" the local machine as a pseudo-sandbox — implementing a full
+  WebSocket bridge server matching a bespoke, versioned protocol. That is the
+  same *class* of engineering as mechanism #2/#3's local HTTP proxy (a custom
+  bridge server standing between AgentDesk and the real `claude` subprocess),
+  not less — but for a narrower, more complex, still explicitly
+  `<Note type="warning">experimental, expect breaking changes between
+  releases</Note>` upstream contract, orchestrated by a class that doesn't
+  exist yet.
+
+**Conclusion: not yet, revisit later.** No code changes made — this was a
+docs-and-package-evidence evaluation, not a prototype build, since the
+disqualifying facts (missing top-level class; sandbox-bridge requirement
+fundamentally mismatched with AgentDesk's local-workspace model) were
+concrete and checkable without needing to stand up a full bridge server
+first. Revisit if/when `HarnessAgent` actually ships in a stable release —
+at that point, re-check whether the harness framework has grown a
+lower-friction "host process" sandbox mode (the Pi adapter already proves the
+framework *can* support running outside a network sandbox; whether that mode
+becomes available to the Claude Code adapter specifically is the open
+question worth re-checking first, before investing in a custom sandbox
+provider).
