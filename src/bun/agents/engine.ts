@@ -889,6 +889,14 @@ export class AgentEngine {
 					// finding, so this is the more valuable of the two runtimeContext
 					// additions in this migration phase (see also agent-loop.ts).
 					runtimeContext: { agentName: "project-manager", projectId: this.projectId, conversationId },
+					// AI SDK v7 native timeout (§6.6, Phase 3.5) — chunkMs only (stalled-
+					// stream detection). Unlike agent-loop.ts's sub-agent turns, the PM
+					// loop has no total-timeout ceiling at all today (by design — a human
+					// is present and can Stop it), so a hung-but-not-closed connection
+					// would otherwise sit silent indefinitely. Deliberately omits
+					// totalMs/stepMs/toolMs — same reasoning as agent-loop.ts's identical
+					// addition (see that comment for the full rationale).
+					timeout: { chunkMs: 120_000 },
 					...pmThinkingOptions,
 					// Deliver real media bytes from a read_image/take_screenshot/read_audio call
 					// as a follow-up user message — the only wire format every provider actually

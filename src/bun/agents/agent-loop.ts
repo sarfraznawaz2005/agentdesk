@@ -1437,6 +1437,20 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			// data to a specific agent role and project, not just a provider/model.
 			runtimeContext: { agentName, projectId, conversationId },
 			abortSignal: compositeController.signal,
+			// AI SDK v7 native timeout (§6.6, Phase 3.5) — deliberately narrow: only
+			// `chunkMs` (stalled-stream detection: no new streamed token/reasoning
+			// delta within this window). This is a genuinely new guardrail AgentDesk
+			// lacked before — a hung-but-not-closed connection previously sat
+			// silent until the full 30-minute TIMEOUT_MS below. Does NOT touch
+			// `totalMs` (would duplicate/race the existing timeoutController+
+			// TIMEOUT_MS below) or `toolMs`/`tools.{name}Ms` (would silently
+			// override run_shell's own per-call, LLM-configurable `timeout` input
+			// whenever an agent legitimately sets it above this ceiling — e.g. a
+			// long build/test command). A chunk-timeout abort isn't specially
+			// classified below; it falls into the existing generic-failure path,
+			// and isTransientError() already matches "timeout" in the message so
+			// it gets the normal transient-error retry.
+			timeout: { chunkMs: 120_000 },
 			...(effectiveTemperature !== undefined && { temperature: effectiveTemperature }),
 			...(effectiveMaxTokens !== undefined && { maxTokens: effectiveMaxTokens }),
 			...buildThinkingOptions(effectiveThinkingBudget),

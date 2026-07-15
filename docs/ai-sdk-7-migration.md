@@ -553,6 +553,22 @@ the Stop-button correctness bugs documented in
 does not mean "rushed" — this is the one Phase 3 item where taking an extra
 validation pass is worth more than shipping it alongside everything else.
 
+**Implemented 2026-07-15 — deliberately narrow.** Left `TIMEOUT_MS`/
+`timeoutController` and the `isUserAbort`/`isTimeout`/`isContextFull`/
+`isStuck` detection completely untouched — they distinguish causes by
+checking independently-owned controller objects directly, which is more
+precise than anything achievable by inspecting a v7-native timeout's merged
+`AbortSignal`/`DOMException` reason, so replacing them would be a strictly
+worse mechanism for an already-solved problem. Added only `timeout: {
+chunkMs: 120_000 }` to both the sub-agent and PM `streamText` calls — a
+genuinely new guardrail (stalled-stream detection) AgentDesk lacked
+entirely, chosen specifically because it's orthogonal to tool execution
+duration and can't conflict with `run_shell`'s own configurable timeout the
+way a global `toolMs` would. Live-verified the one property that mattered
+most: a manually-aborted stream's `signal.reason` comes back unmodified with
+`chunkMs` set, proving it can't interfere with Stop-button detection. Full
+detail in `ai-sdk-7-migration-tasks.md` §3.5.
+
 ### 6.7 `uploadFile` (upload-once, reference-later)
 
 `media-followup.ts` re-sends full base64 image/audio payloads on every
