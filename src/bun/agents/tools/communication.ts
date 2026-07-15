@@ -32,14 +32,17 @@ export function createCommunicationTools(agentName: string, displayName: string)
 						.optional()
 						.describe("Selectable choices to present. Omit for a free-text answer."),
 				}),
-				execute: async (rawArgs): Promise<string> => {
+				contextSchema: z.object({ projectId: z.string().optional() }),
+				execute: async (rawArgs, { context: toolContext }): Promise<string> => {
 					const { question, context, options } = rawArgs as { question: string; context?: string; options?: string[] };
-					// Stamped by agent-loop.ts's request_human_input wrapper (hidden from
-					// the model — not part of the schema above) so this question is
-					// attributed to and pending-approval-tracked-under the agent's ACTUAL
-					// project, not whichever project's engine the backend happened to
-					// touch most recently.
-					const projectId = (rawArgs as Record<string, unknown>).__projectId as string | undefined ?? "";
+					// Supplied by agent-loop.ts's toolsContext (AI SDK v7 runtime-context
+					// mechanism, replacing an earlier hidden-args-mutation hack) so this
+					// question is attributed to and pending-approval-tracked-under the
+					// agent's ACTUAL project, not whichever project's engine the backend
+					// happened to touch most recently. Named toolContext locally to avoid
+					// colliding with the tool's own "context" input field above (unrelated
+					// background text for the question, not this out-of-band context).
+					const projectId = toolContext?.projectId ?? "";
 					try {
 						// Lazy import avoids a static cycle (engine-manager → engine → tools).
 						const { askUserQuestion } = await import("../../engine-manager");

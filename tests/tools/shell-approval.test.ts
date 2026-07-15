@@ -11,10 +11,11 @@
  * a Set keyed by project id. The approval handler also used to fall back to
  * a buggy module-level "most recently touched engine" cache in
  * engine-manager.ts when resolving which project was asking; it now receives
- * the real project/conversation id directly (stamped onto the tool's args by
- * agent-loop.ts's run_shell wrapper — simulated here via the hidden
- * __projectId/__conversationId fields, since exercising the full agent-loop
- * wrapper would require mocking the entire AI SDK call chain).
+ * the real project/conversation id directly (supplied via agent-loop.ts's
+ * toolsContext, AI SDK v7's runtime-context mechanism, and read through
+ * run_shell's `contextSchema` — simulated here by passing `context` directly
+ * to execute(), since exercising the full agent-loop/streamText call chain
+ * would require mocking the entire AI SDK call chain).
  *
  * Runs real (harmless) shell commands via the actual execute() path — this is
  * intentionally closer to an integration test than a narrow unit test,
@@ -25,15 +26,15 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { setShellApprovalHandler, resetShellAutoApprove, shellTools } from "../../src/bun/agents/tools/shell";
 
-// Simulates agent-loop.ts's run_shell wrapper stamping the calling agent's
-// real project/conversation id onto the args (hidden from the model, not
-// part of the tool's public input schema).
+// Simulates agent-loop.ts's toolsContext supplying the calling agent's real
+// project/conversation id via the v7 runtime-context mechanism (not part of
+// the tool's public input schema).
 function runShell(command: string, projectId: string, conversationId: string): Promise<string> {
 	return shellTools.run_shell.tool.execute(
-		{ command, __projectId: projectId, __conversationId: conversationId } as unknown as Parameters<
+		{ command } as unknown as Parameters<typeof shellTools.run_shell.tool.execute>[0],
+		{ abortSignal: undefined, context: { projectId, conversationId } } as unknown as Parameters<
 			typeof shellTools.run_shell.tool.execute
-		>[0],
-		{ abortSignal: undefined } as unknown as Parameters<typeof shellTools.run_shell.tool.execute>[1],
+		>[1],
 	) as Promise<string>;
 }
 

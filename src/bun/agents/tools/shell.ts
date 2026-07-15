@@ -179,18 +179,27 @@ const SHELL_INPUT_SCHEMA = z.object({
 		.describe("Maximum execution time in milliseconds. Defaults to 300000 (300 s)."),
 });
 
+const SHELL_CONTEXT_SCHEMA = z.object({
+	projectId: z.string().optional(),
+	conversationId: z.string().optional(),
+});
+
 function makeShellTool(autoApprove: boolean) {
 	return tool({
 		description: SHELL_DESCRIPTION,
 		inputSchema: SHELL_INPUT_SCHEMA,
-		execute: async (rawArgs, { abortSignal }): Promise<string> => {
+		contextSchema: SHELL_CONTEXT_SCHEMA,
+		execute: async (rawArgs, { abortSignal, context }): Promise<string> => {
 			const { command, workingDirectory, timeout = 300_000 } = rawArgs as z.infer<typeof SHELL_INPUT_SCHEMA>;
-			// Stamped by agent-loop.ts's run_shell wrapper (hidden from the model —
-			// not part of SHELL_INPUT_SCHEMA) so the approval gate below resolves
-			// THIS agent's actual project/conversation, not whichever project's
-			// engine the backend happened to touch most recently.
-			const projectId = (rawArgs as Record<string, unknown>).__projectId as string | undefined ?? "";
-			const conversationId = (rawArgs as Record<string, unknown>).__conversationId as string | undefined ?? "";
+			// Supplied by agent-loop.ts's toolsContext (AI SDK v7 runtime-context
+			// mechanism, replacing an earlier hidden-args-mutation hack) so the
+			// approval gate below resolves THIS agent's actual project/conversation,
+			// not whichever project's engine the backend happened to touch most
+			// recently. Other call sites (freelance/skills-search/recommendations)
+			// use the autoApprove=true variant, which never reads these — optional
+			// here so passing no context there stays a no-op.
+			const projectId = context?.projectId ?? "";
+			const conversationId = context?.conversationId ?? "";
 
 			// --- Safety check ---------------------------------------------------
 			if (isBlockedCommand(command)) {

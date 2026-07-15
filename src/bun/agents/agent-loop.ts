@@ -982,44 +982,23 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		if (tools.search_content) tools.search_content = wrapDirTool(tools.search_content, "directory");
 	}
 
-	// Shell wrapper: default to workspace, resolve relative paths against workspace,
-	// and stamp this agent's actual projectId/conversationId (hidden from the
-	// model — not part of its input schema). Unconditional on workspacePath
-	// (unlike the dir-tool wrappers above) because the stamp must always
-	// happen — without it, the approval gate falls back to guessing which
-	// project is asking, and its pending-approval card can't deep-link to a
-	// specific conversation. See shell.ts's ShellApprovalHandler /
-	// sessionAutoApprovedProjects.
-	if (tools.run_shell) {
+	// Shell wrapper: default to workspace, resolve relative paths against
+	// workspace. projectId/conversationId reach run_shell's approval gate via
+	// toolsContext at the streamText call site below (AI SDK v7 runtime
+	// context), not a hidden args mutation — see shell.ts's ShellApprovalHandler
+	// / sessionAutoApprovedProjects.
+	if (tools.run_shell && workspacePath) {
 		const origShell = tools.run_shell as Tool & { execute: (args: Record<string, unknown>, opts: unknown) => Promise<unknown> };
 		tools.run_shell = {
 			...tools.run_shell,
 			execute: async (args: Record<string, unknown>, execOpts: unknown) => {
-				if (workspacePath) {
-					const wd = args.workingDirectory as string | undefined;
-					if (!wd) {
-						args.workingDirectory = workspacePath;
-					} else if (!isAbsolute(wd)) {
-						args.workingDirectory = join(workspacePath, wd);
-					}
+				const wd = args.workingDirectory as string | undefined;
+				if (!wd) {
+					args.workingDirectory = workspacePath;
+				} else if (!isAbsolute(wd)) {
+					args.workingDirectory = join(workspacePath, wd);
 				}
-				args.__projectId = projectId;
-				args.__conversationId = conversationId;
 				return origShell.execute(args, execOpts);
-			},
-		} as Tool;
-	}
-
-	// request_human_input wrapper: same reasoning as run_shell above — stamp this
-	// agent's actual projectId so a question it raises is attributed to (and its
-	// pending-approval record tagged with) the right project, not a guess.
-	if (tools.request_human_input && projectId) {
-		const origAsk = tools.request_human_input as Tool & { execute: (args: Record<string, unknown>, opts: unknown) => Promise<unknown> };
-		tools.request_human_input = {
-			...tools.request_human_input,
-			execute: async (args: Record<string, unknown>, execOpts: unknown) => {
-				args.__projectId = projectId;
-				return origAsk.execute(args, execOpts);
 			},
 		} as Tool;
 	}
@@ -1446,6 +1425,26 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			instructions: cached.instructions,
 			messages: cached.messages,
 			tools,
+			// AI SDK v7 runtime context, replacing an earlier hidden-args-mutation
+			// hack — flows into run_shell's/request_human_input's `context` execute
+			// param (see shell.ts/communication.ts) so their approval gate resolves
+			// THIS agent's actual project/conversation. Optional on both tools'
+			// contextSchema, so other run_shell/request_human_input call sites that
+			// don't pass toolsContext (freelance/skills-search/recommendations, all
+			// using the autoApprove=true variant) are unaffected.
+			// `tools` here is a runtime-assembled Record<string, Tool> (this codebase's
+			// tool sets are DB/role-driven, never a literal object) — TS can't infer
+			// InferToolSetContext through that, so it types toolsContext as `never`
+			// for any generic Record<string, Tool>. The cast is a known, narrow
+			// workaround for that structural-typing gap, not a suppressed real error:
+			// the object's shape genuinely matches run_shell's/request_human_input's
+			// own contextSchema declarations (verified by hand, both optional).
+			toolsContext: { run_shell: { projectId, conversationId }, request_human_input: { projectId } } as never,
+			// Global (not per-tool) call context — flows automatically into every
+			// telemetry event's `runtimeContext` field (see telemetry-sink.ts, Phase
+			// 3.1) so the eventual Analytics page can attribute usage/cost/latency
+			// data to a specific agent role and project, not just a provider/model.
+			runtimeContext: { agentName, projectId, conversationId },
 			abortSignal: compositeController.signal,
 			...(effectiveTemperature !== undefined && { temperature: effectiveTemperature }),
 			...(effectiveMaxTokens !== undefined && { maxTokens: effectiveMaxTokens }),

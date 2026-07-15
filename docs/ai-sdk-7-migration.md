@@ -402,6 +402,23 @@ typed. Migrating would:
 **Decided 2026-07-14: in scope now**, Phase 3.2 — sequenced right after
 telemetry so tool-approval (§6.2) can build on the same context plumbing.
 
+**Implemented 2026-07-15.** Confirmed the blast radius before touching
+anything: `__projectId`/`__conversationId` were read only by `run_shell` and
+`request_human_input`, stamped only by `agent-loop.ts` (the PM never offers
+either tool); `run_shell`'s 4 other independent call sites all use an
+`autoApprove=true` variant that never reads the gated path, so they were
+unaffected. Added `contextSchema` to both tools (fields optional, preserving
+prior graceful-fallback behavior) and wired `toolsContext` at the real
+`streamText` call — a narrow, commented `as never` cast was needed since
+AgentDesk's tool sets are always a runtime-assembled `Record<string, Tool>`
+(DB/role-driven), not a literal object TS can infer `InferToolSetContext`
+through. **Bonus synergy with §6.3's telemetry**: also added a separate
+global `runtimeContext` (agent/project/conversation) to both `agent-loop.ts`
+and `engine.ts`'s `streamText` calls — flows automatically into every
+telemetry event with zero sink changes, closing the per-surface-attribution
+gap that plain telemetry alone couldn't fill. Full detail in
+`ai-sdk-7-migration-tasks.md` §3.2.
+
 ### 6.2 Tool approval (`toolApproval`, HMAC-signed)
 
 AgentDesk already has a bespoke "shell approval gate" for `run_shell`

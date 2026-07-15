@@ -883,6 +883,12 @@ export class AgentEngine {
 					tools: activeTools,
 					stopWhen: [isStepCount(100)],
 					abortSignal: abortController?.signal,
+					// Flows automatically into every telemetry event's `runtimeContext`
+					// field (see telemetry-sink.ts, Phase 3.1) — the PM turn is the
+					// higher cost-significance surface per Phase 0's own usage-tracking
+					// finding, so this is the more valuable of the two runtimeContext
+					// additions in this migration phase (see also agent-loop.ts).
+					runtimeContext: { agentName: "project-manager", projectId: this.projectId, conversationId },
 					...pmThinkingOptions,
 					// Deliver real media bytes from a read_image/take_screenshot/read_audio call
 					// as a follow-up user message — the only wire format every provider actually
