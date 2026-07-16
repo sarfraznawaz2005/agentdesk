@@ -60,6 +60,10 @@ mock.module("../../src/bun/providers/models", () => ({
 mock.module("../../src/bun/agents/engine-types", () => ({
 	getPluginTools: async () => ({}),
 	applyAnthropicCaching: (_: string, system: string, messages: unknown[]) => ({ instructions: system, messages }),
+	isThinkingUnsupportedError: () => false,
+	warnThinkingUnsupportedOnce: () => {},
+	isToolsUnsupportedError: () => false,
+	warnToolsUnsupportedOnce: () => {},
 }));
 // rpc/settings, file-tracker, and file-ops are NOT mocked here to avoid
 // contaminating settings.test.ts, file-tracker.test.ts, and validate-path.test.ts.

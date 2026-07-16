@@ -25,10 +25,13 @@ if ($Clean -and (Test-Path -LiteralPath $cacheAbs)) { Remove-Item -LiteralPath $
 New-Item -ItemType Directory -Force -Path $cacheAbs | Out-Null
 
 # Each check runs from the project root in its own background job (parallel).
+# The incremental/cache flags now live directly in package.json's typecheck/lint
+# scripts (same $cacheRel location) so a plain `bun run typecheck`/`bun run lint`
+# is fast everywhere, not just through this script — no extra args needed here.
 $checks = @(
-  @{ Name = 'Typecheck'; Cmd = "bun run typecheck -- --incremental --tsBuildInfoFile $cacheRel/tsc.tsbuildinfo" },
+  @{ Name = 'Typecheck'; Cmd = 'bun run typecheck' },
   @{ Name = 'Tests';     Cmd = 'bun test' },
-  @{ Name = 'Lint';      Cmd = "bun run lint -- --cache --cache-strategy content --cache-location $cacheRel/eslintcache" }
+  @{ Name = 'Lint';      Cmd = 'bun run lint' }
 )
 
 $jobs = foreach ($c in $checks) {

@@ -319,8 +319,11 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   // the user has otherwise disabled that model. Search filters all sections.
   const sections = useMemo<ModelSection[]>(() => {
     const q = search.toLowerCase().trim();
-    const matches = (providerName: string, model: string) =>
-      !q || model.toLowerCase().includes(q) || providerName.toLowerCase().includes(q);
+    const matches = (providerName: string, model: string, providerType: string) =>
+      !q ||
+      model.toLowerCase().includes(q) ||
+      providerName.toLowerCase().includes(q) ||
+      providerType.toLowerCase().includes(q);
 
     const providerSections: ModelSection[] = [];
     const allEnabled: ModelEntry[] = [];
@@ -329,7 +332,7 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
       for (const model of p.models) {
         const pref = prefs[prefKey(p.providerId, model)];
         if (pref && !pref.isEnabled) continue; // disabled — hidden from chat
-        if (!matches(p.providerName, model)) continue;
+        if (!matches(p.providerName, model, p.providerType)) continue;
         const entry: ModelEntry = {
           providerId: p.providerId,
           providerName: p.providerName,
@@ -354,7 +357,7 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
     // Default — the default AI provider's own model. Always first, regardless
     // of usage history or favourites, so there's always one guaranteed,
     // one-click way back to the app's actual default.
-    if (defaultEntry && matches(defaultEntry.providerName, defaultEntry.model)) {
+    if (defaultEntry && matches(defaultEntry.providerName, defaultEntry.model, defaultEntry.providerType)) {
       top.push({ key: "default", label: "Default", icon: "default", entries: [defaultEntry] });
     }
 

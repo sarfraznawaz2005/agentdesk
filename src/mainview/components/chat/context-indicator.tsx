@@ -104,6 +104,11 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
             <span className={cn("text-[11px] tabular-nums whitespace-nowrap", textColor)}>
               {utilization.toFixed(0)}%
             </span>
+            {liveTokensPerSecond > 0 && (
+              <span className="text-[11px] font-semibold text-blue-800 dark:text-blue-400 tabular-nums whitespace-nowrap">
+                {Math.round(liveTokensPerSecond)} tokens/s
+              </span>
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top">{tooltipContent}</TooltipContent>

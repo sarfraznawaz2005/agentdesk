@@ -24,7 +24,14 @@ import { getDefaultModel, getContextLimit } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
 import { getAgentSystemPrompt } from "./prompts";
 import { getToolsForAgent } from "./tools/index";
-import { getPluginTools, applyAnthropicCaching } from "./engine-types";
+import {
+	getPluginTools,
+	applyAnthropicCaching,
+	isThinkingUnsupportedError,
+	warnThinkingUnsupportedOnce,
+	isToolsUnsupportedError,
+	warnToolsUnsupportedOnce,
+} from "./engine-types";
 import { getSetting } from "../rpc/settings";
 import { getStreamingMode, type StreamingMode } from "./streaming-mode";
 import { createThrottledAccumulator } from "./throttled-accumulator";
@@ -236,7 +243,11 @@ const REASONING_LEVELS = new Set(["low", "medium", "high"]);
 // engine-types.ts's buildReasoningOptions() for the full rationale (identical
 // logic, kept as a separate local copy to match this file's existing
 // THINKING_BUDGET_TOKENS duplication rather than introducing a new
-// cross-module dependency for a one-line function).
+// cross-module dependency for a one-line function). isThinkingUnsupportedError
+// and warnThinkingUnsupportedOnce are, unlike this one, imported directly
+// (see top of file) rather than duplicated — the "warn once per app session"
+// behavior needs a single shared Set across both this file's sub-agent turns
+// and engine.ts's PM turns, which a local copy would silently break.
 function buildThinkingOptions(budget: string | null): Record<string, unknown> {
 	if (!budget || !REASONING_LEVELS.has(budget)) return {};
 	return { reasoning: budget };
@@ -1398,6 +1409,12 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 
 	const MAX_RETRIES = 2;
 	let retryAttempt = 0;
+	// Set once the model rejects `reasoning` outright (see catch block below)
+	// so we don't loop retrying forever — one retry per agent run.
+	let thinkingRetried = false;
+	// Same idea for a model with zero tool-calling support at all (see catch
+	// block below) — one retry per agent run, then this run continues toolless.
+	let toolsRetried = false;
 
 	retry: while (true) {
 		// On first attempt: agentMessages already has the initial task (set above).
@@ -1863,6 +1880,36 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			status = "failed";
 			summary = `Failed: ${errorMessage}`;
+		}
+
+		// The model/provider rejected `reasoning` outright — deterministic, not
+		// transient. Retry immediately with it stripped instead of failing the
+		// whole run; warn the user once so they know why thinking silently
+		// isn't happening for this model.
+		if (
+			!isUserAbort && !isContextFull && !isStuck && !isTimeout &&
+			effectiveThinkingBudget && !thinkingRetried && isThinkingUnsupportedError(error)
+		) {
+			thinkingRetried = true;
+			effectiveThinkingBudget = null;
+			warnThinkingUnsupportedOnce(effectiveModelId);
+			retractLiveParts();
+			continue retry;
+		}
+
+		// The model has no tool-calling capability at all — deterministic, not
+		// transient. Retry immediately with tools stripped so the agent run at
+		// least produces plain text instead of failing outright; warn once that
+		// this severely limits what it can actually do.
+		if (
+			!isUserAbort && !isContextFull && !isStuck && !isTimeout &&
+			Object.keys(tools).length > 0 && !toolsRetried && isToolsUnsupportedError(error)
+		) {
+			toolsRetried = true;
+			tools = {};
+			warnToolsUnsupportedOnce(effectiveModelId);
+			retractLiveParts();
+			continue retry;
 		}
 
 		// Retry on transient provider errors (e.g., connection timeout when agents spawn in parallel)

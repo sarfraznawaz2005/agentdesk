@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   CheckCircle2,
@@ -349,6 +349,11 @@ function ProviderDialog({
   const [loadingModels, setLoadingModels] = useState(false);
   const [toolChoiceWarning, setToolChoiceWarning] = useState<string | null>(null);
   const [claudeSubscriptionEnabled, setClaudeSubscriptionEnabled] = useState(false);
+  // Read inside the model-auto-fetch effect below without making it a dependency —
+  // that effect should only re-run on providerType/apiKey/baseUrl changes, not on
+  // every keystroke in the Default Model field.
+  const defaultModelRef = useRef(form.defaultModel);
+  useEffect(() => { defaultModelRef.current = form.defaultModel; }, [form.defaultModel]);
 
   const providerTypeOptions = claudeSubscriptionEnabled
     ? [...BASE_PROVIDER_TYPE_OPTIONS, CLAUDE_SUBSCRIPTION_OPTION]
@@ -421,7 +426,7 @@ function ProviderDialog({
           // Keeps the already-saved default visible in the suggestion list even
           // when the live/fallback fetch doesn't happen to return it (e.g. an
           // Ollama provider while Ollama isn't running).
-          defaultModel: isEditing ? form.defaultModel.trim() || undefined : undefined,
+          defaultModel: isEditing ? defaultModelRef.current.trim() || undefined : undefined,
         });
         if (result.success && result.models.length > 0) {
           setAvailableModels([...result.models].sort());

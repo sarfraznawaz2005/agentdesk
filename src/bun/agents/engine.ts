@@ -39,6 +39,10 @@ import {
 	getPluginTools,
 	THINKING_BUDGET_TOKENS,
 	buildReasoningOptions,
+	isThinkingUnsupportedError,
+	warnThinkingUnsupportedOnce,
+	isToolsUnsupportedError,
+	warnToolsUnsupportedOnce,
 	extractPMReasoning,
 	applyAnthropicCaching,
 	DEFAULT_METADATA,
@@ -891,7 +895,14 @@ export class AgentEngine {
 			let postStreamCorrectionNeeded = false;
 			let postStreamDetectionSource = "";
 
-			const pmThinkingOptions = buildReasoningOptions(pmThinkingBudget);
+			let pmThinkingOptions = buildReasoningOptions(pmThinkingBudget);
+			// Set once the model rejects `reasoning` outright (see catch block
+			// below) so we don't loop retrying forever — one retry per turn.
+			let pmThinkingRetried = false;
+			// Same idea for a model with zero tool-calling support at all (see
+			// catch block below) — one retry per turn, then plain-chat for the
+			// rest of it.
+			let pmToolsRetried = false;
 
 			const MAX_PM_RETRIES = 3;
 			let pmAttempt = 0;
@@ -1385,6 +1396,37 @@ export class AgentEngine {
 							(streamErr.name === "AbortError" || streamErr.message.includes("abort")))
 					) {
 						throw streamErr;
+					}
+
+					// The model/provider rejected `reasoning` outright — deterministic,
+					// not transient. Retry immediately with it stripped instead of
+					// failing the whole turn; warn the user once so they know why
+					// thinking silently isn't happening for this model.
+					if (
+						Object.keys(pmThinkingOptions).length > 0 &&
+						!pmThinkingRetried &&
+						isThinkingUnsupportedError(streamErr)
+					) {
+						pmThinkingRetried = true;
+						pmThinkingOptions = {};
+						warnThinkingUnsupportedOnce(modelId);
+						continue;
+					}
+
+					// The model has no tool-calling capability at all — deterministic,
+					// not transient. Retry immediately with tools stripped so the PM
+					// can at least hold a plain conversation, instead of failing the
+					// whole turn; warn once that dispatch/kanban/etc. won't work with
+					// this model until it's switched.
+					if (
+						Object.keys(activeTools).length > 0 &&
+						!pmToolsRetried &&
+						isToolsUnsupportedError(streamErr)
+					) {
+						pmToolsRetried = true;
+						activeTools = {} as typeof pmTools;
+						warnToolsUnsupportedOnce(modelId);
+						continue;
 					}
 
 					if (!isTransientError(streamErr)) {
