@@ -51,45 +51,54 @@ export function ModelsSettings() {
     }
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [models, prefRows] = await Promise.all([
-          rpc.getConnectedProviderModels(),
-          rpc.getModelPreferences(),
-        ]);
-        if (cancelled) return;
-        setProviders(models);
-        const map: ModelPrefMap = {};
-        for (const r of prefRows) {
-          map[prefKey(r.providerId, r.modelId)] = {
-            isEnabled: r.isEnabled,
-            isFavorite: r.isFavorite,
-          };
-        }
-        setPrefs(map);
-      } catch {
-        if (!cancelled) toast("error", "Failed to load models.");
-      } finally {
-        if (!cancelled) setLoading(false);
+  // Re-pull the provider/model list itself — used on mount and again whenever
+  // a provider is added/edited/deleted while this page stays mounted (e.g.
+  // from another window; sub-tab switches already remount this component and
+  // get a fresh fetch for free, but a change from elsewhere while sitting on
+  // this tab would otherwise never be reflected here).
+  const loadModels = useCallback(async (showSpinner: boolean) => {
+    if (showSpinner) setLoading(true);
+    try {
+      const [models, prefRows] = await Promise.all([
+        rpc.getConnectedProviderModels(),
+        rpc.getModelPreferences(),
+      ]);
+      setProviders(models);
+      const map: ModelPrefMap = {};
+      for (const r of prefRows) {
+        map[prefKey(r.providerId, r.modelId)] = {
+          isEnabled: r.isEnabled,
+          isFavorite: r.isFavorite,
+        };
       }
-      // Fire-and-forget: badges/filter chips populate once classification
-      // finishes, without blocking the rest of the page on it.
-      if (!cancelled) loadTypes();
+      setPrefs(map);
+    } catch {
+      if (showSpinner) toast("error", "Failed to load models.");
+    } finally {
+      if (showSpinner) setLoading(false);
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadTypes]);
+  }, []);
 
-  // Provider add/edit/delete invalidates the type cache server-side —
-  // re-pull so badges/filters reflect the change.
   useEffect(() => {
-    window.addEventListener("agentdesk:providers-changed", loadTypes);
-    return () => window.removeEventListener("agentdesk:providers-changed", loadTypes);
-  }, [loadTypes]);
+    loadModels(true);
+    // Fire-and-forget: badges/filter chips populate once classification
+    // finishes, without blocking the rest of the page on it.
+    loadTypes();
+  }, [loadModels, loadTypes]);
+
+  // Provider add/edit/delete invalidates the type cache server-side and can
+  // change the connected models themselves — re-pull both so badges/filters
+  // and the actual list reflect the change. No spinner here: this page is
+  // already showing data, a full-page loading flash on a background refresh
+  // would be jarring.
+  useEffect(() => {
+    const onProvidersChanged = () => {
+      loadModels(false);
+      loadTypes();
+    };
+    window.addEventListener("agentdesk:providers-changed", onProvidersChanged);
+    return () => window.removeEventListener("agentdesk:providers-changed", onProvidersChanged);
+  }, [loadModels, loadTypes]);
 
   // Cross-view live sync: re-pull preferences when they change elsewhere (e.g.
   // a favourite toggled from the chat model picker), including across windows.
@@ -184,13 +193,19 @@ export function ModelsSettings() {
     return providers
       .map((p) => ({
         ...p,
-        models: p.models.filter((m) => {
-          if (activeTypeFilters.size > 0 && !activeTypeFilters.has(getModelType(p.providerId, m))) return false;
-          if (!q) return true;
-          return m.toLowerCase().includes(q) || p.providerName.toLowerCase().includes(q);
-        }),
+        models: p.models
+          .filter((m) => {
+            if (activeTypeFilters.size > 0 && !activeTypeFilters.has(getModelType(p.providerId, m))) return false;
+            if (!q) return true;
+            return m.toLowerCase().includes(q) || p.providerName.toLowerCase().includes(q);
+          })
+          // Alphabetical within a provider's own model list.
+          .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
       }))
-      .filter((p) => p.models.length > 0);
+      .filter((p) => p.models.length > 0)
+      // Alphabetical by provider name — the raw order otherwise just follows
+      // DB insertion order, which is meaningless to a user.
+      .sort((a, b) => a.providerName.localeCompare(b.providerName, undefined, { sensitivity: "base" }));
   }, [providers, search, activeTypeFilters, getModelType]);
 
   // Enabled/total counts from the FULL (unfiltered) provider lists, so the

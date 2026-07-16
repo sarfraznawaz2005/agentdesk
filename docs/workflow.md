@@ -11,18 +11,19 @@ and AI agents working on this codebase.
 
 1. [Overview](#overview)
 2. [Core Principles](#core-principles)
-3. [Message Flow](#message-flow)
-4. [Scenarios](#scenarios)
-5. [Planning Phase](#planning-phase)
-6. [Approval Gate](#approval-gate)
-7. [Kanban Creation (Post-Approval)](#kanban-creation-post-approval)
-8. [Execution Phase](#execution-phase)
-9. [Completion](#completion)
-10. [Agent Failure Handling](#agent-failure-handling)
-11. [Two-Way Channel Sync](#two-way-channel-sync)
-12. [State Machine Reference](#state-machine-reference)
-13. [Tool Reference](#tool-reference)
-14. [Key Files](#key-files)
+3. [Conversation & Project Scope](#conversation--project-scope)
+4. [Message Flow](#message-flow)
+5. [Scenarios](#scenarios)
+6. [Planning Phase](#planning-phase)
+7. [Approval Gate](#approval-gate)
+8. [Kanban Creation (Post-Approval)](#kanban-creation-post-approval)
+9. [Execution Phase](#execution-phase)
+10. [Completion](#completion)
+11. [Agent Failure Handling](#agent-failure-handling)
+12. [Two-Way Channel Sync](#two-way-channel-sync)
+13. [State Machine Reference](#state-machine-reference)
+14. [Tool Reference](#tool-reference)
+15. [Key Files](#key-files)
 
 ---
 
@@ -76,8 +77,11 @@ Human request
    connected channels. Every channel message is visible in-app as a conversation.
    Full audit trail regardless of where work was initiated.
 
-5. **One active workflow per conversation.** If a new feature request arrives
-   while a workflow is active, the PM asks the human to finish or cancel first.
+5. **One active PM turn per conversation, not per project.** A conversation
+   whose PM turn (or dispatched agents) is still running queues a same-conversation
+   message rather than dropping or blocking it; a message sent to a *different*
+   conversation — same project or another one — is never queued or blocked by
+   that activity. See [Conversation & Project Scope](#conversation--project-scope).
 
 6. **PM tracks execution via kanban.** After plan approval, the PM creates kanban
    tasks and dispatches agents. Task column state is the shared source of truth.
@@ -94,6 +98,105 @@ Human request
    context (system prompt + task description only, no parent history) and its
    tool calls are visible as message parts in the chat. This replaces the old
    hidden background sub-agent model.
+
+---
+
+## Conversation & Project Scope
+
+`EngineManager` still creates and caches exactly one `AgentEngine` per project
+(`src/bun/engine-manager.ts`). What changed is what happens *inside* that one
+engine: it used to treat "the PM" as one project-wide singleton turn — only
+one conversation in a project could have an active PM stream at a time, and
+"which agents are running" / "is the PM busy" were both answered project-wide.
+That made a second conversation in the same project (or a stale conversation
+elsewhere in the same project) able to block, confuse, or falsely report on a
+conversation that had nothing to do with it. The engine now tracks PM turns
+**per conversation**, so every conversation — in any project, opened at the
+same time as any other — runs its own independent PM turn and sees only its
+own state.
+
+### What's conversation-scoped
+
+- **Whether the PM is currently streaming.** `AgentEngine` keys its abort
+  controllers by conversation (`pmAbortByConv: Map<conversationId, AbortController>`).
+  `isProcessing(conversationId)` checks one conversation; called with no argument
+  it reports whether *any* conversation in the project is busy (used only by the
+  legitimate project-wide checks below).
+- **Which sub-agents are running "here".** Every dispatched agent is registered
+  with the conversation that dispatched it (`registerAgentController(projectId,
+  controller, agentName, conversationId)`). `getRunningAgentNamesForConversation(projectId,
+  conversationId)` filters to just that conversation; `getRunningAgentNames(projectId)` /
+  `getAllRunningAgents()` are the project-wide/system-wide equivalents — see the
+  PM tool table below for which one to call for a given question.
+- **Duplicate-dispatch rejection.** `run_agent` and `request_plan_approval`'s
+  task-planner guard both check `getRunningAgentNamesForConversation` — a
+  code-explorer already running in conversation A no longer blocks dispatching
+  one in conversation B, only a second one inside A itself.
+- **The message queue.** Typing a new message while *that same conversation's*
+  PM/agents are still busy queues it (`message-queue-manager.ts`, max 3 per
+  conversation); it auto-drains the moment that conversation goes idle. A
+  message sent to a different, idle conversation is never queued — it starts
+  a new PM turn immediately, concurrently with whatever conversation A is
+  still doing. There is no cross-conversation queue or fallback drain; a
+  conversation's queue is only ever touched by that conversation going idle.
+- **The Stop button.** `stopGeneration` calls `engine.stopAll(conversationId)`,
+  which aborts only that conversation's PM stream and its dispatched agents
+  (`abortAgentsForConversation(projectId, conversationId)`) — sibling
+  conversations, review-cycle agents, scheduler runs, and issue-fixer runs in
+  the same project are untouched.
+
+### What's intentionally project-wide (not a bug)
+
+- **Write-agent serialization.** Only one write agent may run at a time **per
+  project**, regardless of which conversation dispatched it — enforced by a
+  closure-scoped `writeAgentRunning` flag plus a `getRunningAgentCount(projectId)
+  > 0` check in `run_agent`. This is deliberate, not a scoping gap: write agents
+  share one git working tree per project, so two write agents editing/committing
+  concurrently — even from two different conversations — would corrupt it. A
+  rejected dispatch here now returns a real explanatory PM message instead of
+  silently truncating the turn (see the `stopPMStream` note below).
+- **review-cycle's auto-review gate**, **dashboard/health status**, and
+  **idle-engine eviction** all read project-wide state on purpose
+  (`isProcessing()` with no argument, `getRunningAgentCount`,
+  `getSystemActivity`) — these are "is this project busy at all" checks, not
+  "is this conversation busy" checks, and should stay project-wide.
+
+### A note on `stopPMStream`
+
+`stopPMStream()` ends the PM's current turn early by flagging
+`planApprovalRequested` — correct only when something else will pick up the
+conversation afterward (a successful dispatch, a plan-approval card just
+shown). It must never be called on a *rejection* path (duplicate dispatch,
+write-agent busy, etc.), because it also skips the PM's synthesis/retry logic,
+leaving the user with a blank response and no explanation. If you add a new
+rejection branch to a PM tool, don't call `stopPMStream()` from it — let the
+PM finish its turn and explain why the dispatch didn't happen.
+
+### PM tools for checking agent/conversation state
+
+Because "what's running" can mean four different things, there are four
+distinct tools rather than one overloaded one — use whichever matches the
+actual question:
+
+| Question | Tool |
+|---|---|
+| "Is anything running in *this* conversation?" | `list_conversation_agents` |
+| "Is anything running in *this project* (any conversation)?" | `get_agent_status({ project_id })` |
+| "Is anything running *anywhere*, across every project?" | `get_agent_status()` (no args) |
+| "What conversation am I even in — title, project, pinned, queued messages?" | `get_conversation_context` |
+| "Which agent roles have zero instances running anywhere right now?" | `get_standby_agents` (observability only — see below) |
+
+`get_standby_agents` is explicitly **not** a dispatch gate: an agent role
+(e.g. `backend-engineer`) isn't a shared singleton across projects, so seeing
+it "busy" elsewhere is never a reason to withhold a dispatch in the current
+project/conversation. Only the write-agent project-wide serialization above
+is a real cross-conversation restriction.
+
+`list_agents` (the static roster) now also returns a one-line `description`
+and `type` (`read-only`/`write`) per agent, reusing the same description
+table (`BUILTIN_AGENT_DESCRIPTIONS` in `prompts.ts`) that's already baked
+into the PM's system prompt — so the PM can re-fetch "what does each agent
+do" on demand instead of relying on remembering its own system prompt.
 
 ---
 
@@ -477,7 +580,11 @@ Rejection flow:
 | `create_tasks_from_plan` | Create kanban tasks deterministically from the task-planner's `define_tasks` output. Called by PM after user approves. |
 | `set_feature_branch` | AI-generates a feature branch name from recent conversation context and stores it in settings (`currentFeatureBranch:<projectId>`). Called by PM when feature branch workflow is enabled. |
 | `clear_feature_branch` | Resets the stored feature branch name for the project. |
-| `get_agent_status` | Returns running agent names and counts from the engine-manager. Used by PM for status checks. |
+| `get_agent_status` | Running agents + reviews, scoped to one project (`project_id`) or system-wide (no args) — **never conversation-scoped**. |
+| `list_conversation_agents` | Running agents scoped to one conversation (current conversation if `conversation_id` omitted). Use this, not `get_agent_status`, for "is anything running here?". |
+| `get_conversation_context` | A conversation's id/title/project/pinned/archived/timestamps, whether it's a channel conversation, its running agents, and its queued-message count. |
+| `get_standby_agents` | Agent roles with zero running instances anywhere, system-wide. Observability only — does not gate dispatch (see [Conversation & Project Scope](#conversation--project-scope)). |
+| `list_agents` | Full agent roster with capabilities, model config, enabled status, a one-line `description`, and `type` (`read-only`/`write`). |
 | `list_tasks` / `get_next_task` | Read the kanban board state. Used for status checks and task dispatch ordering. |
 | `get_task` | Get full details of a specific kanban task. |
 | `create_project` / `list_projects` / `search_projects` / `verify_project` | Project CRUD and lookup tools. |
@@ -562,7 +669,7 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 
 | File | Role |
 |---|---|
-| `src/bun/agents/engine.ts` | AgentEngine — PM streaming, inline sub-agent execution, soft approval gate |
+| `src/bun/agents/engine.ts` | AgentEngine — one per project; PM streaming/inline sub-agent execution/soft approval gate, all tracked **per conversation** (`pmAbortByConv`, `activeMetadataByConv`) so concurrent conversations in the same project never see or block each other |
 | `src/bun/agents/engine-types.ts` | Engine callback types, thinking options, PreviousFailureContext |
 | `src/bun/agents/agent-loop.ts` | Inline sub-agent executor — runs agents with message parts; exports `READ_ONLY_AGENTS` |
 | `src/bun/agents/review-cycle.ts` | Independent code review cycle — auto-spawns reviewer when task enters "review"; no WorkflowEngine dep |
@@ -585,7 +692,8 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 | `src/bun/agents/tools/web.ts` | Web tools: `web_search` (Exa→Tavily→DuckDuckGo auto-fallback), `web_fetch`, `http_request` |
 | `src/bun/agents/tools/index.ts` | Tool registry — assembles and filters tools per agent role |
 | `src/bun/agents/kanban-integration.ts` | Bridges kanban UI events to the agent engine |
-| `src/bun/engine-manager.ts` | Creates/caches AgentEngine per project; global abort controller registry; `broadcastTaskDoneNotification`; project→window registry (`registerProjectWindow`/`broadcastToProject`) for Quick Chat windows |
+| `src/bun/engine-manager.ts` | Creates/caches AgentEngine per project; per-project abort controller registry keyed with each agent's `conversationId` (`getRunningAgentNamesForConversation` vs. project-wide `getRunningAgentNames`/`getAllRunningAgents`/`getSystemActivity`); `broadcastTaskDoneNotification`; project→window registry (`registerProjectWindow`/`broadcastToProject`) for Quick Chat windows |
+| `src/bun/message-queue-manager.ts` | Server-side, same-conversation-scoped message queue (max 3) for messages sent while that conversation's PM/agents are busy; drains only when that same conversation goes idle — no cross-conversation fallback |
 | `src/bun/quick-chat/window.ts` | Opens/reuses a Quick Chat project's own `BrowserWindow`, sharing the main `rpc` object (Electrobun's documented multi-window pattern) |
 | `src/bun/quick-chat/os-integration.ts` | Registers/unregisters the OS Explorer/Finder "Open in AgentDesk" entry |
 | `src/bun/single-instance.ts` | Windows named-pipe single-instance handoff for Quick Chat launches |

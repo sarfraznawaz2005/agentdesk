@@ -132,6 +132,7 @@ function FieldRow({ id, label, description, children }: FieldRowProps) {
 interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   projectName: string;
   onConfirm: () => Promise<void>;
 }
@@ -139,16 +140,30 @@ interface DeleteConfirmDialogProps {
 function DeleteConfirmDialog({
   open,
   onOpenChange,
+  projectId,
   projectName,
   onConfirm,
 }: DeleteConfirmDialogProps) {
   const [inputValue, setInputValue] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [activeAgentNames, setActiveAgentNames] = useState<string[]>([]);
 
-  // Reset input whenever dialog opens
+  // Reset input whenever dialog opens, and check whether any agents are
+  // currently working in this project so we can warn before they get stopped.
   useEffect(() => {
-    if (open) setInputValue("");
-  }, [open]);
+    if (!open) return;
+    setInputValue("");
+    let cancelled = false;
+    rpc
+      .getRunningAgents(projectId)
+      .then((agents) => {
+        if (!cancelled) setActiveAgentNames(agents.map((a) => a.displayName));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
 
   const isMatch = inputValue === projectName;
 
@@ -181,6 +196,12 @@ function DeleteConfirmDialog({
             <li>All deploy environments and history</li>
             <li>All project settings</li>
           </ul>
+          {activeAgentNames.length > 0 && (
+            <p className="font-medium text-amber-600 dark:text-amber-500">
+              {activeAgentNames.length} agent{activeAgentNames.length > 1 ? "s are" : " is"} currently
+              working in this project ({activeAgentNames.join(", ")}) and will be stopped.
+            </p>
+          )}
           <p>
             Type{" "}
             <span className="font-semibold text-foreground">{projectName}</span>{" "}
@@ -224,13 +245,32 @@ function DeleteConfirmDialog({
 function ResetConfirmDialog({
   open,
   onOpenChange,
+  projectId,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  projectId: string;
   onConfirm: () => Promise<void>;
 }) {
   const [resetting, setResetting] = useState(false);
+  const [activeAgentNames, setActiveAgentNames] = useState<string[]>([]);
+
+  // Check whether any agents are currently working in this project so we can
+  // warn before they get stopped.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    rpc
+      .getRunningAgents(projectId)
+      .then((agents) => {
+        if (!cancelled) setActiveAgentNames(agents.map((a) => a.displayName));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
 
   async function handleConfirm() {
     setResetting(true);
@@ -262,6 +302,12 @@ function ResetConfirmDialog({
             <li>All inbox messages</li>
             <li>Cron job history (job definitions kept)</li>
           </ul>
+          {activeAgentNames.length > 0 && (
+            <p className="font-medium text-amber-600 dark:text-amber-500">
+              {activeAgentNames.length} agent{activeAgentNames.length > 1 ? "s are" : " is"} currently
+              working in this project ({activeAgentNames.join(", ")}) and will be stopped.
+            </p>
+          )}
           <p className="font-medium text-foreground">This cannot be undone.</p>
         </div>
         <DialogFooter>
@@ -786,11 +832,13 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
       <ResetConfirmDialog
         open={resetDialogOpen}
         onOpenChange={setResetDialogOpen}
+        projectId={project.id}
         onConfirm={handleReset}
       />
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
+        projectId={project.id}
         projectName={project.name}
         onConfirm={handleDelete}
       />

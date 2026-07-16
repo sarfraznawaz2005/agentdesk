@@ -31,6 +31,7 @@ import { logPrompt } from "./prompt-logger";
 import { getStreamingMode } from "./streaming-mode";
 import { createThrottledAccumulator } from "./throttled-accumulator";
 import { eventBus } from "../scheduler";
+import { enqueueMessage, getQueuedMessages } from "../message-queue-manager";
 import type { AgentActivityEvent } from "./types";
 import { toolResultIsError, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
 import { wrapToolsWithCallLogging } from "./tool-call-logging";
@@ -56,12 +57,18 @@ export class AgentEngine {
 	private readonly projectId: string;
 	private readonly callbacks: AgentEngineCallbacks;
 
-	/** AbortController for the current Project Manager generation */
-	private pmAbort: AbortController | null = null;
+	/**
+	 * AbortController for the Project Manager generation, keyed by conversation.
+	 * Each conversation is its own independent PM scope — one project can have
+	 * many conversations with genuinely concurrent, unrelated PM turns in
+	 * flight at once. A conversation's presence in this map IS its "processing"
+	 * state (see isProcessing()) — there is no separate boolean to keep in sync.
+	 */
+	private pmAbortByConv = new Map<string, AbortController>();
 
-	/** Whether the Project Manager is currently streaming a response */
-	private pmProcessing = false;
-	private pmProcessingPromise: Promise<void> | null = null;
+	/** In-flight PM processing promise, keyed by conversation — lets sendMessage() wait for
+	 *  THIS conversation's own prior turn to fully settle, never a sibling's. */
+	private pmProcessingPromiseByConv = new Map<string, Promise<void>>();
 
 	/**
 	 * Last real prompt-token usage reported by the provider, per conversation —
@@ -72,23 +79,31 @@ export class AgentEngine {
 	 * sitting pinned at 100% on the bar while the char estimate stays low.
 	 */
 	private lastPromptTokens = new Map<string, number>();
-	/** Injected function to abort all running sub-agents for this project. */
-	private abortAgentsFn?: (projectId: string) => void;
 
-	/** The conversation the PM is currently operating on (set during sendMessage) */
-	private activeConversationId: string | null = null;
+	/** Injected lookup for "which sub-agents are running for this conversation" — used by
+	 *  sendMessage()'s busy-check below. Set by engine-manager (avoids a circular import). */
+	private getRunningAgentNamesForConversationFn?: (conversationId: string) => string[];
+
+	/** Best-effort fallback for legacy call sites that only make sense for a single
+	 *  "current" conversation (e.g. review-cycle's broadcast-target fallback) now that
+	 *  multiple conversations can be genuinely active at once — the most recently
+	 *  started turn, not necessarily still active. */
+	private lastActiveConversationId: string | null = null;
 
 	/** Task conversation an agent is actively working in (set by pm-tools when task conv is created). */
 	activeAgentConversationId: string | null = null;
 
-	/** Source metadata for the current message being processed */
-	private activeMetadata: MessageMetadata = DEFAULT_METADATA;
+	/** Source metadata for the message currently being processed, keyed by conversation. */
+	private activeMetadataByConv = new Map<string, MessageMetadata>();
 
 	/** Set to true by stopAll() — causes inline agent launches to bail out */
 	private stopped = false;
 
-	/** Register/unregister abort controllers for running agents (set by engine-manager). */
-	registerAgentAbort: ((controller: AbortController, agentName: string) => void) | null = null;
+	/** Register/unregister abort controllers for running agents (set by engine-manager).
+	 *  conversationId is supplied by the caller (pm-tools.ts/review-cycle.ts/etc. all
+	 *  know exactly which conversation they're dispatching into) — null only for
+	 *  genuinely conversation-less runs. */
+	registerAgentAbort: ((controller: AbortController, agentName: string, conversationId: string | null) => void) | null = null;
 	unregisterAgentAbort: ((controller: AbortController) => void) | null = null;
 
 	constructor(projectId: string, callbacks: AgentEngineCallbacks) {
@@ -101,42 +116,49 @@ export class AgentEngine {
 	// -------------------------------------------------------------------------
 
 	/** Process a user message: persist, stream PM response, persist result. */
-	async sendMessage(conversationId: string, content: string, metadata?: Partial<MessageMetadata>): Promise<{ messageId: string; userMessageId: string }> {
-		console.log(`[Engine] sendMessage: "${content.slice(0, 50)}" | pmProcessing=${this.pmProcessing} | hasPmPromise=${!!this.pmProcessingPromise}`);
-		// A new user message clears any prior stop so PM can respond normally.
+	async sendMessage(conversationId: string, content: string, metadata?: Partial<MessageMetadata>): Promise<{ messageId: string; userMessageId: string; queued?: boolean }> {
+		const isAgentReport = (metadata as Record<string, unknown> | undefined)?.type === "agent_report";
+		console.log(`[Engine] sendMessage: "${content.slice(0, 50)}" | conv=${conversationId} | processing=${this.pmAbortByConv.has(conversationId)}`);
+
+		// Each conversation is its own independent scope — a message for
+		// conversation B must never wait on, abort, or be affected by conversation
+		// A's PM turn or dispatched agents, even within the same project. The only
+		// thing that queues a message is THIS SAME conversation already being busy
+		// (its own PM turn still streaming, or its own dispatched sub-agents still
+		// running); it drains automatically once this conversation goes idle (see
+		// engine-manager's onStreamComplete/onStreamError). Agent-report messages
+		// (the re-entry point after a fire-and-forget dispatch) always bypass this
+		// check — by construction they arrive exactly when this conversation's own
+		// work just finished, so there is nothing left here to queue behind.
+		if (!isAgentReport) {
+			const runningHere = this.getRunningAgentNamesForConversationFn?.(conversationId).length ?? 0;
+			if (this.pmAbortByConv.has(conversationId) || runningHere > 0) {
+				const queuedMsg = enqueueMessage(this.projectId, conversationId, content);
+				const queue = getQueuedMessages(this.projectId, conversationId);
+				console.log(`[Engine] Conversation ${conversationId} is busy — queued message instead of interrupting its own in-flight work (queued=${!!queuedMsg})`);
+				this.callbacks.onMessageQueued?.(conversationId, queue);
+				return { messageId: "", userMessageId: "", queued: true };
+			}
+		}
+
+		// A new message never aborts anything — the busy-check above already
+		// queued if this conversation had work in flight. The ONLY things that
+		// abort a running PM turn or sub-agent are the explicit Stop button
+		// (stopGeneration/stopAgent) or a genuine error.
 		this.stopped = false;
 
-		const isAgentReport = (metadata as Record<string, unknown> | undefined)?.type === "agent_report";
+		// Set synchronously (no `await` before this point) so a second
+		// sendMessage call for the SAME conversation arriving in the same tick
+		// (double-click, two rapid events) always sees the busy-check above
+		// return true instead of racing past it.
+		const abortController = new AbortController();
+		this.pmAbortByConv.set(conversationId, abortController);
 
-		// Abort any in-progress PM stream + running sub-agents so the new message takes priority.
-		// Skip abort for agent reports — a review-cycle agent may be running and shouldn't be killed.
-		this.pmAbort?.abort();
-		if (!isAgentReport) {
-			this.abortAgentsFn?.(this.projectId);
-		}
-
-		// Wait for previous processing to fully complete before starting new.
-		// Without this, two PM processes run concurrently and the old one writes
-		// a stale response that ignores the user's latest message.
-		// The wait is short since we already aborted everything above.
-		if (this.pmProcessingPromise) {
-			console.log("[Engine] Waiting for previous PM processing to complete...");
-			await this.pmProcessingPromise.catch(() => {});
-			console.log("[Engine] Previous PM processing completed");
-		}
-
-		// Set processing flag synchronously before any awaits so concurrent
-		// sendMessage calls (e.g. double-click, two rapid events) see it immediately.
-		this.pmProcessing = true;
-		this.pmAbort = new AbortController();
-
-		// Install a lock promise immediately so back-to-back sendMessage calls wait on each other.
 		let lockResolve!: () => void;
 		const lockPromise = new Promise<void>((r) => { lockResolve = r; });
-		const prevPromise = this.pmProcessingPromise;
-		this.pmProcessingPromise = lockPromise;
-		this.activeConversationId = conversationId;
-		this.activeMetadata = { ...DEFAULT_METADATA, ...metadata };
+		this.pmProcessingPromiseByConv.set(conversationId, lockPromise);
+		this.activeMetadataByConv.set(conversationId, { ...DEFAULT_METADATA, ...metadata });
+		this.lastActiveConversationId = conversationId;
 
 		const userMessageId = crypto.randomUUID();
 		const assistantMessageId = crypto.randomUUID();
@@ -147,6 +169,9 @@ export class AgentEngine {
 		const convExists = await db.select({ id: conversations.id }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
 		if (convExists.length === 0) {
 			console.warn(`[Engine] Conversation ${conversationId} no longer exists — skipping sendMessage`);
+			this.pmAbortByConv.delete(conversationId);
+			this.pmProcessingPromiseByConv.delete(conversationId);
+			lockResolve();
 			return { messageId: assistantMessageId, userMessageId };
 		}
 		// An empty message persists as an empty text content block, which every
@@ -156,13 +181,13 @@ export class AgentEngine {
 		// channels, agent reports) to have already guarded against it.
 		if (!content) {
 			console.warn(`[Engine] sendMessage: empty content for conversation ${conversationId} — skipping`);
-			// Release the processing lock set above — otherwise every later
-			// sendMessage call on this engine waits forever on a promise nothing
-			// ever resolves (this is a bail-out before the normal lockResolve()
-			// callsite further down, which only runs once real PM processing settles).
-			this.pmProcessing = false;
+			// Release the processing lock set above — otherwise a later
+			// sendMessage call for this conversation would see it as still busy
+			// (this is a bail-out before the normal lockResolve() callsite
+			// further down, which only runs once real PM processing settles).
+			this.pmAbortByConv.delete(conversationId);
+			this.pmProcessingPromiseByConv.delete(conversationId);
 			lockResolve();
-			if (this.pmProcessingPromise === lockPromise) this.pmProcessingPromise = null;
 			return { messageId: assistantMessageId, userMessageId };
 		}
 		await db.insert(messages).values({
@@ -200,19 +225,18 @@ export class AgentEngine {
 		// clear approval/rejection keywords before invoking the PM.
 		console.log(`[Engine] Checking approval gate for: "${content.slice(0, 50)}"`);
 		// Kick off the slow AI work in background so the RPC returns immediately.
-		// Replace the lock promise with the real processing promise.
-		// The lock is resolved when the real promise settles so any caller
-		// awaiting pmProcessingPromise unblocks at the right time.
-		void prevPromise; // already awaited above if it existed
-		const realPromise = this._runPMProcessing(assistantMessageId, conversationId, content, userMessageId)
+		const realPromise = this._runPMProcessing(assistantMessageId, conversationId, content, abortController, userMessageId)
 			.catch(() => {})
 			.finally(() => {
 				lockResolve();
-				if (this.pmProcessingPromise === realPromise) {
-					this.pmProcessingPromise = null;
+				if (this.pmAbortByConv.get(conversationId) === abortController) {
+					this.pmAbortByConv.delete(conversationId);
+				}
+				if (this.pmProcessingPromiseByConv.get(conversationId) === realPromise) {
+					this.pmProcessingPromiseByConv.delete(conversationId);
 				}
 			});
-		this.pmProcessingPromise = realPromise;
+		this.pmProcessingPromiseByConv.set(conversationId, realPromise);
 
 		return { messageId: assistantMessageId, userMessageId };
 	}
@@ -221,9 +245,9 @@ export class AgentEngine {
 		assistantMessageId: string,
 		conversationId: string,
 		content: string,
+		abortController: AbortController,
 		userMessageId?: string,
 	): Promise<void> {
-		const abortController = this.pmAbort;
 		try {
 			// ---------------------------------------------------------------------------
 			// Slash-command: /info — hardcoded handler, no LLM call required.
@@ -277,7 +301,7 @@ export class AgentEngine {
 			const { prompt: systemPrompt, agentNames: pmAgentNames } = await getPMSystemPrompt(
 				{ id: this.projectId, name: projectRow?.name, description: projectRow?.description ?? undefined, workspacePath, githubUrl: projectRow?.githubUrl ?? undefined, workingBranch: projectRow?.workingBranch ?? undefined },
 				directTools,
-				this.activeMetadata?.source ?? "app",
+				this.getActiveMetadata(conversationId)?.source ?? "app",
 				planMode,
 				quickChat,
 			);
@@ -406,7 +430,7 @@ export class AgentEngine {
 					projectId: this.projectId,
 					conversationId,
 					workspacePath: workspacePath ?? undefined,
-					getActiveMetadata: () => this.getActiveMetadata(),
+					getActiveMetadata: () => this.getActiveMetadata(conversationId),
 					inlineAgentCallbacks: inlineCallbacks,
 					providerConfig,
 					askUserQuestion: this.callbacks.askUserQuestion
@@ -554,12 +578,14 @@ export class AgentEngine {
 
 						console.log(`[Engine] Agent done, restarting PM: ${agentName} (${result.status})`);
 						// Pass type + channel metadata together. type:"agent_report" is detected
-						// at line 79 to skip aborting review-cycle agents. Channel source/channelId
-						// are preserved so PM can relay its response back to the originating channel.
+						// above to skip queuing behind this same conversation's own just-finished
+						// work. Channel source/channelId are preserved so PM can relay its
+						// response back to the originating channel.
+						const activeMeta = this.getActiveMetadata(conversationId);
 						const agentReportMeta = {
 							type: "agent_report",
-							...(this.activeMetadata.channelId
-								? { source: this.activeMetadata.source, channelId: this.activeMetadata.channelId }
+							...(activeMeta.channelId
+								? { source: activeMeta.source, channelId: activeMeta.channelId }
 								: {}),
 						};
 						this.sendMessage(conversationId, `[Agent Report] ${summary}${filesInfo}${todoStatus}${nextAction}`, agentReportMeta as Partial<MessageMetadata>).catch((err) => {
@@ -852,6 +878,8 @@ export class AgentEngine {
 			const isDispatchExpected = content.includes("[Next Action] DISPATCH");
 			let hallucinRetries = 0;
 			const MAX_HALLUCIN_RETRIES = 2;
+			let parallelSynthesisRetries = 0;
+			const MAX_PARALLEL_SYNTHESIS_RETRIES = 2;
 			// Tools handed to the PM. Narrowed to dispatch-only on a hallucination retry
 			// (see below) so the model cannot answer with prose again — a provider-agnostic
 			// alternative to toolChoice:'required' (which Ollama/OpenAI-compatible proxies
@@ -1055,11 +1083,23 @@ export class AgentEngine {
 				// if the step also dispatches a wait-type sub-agent.
 				let stepTextEmitted = "";
 				let stepHasWaitAgent = false;
+				let stepHasParallelAgent = false;
 				let retractedFallback = "";
 				// Turn-level flag: was run_agent actually called at any point this turn?
 				// Used by the hallucination guard below to detect user-initiated dispatch
 				// requests where no [Next Action] hint was injected.
 				let agentDispatchedThisTurn = false;
+				// Turn-level flag: was run_agents_parallel (the blocking, in-turn-
+				// continuation tool) called this turn? Distinct from the above because
+				// its retraction/fallback handling must differ — see finish-step below.
+				let parallelAgentDispatchedThisTurn = false;
+				// Captures run_agents_parallel's own tool-result JSON so it can be
+				// re-surfaced to the model if the continuation step fails to
+				// synthesize it into a real answer (see the empty-synthesis
+				// correction below) — a fresh streamText() call on `continue`
+				// starts from context.messages alone, which doesn't carry this
+				// turn's tool call/result exchange unless we put it there ourselves.
+				let parallelAgentResultText = "";
 
 				for await (const part of result.stream) {
 					if (part.type === "reasoning-start" || part.type === "reasoning-end") {
@@ -1080,13 +1120,30 @@ export class AgentEngine {
 						if (!isNoStreaming) this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
 					} else if (part.type === "tool-call") {
 						const tc = part as { toolName?: string };
-						if (tc.toolName === "run_agent" || tc.toolName === "run_agents_parallel") {
+						if (tc.toolName === "run_agent") {
 							stepHasWaitAgent = true;
 							agentDispatchedThisTurn = true;
+						} else if (tc.toolName === "run_agents_parallel") {
+							stepHasParallelAgent = true;
+							agentDispatchedThisTurn = true;
+							parallelAgentDispatchedThisTurn = true;
+						}
+					} else if (part.type === "tool-result") {
+						const tr = part as { toolName?: string; output?: unknown };
+						if (tr.toolName === "run_agents_parallel") {
+							parallelAgentResultText = typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
 						}
 					} else if (part.type === "finish-step") {
-						if (stepHasWaitAgent && stepTextEmitted.trim()) {
-							retractedFallback = stepTextEmitted;
+						if ((stepHasWaitAgent || stepHasParallelAgent) && stepTextEmitted.trim()) {
+							// Only stash a restorable fallback for run_agent's fire-and-forget
+							// path (pm-tools.ts calls stopPMStream() right after dispatch, so
+							// this turn is deliberately cut short and the retracted "I'll
+							// dispatch X" narration is a reasonable stand-in if that abort
+							// doesn't land first). run_agents_parallel instead blocks and lets
+							// the SAME turn continue once it resolves — restoring stale
+							// pre-dispatch narration as the "final answer" there is always
+							// wrong; an empty continuation is corrected explicitly below instead.
+							if (stepHasWaitAgent) retractedFallback = stepTextEmitted;
 							fullText = fullText.slice(0, fullText.length - stepTextEmitted.length);
 							this.callbacks.onStreamReset(conversationId, assistantMessageId);
 							// Surface the retracted narration as reasoning instead of letting it
@@ -1106,6 +1163,7 @@ export class AgentEngine {
 						}
 						stepTextEmitted = "";
 						stepHasWaitAgent = false;
+						stepHasParallelAgent = false;
 
 						// Plan approval submitted — stop PM from generating further text
 						if (planApprovalRequested) {
@@ -1149,6 +1207,51 @@ export class AgentEngine {
 				// Plan approval requested — treat as successful completion regardless of text
 				if (planApprovalRequested) {
 					break;
+				}
+
+				// run_agents_parallel resolved this turn but the continuation step produced
+				// no synthesis text at all (fullText still empty after both fallbacks above).
+				// Unlike run_agent's fire-and-forget path — where a later "[Agent Report]"
+				// message re-triggers a fresh PM turn — run_agents_parallel blocks and expects
+				// THIS SAME turn to synthesize the results once it resolves; there is no later
+				// re-trigger to fall back on. Force a real synthesis instead of silently
+				// persisting an empty answer (or, as this used to do, the stale pre-dispatch
+				// narration via retractedFallback — see the finish-step handler above).
+				if (!fullText.trim() && parallelAgentDispatchedThisTurn && !planApprovalRequested && parallelSynthesisRetries < MAX_PARALLEL_SYNTHESIS_RETRIES) {
+					parallelSynthesisRetries++;
+					console.warn(`[PM] run_agents_parallel resolved with no synthesis text (retry ${parallelSynthesisRetries}/${MAX_PARALLEL_SYNTHESIS_RETRIES})`);
+					// Provider-agnostic forcing: strip ALL tools on the retry so the model
+					// literally cannot dispatch again — mirrors the hallucination-retry
+					// technique below (narrowing activeTools), just inverted. The "do not
+					// call any more tools" instruction alone is not enough: observed live,
+					// the model ignored it and called run_agents_parallel again, silently
+					// re-dispatching a fresh pair of agents with no synthesis message ever
+					// reaching the user.
+					activeTools = {} as typeof pmTools;
+					// A fresh streamText() call (via `continue`) only sees context.messages —
+					// the just-finished call's own tool-call/tool-result exchange isn't in
+					// there, so the raw results have to be re-surfaced explicitly or the
+					// model has nothing concrete left to synthesize.
+					const resultsBlock = parallelAgentResultText
+						? `\n\nTheir results:\n\n${parallelAgentResultText}`
+						: "";
+					context.messages = [
+						...context.messages,
+						{ role: "user" as const, content: `[SYNTHESIS REQUIRED] The agents you just dispatched in parallel have finished.${resultsBlock}\n\nWrite a message to the user now summarizing what each one found. Do not call any more tools.` },
+					];
+					continue;
+				}
+
+				// Retries exhausted and still no synthesis text — rather than loop forever
+				// or (as this used to) silently persist the stale pre-dispatch narration,
+				// surface the raw agent results directly so conversation history isn't left
+				// with nothing to build on for the user's next message.
+				if (!fullText.trim() && parallelAgentDispatchedThisTurn && parallelSynthesisRetries >= MAX_PARALLEL_SYNTHESIS_RETRIES) {
+					console.warn(`[PM] run_agents_parallel synthesis still empty after ${MAX_PARALLEL_SYNTHESIS_RETRIES} retries — falling back to raw agent results`);
+					fullText = parallelAgentResultText
+						? `The dispatched agents have finished. Here's what they reported:\n\n${parallelAgentResultText}`
+						: "The dispatched agents have finished, but I wasn't able to generate a summary of their results.";
+					this.callbacks.onStreamToken(conversationId, assistantMessageId, fullText, null);
 				}
 
 				// Hallucination detection: PM wrote text without calling run_agent when a
@@ -1487,20 +1590,26 @@ export class AgentEngine {
 
 			throw error;
 		} finally {
-			if (this.pmAbort === abortController) {
-				this.pmProcessing = false;
-				this.pmAbort = null;
+			if (this.pmAbortByConv.get(conversationId) === abortController) {
+				this.pmAbortByConv.delete(conversationId);
 			}
 		}
 	}
 
-	/** Abort PM stream + any running inline sub-agent. */
-	stopAll(): void {
-		this.pmAbort?.abort();
-		this.pmAbort = null;
-		this.pmProcessing = false;
+	/**
+	 * Abort the PM stream + any running inline sub-agent for one conversation,
+	 * or every conversation in this project when conversationId is omitted
+	 * (full project teardown — delete project, app restart, engine eviction).
+	 */
+	stopAll(conversationId?: string): void {
+		if (conversationId) {
+			this.pmAbortByConv.get(conversationId)?.abort();
+			this.pmAbortByConv.delete(conversationId);
+			return;
+		}
+		for (const abort of this.pmAbortByConv.values()) abort.abort();
+		this.pmAbortByConv.clear();
 		this.stopped = true;
-
 	}
 
 	/** Stop everything then reset so a notification sendMessage can go through. */
@@ -1514,9 +1623,9 @@ export class AgentEngine {
 		return this.stopped;
 	}
 
-	/** Inject a function to abort all running sub-agents (avoids circular import with engine-manager). */
-	setAbortAgentsFn(fn: (projectId: string) => void): void {
-		this.abortAgentsFn = fn;
+	/** Inject a lookup for "which sub-agents are running for one conversation" (avoids circular import with engine-manager) — used by sendMessage()'s busy-check. */
+	setGetRunningAgentNamesForConversationFn(fn: (conversationId: string) => string[]): void {
+		this.getRunningAgentNamesForConversationFn = fn;
 	}
 
 	/** Returns the project ID for this engine. */
@@ -1524,19 +1633,31 @@ export class AgentEngine {
 		return this.projectId;
 	}
 
-	/** Returns true while the Project Manager is streaming a response. */
-	isProcessing(): boolean {
-		return this.pmProcessing;
+	/**
+	 * Returns true while the Project Manager is streaming a response.
+	 * Pass a conversationId to check just that conversation; omit it to check
+	 * whether ANY conversation in this project is currently processing
+	 * (project-wide status reporting — dashboard cards, health checks, engine
+	 * eviction — where the whole project's activity is what matters).
+	 */
+	isProcessing(conversationId?: string): boolean {
+		if (conversationId) return this.pmAbortByConv.has(conversationId);
+		return this.pmAbortByConv.size > 0;
 	}
 
-	/** Returns the conversation ID the PM is currently responding in, or null. */
+	/**
+	 * Best-effort fallback conversation ID for legacy call sites that only make
+	 * sense for a single "current" conversation (review-cycle's broadcast-target
+	 * fallback) — the most recently started turn, not necessarily still active,
+	 * now that multiple conversations can be genuinely active at once.
+	 */
 	getActiveConversationId(): string | null {
-		return this.activeConversationId;
+		return this.lastActiveConversationId;
 	}
 
-	/** Returns the source metadata for the currently active message. */
-	getActiveMetadata(): MessageMetadata {
-		return this.activeMetadata;
+	/** Returns the source metadata for the given conversation's currently active message. */
+	getActiveMetadata(conversationId: string): MessageMetadata {
+		return this.activeMetadataByConv.get(conversationId) ?? DEFAULT_METADATA;
 	}
 
 	/** Returns queued agents — always empty in inline model (no queue). */
@@ -1556,28 +1677,6 @@ export class AgentEngine {
 	 */
 	moveKanbanTask(taskId: string, column: string): void {
 		this.callbacks.onKanbanTaskMove?.(this.projectId, taskId, column);
-	}
-
-	/** Post a deterministic assistant message without invoking the LLM. */
-	async postDeterministicMessage(content: string): Promise<void> {
-		const cid = this.activeConversationId;
-		if (!cid) return;
-		const mid = crypto.randomUUID();
-		try { await db.insert(messages).values({ id: mid, conversationId: cid, role: "assistant", agentId: null, content, metadata: JSON.stringify({ type: "agent_completion_summary" }), tokenCount: Math.ceil(content.length / 4), createdAt: new Date().toISOString() }); }
-		catch { return; }
-		this.callbacks.onStreamToken(cid, mid, content, "project-manager");
-		this.callbacks.onStreamComplete(cid, mid, { content, promptTokens: 0, completionTokens: 0 });
-	}
-
-	/** Invoke the PM with a compact event hint so it can decide next steps. */
-	async invokePMWithEvent(hint: string): Promise<void> {
-		const cid = this.activeConversationId;
-		if (!cid || this.pmProcessing || this.stopped) return;
-		const mid = crypto.randomUUID();
-		try { await db.insert(messages).values({ id: mid, conversationId: cid, role: "assistant", agentId: null, content: "", metadata: null, tokenCount: 0, createdAt: new Date().toISOString() }); }
-		catch { return; }
-		this.callbacks.onStreamToken(cid, mid, "", null);
-		await this._runPMProcessing(mid, cid, hint);
 	}
 
 	// -------------------------------------------------------------------------
@@ -1744,8 +1843,9 @@ export class AgentEngine {
 			return;
 		}
 
-		const sourcePrefix = this.activeMetadata.source !== "app"
-			? `[${this.activeMetadata.source}] `
+		const activeMeta = this.getActiveMetadata(conversationId);
+		const sourcePrefix = activeMeta.source !== "app"
+			? `[${activeMeta.source}] `
 			: "";
 		const rawTitle = firstUserMessage.trim().replace(/\s+/g, " ");
 		const maxLen = 40 - sourcePrefix.length;

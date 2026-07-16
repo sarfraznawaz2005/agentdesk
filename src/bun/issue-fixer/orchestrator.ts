@@ -158,7 +158,7 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 	});
 
 	const abort = new AbortController();
-	registerAgentController(input.projectId, abort, "issue-fixer");
+	registerAgentController(input.projectId, abort, "issue-fixer", conversationId);
 	broadcastToWebview("issueFixerRunStarted", {
 		projectId: input.projectId,
 		runId,

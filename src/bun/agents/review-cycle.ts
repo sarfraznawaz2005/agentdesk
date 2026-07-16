@@ -314,7 +314,7 @@ async function spawnReviewAgent(
 	};
 
 	const agentAbort = new AbortController();
-	registerAgentController(projectId, agentAbort, agentName);
+	registerAgentController(projectId, agentAbort, agentName, conversationId);
 	try {
 		const result = await runInlineAgent({
 			conversationId,

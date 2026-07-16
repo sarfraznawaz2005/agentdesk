@@ -420,6 +420,7 @@ export async function listProviderModelsHandler(params: {
 	providerType: string;
 	apiKey: string;
 	baseUrl?: string;
+	defaultModel?: string;
 }): Promise<{ success: boolean; models: string[]; error?: string }> {
 	try {
 		const normalizedBaseUrl = params.baseUrl ? normalizeBaseUrl(params.baseUrl) : null;
@@ -429,10 +430,18 @@ export async function listProviderModelsHandler(params: {
 			providerType: params.providerType,
 			apiKey: params.apiKey,
 			baseUrl: normalizedBaseUrl,
-			defaultModel: null,
+			defaultModel: params.defaultModel ?? null,
 		};
 		const adapter = createProviderAdapter(config);
-		const models = await adapter.listModels();
+		let models = await adapter.listModels();
+		// Always keep the already-configured default model in the list even if
+		// the live/fallback fetch didn't happen to return it (e.g. Ollama not
+		// running) — matches getConnectedProviderModelsHandler's behavior, so
+		// the Edit Provider dialog's suggestion list doesn't silently drop the
+		// value the user already saved.
+		if (params.defaultModel && !models.includes(params.defaultModel)) {
+			models = [params.defaultModel, ...models];
+		}
 		return { success: true, models: dedupeModels(models) };
 	} catch (err) {
 		const error = err instanceof Error ? err.message : String(err);
@@ -512,7 +521,13 @@ export async function listProviderModelsByIdHandler(providerId: string): Promise
 			baseUrl: row.baseUrl,
 			defaultModel: row.defaultModel,
 		});
-		const models = await adapter.listModels();
+		let models = await adapter.listModels();
+		// Always keep the already-configured default model in the list even if
+		// the live/fallback fetch didn't happen to return it (e.g. Ollama not
+		// running) — matches getConnectedProviderModelsHandler's behavior.
+		if (row.defaultModel && !models.includes(row.defaultModel)) {
+			models = [row.defaultModel, ...models];
+		}
 		return { success: true, models: dedupeModels(models) };
 	} catch (err) {
 		const error = err instanceof Error ? err.message : String(err);

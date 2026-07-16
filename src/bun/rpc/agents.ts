@@ -60,10 +60,10 @@ export async function updateAgent(params: {
 	displayName?: string;
 	color?: string;
 	systemPrompt?: string;
-	providerId?: string;
-	modelId?: string;
-	temperature?: string;
-	maxTokens?: number;
+	providerId?: string | null;
+	modelId?: string | null;
+	temperature?: string | null;
+	maxTokens?: number | null;
 	isEnabled?: boolean;
 	thinkingBudget?: string | null;
 	useSystemPromptOnly?: boolean;

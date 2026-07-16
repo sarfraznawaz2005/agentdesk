@@ -94,10 +94,10 @@ export type ConversationsRequests = {
         username?: string;
       };
     };
-    response: { messageId: string; userMessageId: string };
+    response: { messageId: string; userMessageId: string; queued?: boolean };
   };
   stopGeneration: {
-    params: { projectId: string };
+    params: { projectId: string; conversationId?: string };
     response: { success: boolean };
   };
   retryAgent: {

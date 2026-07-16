@@ -142,6 +142,33 @@ export type SystemRequests = {
     params: Record<string, never>;
     response: { success: boolean };
   };
+  getPromptLogStats: {
+    params: { limit?: number };
+    response: {
+      entries: Array<{
+        timestamp: string;
+        agent: string;
+        model: string;
+        totalTokens: number;
+        systemTokens: number;
+        messagesTokens: number;
+      }>;
+      fileSize: number;
+    };
+  };
+  getPromptLogEntry: {
+    params: { timestamp: string };
+    response: {
+      timestamp: string;
+      agent: string;
+      model: string;
+      totalTokens: number;
+      systemTokens: number;
+      messagesTokens: number;
+      systemPrompt: string;
+      messages: string;
+    } | null;
+  };
 
   // Prompt enhancer
   enhancePrompt: {

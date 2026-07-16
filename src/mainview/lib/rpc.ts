@@ -505,6 +505,7 @@ export const rpc = {
     providerType: string;
     apiKey: string;
     baseUrl?: string;
+    defaultModel?: string;
   }) => electroviewRpc.request.listProviderModels(params),
 
   /** List available models for an existing saved provider (uses stored API key). */
@@ -703,9 +704,13 @@ export const rpc = {
   sendMessage: (projectId: string, conversationId: string, content: string) =>
     electroviewRpc.request.sendMessage({ projectId, conversationId, content }),
 
-  /** Stop the current generation for a project. */
-  stopGeneration: (projectId: string) =>
-    electroviewRpc.request.stopGeneration({ projectId }),
+  /** Stop the current generation. Pass conversationId to scope the sub-agent
+   *  abort to just this conversation — omitting it falls back to aborting
+   *  every sub-agent in the project (scheduler runs, other conversations,
+   *  review-cycle/issue-fixer agents included), which is almost never what's
+   *  actually wanted. */
+  stopGeneration: (projectId: string, conversationId?: string) =>
+    electroviewRpc.request.stopGeneration({ projectId, conversationId }),
 
   /** Queue a message server-side for later delivery once this conversation is idle. */
   enqueueMessage: (projectId: string, conversationId: string, content: string) =>
@@ -733,7 +738,7 @@ export const rpc = {
   getAgents: () => electroviewRpc.request.getAgents({}),
 
   /** Update mutable fields on an agent. */
-  updateAgent: (params: { id: string; displayName?: string; color?: string; systemPrompt?: string; providerId?: string; modelId?: string; temperature?: string; maxTokens?: number; isEnabled?: boolean; thinkingBudget?: string | null; useSystemPromptOnly?: boolean; chatEnabled?: boolean; availableToPm?: boolean }) =>
+  updateAgent: (params: { id: string; displayName?: string; color?: string; systemPrompt?: string; providerId?: string | null; modelId?: string | null; temperature?: string | null; maxTokens?: number | null; isEnabled?: boolean; thinkingBudget?: string | null; useSystemPromptOnly?: boolean; chatEnabled?: boolean; availableToPm?: boolean }) =>
     electroviewRpc.request.updateAgent(params),
 
   /** Reset a built-in agent's overrides to defaults. */
@@ -1113,17 +1118,23 @@ export const rpc = {
   redirectAgent: (projectId: string, agentId: string, instructions: string) =>
     electroviewRpc.request.redirectAgent({ projectId, agentId, instructions }),
 
-  /** Stop a specific running agent by name. */
-  stopAgent: (projectId: string, agentName: string) =>
-    electroviewRpc.request.stopAgent({ projectId, agentName }),
+  /** Stop a specific running agent by name. Pass conversationId to avoid
+   *  matching the wrong same-named agent running in a different conversation. */
+  stopAgent: (projectId: string, agentName: string, conversationId?: string) =>
+    electroviewRpc.request.stopAgent({ projectId, agentName, conversationId }),
 
   /** Stop all running sub-agents and set the engine stopped flag. */
   stopAllAgents: (projectId: string) =>
     electroviewRpc.request.stopAllAgents({ projectId }),
 
-  /** Get currently running sub-agents (restores UI state after navigation). */
+  /** Get currently running sub-agents project-wide (dashboard project cards). */
   getRunningAgents: (projectId: string) =>
     electroviewRpc.request.getRunningAgents({ projectId }),
+
+  /** Get currently running sub-agents scoped to one conversation — the
+   *  correct source for a per-conversation running-agent badge/count. */
+  getRunningAgentsForConversation: (projectId: string, conversationId: string) =>
+    electroviewRpc.request.getRunningAgentsForConversation({ projectId, conversationId }),
 
   /** Get active agent counts for all projects (for the dashboard). */
   getActiveProjectAgents: () =>
@@ -1133,9 +1144,9 @@ export const rpc = {
   getProjectTaskStats: () =>
     electroviewRpc.request.getProjectTaskStats({}),
 
-  /** Check if the PM is currently streaming a response. */
-  getPmStatus: (projectId: string) =>
-    electroviewRpc.request.getPmStatus({ projectId }),
+  /** Check if the PM is currently streaming a response. Pass conversationId to scope the check to one conversation. */
+  getPmStatus: (projectId: string, conversationId?: string) =>
+    electroviewRpc.request.getPmStatus({ projectId, conversationId }),
 
   /** Test OS-level desktop notification. */
   testOsNotification: () =>
@@ -1200,6 +1211,12 @@ export const rpc = {
 
   /** Open the prompt debug log file in the OS default editor. */
   openPromptLog: () => electroviewRpc.request.openPromptLog({}),
+
+  /** Get per-entry stats parsed from the prompt debug log (most recent first). */
+  getPromptLogStats: (limit?: number) => electroviewRpc.request.getPromptLogStats({ limit }),
+
+  /** Get the full system prompt + messages content for one prompt log entry. */
+  getPromptLogEntry: (timestamp: string) => electroviewRpc.request.getPromptLogEntry({ timestamp }),
 
   // ---- WhatsApp ------------------------------------------------------------
 

@@ -11,6 +11,7 @@ import {
 	mkdirSync,
 	appendFileSync,
 	writeFileSync,
+	readFileSync,
 	statSync,
 	renameSync,
 	unlinkSync,
@@ -130,6 +131,113 @@ export function clearPromptLog(): { success: boolean } {
 		return { success: true };
 	} catch {
 		return { success: false };
+	}
+}
+
+export type PromptLogEntry = {
+	timestamp: string;
+	agent: string;
+	model: string;
+	totalTokens: number;
+	systemTokens: number;
+	messagesTokens: number;
+};
+
+/**
+ * Parse prompt log and return per-entry stats (most recent first).
+ * Only parses header lines — does not read full prompt bodies.
+ *
+ * Complements the aggregate ai_telemetry_events-backed AI Usage tab (see
+ * telemetry-sink.ts) — that path gives cost/latency/cache-hit analytics
+ * across all providers, while this path gives raw per-call prompt inspection
+ * (exact system prompt + message array actually sent), which telemetry
+ * doesn't capture. Both are kept; they answer different questions.
+ */
+export function getPromptLogStats(limit = 50): { entries: PromptLogEntry[]; fileSize: number } {
+	try {
+		const logPath = getPromptLogPath();
+		if (!existsSync(logPath)) return { entries: [], fileSize: 0 };
+
+		const { size } = statSync(logPath);
+		const content = readFileSync(logPath, "utf-8");
+
+		const headerRe = /^\[(.+?)\] Agent: (.+?) \| Model: (.+?) \| Tokens: ~(\d+) \(system: ~(\d+), messages: ~(\d+)\)$/gm;
+		const entries: PromptLogEntry[] = [];
+		let match: RegExpExecArray | null;
+
+		while ((match = headerRe.exec(content)) !== null) {
+			entries.push({
+				timestamp: match[1],
+				agent: match[2],
+				model: match[3],
+				totalTokens: parseInt(match[4], 10),
+				systemTokens: parseInt(match[5], 10),
+				messagesTokens: parseInt(match[6], 10),
+			});
+		}
+
+		// Most recent first, limited
+		entries.reverse();
+		if (entries.length > limit) entries.length = limit;
+
+		return { entries, fileSize: size };
+	} catch {
+		return { entries: [], fileSize: 0 };
+	}
+}
+
+export type PromptLogEntryFull = PromptLogEntry & {
+	systemPrompt: string;
+	messages: string;
+};
+
+/**
+ * Fetch the full content of a specific prompt log entry by its timestamp.
+ * The log is split on separator lines ("====..."), and we find the block
+ * whose header matches the given timestamp.
+ */
+export function getPromptLogEntry(timestamp: string): PromptLogEntryFull | null {
+	try {
+		const logPath = getPromptLogPath();
+		if (!existsSync(logPath)) return null;
+
+		const content = readFileSync(logPath, "utf-8");
+		const separator = "=".repeat(80);
+		const blocks = content.split(separator).filter((b) => b.trim());
+
+		// Blocks come in pairs: [header\n===, body] but after split on ===
+		// we get: header line, then body until next ===.
+		// Actually the format is: ===\nheader\n===\nbody\n
+		// After splitting on ===: ["", "\nheader\n", "\nbody\n", "\nheader\n", "\nbody\n", ...]
+		// So headers are at odd indices (1, 3, 5...) and bodies at even indices (2, 4, 6...)
+
+		for (let i = 0; i < blocks.length - 1; i++) {
+			const block = blocks[i].trim();
+			if (!block.startsWith("[")) continue;
+
+			// Check if this header matches the timestamp
+			const headerMatch = block.match(/^\[(.+?)\] Agent: (.+?) \| Model: (.+?) \| Tokens: ~(\d+) \(system: ~(\d+), messages: ~(\d+)\)$/);
+			if (!headerMatch || headerMatch[1] !== timestamp) continue;
+
+			// The body is the next block
+			const body = blocks[i + 1] || "";
+			const systemMatch = body.match(/--- SYSTEM PROMPT ---\n\n?([\s\S]*?)\n\n?--- CONVERSATION MESSAGES ---/);
+			const messagesMatch = body.match(/--- CONVERSATION MESSAGES ---\n\n?([\s\S]*?)$/);
+
+			return {
+				timestamp: headerMatch[1],
+				agent: headerMatch[2],
+				model: headerMatch[3],
+				totalTokens: parseInt(headerMatch[4], 10),
+				systemTokens: parseInt(headerMatch[5], 10),
+				messagesTokens: parseInt(headerMatch[6], 10),
+				systemPrompt: systemMatch?.[1]?.trim() ?? "",
+				messages: messagesMatch?.[1]?.trim() ?? "",
+			};
+		}
+		return null;
+	} catch {
+		return null;
 	}
 }
 

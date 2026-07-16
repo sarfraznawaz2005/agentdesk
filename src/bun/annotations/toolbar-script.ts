@@ -46,11 +46,27 @@ var host=document.createElement('div');
 host.id='__ad_host';
 host.style.cssText='all:initial!important;position:fixed!important;bottom:24px!important;right:24px!important;'+
   'top:auto!important;left:auto!important;transform:none!important;filter:none!important;'+
-  'z-index:2147483647!important;font-size:0!important;'+
+  'z-index:2147483647!important;'+
   'contain:none!important;will-change:auto!important;isolation:auto!important;'+
   /* Never let a frameless/app-region window treat a drag on the toolbar as a
      window-move — the header implements its own pointer drag below. */
-  '-webkit-app-region:no-drag!important;';
+  '-webkit-app-region:no-drag!important;'+
+  /* "all:initial" above resets font-family/font-size (both inherited
+     properties) to the browser's raw UA default, NOT to the nice cascade
+     declared in the ":host{...}" rule inside the shadow stylesheet below —
+     and because this is an inline style, it wins over that stylesheet rule
+     regardless of !important on either side (inline style always wins
+     specificity ties with stylesheet rules, even between two !important
+     declarations). Left unset, every shadow-tree element that doesn't
+     declare its own font-family (the header icon, "+ Add Annotation", most
+     buttons) inherits the broken UA default instead — inconsistent font,
+     and Unicode symbol glyphs (the pencil icon) sometimes missing entirely.
+     Re-declaring them here, after "all:initial", fixes the inheritance root
+     for the whole shadow tree. Editing the ":host{}" rule below instead has
+     no effect — this inline declaration always wins. */
+  'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Liberation Sans",sans-serif!important;'+
+  'font-size:14px!important;font-weight:400!important;font-style:normal!important;'+
+  'line-height:normal!important;letter-spacing:normal!important;text-transform:none!important;';
 var sd=host.attachShadow({mode:'open'});
 var _root=document.documentElement||document.body;
 _root.appendChild(host);

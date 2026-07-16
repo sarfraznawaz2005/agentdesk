@@ -28,7 +28,7 @@ export type ProvidersRequests = {
     response: { queued: boolean };
   };
   listProviderModels: {
-    params: { providerType: string; apiKey: string; baseUrl?: string };
+    params: { providerType: string; apiKey: string; baseUrl?: string; defaultModel?: string };
     response: { success: boolean; models: string[]; error?: string };
   };
   listProviderModelsById: {

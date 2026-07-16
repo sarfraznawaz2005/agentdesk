@@ -25,10 +25,10 @@ export type AgentsRequests = {
       displayName?: string;
       color?: string;
       systemPrompt?: string;
-      providerId?: string;
-      modelId?: string;
-      temperature?: string;
-      maxTokens?: number;
+      providerId?: string | null;
+      modelId?: string | null;
+      temperature?: string | null;
+      maxTokens?: number | null;
       isEnabled?: boolean;
       thinkingBudget?: string | null;
       useSystemPromptOnly?: boolean;
@@ -68,7 +68,7 @@ export type AgentsRequests = {
     response: { success: boolean };
   };
   stopAgent: {
-    params: { projectId: string; agentName: string };
+    params: { projectId: string; agentName: string; conversationId?: string };
     response: { success: boolean };
   };
   stopAllAgents: {
@@ -79,12 +79,16 @@ export type AgentsRequests = {
     params: { projectId: string };
     response: Array<{ id: string; name: string; displayName: string; taskDescription: string; status: string }>;
   };
+  getRunningAgentsForConversation: {
+    params: { projectId: string; conversationId: string };
+    response: Array<{ id: string; name: string; displayName: string; taskDescription: string; status: string }>;
+  };
   getActiveProjectAgents: {
     params: Record<string, never>;
     response: Array<{ projectId: string; agentCount: number }>;
   };
   getPmStatus: {
-    params: { projectId: string };
+    params: { projectId: string; conversationId?: string };
     response: { isStreaming: boolean; conversationId: string | null };
   };
   getAgentTools: {

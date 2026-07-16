@@ -83,8 +83,12 @@ const CLAUDE_SUBSCRIPTION_OPTION = { value: "claude-subscription", label: "Claud
 // Provider types that need a base URL
 const BASE_URL_PROVIDERS = ["ollama", "custom"];
 
+// Matches the backend's OllamaAdapter default — pre-filled when the user picks
+// Ollama so they don't have to know/type the local endpoint themselves.
+const OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434/v1";
+
 // Provider types that do not require an API key from the user
-const NO_KEY_PROVIDERS = ["opencode", "claude-subscription"];
+const NO_KEY_PROVIDERS = ["opencode", "claude-subscription", "ollama"];
 
 function isValidUrl(v: string): boolean {
   try {
@@ -411,9 +415,13 @@ function ProviderDialog({
     const timer = setTimeout(async () => {
       try {
         const result = await rpc.listProviderModels({
-          providerType: form.providerType === "ollama" || form.providerType === "custom" ? "openai" : form.providerType,
+          providerType: form.providerType,
           apiKey: NO_KEY_PROVIDERS.includes(form.providerType) ? "public" : form.apiKey.trim(),
           baseUrl: form.baseUrl.trim() || undefined,
+          // Keeps the already-saved default visible in the suggestion list even
+          // when the live/fallback fetch doesn't happen to return it (e.g. an
+          // Ollama provider while Ollama isn't running).
+          defaultModel: isEditing ? form.defaultModel.trim() || undefined : undefined,
         });
         if (result.success && result.models.length > 0) {
           setAvailableModels([...result.models].sort());
@@ -574,7 +582,15 @@ function ProviderDialog({
             <select
               id="provider-type"
               value={form.providerType}
-              onChange={(e) => updateField("providerType", e.target.value)}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                updateField("providerType", nextType);
+                // Pre-fill the local Ollama endpoint so the user isn't left
+                // guessing the URL — only when they haven't typed one already.
+                if (nextType === "ollama" && !form.baseUrl.trim()) {
+                  updateField("baseUrl", OLLAMA_DEFAULT_BASE_URL);
+                }
+              }}
               disabled={saving}
               className={cn(
                 "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1",
@@ -596,7 +612,9 @@ function ProviderDialog({
             <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
               {form.providerType === "claude-subscription"
                 ? "No API key needed — uses Claude Code's stored OAuth credentials automatically."
-                : "No API key needed — free models are available out of the box. Optionally add your own OpenCode key to unlock paid models."}
+                : form.providerType === "ollama"
+                  ? "No API key needed — Ollama runs locally."
+                  : "No API key needed — free models are available out of the box. Optionally add your own OpenCode key to unlock paid models."}
             </div>
           ) : (
             <div className="grid gap-1.5">

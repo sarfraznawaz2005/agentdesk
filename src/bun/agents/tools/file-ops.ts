@@ -11,6 +11,7 @@ import type { FileTracker } from "./file-tracker";
 import { notifyFileChange } from "../../plugins";
 import { truncateSearchResults, truncateTree } from "./truncation";
 import { literalReplace, detectEol, toLf, fromLf } from "./text-edit";
+import { isCertificateError } from "./web";
 
 /**
  * Read a file as UTF-8 text, re-prepending a leading BOM when the file has one
@@ -1455,9 +1456,19 @@ const downloadFileTool = tool({
 			const resolvedPath = validatePath(args.destination);
 			await mkdir(path.dirname(resolvedPath), { recursive: true });
 
-			const response = await fetch(args.url, {
-				headers: args.headers,
-			});
+			let insecureTls = false;
+			let response: Response;
+			try {
+				response = await fetch(args.url, { headers: args.headers });
+			} catch (err) {
+				// One retry with certificate verification relaxed — only for a genuine
+				// TLS/cert error over https (self-signed, expired, hostname mismatch).
+				// See web.ts's fetchPageText for the full rationale; kept in sync here
+				// since this tool fetches arbitrary caller-specified URLs the same way.
+				if (!isCertificateError(err) || !args.url.startsWith("https:")) throw err;
+				insecureTls = true;
+				response = await fetch(args.url, { headers: args.headers, tls: { rejectUnauthorized: false } });
+			}
 
 			if (!response.ok) {
 				return JSON.stringify({
@@ -1475,6 +1486,7 @@ const downloadFileTool = tool({
 				path: resolvedPath,
 				size: fileSize,
 				contentType: response.headers.get("content-type") ?? "unknown",
+				...(insecureTls ? { insecureTls: true, warning: "This file was downloaded over HTTPS but the server's certificate could not be verified (self-signed, expired, or hostname mismatch) — the connection was encrypted but not authenticated." } : {}),
 			});
 		} catch (err) {
 			return `Error downloading file: ${err instanceof Error ? err.message : String(err)}`;

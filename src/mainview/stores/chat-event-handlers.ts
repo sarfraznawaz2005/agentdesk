@@ -1,5 +1,5 @@
-import type { AgentStatusValue, Message } from "./chat-types";
-import { useChatStore, sortConversations } from "./chat-store";
+import type { ActiveInlineAgent, AgentStatusValue, Message } from "./chat-types";
+import { useChatStore, sortConversations, deriveInlineAgentDisplay } from "./chat-store";
 import { toast } from "../components/ui/toast";
 import { rpc } from "../lib/rpc";
 
@@ -636,10 +636,10 @@ function onAgentInlineStart(e: Event): void {
   const state = useChatStore.getState();
   if (state.activeConversationId !== conversationId) return;
 
-  useChatStore.setState((prev) => ({
-    activeInlineAgent: { agentName, agentDisplayName, messageId },
-    runningAgentCount: prev.runningAgentCount + 1,
-  }));
+  useChatStore.setState((prev) => {
+    const runningInlineAgents = { ...prev.runningInlineAgents, [messageId]: { agentName, agentDisplayName, messageId } };
+    return { runningInlineAgents, ...deriveInlineAgentDisplay(runningInlineAgents) };
+  });
 }
 
 function onAgentInlineComplete(e: Event): void {
@@ -661,14 +661,22 @@ function onAgentInlineComplete(e: Event): void {
   const willPMRestart = status !== "cancelled";
 
   useChatStore.setState((prev) => {
-    const newCount = Math.max(0, prev.runningAgentCount - 1);
-    // Clear the badge when the matching messageId ends OR when count drops to
-    // zero (handles the case where activeInlineAgent was restored on page
-    // re-entry with a synthetic messageId that won't match the real end event).
-    const clearAgent = newCount === 0 || prev.activeInlineAgent?.messageId === messageId;
+    const next: Record<string, ActiveInlineAgent> = { ...prev.runningInlineAgents };
+    if (messageId in next) {
+      Reflect.deleteProperty(next, messageId);
+    } else {
+      // No live-tracked entry for this exact messageId — most likely this
+      // agent's running-state came from a post-refresh sync placeholder
+      // (syncRunningAgents keys those by `sync-${agentId}` since
+      // getRunningAgents doesn't return real messageIds, so an exact match
+      // can never succeed for them). Drop one arbitrary synced placeholder
+      // instead of leaving the count/badge permanently stuck.
+      const syncKey = Object.keys(next).find((k) => k.startsWith("sync-"));
+      if (syncKey) Reflect.deleteProperty(next, syncKey);
+    }
     return {
-      runningAgentCount: newCount,
-      ...(clearAgent ? { activeInlineAgent: null } : {}),
+      runningInlineAgents: next,
+      ...deriveInlineAgentDisplay(next),
       pmPending: willPMRestart,
       ...(tokensUsed?.prompt ? { liveContextTokens: tokensUsed.prompt, liveContextLimit: tokensUsed.contextLimit ?? 0 } : {}),
     };

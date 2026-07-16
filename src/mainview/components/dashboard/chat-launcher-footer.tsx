@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UnreadDot } from "@/components/ui/unread-dot";
@@ -80,8 +81,20 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
   const measureRef        = useRef<HTMLDivElement>(null);
   const moreMeasureRef    = useRef<HTMLDivElement>(null); // hidden stand-in, always mounted — see note below
   const moreContainerRef  = useRef<HTMLDivElement>(null); // the real, visible "+N more" wrapper (for outside-click only)
+  const menuRef           = useRef<HTMLDivElement>(null); // the portaled dropdown itself (also needed for outside-click)
   const [visibleCount, setVisibleCount] = useState(entries.length);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ bottom: number; right: number } | null>(null);
+
+  // The dropdown is portaled to document.body (see render below) so it isn't
+  // clipped by this bar's own `overflow-hidden` — it needs its position
+  // computed from the trigger's live viewport rect instead of relying on
+  // normal-flow `position: absolute` placement.
+  const recomputeMenuPos = () => {
+    const rect = moreContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPos({ bottom: window.innerHeight - rect.top + GAP_PX, right: window.innerWidth - rect.right });
+  };
 
   // Measure each pill's natural (unconstrained) width via a hidden clone row,
   // then figure out how many fit the real row's current width — reserving
@@ -123,14 +136,30 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries.map((e) => `${e.id}:${e.displayName}`).join(","), sidebarCollapsed, isMobile]);
 
-  // Close the overflow popover on an outside click.
+  // Close the overflow popover on an outside click. The menu itself is
+  // portaled to document.body (see render below), so a click inside it is
+  // NOT a descendant of moreContainerRef — check menuRef too, or selecting
+  // an entry would close the menu (via this mousedown handler) before its
+  // own click handler ever runs.
   useEffect(() => {
     if (!moreOpen) return;
     const handler = (e: MouseEvent) => {
-      if (moreContainerRef.current && !moreContainerRef.current.contains(e.target as Node)) setMoreOpen(false);
+      const target = e.target as Node;
+      if (moreContainerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setMoreOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [moreOpen]);
+
+  // Keep the portaled menu anchored to the trigger if the viewport resizes
+  // while it's open (the trigger's own horizontal position can shift when
+  // the footer's visibleCount recomputes).
+  useEffect(() => {
+    if (!moreOpen) return;
+    window.addEventListener("resize", recomputeMenuPos);
+    return () => window.removeEventListener("resize", recomputeMenuPos);
   }, [moreOpen]);
 
   if (entries.length === 0) return null;
@@ -172,7 +201,13 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
         <div ref={moreContainerRef} className="relative">
           <button
             type="button"
-            onClick={() => setMoreOpen((v) => !v)}
+            onClick={() => {
+              setMoreOpen((v) => {
+                const next = !v;
+                if (next) recomputeMenuPos();
+                return next;
+              });
+            }}
             className="relative inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/70"
           >
             +{overflow.length} more
@@ -184,8 +219,17 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
             )}
           </button>
 
-          {moreOpen && (
-            <div className="absolute bottom-full right-0 z-10 mb-2 w-max max-w-[80vw] max-h-[60vh] overflow-y-auto rounded-xl border border-border bg-background py-1 shadow-2xl">
+          {moreOpen && menuPos && createPortal(
+            <div
+              ref={menuRef}
+              // Portaled to document.body and positioned via `fixed` from the
+              // trigger's live rect — the footer bar's own `overflow-hidden`
+              // (needed to keep the hidden pill-measuring clone from affecting
+              // layout) would otherwise clip this dropdown, since it renders
+              // above the bar's own 44px-tall box.
+              style={{ bottom: menuPos.bottom, right: menuPos.right }}
+              className="fixed z-50 w-max max-w-[80vw] max-h-[60vh] overflow-y-auto rounded-xl border border-border bg-background py-1 shadow-2xl"
+            >
               {overflow.map((e) => (
                 <button
                   key={e.id}
@@ -209,7 +253,8 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
                   )}
                 </button>
               ))}
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
       )}

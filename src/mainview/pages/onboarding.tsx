@@ -76,7 +76,11 @@ const PROVIDERS: {
 const FREE_TEXT_PROVIDERS: ProviderType[] = ["ollama", "custom"];
 
 // Provider types that do not require an API key from the user
-const NO_KEY_PROVIDERS: ProviderType[] = ["opencode", "claude-subscription"];
+const NO_KEY_PROVIDERS: ProviderType[] = ["opencode", "claude-subscription", "ollama"];
+
+// Matches the backend's OllamaAdapter default — pre-filled when the user picks
+// Ollama so they don't have to know/type the local endpoint themselves.
+const OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -516,7 +520,7 @@ function StepConfigure({
       setModelLoadError(null);
       try {
         const result = await rpc.listProviderModels({
-          providerType: provider === "opencode" ? "opencode" : (provider === "ollama" || provider === "custom" ? "openai" : provider),
+          providerType: provider,
           apiKey: isNoKey ? "public" : apiKey.trim(),
           baseUrl: baseUrl.trim() || undefined,
         });
@@ -573,7 +577,9 @@ function StepConfigure({
           <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             {provider === "claude-subscription"
               ? "No API key needed — uses your existing Claude Code login. Models load automatically below."
-              : "No API key needed — free models load automatically below."}
+              : provider === "ollama"
+                ? "No API key needed — Ollama runs locally. Models load automatically below."
+                : "No API key needed — free models load automatically below."}
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -1053,6 +1059,11 @@ export function OnboardingPage() {
     updateForm("provider", p);
     // Reset model when provider changes
     updateForm("model", "");
+    // Pre-fill the local Ollama endpoint so the user isn't left guessing the
+    // URL — only when they haven't already typed one.
+    if (p === "ollama" && !formData.baseUrl.trim()) {
+      updateForm("baseUrl", OLLAMA_DEFAULT_BASE_URL);
+    }
   }
 
   async function handleRetry() {

@@ -297,7 +297,13 @@ function MessageDetailPane({
           )}
           aria-hidden="true"
         />
-        <h2 className="text-base font-semibold text-foreground truncate">{senderLabel}</h2>
+        <h2
+          className="text-base font-semibold text-foreground truncate cursor-pointer"
+          title="Click to copy message ID"
+          onClick={() => navigator.clipboard.writeText(message.id)}
+        >
+          {senderLabel}
+        </h2>
         {runningJobId && (
           <Button
             variant="outline"

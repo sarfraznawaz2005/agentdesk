@@ -6,7 +6,6 @@ import { PROVIDER_HEADERS } from "./headers";
 import { generateImageOpenAICompatible } from "./image-generation";
 
 const OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434/v1";
-const OLLAMA_TAGS_URL = "http://localhost:11434/api/tags";
 
 const OLLAMA_FALLBACK_MODELS = [
 	"llama3.2",
@@ -21,12 +20,26 @@ interface OllamaTagsResponse {
 	models: Array<{ name: string }>;
 }
 
+/**
+ * Derives the native /api/tags URL from the configured (OpenAI-compatible)
+ * base URL, e.g. "http://192.168.1.5:11434/v1" -> "http://192.168.1.5:11434/api/tags".
+ * Without this, a user pointing Ollama at a non-default host/port would have
+ * chat requests correctly go to their configured URL while model listing and
+ * connection testing silently kept hitting the default localhost:11434.
+ */
+function getTagsUrl(baseUrl?: string | null): string {
+	const base = (baseUrl ?? OLLAMA_DEFAULT_BASE_URL).replace(/\/v1\/?$/, "").replace(/\/$/, "");
+	return `${base}/api/tags`;
+}
+
 export class OllamaAdapter implements ProviderAdapter {
 	private config: ProviderConfig;
 	private provider: ReturnType<typeof createOpenAICompatible>;
+	private tagsUrl: string;
 
 	constructor(config: ProviderConfig) {
 		this.config = config;
+		this.tagsUrl = getTagsUrl(config.baseUrl);
 		this.provider = createOpenAICompatible({
 			name: "ollama",
 			apiKey: "ollama",
@@ -46,7 +59,7 @@ export class OllamaAdapter implements ProviderAdapter {
 	 */
 	async listModels(): Promise<string[]> {
 		try {
-			const response = await fetch(OLLAMA_TAGS_URL, {
+			const response = await fetch(this.tagsUrl, {
 				signal: AbortSignal.timeout(3000),
 			});
 
@@ -69,7 +82,7 @@ export class OllamaAdapter implements ProviderAdapter {
 	async testConnection(): Promise<{ success: boolean; error?: string }> {
 		// Step 1: Check if Ollama is reachable at all.
 		try {
-			const response = await fetch(OLLAMA_TAGS_URL, {
+			const response = await fetch(this.tagsUrl, {
 				signal: AbortSignal.timeout(3000),
 			});
 			if (!response.ok) {

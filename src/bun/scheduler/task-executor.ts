@@ -205,7 +205,7 @@ export async function executeTask(
 					// "N agents working" badge work correctly. Chained to the job-level
 					// signal so the Scheduler/Inbox Stop button cancels this run too.
 					const abortController = new AbortController();
-					registerAgentController(projectId, abortController, agentId);
+					registerAgentController(projectId, abortController, agentId, convId);
 					const onJobAbort = () => abortController.abort();
 					abortSignal?.addEventListener("abort", onJobAbort);
 
@@ -310,7 +310,10 @@ export async function executeTask(
 				// and stop button work when this task is associated with a project.
 				const simpleAbortController = simpleProjectId ? new AbortController() : null;
 				if (simpleProjectId && simpleAbortController) {
-					registerAgentController(simpleProjectId, simpleAbortController, agentId);
+					// This mode is always project-less/conversation-less (see comment
+					// above) — null means it's exempt from any conversation-scoped
+					// abort and only reachable via this project's stopAllAgents.
+					registerAgentController(simpleProjectId, simpleAbortController, agentId, null);
 				}
 
 				// Resolve provider

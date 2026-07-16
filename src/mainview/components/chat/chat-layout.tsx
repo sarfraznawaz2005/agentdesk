@@ -586,6 +586,7 @@ export function ChatLayout({ projectId, hideFocusToggle, defaultSidebarOpen, sid
         aria-hidden={!sidebarOpen}
       >
         <ConversationSidebar
+          projectId={projectId}
           conversations={conversations}
           activeConversationId={activeConversationId}
           onSelect={handleSelectConversation}
@@ -635,7 +636,13 @@ export function ChatLayout({ projectId, hideFocusToggle, defaultSidebarOpen, sid
             </button>
           </Tip>
 
-          <span className="font-medium text-foreground text-sm truncate">
+          <span
+            className="font-medium text-foreground text-sm truncate cursor-pointer"
+            title="Click to copy conversation ID"
+            onClick={() => {
+              if (activeConversationId) navigator.clipboard.writeText(activeConversationId);
+            }}
+          >
             {conversations.find((c) => c.id === activeConversationId)?.title ??
               "Chat"}
           </span>

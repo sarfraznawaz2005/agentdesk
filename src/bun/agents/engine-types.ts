@@ -1,4 +1,4 @@
-import type { ModelMessage } from "ai";
+import type { Instructions, ModelMessage } from "ai";
 import { getAllTools } from "./tools/index";
 import type { AgentConfig, AgentTask, AgentActivityEvent } from "./types";
 
@@ -88,9 +88,18 @@ export function extractPMReasoning(stepResult: unknown): string {
 // ---------------------------------------------------------------------------
 
 /**
- * For Anthropic and OpenRouter providers, moves the system prompt into
- * a system-role message at the front of `messages` with cacheControl metadata.
- * This enables Anthropic's prompt caching (~90% cheaper on cache hits).
+ * For Anthropic, OpenRouter, and Claude Subscription (Haiku direct-HTTP sub-path
+ * only — the CLI/SDK bridge for Sonnet/Opus never reaches this function at all,
+ * see isClaudeSubscriptionViaCli in engine.ts) providers, passes the system
+ * prompt as a `SystemModelMessage` (via `instructions`) with cacheControl
+ * metadata. This enables Anthropic's prompt caching (~90% cheaper on cache hits).
+ *
+ * AI SDK v7 rejects a `role: "system"` entry inside `messages` outright
+ * (`AI_InvalidPromptError: System messages are not allowed in the prompt or
+ * messages fields. Use the instructions option instead.`) — `instructions`
+ * accepts a plain string OR a `SystemModelMessage`/array thereof specifically
+ * so provider options like cacheControl can still be attached. Do not go back
+ * to prepending a system-role message to `messages`.
  *
  * For other providers, returns the inputs unchanged.
  */
@@ -98,22 +107,20 @@ export function applyAnthropicCaching(
 	providerType: string,
 	system: string,
 	messages: ModelMessage[],
-): { instructions: string | undefined; messages: ModelMessage[] } {
-	if (providerType !== "anthropic" && providerType !== "openrouter") {
+): { instructions: Instructions | undefined; messages: ModelMessage[] } {
+	if (providerType !== "anthropic" && providerType !== "openrouter" && providerType !== "claude-subscription") {
 		return { instructions: system, messages };
 	}
 
-	const systemMessage: ModelMessage = {
-		role: "system",
-		content: system,
-		providerOptions: {
-			anthropic: { cacheControl: { type: "ephemeral" } },
-		},
-	};
-
 	return {
-		instructions: undefined,
-		messages: [systemMessage, ...messages],
+		instructions: {
+			role: "system",
+			content: system,
+			providerOptions: {
+				anthropic: { cacheControl: { type: "ephemeral" } },
+			},
+		},
+		messages,
 	};
 }
 
@@ -178,6 +185,8 @@ export interface AgentEngineCallbacks {
 	onConversationUpdated?(conversationId: string, updatedAt: string): void;
 	onConversationCompacted?(conversationId: string, remainingTokens?: number): void;
 	onCompactionStarted?(conversationId: string): void;
+	/** A message was queued (not sent) because a DIFFERENT conversation's PM turn is genuinely still in flight for this project — see sendMessage()'s busy-conversation guard. Lets the frontend reflect the queue if it's viewing this conversation. */
+	onMessageQueued?(conversationId: string, queue: Array<{ id: string; conversationId: string; content: string; queuedAt: number }>): void;
 	/** Ask the user a question via modal dialog (app source only). */
 	askUserQuestion?(payload: {
 		question: string;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo, useReducer, Component, type ReactNode } from "react";
-import { ArrowDown, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowDown, AlertTriangle, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MessageBubble, type Message } from "./message-bubble";
 import { MessageActionsProvider } from "./message-actions-context";
@@ -94,6 +94,7 @@ export function MessageList({
   const isCompacting = useChatStore((s) => s.isCompacting);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const isAtBottomRef = useRef(true);
 
   // Bumped on stream-complete so relative timestamps re-render
@@ -242,6 +243,7 @@ export function MessageList({
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
     isAtBottomRef.current = atBottom;
     setShowScrollButton(!atBottom);
+    setShowScrollTopButton(el.scrollTop > 200);
   }, []);
 
   const scrollToBottom = useCallback(() => {
@@ -249,6 +251,12 @@ export function MessageList({
     isAtBottomRef.current = true;
     setShowScrollButton(false);
   }, [doScrollToBottom]);
+
+  const scrollToTop = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   return (
     <MessageActionsProvider>
@@ -365,6 +373,30 @@ export function MessageList({
             <ArrowDown className="w-3 h-3" aria-hidden="true" />
             Scroll to bottom
           </button>
+        )}
+
+        {/* Jump to top / bottom — quick navigation for long conversations */}
+        {(showScrollTopButton || showScrollButton) && (
+          <div className="absolute bottom-6 right-4 flex flex-col gap-2 z-10">
+            {showScrollTopButton && (
+              <button
+                onClick={scrollToTop}
+                aria-label="Scroll to top"
+                className="flex items-center justify-center size-9 rounded-full bg-background border border-border shadow-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronUp className="size-4" aria-hidden="true" />
+              </button>
+            )}
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                aria-label="Scroll to bottom"
+                className="flex items-center justify-center size-9 rounded-full bg-background border border-border shadow-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronDown className="size-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </MessageActionsProvider>

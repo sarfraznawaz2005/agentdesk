@@ -30,17 +30,26 @@ export const engines = new Map<string, AgentEngine>();
  * Tracks abort controllers for all running inline agents (PM-dispatched and
  * workflow-dispatched) per project. Used by stopGeneration to abort everything,
  * and by stopAgent to abort a specific agent by name.
+ *
+ * conversationId lets callers scope an abort to just one conversation instead
+ * of the whole project — see abortAgentsForConversation below. It's `null`
+ * only for genuinely conversation-less runs (the scheduler's project-less
+ * "agent_task_simple" mode, which never creates a chat conversation at all);
+ * those are exempt from conversation-scoped aborts by construction (no
+ * conversationId can ever match `null`) and only reachable via abortAllAgents/
+ * stopAllAgents, an explicit project-wide action.
  */
 interface AgentControllerEntry {
 	controller: AbortController;
 	agentName: string;
+	conversationId: string | null;
 }
 const runningAgentControllers = new Map<string, Map<AbortController, AgentControllerEntry>>();
 
-export function registerAgentController(projectId: string, controller: AbortController, agentName: string): void {
+export function registerAgentController(projectId: string, controller: AbortController, agentName: string, conversationId: string | null): void {
 	let map = runningAgentControllers.get(projectId);
 	if (!map) { map = new Map(); runningAgentControllers.set(projectId, map); }
-	map.set(controller, { controller, agentName });
+	map.set(controller, { controller, agentName, conversationId });
 }
 
 export function unregisterAgentController(projectId: string, controller: AbortController): void {
@@ -48,6 +57,12 @@ export function unregisterAgentController(projectId: string, controller: AbortCo
 	if (map) { map.delete(controller); if (map.size === 0) runningAgentControllers.delete(projectId); }
 }
 
+/** Explicit "stop everything in this project" — used by the stopAllAgents RPC
+ *  and engine teardown. NOT used for the implicit abort-on-new-message path
+ *  (see abortAgentsForConversation) — that must stay scoped to one
+ *  conversation so unrelated conversations, scheduler runs, review-cycle
+ *  agents, and issue-fixer runs in the same project are never silently killed
+ *  just because the user sent a message somewhere else in the project. */
 export function abortAllAgents(projectId: string): void {
 	const map = runningAgentControllers.get(projectId);
 	if (map) {
@@ -58,8 +73,28 @@ export function abortAllAgents(projectId: string): void {
 }
 
 /**
- * Abort a specific agent by name. If multiple agents share the same name,
- * aborts the first one found.
+ * Abort only the agents running in one specific conversation of a project —
+ * the correct scope for "a new message arrived, cancel whatever this
+ * conversation's PM/agents were doing," which must never reach into sibling
+ * conversations or conversation-less background runs in the same project.
+ */
+export function abortAgentsForConversation(projectId: string, conversationId: string): void {
+	const map = runningAgentControllers.get(projectId);
+	if (!map) return;
+	for (const [key, entry] of map) {
+		if (entry.conversationId === conversationId) {
+			entry.controller.abort();
+			map.delete(key);
+		}
+	}
+	if (map.size === 0) runningAgentControllers.delete(projectId);
+}
+
+/**
+ * Abort a specific agent by name anywhere in the project. If multiple agents
+ * share the same name (possible across different conversations), aborts the
+ * first one found — prefer abortAgentByNameInConversation when the caller
+ * knows which conversation it means.
  */
 export function abortAgentByName(projectId: string, agentName: string): boolean {
 	const map = runningAgentControllers.get(projectId);
@@ -75,9 +110,35 @@ export function abortAgentByName(projectId: string, agentName: string): boolean 
 	return false;
 }
 
-/** Returns the number of currently running agents for a project. */
+/**
+ * Abort a specific agent by name, scoped to one conversation — avoids
+ * aborting the wrong agent when two conversations in the same project happen
+ * to be running same-named agents concurrently.
+ */
+export function abortAgentByNameInConversation(projectId: string, conversationId: string, agentName: string): boolean {
+	const map = runningAgentControllers.get(projectId);
+	if (!map) return false;
+	for (const [key, entry] of map) {
+		if (entry.conversationId === conversationId && entry.agentName === agentName) {
+			entry.controller.abort();
+			map.delete(key);
+			if (map.size === 0) runningAgentControllers.delete(projectId);
+			return true;
+		}
+	}
+	return false;
+}
+
+/** Returns the number of currently running agents for a project (all conversations combined — used by dashboard project cards). */
 export function getRunningAgentCount(projectId: string): number {
 	return runningAgentControllers.get(projectId)?.size ?? 0;
+}
+
+/** Returns the names of currently running agents scoped to one conversation — used for the per-conversation running-agent badge/count. */
+export function getRunningAgentNamesForConversation(projectId: string, conversationId: string): string[] {
+	const map = runningAgentControllers.get(projectId);
+	if (!map) return [];
+	return [...map.values()].filter((e) => e.conversationId === conversationId).map((e) => e.agentName);
 }
 
 /**
@@ -736,7 +797,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				// Relay PM response to source channel if message came from a channel
 				const eng = engines.get(projectId);
 				if (eng && usage.content) {
-					const meta = eng.getActiveMetadata();
+					const meta = eng.getActiveMetadata(cid);
 					if (meta.source !== "app" && meta.channelId) {
 						console.log(`[EngineManager] Relaying PM response to channel ${meta.channelId} (${usage.content.length} chars)`);
 						for (const chunk of chunkMessage(usage.content)) {
@@ -748,17 +809,19 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					}
 				}
 
-				// Fires when everything is idle (PM done + no agents running/queued).
-				// Use setTimeout(0) so the engine's finally block sets pmProcessing=false first.
+				// Fires when THIS conversation is idle (its own PM turn done + no
+				// sub-agents of its own still running). Scoped to cid, not the whole
+				// project — a sibling conversation still working must never delay this
+				// conversation's own queue-drain or "session complete" signal.
+				// Use setTimeout(0) so the engine's finally block clears its
+				// per-conversation processing state first.
 				setTimeout(() => {
 					const e = engines.get(projectId);
-					if (!e || e.isProcessing() || getRunningAgentCount(projectId) > 0 || e.getQueuedAgentsSnapshot().length > 0) return;
+					if (!e || e.isProcessing(cid) || getRunningAgentNamesForConversation(projectId, cid).length > 0) return;
 
 					// If the user queued a message for THIS conversation while it was
 					// busy, send it now instead of treating this as "session complete" —
-					// the conversation is continuing, not finished. This fires from the
-					// engine's own completion callback, so it works regardless of which
-					// project the frontend is currently displaying.
+					// the conversation is continuing, not finished.
 					const queued = dequeueMessage(projectId, cid);
 					if (queued) {
 						broadcastToProject(projectId, "messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
@@ -800,11 +863,12 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				});
 
 				// Mirrors the queued-message drain in onStreamComplete — an error also
-				// ends the PM's turn, so a message queued for this conversation should
-				// still get its chance to send once truly idle.
+				// ends the PM's turn for THIS conversation, so a message queued for it
+				// should still get its chance to send once this conversation (not the
+				// whole project) is truly idle.
 				setTimeout(() => {
 					const e = engines.get(projectId);
-					if (!e || e.isProcessing() || getRunningAgentCount(projectId) > 0 || e.getQueuedAgentsSnapshot().length > 0) return;
+					if (!e || e.isProcessing(cid) || getRunningAgentNamesForConversation(projectId, cid).length > 0) return;
 					const queued = dequeueMessage(projectId, cid);
 					if (queued) {
 						broadcastToProject(projectId, "messageQueueUpdated", { projectId, conversationId: cid, queue: getQueuedMessages(projectId, cid) });
@@ -937,6 +1001,9 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					remainingTokens,
 				});
 			},
+			onMessageQueued: (conversationId, queue) => {
+				broadcastToProject(projectId, "messageQueueUpdated", { projectId, conversationId, queue });
+			},
 			onAgentActivity(event) {
 				// Only forward PM thinking events — other activity types were removed in v2
 				if (event.type === "thinking" && event.data?.text) {
@@ -950,10 +1017,19 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 			askUserQuestion: (payload) => askUserQuestion(payload),
 		};
 		engine = new AgentEngine(projectId, callbacks);
-		// Wire abort controller tracking so stopGeneration can abort all running agents
-		engine.registerAgentAbort = (c, name) => registerAgentController(projectId, c, name);
+		// Wire abort controller tracking so stopGeneration/stopAgent can find and
+		// abort running agents. conversationId is supplied by the caller (e.g.
+		// pm-tools.ts knows exactly which conversation it's dispatching into,
+		// including cross-project dispatch cases) rather than assumed here.
+		engine.registerAgentAbort = (c, name, conversationId) => registerAgentController(projectId, c, name, conversationId);
 		engine.unregisterAgentAbort = (c) => unregisterAgentController(projectId, c);
-		engine.setAbortAgentsFn(abortAllAgents);
+		// abortAllAgents/abortAgentsForConversation (explicit "stop everything"/
+		// "stop this conversation") are called directly by the stopAllAgents/
+		// stopGeneration RPC handlers — they don't need engine wiring. A new
+		// message never aborts anything on its own now (see sendMessage()); it
+		// only needs to know whether THIS conversation already has sub-agents
+		// running, to decide whether to queue.
+		engine.setGetRunningAgentNamesForConversationFn((conversationId) => getRunningAgentNamesForConversation(projectId, conversationId));
 		engines.set(projectId, engine);
 	}
 	return engine;

@@ -3,9 +3,11 @@ import { Plus, Pin, Pencil, Trash2, X, Check, Archive, ArchiveRestore, ChevronDo
 import { cn } from "../../lib/utils";
 import { relativeTime } from "../../lib/date-utils";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { rpc } from "../../lib/rpc";
 import type { Conversation } from "../../stores/chat-store";
 
 interface ConversationSidebarProps {
+  projectId: string;
   conversations: Conversation[];
   archivedConversations?: Conversation[];
   activeConversationId: string | null;
@@ -19,6 +21,7 @@ interface ConversationSidebarProps {
 }
 
 export function ConversationSidebar({
+  projectId,
   conversations,
   archivedConversations = [],
   activeConversationId,
@@ -40,7 +43,44 @@ export function ConversationSidebar({
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [singleDeleteAgentNames, setSingleDeleteAgentNames] = useState<string[]>([]);
+  const [bulkDeleteAgentNames, setBulkDeleteAgentNames] = useState<string[]>([]);
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Warn before a delete silently stops agents currently working in the
+  // conversation(s) being removed — conversation-scoped, so a sibling
+  // conversation's agent never gets flagged as "in the way" here.
+  useEffect(() => {
+    if (!deleteConfirmId) return;
+    let cancelled = false;
+    rpc
+      .getRunningAgentsForConversation(projectId, deleteConfirmId)
+      .then((agents) => {
+        if (!cancelled) setSingleDeleteAgentNames(agents.map((a) => a.displayName));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [deleteConfirmId, projectId]);
+
+  useEffect(() => {
+    if (!bulkDeleteConfirm) return;
+    let cancelled = false;
+    Promise.all(
+      [...selectedIds].map((id) => rpc.getRunningAgentsForConversation(projectId, id)),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const names = new Set<string>();
+        results.flat().forEach((a) => names.add(a.displayName));
+        setBulkDeleteAgentNames([...names]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [bulkDeleteConfirm, projectId, selectedIds]);
 
   const exitSelectMode = () => {
     setSelectMode(false);
@@ -308,7 +348,10 @@ export function ConversationSidebar({
       {selectMode && selectedIds.size > 0 && (
         <div className="shrink-0 px-3 py-2 border-t border-border bg-background">
           <button
-            onClick={() => setBulkDeleteConfirm(true)}
+            onClick={() => {
+              setBulkDeleteAgentNames([]);
+              setBulkDeleteConfirm(true);
+            }}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -324,7 +367,11 @@ export function ConversationSidebar({
           if (!open) setDeleteConfirmId(null);
         }}
         title="Delete conversation"
-        description="This conversation and all its messages will be permanently deleted. This action cannot be undone."
+        description={
+          singleDeleteAgentNames.length > 0
+            ? `${singleDeleteAgentNames.length} agent${singleDeleteAgentNames.length > 1 ? "s are" : " is"} currently working in this conversation (${singleDeleteAgentNames.join(", ")}) and will be stopped. This conversation and all its messages will be permanently deleted. This action cannot be undone.`
+            : "This conversation and all its messages will be permanently deleted. This action cannot be undone."
+        }
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => {
@@ -339,7 +386,11 @@ export function ConversationSidebar({
         open={bulkDeleteConfirm}
         onOpenChange={(open) => { if (!open) setBulkDeleteConfirm(false); }}
         title={`Delete ${selectedIds.size} conversation${selectedIds.size !== 1 ? "s" : ""}?`}
-        description="All selected conversations and their messages will be permanently deleted. This action cannot be undone."
+        description={
+          bulkDeleteAgentNames.length > 0
+            ? `${bulkDeleteAgentNames.length} agent${bulkDeleteAgentNames.length > 1 ? "s are" : " is"} currently working in the selected conversations (${bulkDeleteAgentNames.join(", ")}) and will be stopped. All selected conversations and their messages will be permanently deleted. This action cannot be undone.`
+            : "All selected conversations and their messages will be permanently deleted. This action cannot be undone."
+        }
         confirmLabel={`Delete ${selectedIds.size}`}
         variant="destructive"
         onConfirm={() => {
@@ -382,6 +433,7 @@ export function ConversationSidebar({
                     )}
                     <button
                       onClick={() => {
+                        setSingleDeleteAgentNames([]);
                         setDeleteConfirmId(conv.id);
                         setContextMenuId(null);
                       }}
@@ -425,6 +477,7 @@ export function ConversationSidebar({
                     )}
                     <button
                       onClick={() => {
+                        setSingleDeleteAgentNames([]);
                         setDeleteConfirmId(conv.id);
                         setContextMenuId(null);
                       }}

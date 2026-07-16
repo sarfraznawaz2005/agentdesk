@@ -1,7 +1,7 @@
 import * as conversationsRpc from "../rpc/conversations";
 import * as dashboardRpc from "../rpc/dashboard";
 import * as dashboardAgentRpc from "../rpc/dashboard-agent";
-import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentByName, getRunningAgentCount, getRunningAgentNames, getAllRunningAgents } from "../engine-manager";
+import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentsForConversation, abortAgentByName, abortAgentByNameInConversation, getRunningAgentCount, getRunningAgentNames, getRunningAgentNamesForConversation, getAllRunningAgents } from "../engine-manager";
 import { enqueueMessage, removeQueuedMessage, getQueuedMessages, clearQueueForConversation } from "../message-queue-manager";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
@@ -45,8 +45,18 @@ export const handlers: Record<string, (params: any) => any> = {
 			params.metadata,
 		),
 	stopGeneration: (params) => {
-		engines.get(params.projectId)?.stopAll();
-		abortAllAgents(params.projectId);
+		// Each conversation runs its own independent PM turn now, so both the PM
+		// abort and the sub-agent abort must be scoped to conversationId — an
+		// unscoped stopAll() would kill every OTHER conversation's in-flight turn
+		// in the same project too. Falls back to the project-wide variant only if
+		// no conversationId was supplied (shouldn't happen from the current
+		// frontend, kept for safety).
+		engines.get(params.projectId)?.stopAll(params.conversationId);
+		if (params.conversationId) {
+			abortAgentsForConversation(params.projectId, params.conversationId);
+		} else {
+			abortAllAgents(params.projectId);
+		}
 		return { success: true };
 	},
 
@@ -143,7 +153,13 @@ export const handlers: Record<string, (params: any) => any> = {
 	resumeAgent: async (_params) => ({ success: false }),
 	redirectAgent: async (_params) => ({ success: false }),
 	stopAgent: (params) => {
-		const aborted = abortAgentByName(params.projectId, params.agentName);
+		// conversationId scopes the stop to just this conversation's agent —
+		// avoids stopping the wrong same-named agent if another conversation in
+		// the same project happens to be running one too. Falls back to the
+		// project-wide match only if no conversationId was supplied.
+		const aborted = params.conversationId
+			? abortAgentByNameInConversation(params.projectId, params.conversationId, params.agentName)
+			: abortAgentByName(params.projectId, params.agentName);
 		return { success: aborted };
 	},
 
@@ -154,6 +170,9 @@ export const handlers: Record<string, (params: any) => any> = {
 		return { success: true, stoppedCount: count };
 	},
 
+	// Project-wide — used by the dashboard's "N agents working" project cards.
+	// For the per-conversation running-agent badge/count, use
+	// getRunningAgentsForConversation instead.
 	getRunningAgents: (params) => {
 		const names = getRunningAgentNames(params.projectId);
 		if (names.length === 0) return [];
@@ -172,9 +191,39 @@ export const handlers: Record<string, (params: any) => any> = {
 		}));
 	},
 
+	// Scoped to one conversation — the correct source for a per-conversation
+	// running-agent count/badge (never includes sibling conversations, other
+	// projects, or conversation-less background runs in the same project).
+	getRunningAgentsForConversation: (params) => {
+		const names = getRunningAgentNamesForConversation(params.projectId, params.conversationId);
+		if (names.length === 0) return [];
+		const placeholders = names.map(() => "?").join(", ");
+		const rows = sqlite
+			.prepare(`SELECT name, display_name FROM agents WHERE name IN (${placeholders})`)
+			.all(...names) as Array<{ name: string; display_name: string }>;
+		const displayNameMap = new Map(rows.map((r) => [r.name, r.display_name]));
+		return names.map((name, i) => ({
+			id: `agent-${i}-${name}`,
+			name,
+			displayName: displayNameMap.get(name) ?? name,
+			taskDescription: "",
+			status: "running" as const,
+		}));
+	},
+
 	getPmStatus: (params) => {
 		const engine = engines.get(params.projectId);
 		if (!engine) return { isStreaming: false, conversationId: null };
+		// Scoped to params.conversationId when supplied — each conversation runs
+		// its own independent PM turn now, so "is the PM streaming" only makes
+		// sense answered for one specific conversation. Falls back to the
+		// project-wide "is ANY conversation streaming" reading otherwise.
+		if (params.conversationId) {
+			return {
+				isStreaming: engine.isProcessing(params.conversationId),
+				conversationId: params.conversationId,
+			};
+		}
 		return {
 			isStreaming: engine.isProcessing(),
 			conversationId: engine.getActiveConversationId(),

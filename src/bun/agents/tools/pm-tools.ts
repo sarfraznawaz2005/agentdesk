@@ -19,10 +19,12 @@ import {
 	channels,
 	branchStrategies,
 	kanbanTasks,
+	conversations as conversationsTable,
 } from "../../db/schema";
 import type { AgentActivityEvent } from "../types";
 import { runInlineAgent, pruneAgentToolResults, READ_ONLY_AGENTS, type InlineAgentCallbacks } from "../agent-loop";
 import { buildContext } from "../context";
+import { BUILTIN_AGENT_DESCRIPTIONS, extractFirstSentence } from "../prompts";
 import type { MessageMetadata } from "../engine";
 import { createProjectHandler, getProjectsList } from "../../rpc/projects";
 import { schedulerTools } from "./scheduler";
@@ -61,8 +63,8 @@ export interface PMToolsDeps {
 		defaultValue?: string;
 		context?: string;
 	}) => Promise<string>;
-	/** Register/unregister an abort controller for a running agent (global tracking for stop-all). */
-	registerAgentAbort?: (controller: AbortController, agentName: string) => void;
+	/** Register/unregister an abort controller for a running agent (per-project tracking for stop-all AND per-conversation tracking for stop-this-conversation — conversationId must be the actual conversation the dispatched agent belongs to, null only if genuinely conversation-less). */
+	registerAgentAbort?: (controller: AbortController, agentName: string, conversationId: string | null) => void;
 	unregisterAgentAbort?: (controller: AbortController) => void;
 	/** Stop the PM's current stream (used after plan approval submission). */
 	stopPMStream?: () => void;
@@ -378,20 +380,30 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					const isReadOnly = READ_ONLY_AGENTS.has(args.agent);
 
 					// Prevent duplicate dispatch: block if this exact agent is already running
-					// OR currently being dispatched by a concurrent tool call in this step.
-					// Vercel AI SDK runs parallel tool calls via Promise.all, so two
-					// run_agent("same-agent") calls from one LLM step can both pass the
-					// getRunningAgentNames check before either one registers the abort controller.
-					// dispatchingAgents is checked and populated atomically (JS single-threaded).
-					const dispatchKey = `${effectiveProjectId}:${args.agent}`;
+					// IN THIS CONVERSATION, OR currently being dispatched by a concurrent tool
+					// call in this step. Scoped to deps.conversationId (not project-wide) —
+					// each conversation is its own PM scope, so a code-explorer running for a
+					// DIFFERENT conversation in the same project must never block this one
+					// (observed live: PM refused to dispatch, telling the user "already
+					// running for this project" when the running instance belonged to a
+					// completely different conversation). Vercel AI SDK runs parallel tool
+					// calls via Promise.all, so two run_agent("same-agent") calls from one LLM
+					// step can both pass the check before either one registers the abort
+					// controller — dispatchingAgents closes that gap atomically (JS is
+					// single-threaded).
+					const dispatchKey = `${effectiveProjectId}:${deps.conversationId}:${args.agent}`;
 					{
-						const { getRunningAgentNames } = await import("../../engine-manager");
-						const alreadyRunning = getRunningAgentNames(effectiveProjectId);
+						const { getRunningAgentNamesForConversation } = await import("../../engine-manager");
+						const alreadyRunning = getRunningAgentNamesForConversation(effectiveProjectId, deps.conversationId);
 						if (alreadyRunning.includes(args.agent) || dispatchingAgents.has(dispatchKey)) {
-							deps.stopPMStream?.();
+							// Do NOT call stopPMStream here — unlike a successful dispatch, nothing
+							// was actually launched, so the PM must stay free to write a real
+							// explanation back to the user instead of ending the turn with empty
+							// content (stopPMStream repurposes planApprovalRequested, which skips
+							// the synthesis/hallucination-retry logic below entirely).
 							return JSON.stringify({
 								success: false,
-								error: `${args.agent} is already running for this project. Only one instance of each agent can run at a time. Wait for it to complete.`,
+								error: `${args.agent} is already running in this conversation. Only one instance of each agent can run at a time per conversation. Wait for it to complete.`,
 							});
 						}
 					}
@@ -417,9 +429,10 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 
 					if (!isReadOnly) {
 						if (writeAgentRunning) {
-							// Stop PM stream so it does not keep retrying in the same session
+							// Do NOT call stopPMStream here — nothing was dispatched, so the PM
+							// must stay free to explain this to the user (see the matching
+							// comment on the duplicate-dispatch guard above).
 							dispatchingAgents.delete(dispatchKey);
-							deps.stopPMStream?.();
 							return JSON.stringify({
 								success: false,
 								error: "A write agent is already running. Wait for it to complete before dispatching another write agent. Use run_agents_parallel for read-only exploration tasks.",
@@ -428,9 +441,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						// Also check global running count — a review-cycle fix agent may be running
 						const { getRunningAgentCount } = await import("../../engine-manager");
 						if (getRunningAgentCount(effectiveProjectId) > 0) {
-							// Stop PM stream so it does not keep retrying in the same session
+							// Do NOT call stopPMStream here — same reasoning as above.
 							dispatchingAgents.delete(dispatchKey);
-							deps.stopPMStream?.();
 							return JSON.stringify({
 								success: false,
 								error: "Another agent is currently running (possibly from automatic code review). Wait for it to complete before dispatching a new write agent.",
@@ -598,10 +610,12 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// For cross-project dispatch (e.g. WhatsApp asking to work on a different project),
 					// register the abort controller under effectiveProjectId so that dashboard agent
 					// counts, stop-all, and stop-agent-by-name all operate on the correct project.
+					// agentConversationId (not deps.conversationId) is the scope key so a later
+					// message elsewhere in the project can never abort this dispatch.
 					const { registerAgentController, unregisterAgentController } = await import("../../engine-manager");
 					const registerAbort = isCrossProject
-						? (c: AbortController, name: string) => registerAgentController(effectiveProjectId, c, name)
-						: (c: AbortController, name: string) => deps.registerAgentAbort?.(c, name);
+						? (c: AbortController, name: string) => registerAgentController(effectiveProjectId, c, name, agentConversationId)
+						: (c: AbortController, name: string) => deps.registerAgentAbort?.(c, name, agentConversationId);
 					const unregisterAbort = isCrossProject
 						? (c: AbortController) => unregisterAgentController(effectiveProjectId, c)
 						: (c: AbortController) => deps.unregisterAgentAbort?.(c);
@@ -862,7 +876,13 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 								moveKanbanTask(args.kanban_task_id ?? "", "backlog").catch(() => { /* empty */ }));
 						}
 
-						const message = err instanceof Error ? err.message : String(err);
+						// A thrown Error with a genuinely empty `.message` (observed from the
+						// Claude Subscription CLI/SDK bridge on a safety refusal — see
+						// claude-subscription-cli-runner.ts) previously rendered as a bare
+						// "Agent failed: " with nothing after the colon. Fall back to the
+						// error's own toString (at minimum its name, e.g. "AbortError") before
+						// giving up on detail entirely.
+						const message = (err instanceof Error ? err.message : String(err)) || String(err) || "(no error details available)";
 						deps.onAgentDone?.(args.agent, displayName, {
 							status: "failed",
 							summary: `Agent failed: ${message}`,
@@ -946,7 +966,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							const displayName = agentRows.length > 0 ? agentRows[0].displayName : t.agent;
 
 							const agentAbort = new AbortController();
-							deps.registerAgentAbort?.(agentAbort, t.agent);
+							deps.registerAgentAbort?.(agentAbort, t.agent, deps.conversationId);
 							try {
 								const parallelResult = await runInlineAgent({
 									conversationId: deps.conversationId,
@@ -1170,6 +1190,60 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 		// -----------------------------------------------------------------
 		// Conversation management
 		// -----------------------------------------------------------------
+
+		get_conversation_context: tool({
+			description:
+				"Get identifying details and current state for a conversation: its id, title, project, pinned/archived flags, timestamps, " +
+				"whether it's a channel conversation (WhatsApp/Discord/Email), currently running agents in it, and any messages queued behind current work. " +
+				"Use this to ground yourself in which conversation you're actually in — especially before reasoning about 'this conversation's' agents or state.",
+			inputSchema: z.object({
+				conversation_id: z.string().optional().describe("Conversation to inspect. Omit for the current conversation."),
+			}),
+			execute: async ({ conversation_id }) => {
+				try {
+					const targetConvId = conversation_id || deps.conversationId;
+					const { getRunningAgentNamesForConversation } = await import("../../engine-manager");
+					const runningAgents = getRunningAgentNamesForConversation(deps.projectId, targetConvId);
+
+					if (targetConvId.startsWith("channel:")) {
+						return JSON.stringify({
+							success: true,
+							conversationId: targetConvId,
+							isChannelConversation: true,
+							channelId: targetConvId.split(":")[1],
+							projectId: deps.projectId,
+							runningAgents,
+							runningAgentCount: runningAgents.length,
+						});
+					}
+
+					const [row] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, targetConvId)).limit(1);
+					if (!row) {
+						return JSON.stringify({ success: false, error: `Conversation ${targetConvId} not found.` });
+					}
+
+					const { getQueuedMessages } = await import("../../message-queue-manager");
+					const queued = getQueuedMessages(deps.projectId, targetConvId);
+
+					return JSON.stringify({
+						success: true,
+						conversationId: row.id,
+						title: row.title,
+						projectId: row.projectId,
+						isPinned: !!row.isPinned,
+						isArchived: !!row.isArchived,
+						createdAt: row.createdAt,
+						updatedAt: row.updatedAt,
+						isChannelConversation: false,
+						runningAgents,
+						runningAgentCount: runningAgents.length,
+						queuedMessageCount: queued.length,
+					});
+				} catch (err) {
+					return JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) });
+				}
+			},
+		}),
 
 		list_conversations: tool({
 			description:
@@ -1745,10 +1819,10 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// via Promise.all, so request_plan_approval can fire while task-planner is still
 					// running. The code-level enforcement in run_agent's .then() already shows the
 					// card reliably once task-planner completes — block the early/duplicate call here.
-					const taskPlannerKey = `${deps.projectId}:task-planner`;
+					const taskPlannerKey = `${deps.projectId}:${deps.conversationId}:task-planner`;
 					{
-						const { getRunningAgentNames } = await import("../../engine-manager");
-						const isRunning = getRunningAgentNames(deps.projectId).includes("task-planner");
+						const { getRunningAgentNamesForConversation } = await import("../../engine-manager");
+						const isRunning = getRunningAgentNamesForConversation(deps.projectId, deps.conversationId).includes("task-planner");
 						const isDispatching = dispatchingAgents.has(taskPlannerKey);
 						if (isRunning || isDispatching) {
 							// Don't show the card yet — the .then() handler will do it once task-planner finishes.
@@ -2066,7 +2140,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 
 		list_agents: tool({
 			description:
-				"List all agents with their capabilities, models, and enabled status. " +
+				"List all agents with what each one does, their capabilities, models, and enabled status. " +
 				"IMPORTANT: Only dispatch agents where isEnabled=true. Disabled agents (isEnabled=false) " +
 				"will be rejected by run_agent — do not attempt to call them.",
 			inputSchema: z.object({}),
@@ -2083,6 +2157,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							id: a.id,
 							name: a.name,
 							displayName: a.displayName,
+							description: BUILTIN_AGENT_DESCRIPTIONS[a.name] ?? (a.systemPrompt ? extractFirstSentence(a.systemPrompt) : "Custom agent"),
+							type: READ_ONLY_AGENTS.has(a.name) ? "read-only" : "write",
 							isEnabled: !!a.isEnabled,
 							isBuiltin: !!a.isBuiltin,
 							modelId: a.modelId,
@@ -2812,10 +2888,12 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 
 		get_agent_status: tool({
 			description:
-				"Check which agents are currently running system-wide and whether any reviews are active. " +
+				"Check which agents are running system-wide or in one whole project (across ALL of that project's conversations, not just this one). " +
+				"Omit project_id for a system-wide view across every project; pass project_id for one project's view. " +
+				"NEVER conversation-scoped — to check only the current conversation (e.g. before deciding whether run_agent would be rejected as a duplicate here), use list_conversation_agents instead. " +
 				"Use this when asked about running agents, current work, or agent progress — do NOT answer from conversation context alone. Always call this tool first.",
 			inputSchema: z.object({
-				project_id: z.string().optional().describe("Specific project to check. Omit to check all projects system-wide."),
+				project_id: z.string().optional().describe("Specific project to check (all its conversations combined). Omit to check all projects system-wide."),
 			}),
 			execute: async ({ project_id }) => {
 				const { getRunningAgentNames, getRunningAgentCount, getSystemActivity } = await import("../../engine-manager");
@@ -2837,6 +2915,58 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					busyEngines: activity.busyEngines,
 					activeReviews: getActiveReviewCount(),
 				});
+			},
+		}),
+
+		list_conversation_agents: tool({
+			description:
+				"Check which sub-agents are currently running in THIS conversation specifically (or another conversation, by id). " +
+				"Use this — not get_agent_status — when you need to know if an agent is already working in the current conversation, " +
+				"e.g. before dispatching run_agent to avoid a duplicate-in-conversation rejection, or when the user asks 'is anything running here?'",
+			inputSchema: z.object({
+				conversation_id: z.string().optional().describe("Conversation to check. Omit to check the current conversation."),
+			}),
+			execute: async ({ conversation_id }) => {
+				const { getRunningAgentNamesForConversation } = await import("../../engine-manager");
+				const targetConvId = conversation_id || deps.conversationId;
+				const runningAgents = getRunningAgentNamesForConversation(deps.projectId, targetConvId);
+				return JSON.stringify({
+					conversationId: targetConvId,
+					runningAgents,
+					runningAgentCount: runningAgents.length,
+				});
+			},
+		}),
+
+		get_standby_agents: tool({
+			description:
+				"List agent roles that have ZERO instances running anywhere, in any project, right now. " +
+				"NOTE: this is a system-wide observability snapshot only — it does NOT gate dispatch. The same agent role can run " +
+				"concurrently across different projects/conversations without conflict (the only cross-conversation restriction is " +
+				"write-agent serialization WITHIN one project, which run_agent already enforces itself). Do not use this to decide " +
+				"whether you're allowed to dispatch an agent — use list_conversation_agents / get_agent_status for that.",
+			inputSchema: z.object({}),
+			execute: async () => {
+				try {
+					const { getAllRunningAgents } = await import("../../engine-manager");
+					const runningByProject = getAllRunningAgents();
+					const busyNames = new Set(Object.values(runningByProject).flat());
+
+					const allRows = await db.select().from(agentsTable).orderBy(agentsTable.name);
+					const rows = allRows.filter((a) => a.isBuiltin === 1 || a.availableToPm === 1);
+
+					const standby = rows
+						.filter((a) => a.isEnabled && !busyNames.has(a.name))
+						.map((a) => ({
+							name: a.name,
+							displayName: a.displayName,
+							description: BUILTIN_AGENT_DESCRIPTIONS[a.name] ?? (a.systemPrompt ? extractFirstSentence(a.systemPrompt) : "Custom agent"),
+						}));
+
+					return JSON.stringify({ success: true, standbyAgents: standby, count: standby.length });
+				} catch (err) {
+					return JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) });
+				}
 			},
 		}),
 

@@ -1214,76 +1214,102 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				}).join("\n\n")
 			: task;
 
-		const cliResult = await runClaudeCliTask({
-			task: cliTask,
-			systemPrompt,
-			tools,
-			modelId: effectiveModelId,
-			workspacePath,
-			timeoutMs,
-			abortSignal,
-			onText: (text) => {
-				if (finalizeLivePart("text", text)) return;
-				const textPart: MessagePart = {
-					id: crypto.randomUUID(), messageId: startMsgId, type: "text",
-					content: text, sortOrder: sortOrder++,
-				};
-				if (persist) db.insert(messageParts).values({
-					id: textPart.id, messageId: textPart.messageId, type: textPart.type,
-					content: textPart.content, sortOrder: textPart.sortOrder,
-				}).catch(() => {});
-				callbacks.onPartCreated(textPart);
-			},
-			onReasoning: (text) => {
-				if (finalizeLivePart("reasoning", text)) return;
-				const reasoningPart: MessagePart = {
-					id: crypto.randomUUID(), messageId: startMsgId, type: "reasoning",
-					content: text, sortOrder: sortOrder++,
-				};
-				if (persist) db.insert(messageParts).values({
-					id: reasoningPart.id, messageId: reasoningPart.messageId, type: reasoningPart.type,
-					content: reasoningPart.content, sortOrder: reasoningPart.sortOrder,
-				}).catch(() => {});
-				callbacks.onPartCreated(reasoningPart);
-			},
-			onTextToken: (delta) => pushLiveDelta("text", delta),
-			onReasoningToken: (delta) => pushLiveDelta("reasoning", delta),
-			onRetract: retractLiveParts,
-			onToolCallStart: (toolName, args) => {
-				const callId = crypto.randomUUID();
-				const toolCallPart: MessagePart = {
-					id: crypto.randomUUID(), messageId: startMsgId, type: "tool_call",
-					content: describeToolCall(toolName, args), toolName,
-					toolInput: JSON.stringify(args), toolState: "running",
-					sortOrder: sortOrder++, timeStart: new Date().toISOString(),
-				};
-				toolCallParts.set(callId, toolCallPart);
-				if (persist) db.insert(messageParts).values({
-					id: toolCallPart.id, messageId: toolCallPart.messageId, type: toolCallPart.type,
-					content: toolCallPart.content, toolName: toolCallPart.toolName,
-					toolInput: toolCallPart.toolInput, toolState: toolCallPart.toolState,
-					sortOrder: toolCallPart.sortOrder, timeStart: toolCallPart.timeStart,
-				}).catch(() => {});
-				callbacks.onPartCreated(toolCallPart);
-				return callId;
-			},
-			onToolCallEnd: (callId, resultText, isError) => {
-				const part = toolCallParts.get(callId);
-				if (!part) return;
-				const finalIsError = isError || toolResultIsError(part.toolName ?? "", resultText);
-				const toolOutputLimit = 10_000;
-				const updates: Partial<MessagePart> = {
-					toolOutput: resultText.length > toolOutputLimit ? resultText.slice(0, toolOutputLimit) + "\n... (truncated)" : resultText,
-					toolState: finalIsError ? "error" : "success",
-					timeEnd: new Date().toISOString(),
-				};
-				if (persist) db.update(messageParts)
-					.set({ toolOutput: updates.toolOutput, toolState: updates.toolState, timeEnd: updates.timeEnd })
-					.where(eq(messageParts.id, part.id))
-					.catch(() => {});
-				callbacks.onPartUpdated(startMsgId, part.id, updates);
-			},
-		});
+		// Deliberately caught here rather than left to propagate: unlike the
+		// generateText() loop below (guarded by the try/catch starting a few
+		// hundred lines down), this whole isClaudeSubscriptionViaCli branch has
+		// no surrounding try/catch of its own — a throw from runClaudeCliTask
+		// (e.g. a safety refusal ending the query() iterator, or a genuine
+		// network/SDK error) would previously reject runInlineAgent() itself
+		// instead of resolving with a "failed" status. That skipped the
+		// callbacks.onAgentComplete(...) call a few lines below entirely, which
+		// is what the frontend's agentInlineComplete handler relies on to
+		// decrement runningAgentCount/clear activeInlineAgent — so the Task
+		// Planner badge / Stop button stayed stuck "active" even though the PM
+		// had already moved on (pm-tools.ts's own dispatch .catch() still fires
+		// and restarts the PM, just via a different, UI-busy-state-blind path).
+		let cliResult: Awaited<ReturnType<typeof runClaudeCliTask>>;
+		try {
+			cliResult = await runClaudeCliTask({
+				task: cliTask,
+				systemPrompt,
+				tools,
+				modelId: effectiveModelId,
+				workspacePath,
+				timeoutMs,
+				abortSignal,
+				onText: (text) => {
+					if (finalizeLivePart("text", text)) return;
+					const textPart: MessagePart = {
+						id: crypto.randomUUID(), messageId: startMsgId, type: "text",
+						content: text, sortOrder: sortOrder++,
+					};
+					if (persist) db.insert(messageParts).values({
+						id: textPart.id, messageId: textPart.messageId, type: textPart.type,
+						content: textPart.content, sortOrder: textPart.sortOrder,
+					}).catch(() => {});
+					callbacks.onPartCreated(textPart);
+				},
+				onReasoning: (text) => {
+					if (finalizeLivePart("reasoning", text)) return;
+					const reasoningPart: MessagePart = {
+						id: crypto.randomUUID(), messageId: startMsgId, type: "reasoning",
+						content: text, sortOrder: sortOrder++,
+					};
+					if (persist) db.insert(messageParts).values({
+						id: reasoningPart.id, messageId: reasoningPart.messageId, type: reasoningPart.type,
+						content: reasoningPart.content, sortOrder: reasoningPart.sortOrder,
+					}).catch(() => {});
+					callbacks.onPartCreated(reasoningPart);
+				},
+				onTextToken: (delta) => pushLiveDelta("text", delta),
+				onReasoningToken: (delta) => pushLiveDelta("reasoning", delta),
+				onRetract: retractLiveParts,
+				onToolCallStart: (toolName, args) => {
+					const callId = crypto.randomUUID();
+					const toolCallPart: MessagePart = {
+						id: crypto.randomUUID(), messageId: startMsgId, type: "tool_call",
+						content: describeToolCall(toolName, args), toolName,
+						toolInput: JSON.stringify(args), toolState: "running",
+						sortOrder: sortOrder++, timeStart: new Date().toISOString(),
+					};
+					toolCallParts.set(callId, toolCallPart);
+					if (persist) db.insert(messageParts).values({
+						id: toolCallPart.id, messageId: toolCallPart.messageId, type: toolCallPart.type,
+						content: toolCallPart.content, toolName: toolCallPart.toolName,
+						toolInput: toolCallPart.toolInput, toolState: toolCallPart.toolState,
+						sortOrder: toolCallPart.sortOrder, timeStart: toolCallPart.timeStart,
+					}).catch(() => {});
+					callbacks.onPartCreated(toolCallPart);
+					return callId;
+				},
+				onToolCallEnd: (callId, resultText, isError) => {
+					const part = toolCallParts.get(callId);
+					if (!part) return;
+					const finalIsError = isError || toolResultIsError(part.toolName ?? "", resultText);
+					const toolOutputLimit = 10_000;
+					const updates: Partial<MessagePart> = {
+						toolOutput: resultText.length > toolOutputLimit ? resultText.slice(0, toolOutputLimit) + "\n... (truncated)" : resultText,
+						toolState: finalIsError ? "error" : "success",
+						timeEnd: new Date().toISOString(),
+					};
+					if (persist) db.update(messageParts)
+						.set({ toolOutput: updates.toolOutput, toolState: updates.toolState, timeEnd: updates.timeEnd })
+						.where(eq(messageParts.id, part.id))
+						.catch(() => {});
+					callbacks.onPartUpdated(startMsgId, part.id, updates);
+				},
+			});
+		} catch (err) {
+			// abortSignal-driven cancellation never reaches here — runClaudeCliTask
+			// already resolves (not throws) for that case; only genuine failures do.
+			const message = (err instanceof Error ? err.message : String(err)) || String(err) || "(no error details available)";
+			cliResult = {
+				status: "failed",
+				summary: `Claude (via Agent SDK) failed: ${message}`,
+				usage: { inputTokens: 0, outputTokens: 0 },
+				costUsd: 0,
+			};
+		}
 
 		const filesModified = fileTracker.getModifiedFiles();
 		await logPrompt(agentName, systemPrompt, [{ role: "user", content: cliTask }, { role: "assistant", content: cliResult.summary }], effectiveModelId);

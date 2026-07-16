@@ -211,6 +211,8 @@ Turn tasks into verifiable goals and loop until they're met, rather than stoppin
 - Commits follow Conventional Commits style. Never commit without user confirmation unless the user or project scope has already explicitly authorized it.
 - This app has **existing users** — every feature or change must keep working for existing users, not just new ones.
 - Keep `CLAUDE.md` and `docs/workflow.md` updated whenever they deviate from current code.
+- **Whenever a new feature is added (or an existing tracked one is removed/substantially reworked), update `docs/feature-list.md` in the same change.** That document is the standing inventory of every feature/functionality in the app, used to know what to re-check when a big architectural change happens later — it goes stale fast if new features aren't added to it as they land.
+- **Also update `docs/feature-list-short.md` in the same change whenever it's affected.** It's the condensed, plain-language manual-test checklist derived from `feature-list.md` — add a line for a genuinely new testable feature area, remove/reword a line if a feature is removed or reworked enough to change how a human would test it. Keep it in the same style: one line per concept, no file paths, no technical detail, dedupe against existing lines rather than adding a near-duplicate.
 
 ---
 

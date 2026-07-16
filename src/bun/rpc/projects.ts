@@ -771,6 +771,16 @@ export async function deleteProjectCascade(id: string): Promise<{ success: boole
  * and automation rule definitions.
  */
 export async function resetProjectData(id: string): Promise<{ success: boolean }> {
+	// Stop agents before wiping, same as deleteProjectCascade — otherwise an
+	// in-flight write can silently repopulate the just-reset project with data
+	// from a dead turn, or leave the engine's isProcessing() flag stuck true
+	// for a conversation that no longer exists.
+	try {
+		const { abortAllAgents, engines } = await import("../engine-manager");
+		engines.get(id)?.stopAll();
+		abortAllAgents(id);
+	} catch { /* non-critical */ }
+
 	const s = getStmts();
 	const txn = sqlite.transaction((pid: string) => {
 		s.delMsgsByConv.run(pid);

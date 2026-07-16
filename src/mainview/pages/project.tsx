@@ -54,7 +54,9 @@ export function ProjectPage() {
   const syncRunningAgents = useChatStore((s) => s.syncRunningAgents);
   const setPendingConversationTarget = useChatStore((s) => s.setPendingConversationTarget);
 
-  const activeInlineAgent = useChatStore((s) => s.activeInlineAgent);
+  const runningAgentCount = useChatStore((s) => s.runningAgentCount);
+  const runningInlineAgents = useChatStore((s) => s.runningInlineAgents);
+  const runningAgentsList = Object.values(runningInlineAgents);
 
   const tasks = useKanbanStore((s) => s.tasks);
   const selectedTaskId = useKanbanStore((s) => s.selectedTaskId);
@@ -321,28 +323,56 @@ export function ProjectPage() {
 
         {/* Agent name + kanban counts — pushed right */}
         <div className="ml-auto flex items-center gap-4 text-xs font-medium">
-          {/* Running agent name */}
-          {activeInlineAgent && (() => {
-            const agentName = activeInlineAgent.agentName ?? "";
-            const displayName = activeInlineAgent.agentDisplayName ?? agentName;
+          {/* Count of agents running in THIS conversation (not other conversations
+              in this project, not other projects) — only worth showing once there's
+              actually more than one to disambiguate; a single agent is already
+              unambiguous from the name badge alone. */}
+          {runningAgentCount > 1 && (
+            <span className="text-muted-foreground tabular-nums" title={`${runningAgentCount} agents running in this conversation`}>
+              {runningAgentCount} running
+            </span>
+          )}
+          {/* Running agent(s) — full name badge when exactly one is running;
+              once more than one is running there isn't room for full names, so
+              switch to small initials badges instead (same idea as the Council
+              page's avatars), each with a tooltip for the full name. */}
+          {runningAgentsList.length === 1 && (() => {
+            const agent = runningAgentsList[0];
+            const agentName = agent.agentName ?? "";
+            const displayName = agent.agentDisplayName ?? agentName;
             const badgeClass = AGENT_BADGE_COLORS[agentName.split("#")[0]] ?? "bg-muted text-muted-foreground ring-border";
             return (
-              <>
-                <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ring-1", badgeClass)}>
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
-                  </span>
-                  {displayName}
+              <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ring-1", badgeClass)}>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
                 </span>
-              </>
+                {displayName}
+              </span>
             );
           })()}
+          {runningAgentsList.length > 1 && (
+            <div className="flex items-center gap-1">
+              {runningAgentsList.map((agent) => {
+                const agentName = agent.agentName ?? "";
+                const displayName = agent.agentDisplayName ?? agentName;
+                const initials = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+                const badgeClass = AGENT_BADGE_COLORS[agentName.split("#")[0]] ?? "bg-muted text-muted-foreground ring-border";
+                return (
+                  <Tip key={agent.messageId} content={displayName}>
+                    <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold ring-1", badgeClass)}>
+                      {initials}
+                    </span>
+                  </Tip>
+                );
+              })}
+            </div>
+          )}
 
           {/* Kanban counts */}
           {tasks.length > 0 && (
             <>
-            {activeInlineAgent && <div className="w-px h-3 bg-border flex-shrink-0" aria-hidden="true" />}
+            {runningAgentsList.length > 0 && <div className="w-px h-3 bg-border flex-shrink-0" aria-hidden="true" />}
             <div className="flex items-center gap-1.5">
             <Tip content="Backlog">
               <span className="px-2 py-1 rounded bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 tabular-nums cursor-default">

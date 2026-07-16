@@ -52,10 +52,21 @@ interface ChatState {
   // Agent status
   activeAgents: Record<string, AgentStatusValue>;
 
-  // Currently running inline agent (set by agentInlineStart, cleared by agentInlineComplete)
+  // Currently running inline agents in the active conversation, keyed by
+  // messageId. This is the source of truth — activeInlineAgent/
+  // runningAgentCount below are both derived from it (see
+  // deriveInlineAgentDisplay) so they can never drift out of sync with each
+  // other, which is what let the badge go blank while a sibling parallel
+  // agent was still running (one finishing agent nulled a single shared
+  // scalar instead of removing just its own entry).
+  runningInlineAgents: Record<string, ActiveInlineAgent>;
+
+  // Currently displayed inline agent badge — derived from runningInlineAgents
+  // (an arbitrary still-running entry, or null when none are running).
   activeInlineAgent: ActiveInlineAgent | null;
 
-  // Number of currently running inline agents (PM-dispatched + workflow-dispatched)
+  // Number of currently running inline agents in this conversation — derived
+  // from runningInlineAgents (PM-dispatched + workflow-dispatched).
   runningAgentCount: number;
 
   // PM thinking/reasoning text (streamed live, cleared on stream complete)
@@ -171,6 +182,36 @@ export function sortConversations(conversations: Conversation[]): Conversation[]
   });
 }
 
+/**
+ * Fetches the currently running agents scoped to one conversation — the
+ * correct source for the per-conversation running-agent badge/count.
+ * Returns [] with no conversationId rather than falling back to the
+ * project-wide RPC, since "no conversation selected" genuinely has nothing
+ * to show for a per-conversation indicator.
+ */
+async function fetchRunningAgentsForConversation(
+  projectId: string,
+  conversationId: string | null,
+): ReturnType<typeof rpc.getRunningAgentsForConversation> {
+  if (!conversationId) return [];
+  return rpc.getRunningAgentsForConversation(projectId, conversationId);
+}
+
+/**
+ * Derives the badge-display fields from the running-inline-agents map — the
+ * single place that decides "which one to show" and "how many are running",
+ * so the two values can never disagree with each other.
+ */
+export function deriveInlineAgentDisplay(
+  runningInlineAgents: Record<string, ActiveInlineAgent>,
+): { activeInlineAgent: ActiveInlineAgent | null; runningAgentCount: number } {
+  const entries = Object.values(runningInlineAgents);
+  return {
+    activeInlineAgent: entries.length > 0 ? entries[entries.length - 1] : null,
+    runningAgentCount: entries.length,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Initial state (extracted so reset() can reuse it)
 // ---------------------------------------------------------------------------
@@ -186,6 +227,7 @@ const initialState = {
   streamingMessageId: null as string | null,
   streamingContent: "",
   activeAgents: {} as Record<string, AgentStatusValue>,
+  runningInlineAgents: {} as Record<string, ActiveInlineAgent>,
   activeInlineAgent: null as ActiveInlineAgent | null,
   runningAgentCount: 0,
   pmThinkingText: "",
@@ -265,7 +307,25 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       streamingMessageId: null,
       streamingContent: "",
       pmThinkingText: "",
+      // Same leak this whole block guards against, applied to the agent
+      // badge/count: runningInlineAgents is gated on activeConversationId in
+      // chat-event-handlers.ts, so switching away from a conversation with
+      // agents still running (no message sent, so nothing aborted them)
+      // freezes their entries — the next conversation would otherwise
+      // inherit the outgoing one's stale badge/count. Resync below re-derives
+      // truth for whichever conversation is now active.
+      runningInlineAgents: {},
+      activeInlineAgent: null,
+      runningAgentCount: 0,
     });
+    // Resync via the conversation-scoped RPC (fetchRunningAgentsForConversation)
+    // so this only ever reflects the conversation just switched to — sending a
+    // message to one conversation no longer aborts another conversation's
+    // agents or PM turn (see AgentEngine.sendMessage's per-conversation abort
+    // scoping and busy-conversation queue guard), so two conversations in the
+    // same project can genuinely both have work in flight at once.
+    const projectId = get().activeProjectId;
+    if (id && projectId) void get().syncRunningAgents(projectId);
   },
 
   createConversation: async (projectId: string) => {
@@ -464,6 +524,19 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   ) => {
     set({ isStreaming: true, streamingContent: "", streamingMessageId: null });
     const result = await rpc.sendMessage(projectId, conversationId, content);
+    if (result.queued) {
+      // A different conversation in this project is genuinely still mid-turn
+      // — the backend queued this message server-side instead of aborting
+      // that other turn (see AgentEngine.sendMessage's busy-conversation
+      // guard). It'll be sent automatically once that turn finishes; the
+      // queue UI updates itself via the existing messageQueueUpdated
+      // broadcast. Nothing is actually streaming for THIS conversation yet,
+      // so undo the optimistic flag set above — and there's no real
+      // userMessageId yet (nothing was persisted), so don't touch the temp-
+      // message.
+      set({ isStreaming: false });
+      return;
+    }
     // Replace the temp user message ID with the real DB ID so that
     // delete/branch operations target the correct persisted row.
     // Only replace the *last* temp message to avoid collisions.
@@ -482,22 +555,33 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   stopGeneration: async (projectId: string) => {
-    await rpc.stopGeneration(projectId);
-    set({ isStreaming: false, streamingMessageId: null, streamingContent: "", activeAgents: {}, runningAgentCount: 0, activeInlineAgent: null, pmThinkingText: "", pmPending: false });
+    // Scoped to the conversation actually being viewed — omitting this would
+    // abort every sub-agent in the whole project (scheduler runs, other
+    // conversations, review-cycle/issue-fixer agents included).
+    const conversationId = get().activeConversationId ?? undefined;
+    await rpc.stopGeneration(projectId, conversationId);
+    set({ isStreaming: false, streamingMessageId: null, streamingContent: "", activeAgents: {}, runningInlineAgents: {}, runningAgentCount: 0, activeInlineAgent: null, pmThinkingText: "", pmPending: false });
   },
 
   stopAgent: async (projectId: string, agentName: string) => {
-    await rpc.stopAgent(projectId, agentName);
+    const conversationId = get().activeConversationId;
+    await rpc.stopAgent(projectId, agentName, conversationId ?? undefined);
     // Sync running state — if this was the last agent, clear busy indicators
     try {
       const [agents, pmStatus] = await Promise.all([
-        rpc.getRunningAgents(projectId),
-        rpc.getPmStatus(projectId),
+        fetchRunningAgentsForConversation(projectId, conversationId),
+        rpc.getPmStatus(projectId, conversationId ?? undefined),
       ]);
-      const updates: Partial<ChatState> = { runningAgentCount: agents.length };
+      // Rebuild the running-agents map fresh from backend truth rather than
+      // trying to remove just the stopped one — simpler and self-correcting.
+      const runningInlineAgents: Record<string, ActiveInlineAgent> = {};
+      for (const a of agents) {
+        const messageId = `sync-${a.id}`;
+        runningInlineAgents[messageId] = { agentName: a.name, agentDisplayName: a.displayName, messageId };
+      }
+      const updates: Partial<ChatState> = { runningInlineAgents, ...deriveInlineAgentDisplay(runningInlineAgents) };
       if (agents.length === 0 && !pmStatus.isStreaming) {
         updates.isStreaming = false;
-        updates.activeInlineAgent = null;
       }
       set(updates);
     } catch { /* non-critical */ }
@@ -536,39 +620,52 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   clearActivity: () => {
-    set({ activeAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0, liveTokensPerSecond: 0, liveTimeToFirstOutputMs: null });
+    set({ activeAgents: {}, runningInlineAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0, liveTokensPerSecond: 0, liveTimeToFirstOutputMs: null });
   },
 
-  // Re-sync activeAgents from backend — called after navigation back to a project page.
+  // Re-sync activeAgents from backend — called after navigation back to a project page,
+  // and after every conversation switch (see setActiveConversation).
+  // Scoped to the active conversation (not the whole project) so this never
+  // shows a sibling conversation's or a background scheduler run's agents.
   syncRunningAgents: async (projectId: string) => {
+    const conversationId = get().activeConversationId;
     try {
       const [agents, pmStatus] = await Promise.all([
-        rpc.getRunningAgents(projectId),
-        rpc.getPmStatus(projectId),
+        fetchRunningAgentsForConversation(projectId, conversationId),
+        rpc.getPmStatus(projectId, conversationId ?? undefined),
       ]);
+      // Bail if the user already switched to a different conversation while
+      // this request was in flight — applying a stale response here would
+      // reintroduce the exact leak this scoping is meant to prevent.
+      if (get().activeConversationId !== conversationId) return;
+
       const activeAgents: Record<string, AgentStatusValue> = {};
       for (const a of agents) {
         activeAgents[a.id] = (a.status as AgentStatusValue) ?? "running";
       }
-      const updates: Partial<ChatState> = { activeAgents, runningAgentCount: agents.length };
-      // Restore the agent name badge if an agent is running.
-      // Use a synthetic messageId so the agentEnded handler (which clears by
-      // messageId match) falls back to the count-drops-to-zero path instead.
-      if (agents.length > 0) {
-        const first = agents[0];
-        updates.activeInlineAgent = {
-          agentName: first.name,           // internal name — used for badge colour lookup
-          agentDisplayName: first.displayName, // real display name from DB e.g. "Task Planner"
-          messageId: `sync-${first.name}`,
-        };
+      // Restore an entry for every currently running agent (not just the
+      // first) — a mid-parallel-dispatch refresh must show all of them, not
+      // silently drop to one. Synthetic per-agent messageId (keyed by the
+      // backend's own agent id, not name, so two same-named agents running
+      // in parallel don't collide) so agentInlineComplete's real messageId
+      // won't match it directly, but its own remove-by-key + recount logic
+      // still self-corrects as real completion events arrive.
+      const runningInlineAgents: Record<string, ActiveInlineAgent> = {};
+      for (const a of agents) {
+        const messageId = `sync-${a.id}`;
+        runningInlineAgents[messageId] = { agentName: a.name, agentDisplayName: a.displayName, messageId };
       }
+      const updates: Partial<ChatState> = { activeAgents, runningInlineAgents, ...deriveInlineAgentDisplay(runningInlineAgents) };
+      // getPmStatus is now scoped to conversationId (each conversation runs its
+      // own independent PM turn) so isStreaming already answers exactly for
+      // THIS conversation — no more comparing against pmStatus.conversationId.
       if (pmStatus.isStreaming) {
-        // Restore PM streaming indicator if PM is mid-response
         updates.isStreaming = true;
       } else if (agents.length === 0) {
-        // Nothing is running and PM is idle — clear any stuck busy state that
-        // may have been left over (e.g. pmPending never cleared, isStreaming
-        // stuck from a stale stream completion race in production).
+        // Nothing is running here and PM isn't mid-response for THIS
+        // conversation — clear any stuck busy state that may have been left
+        // over (e.g. pmPending never cleared, isStreaming stuck from a
+        // stale stream completion race in production).
         updates.isStreaming = false;
         updates.pmPending = false;
       }

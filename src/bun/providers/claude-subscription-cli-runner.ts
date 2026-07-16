@@ -405,6 +405,15 @@ async function runClaudeCliTaskOnce(
 	let costUsd = 0;
 	let finalStatus: "completed" | "failed" = "completed";
 	let wasAborted = false;
+	// Populated on a safety/content-policy refusal (msg.type "system",
+	// subtype "model_refusal_no_fallback"/"model_refusal_fallback") — the SDK
+	// emits this as its OWN message type, distinct from a "result" message, so
+	// without handling it explicitly here a refused turn either falls through
+	// with no readable detail or (observed live) the query() iterator throws
+	// afterward with an Error whose own `.message` is empty. Captured so both
+	// the "result" handling below and the outer catch's error-enrichment can
+	// fall back to it instead of surfacing a blank "Agent failed: " message.
+	let refusalDetail: string | null = null;
 
 	try {
 		for await (const msg of query({
@@ -450,13 +459,20 @@ async function runClaudeCliTaskOnce(
 					if (block.type === "text" && block.text) opts.onText(block.text);
 					if (block.type === "thinking" && block.thinking) opts.onReasoning(block.thinking);
 				}
+			} else if (msg.type === "system" && (msg.subtype === "model_refusal_no_fallback" || msg.subtype === "model_refusal_fallback")) {
+				const category = msg.api_refusal_category ? ` (category: ${msg.api_refusal_category})` : "";
+				const explanation = msg.api_refusal_explanation ? ` — ${msg.api_refusal_explanation}` : "";
+				refusalDetail = `Model declined to respond (safety refusal)${category}${explanation}`;
 			} else if (msg.type === "result") {
 				if (msg.subtype === "success") {
-					summary = msg.result;
+					// An empty/falsy `result` on a refused turn (is_error true, no text
+					// generated) previously surfaced as a blank summary — fall back to
+					// the refusal detail captured above when there's nothing else to show.
+					summary = msg.result || (msg.is_error ? refusalDetail ?? "" : "");
 					finalStatus = msg.is_error ? "failed" : "completed";
 				} else {
 					const errors = "errors" in msg && Array.isArray(msg.errors) ? msg.errors.join("; ") : "";
-					summary = `Claude (via Agent SDK) stopped: ${msg.subtype}${errors ? ` — ${errors}` : ""}`;
+					summary = `Claude (via Agent SDK) stopped: ${msg.subtype}${errors ? ` — ${errors}` : refusalDetail ? ` — ${refusalDetail}` : ""}`;
 					finalStatus = "failed";
 				}
 				usage = {
@@ -471,6 +487,13 @@ async function runClaudeCliTaskOnce(
 	} catch (err) {
 		if (abortController.signal.aborted) {
 			wasAborted = true;
+		} else if (err instanceof Error && !err.message && refusalDetail) {
+			// Observed live: a safety refusal can end the query() iterator with a
+			// thrown Error whose own `.message` is empty (the SDK evidently expects
+			// the model_refusal_* message above to be the caller's channel for detail,
+			// not the exception itself). Without this, that surfaces all the way up
+			// to the PM as "Agent failed: " with nothing after the colon.
+			throw new Error(refusalDetail, { cause: err });
 		} else {
 			throw err;
 		}
@@ -486,5 +509,6 @@ async function runClaudeCliTaskOnce(
 		return { status: "cancelled", summary: "Cancelled by user", usage, costUsd };
 	}
 
-	return { status: finalStatus, summary: summary || "(completed with no text output)", usage, costUsd };
+	const fallbackSummary = finalStatus === "failed" ? "(no error details available)" : "(completed with no text output)";
+	return { status: finalStatus, summary: summary || fallbackSummary, usage, costUsd };
 }

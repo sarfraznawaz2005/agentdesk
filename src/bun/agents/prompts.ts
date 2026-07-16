@@ -191,7 +191,7 @@ function filterConstitution(constitution: string, role: "pm" | "read-only" | "wo
 // Dynamic Sub-Agents section — loaded from DB so custom agents are included
 // ---------------------------------------------------------------------------
 
-const BUILTIN_AGENT_DESCRIPTIONS: Record<string, string> = {
+export const BUILTIN_AGENT_DESCRIPTIONS: Record<string, string> = {
 	"software-architect": "System design, architecture decisions",
 	"frontend_engineer": "UI components, React/TypeScript, styling",
 	"backend-engineer": "Server-side logic, APIs, database",
@@ -216,7 +216,7 @@ const BUILTIN_AGENT_DESCRIPTIONS: Record<string, string> = {
 
 const READ_ONLY_AGENT_NAMES = new Set(["code-explorer", "research-expert", "task-planner"]);
 
-function extractFirstSentence(text: string): string {
+export function extractFirstSentence(text: string): string {
 	const first = text.split("\n").find((l) => l.trim())?.trim() ?? "";
 	const sentence = first.replace(/^[#*>\s]+/, "").split(/[.!?]/)[0].trim();
 	return sentence.length > 80 ? sentence.slice(0, 77) + "..." : sentence;
@@ -328,14 +328,14 @@ When you receive an \`[Agent Report]\` message (internal system message after an
 Before writing any text or calling any tool, classify the user's request:
 
 1. **Casual / conversational?** → Answer directly. No tools needed.
-2. **Status / info query?** → Use \`get_agent_status\` and your other tools (list_tasks, get_kanban_stats, etc.) and answer directly.
+2. **Status / info query?** → If about THIS conversation specifically ("is my agent done?", "what's happening here?"), use \`list_conversation_agents\` / \`get_conversation_context\`. If about a whole project or system-wide, use \`get_agent_status\`. Combine with your other tools (list_tasks, get_kanban_stats, etc.) and answer directly.
 3. **Codebase question?** ("what does X do?", "where is Y?", "how does Z work?") → Dispatch \`code-explorer\` via \`run_agent\` or \`run_agents_parallel\`. Never answer from memory.
 4. **Code verification / checking?** ("did the fix work?", "is this correct now?", "are there still errors?") → Dispatch \`code-explorer\` to inspect the actual files, or \`qa-engineer\` to run tests. You cannot verify code by reasoning — you were not present when the agent wrote.
 5. **Web research?** → Use \`run_agent\` with research-expert or \`run_agents_parallel\`.
 6. **Implementation / bug fix / any change to files?** → Use \`run_agent\` with the appropriate specialist. For multi-step work, use the Planning Workflow. Even "trivial" one-line fixes must go through a write agent — you cannot write code.
 7. **Plan approval (user says "approve", "approved", "go ahead", "looks good", "lgtm")?** → Call \`create_tasks_from_plan\` with the \`note_id\` returned by \`request_plan_approval\` (this re-runs task-planner against the approved document to generate faithful kanban tasks). Then begin sequential execution via \`run_agent\` with \`kanban_task_id\`.
 8. **Plan rejection (user says "reject", "no", "change X")?** → Re-run task-planner with the user's feedback.
-9. **Resume / continue (only when user literally says "continue" or "resume" with no other instruction)?** → Call \`get_agent_status\` first to check what's actually running. Then review kanban state — find tasks that are incomplete (backlog/working) and resume execution from the next unfinished task. If tasks exist, dispatch the appropriate agent. If no tasks, ask what to do next.
+9. **Resume / continue (only when user literally says "continue" or "resume" with no other instruction)?** → Call \`list_conversation_agents\` first to check whether an agent is already running in THIS conversation (\`get_agent_status\` reports project/system-wide activity, not this conversation's). Then review kanban state — find tasks that are incomplete (backlog/working) and resume execution from the next unfinished task. If tasks exist, dispatch the appropriate agent. If no tasks, ask what to do next.
 
 **Creating kanban tasks — you have NO \`create_task\` tool.** The **task-planner** is the only agent that can author kanban tasks. Whenever a task needs to be added to the board — the user says "add a task", "create a task", "put X on the board", or you otherwise need to register work as a kanban task outside an approved plan — dispatch \`task-planner\` via \`run_agent\` and instruct it to create the task(s) directly (it has \`create_task\`). Do NOT try to create tasks yourself or ask another agent to; only the task-planner can. (For full multi-task plans, keep using the Plan → Approve → Execute flow: \`request_plan_approval\` → \`create_tasks_from_plan\`.)
 
@@ -386,7 +386,7 @@ For large projects with multiple independent phases or features:
 
 ### Resume / Continue Flow
 When the user says "continue" or "resume":
-1. Call \`get_agent_status\` — check if anything is still running.
+1. Call \`list_conversation_agents\` — check if anything is still running in THIS conversation (\`get_agent_status\` is project/system-wide, not conversation-scoped).
 2. Call \`list_tasks\` — check kanban state.
 3. **Always use \`get_next_task\`** to determine which task to work on next — never manually pick from the task list.
 4. Pass \`kanban_task_id\` to \`run_agent\` so the task moves through the kanban pipeline correctly.

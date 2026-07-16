@@ -109,19 +109,24 @@ export async function createConversation(
 }
 
 /**
- * Stop any running agents for the given project before a message/conversation
+ * Stop any running agents for the given conversation before a message/conversation
  * delete proceeds. A sub-agent's inline run (agent-loop.ts's runInlineAgent)
  * writes its streamed text/reasoning/tool-call parts via fire-and-forget
  * inserts referencing its own `messages` row — if that row disappears out
  * from under it mid-stream, those still-in-flight inserts hit a FOREIGN KEY
  * constraint failure. Aborting first (with a brief grace period for cleanup)
  * closes that window.
+ *
+ * Scoped to just this conversation — NOT abortAllAgents/engine.stopAll() with
+ * no conversationId — so deleting/clearing one conversation never kills a
+ * sibling conversation's PM turn, a scheduler run, or a review-cycle agent
+ * running elsewhere in the same project.
  */
-async function stopAgentsBeforeDelete(projectId: string): Promise<void> {
+async function stopAgentsBeforeDelete(projectId: string, conversationId: string): Promise<void> {
 	try {
-		const { abortAllAgents, engines } = await import("../engine-manager");
-		engines.get(projectId)?.stopAll();
-		abortAllAgents(projectId);
+		const { abortAgentsForConversation, engines } = await import("../engine-manager");
+		engines.get(projectId)?.stopAll(conversationId);
+		abortAgentsForConversation(projectId, conversationId);
 		await new Promise((r) => setTimeout(r, 50));
 	} catch { /* non-critical */ }
 }
@@ -133,7 +138,7 @@ export async function deleteMessage(id: string): Promise<{ success: boolean }> {
 	const msgRow = await db.select({ conversationId: messages.conversationId }).from(messages).where(eq(messages.id, id)).limit(1);
 	if (msgRow.length > 0) {
 		const convRow = await db.select({ projectId: conversations.projectId }).from(conversations).where(eq(conversations.id, msgRow[0].conversationId)).limit(1);
-		if (convRow.length > 0) await stopAgentsBeforeDelete(convRow[0].projectId);
+		if (convRow.length > 0) await stopAgentsBeforeDelete(convRow[0].projectId, msgRow[0].conversationId);
 	}
 
 	await db.delete(messages).where(eq(messages.id, id));
@@ -147,7 +152,7 @@ export async function clearConversationMessages(
 	id: string,
 ): Promise<{ success: boolean }> {
 	const convRow = await db.select({ projectId: conversations.projectId }).from(conversations).where(eq(conversations.id, id)).limit(1);
-	if (convRow.length > 0) await stopAgentsBeforeDelete(convRow[0].projectId);
+	if (convRow.length > 0) await stopAgentsBeforeDelete(convRow[0].projectId, id);
 
 	// Clear all dependent data alongside conversation messages
 	await db.delete(conversationSummaries).where(eq(conversationSummaries.conversationId, id));
@@ -164,7 +169,7 @@ export async function deleteConversation(
 ): Promise<{ success: boolean }> {
 	try {
 		const convRow = await db.select({ projectId: conversations.projectId }).from(conversations).where(eq(conversations.id, id)).limit(1);
-		if (convRow.length > 0) await stopAgentsBeforeDelete(convRow[0].projectId);
+		if (convRow.length > 0) await stopAgentsBeforeDelete(convRow[0].projectId, id);
 	} catch { /* non-critical */ }
 
 	// Delete in FK-safe order: parts → messages → summaries → conversation

@@ -18,9 +18,23 @@ import { Utils } from "electrobun/bun";
 import { sqlite } from "../db/connection";
 import { runMigrations } from "../db/migrate";
 import { seedDatabase } from "../db/seed";
-import { getMainWindowRef } from "../engine-manager";
+import { getMainWindowRef, engines, abortAllAgents, getAllRunningAgents } from "../engine-manager";
 
 export function resetApplication(): { success: boolean } {
+	// Stop every agent (PM + sub-agents) in every project first — this wipe
+	// drops tables out from under any in-flight write, and once the schema is
+	// rebuilt below a still-running write could silently repopulate a fresh
+	// table referencing a project/conversation id that no longer exists.
+	// Union of engines (covers a PM mid-turn with no sub-agent running) and
+	// getAllRunningAgents (covers conversation-less scheduler runs with no
+	// engine at all).
+	const activeProjectIds = new Set([...engines.keys(), ...Object.keys(getAllRunningAgents())]);
+	for (const projectId of activeProjectIds) {
+		engines.get(projectId)?.stopAll();
+		abortAllAgents(projectId);
+	}
+	engines.clear();
+
 	// Temporarily disable FK constraints so tables can be dropped in any order
 	sqlite.exec("PRAGMA foreign_keys = OFF");
 

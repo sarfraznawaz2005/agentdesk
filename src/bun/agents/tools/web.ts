@@ -98,6 +98,33 @@ async function fetchWithRetry(
 	}
 }
 
+// TLS/certificate failures (self-signed certs, expired certs, hostname
+// mismatches — common on internal tools, staging servers, and dev boxes) —
+// distinguished from ordinary network errors so callers can retry once with
+// certificate verification relaxed instead of failing outright or, worse,
+// silently downgrading the URL to plain http (an actual insecure protocol
+// downgrade, unlike a flagged same-protocol retry).
+const CERT_ERROR_CODES = new Set([
+	"DEPTH_ZERO_SELF_SIGNED_CERT",
+	"SELF_SIGNED_CERT_IN_CHAIN",
+	"UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+	"UNABLE_TO_GET_ISSUER_CERT",
+	"UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+	"CERT_HAS_EXPIRED",
+	"CERT_NOT_YET_VALID",
+	"ERR_TLS_CERT_ALTNAME_INVALID",
+	"ERR_TLS_HANDSHAKE_TIMEOUT",
+	"CERT_UNTRUSTED",
+]);
+
+export function isCertificateError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	const code = (err as NodeJS.ErrnoException).code ?? (err.cause as NodeJS.ErrnoException | undefined)?.code;
+	if (code && CERT_ERROR_CODES.has(code)) return true;
+	const msg = `${err.message} ${err.cause instanceof Error ? err.cause.message : ""}`.toLowerCase();
+	return msg.includes("certificate") || msg.includes("self-signed") || msg.includes("self signed") || msg.includes("ssl routines");
+}
+
 // ---------------------------------------------------------------------------
 // Date-range helpers — shared by all three search engines. `range` is a
 // rolling window from *today* (day/week/month/year), NOT a calendar period —
@@ -451,6 +478,8 @@ export interface FetchedPage {
 	text: string;
 	truncated: boolean;
 	error?: string;
+	/** True when the request only succeeded after retrying with certificate verification relaxed. */
+	insecureTls?: boolean;
 }
 
 // Shared by web_fetch and deep_research. Unlike the search engine helpers,
@@ -465,24 +494,39 @@ export async function fetchPageText(
 	if (isBlockedUrl(url)) {
 		return { url, ok: false, status: 0, contentType: "", text: "", truncated: false, error: "Refused to fetch a non-http(s) or internal/private URL." };
 	}
+	const doFetch = (insecureTls: boolean) => fetch(url, {
+		redirect: "follow",
+		headers: {
+			"User-Agent":
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+			...headers,
+		},
+		signal: withTimeout(abortSignal, timeoutMs),
+		...(insecureTls ? { tls: { rejectUnauthorized: false } } : {}),
+	});
+
+	let insecureTls = false;
 	try {
-		const response = await fetchWithRetry(
-			() => fetch(url, {
-				redirect: "follow",
-				headers: {
-					"User-Agent":
-						"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-					...headers,
-				},
-				signal: withTimeout(abortSignal, timeoutMs),
-			}),
-			{ abortSignal },
-		);
+		let response: Response;
+		try {
+			response = await fetchWithRetry(() => doFetch(false), { abortSignal });
+		} catch (err) {
+			// One retry with certificate verification relaxed — only for a genuine
+			// TLS/cert failure (self-signed, expired, hostname mismatch), and only
+			// over the same https URL. This is strictly safer than an agent
+			// downgrading the URL to plain http itself (an actual protocol
+			// downgrade to no encryption at all) — the connection here stays
+			// encrypted, just unverified, and callers are told via `insecureTls`
+			// so they don't treat the content as coming from a verified origin.
+			if (!isCertificateError(err) || !url.startsWith("https:")) throw err;
+			insecureTls = true;
+			response = await fetchWithRetry(() => doFetch(true), { abortSignal });
+		}
 
 		const contentType = response.headers.get("content-type") ?? "";
 
 		if (!response.ok) {
-			return { url, ok: false, status: response.status, contentType, text: "", truncated: false, error: `HTTP ${response.status} ${response.statusText}` };
+			return { url, ok: false, status: response.status, contentType, text: "", truncated: false, error: `HTTP ${response.status} ${response.statusText}`, insecureTls };
 		}
 
 		if (
@@ -491,7 +535,7 @@ export async function fetchPageText(
 			!contentType.includes("xml") &&
 			!contentType.includes("javascript")
 		) {
-			return { url, ok: false, status: response.status, contentType, text: "", truncated: false, error: `Non-text content type: ${contentType}` };
+			return { url, ok: false, status: response.status, contentType, text: "", truncated: false, error: `Non-text content type: ${contentType}`, insecureTls };
 		}
 
 		const raw = await response.text();
@@ -499,10 +543,14 @@ export async function fetchPageText(
 		const truncated = text.length > maxChars;
 		const body = truncated ? text.slice(0, maxChars) + `\n... (truncated at ${maxChars} chars)` : text;
 
-		return { url, ok: true, status: response.status, contentType, text: body, truncated };
+		return { url, ok: true, status: response.status, contentType, text: body, truncated, insecureTls };
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		const hint = msg.includes("redirect") ? " Try providing the final URL directly." : "";
+		const hint = msg.includes("redirect")
+			? " Try providing the final URL directly."
+			: isCertificateError(err)
+				? " The server's TLS certificate could not be verified (retry with relaxed verification also failed)."
+				: "";
 		return { url, ok: false, status: 0, contentType: "", text: "", truncated: false, error: msg + hint };
 	}
 }
@@ -543,7 +591,7 @@ const webFetchTool = tool({
 	execute: async ({ url, headers, timeout = 15_000, maxChars, ignoreLinks }, { abortSignal }): Promise<string> => {
 		const page = await fetchPageText(url, { abortSignal, timeoutMs: timeout, headers, maxChars: clampMaxChars(maxChars), ignoreLinks });
 		if (!page.ok) {
-			return JSON.stringify({ error: page.error, url, ...(page.status ? { status: page.status } : {}) });
+			return JSON.stringify({ error: page.error, url, ...(page.status ? { status: page.status } : {}), ...(page.insecureTls ? { insecureTls: true } : {}) });
 		}
 		return JSON.stringify({
 			url,
@@ -551,6 +599,7 @@ const webFetchTool = tool({
 			contentType: page.contentType,
 			truncated: page.truncated,
 			body: page.text,
+			...(page.insecureTls ? { insecureTls: true, warning: "This response came over HTTPS but the server's certificate could not be verified (self-signed, expired, or hostname mismatch) — the connection was encrypted but not authenticated." } : {}),
 		});
 	},
 });
@@ -601,13 +650,26 @@ const httpRequestTool = tool({
 		{ abortSignal },
 	): Promise<string> => {
 		const effectiveMaxChars = clampMaxChars(maxChars);
+		const doFetch = (insecureTls: boolean) => fetch(url, {
+			method,
+			headers,
+			body: body !== undefined ? body : undefined,
+			signal: withTimeout(abortSignal, timeout),
+			...(insecureTls ? { tls: { rejectUnauthorized: false } } : {}),
+		});
+		let insecureTls = false;
 		try {
-			const response = await fetch(url, {
-				method,
-				headers,
-				body: body !== undefined ? body : undefined,
-				signal: withTimeout(abortSignal, timeout),
-			});
+			let response: Response;
+			try {
+				response = await doFetch(false);
+			} catch (err) {
+				// See fetchPageText's identical fallback for the rationale — one retry
+				// with certificate verification relaxed, only for a genuine TLS/cert
+				// error over https, flagged in the result rather than silently trusted.
+				if (!isCertificateError(err) || !url.startsWith("https:")) throw err;
+				insecureTls = true;
+				response = await doFetch(true);
+			}
 
 			const responseHeaders: Record<string, string> = {};
 			response.headers.forEach((value, key) => {
@@ -638,6 +700,7 @@ const httpRequestTool = tool({
 				statusText: response.statusText,
 				headers: responseHeaders,
 				body: responseBody,
+				...(insecureTls ? { insecureTls: true, warning: "This response came over HTTPS but the server's certificate could not be verified (self-signed, expired, or hostname mismatch) — the connection was encrypted but not authenticated." } : {}),
 			});
 		} catch (err) {
 			return JSON.stringify({ error: err instanceof Error ? err.message : String(err), url, method });

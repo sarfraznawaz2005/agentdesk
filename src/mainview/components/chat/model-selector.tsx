@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { ChevronDown, Search, Brain, Cpu, Check, ShieldCheck, Hammer, Eye, Star, Clock, X } from "lucide-react";
+import { ChevronDown, Search, Brain, Cpu, Check, ShieldCheck, Hammer, Eye, Star, Clock, BadgeCheck, X } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tip, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -29,11 +29,38 @@ interface ModelEntry {
 interface ModelSection {
   key: string;
   label: string;
-  icon: "latest" | "favorites" | null;
+  icon: "default" | "latest" | "favorites" | null;
   entries: ModelEntry[];
 }
 
 const prefKey = (providerId: string, model: string) => `${providerId}|${model}`;
+
+// Persist the connected-provider-models list across full page reloads (a
+// plain in-memory ref/state cache resets to empty on reload, forcing the
+// first popover open after every reload to pay for a fresh fetch again).
+// localStorage survives reloads and gives the popover an instant paint on
+// mount — but it's only ever a seed for that first paint, never trusted on
+// its own past that (see the `hasFetched` ref below for why).
+const MODEL_CACHE_KEY = "agentdesk:cached-connected-provider-models";
+
+function loadCachedProviders(): ProviderModels[] | null {
+  try {
+    const raw = localStorage.getItem(MODEL_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedProviders(data: ProviderModels[]): void {
+  try {
+    localStorage.setItem(MODEL_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage full/unavailable — non-critical, just skip persisting.
+  }
+}
 
 /** Build the keyed preference map from the raw RPC rows. */
 function buildPrefMap(
@@ -65,7 +92,7 @@ interface ModelSelectorProps {
 export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
-  const [providers, setProviders] = useState<ProviderModels[]>([]);
+  const [providers, setProviders] = useState<ProviderModels[]>(() => loadCachedProviders() ?? []);
   const [prefs, setPrefs] = useState<ModelPrefMap>({});
   // providerId → that provider's default model, used to fall back when the
   // currently selected model gets disabled.
@@ -78,7 +105,19 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   const [shellApproval, setShellApproval] = useState<boolean>(true);
   const [planMode, setPlanMode] = useState<boolean>(false);
   const [defaultModelName, setDefaultModelName] = useState<string>("");
+  // The default AI provider's own model — always shown in its own "Default"
+  // section at the very top of the picker, regardless of Latest/Favorites.
+  const [defaultEntry, setDefaultEntry] = useState<ModelEntry | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  // Always starts false, even though `providers` may already be seeded from
+  // the localStorage cache above — the cache is only a fast paint for the
+  // popover's first open, never a substitute for a real fetch this mount. A
+  // provider can be added/edited/deleted while this component isn't mounted
+  // at all (e.g. from the Settings page, a different route) — the
+  // "agentdesk:providers-changed" listener below has nothing to catch in
+  // that case, so a stale cache would otherwise never get invalidated. One
+  // background fetch per mount (see fetchModels) guarantees it always
+  // reconciles with the backend at least once, cache or not.
   const hasFetched = useRef(false);
   // ModelSelector lives inside ChatLayout, which stays mounted across a
   // project switch (ProjectPage always force-selects the Chat tab on a
@@ -110,6 +149,11 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
       // Resolve the default provider's model name
       const defaultProv = providersList.find((p) => p.isDefault) ?? providersList[0];
       const defaultModel = defaultProv?.defaultModel ?? defaultProv?.providerType ?? "";
+      setDefaultEntry(
+        defaultProv && defaultModel
+          ? { providerId: defaultProv.id, providerName: defaultProv.name, providerType: defaultProv.providerType, model: defaultModel }
+          : null,
+      );
 
       // Map each provider to its default model for disabled-selection fallback.
       const defaults: Record<string, string> = {};
@@ -165,20 +209,38 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
     return () => window.removeEventListener("agentdesk:model-preferences-changed", onChanged);
   }, [fetchPrefs]);
 
-  // Fetch models (once) and preferences (every open) when the popover opens.
+  // Fetch models (once per mount) and preferences (every open) when the
+  // popover opens. Cached data (if any) is shown immediately — the spinner
+  // only appears when there's nothing to show meanwhile — while this always
+  // revalidates against the backend once, so a provider added/changed while
+  // unmounted still shows up the first time the popover opens after remount.
   const fetchModels = useCallback(async () => {
     fetchPrefs();
     if (hasFetched.current) return;
-    setLoading(true);
+    if (providers.length === 0) setLoading(true);
     try {
       const result = await rpc.getConnectedProviderModels();
       setProviders(result);
+      saveCachedProviders(result);
       hasFetched.current = true;
     } catch {
-      // Failed to fetch — show empty
+      // Failed to fetch — keep showing whatever we had (cache or empty)
     }
     setLoading(false);
-  }, [fetchPrefs]);
+  }, [fetchPrefs, providers.length]);
+
+  // Invalidate the cached model list when a provider is added, edited, or
+  // deleted anywhere (Settings → Providers, onboarding, another window) — the
+  // fetch above only ever runs once per mount otherwise, so a newly added
+  // provider's models would never appear here until a full app restart.
+  useEffect(() => {
+    const onProvidersChanged = () => {
+      hasFetched.current = false;
+      fetchModels();
+    };
+    window.addEventListener("agentdesk:providers-changed", onProvidersChanged);
+    return () => window.removeEventListener("agentdesk:providers-changed", onProvidersChanged);
+  }, [fetchModels]);
 
   // Toggle a model's favourite state, optimistically updating local prefs.
   const toggleFavorite = useCallback(async (providerId: string, model: string) => {
@@ -251,8 +313,10 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
     return THINKING_LEVELS.find((t) => t.value === selectedThinking)?.label ?? "Default";
   }, [selectedThinking]);
 
-  // Build the rendered sections: Latest (top) → Favorites → provider groups.
-  // Disabled models are hidden everywhere; search filters across all sections.
+  // Build the rendered sections: Default (top) → Latest → Favorites →
+  // provider groups. Disabled models are hidden everywhere except Default —
+  // it's the app's own fallback choice, so it always stays visible even if
+  // the user has otherwise disabled that model. Search filters all sections.
   const sections = useMemo<ModelSection[]>(() => {
     const q = search.toLowerCase().trim();
     const matches = (providerName: string, model: string) =>
@@ -275,12 +339,24 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
         entries.push(entry);
         allEnabled.push(entry);
       }
+      // Alphabetical within a provider's own model list.
+      entries.sort((a, b) => a.model.localeCompare(b.model, undefined, { sensitivity: "base" }));
       if (entries.length > 0) {
         providerSections.push({ key: `prov-${p.providerId}`, label: p.providerName, icon: null, entries });
       }
     }
+    // Alphabetical by provider name — the raw `providers` order otherwise
+    // just follows DB insertion order, which is meaningless to a user.
+    providerSections.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
 
     const top: ModelSection[] = [];
+
+    // Default — the default AI provider's own model. Always first, regardless
+    // of usage history or favourites, so there's always one guaranteed,
+    // one-click way back to the app's actual default.
+    if (defaultEntry && matches(defaultEntry.providerName, defaultEntry.model)) {
+      top.push({ key: "default", label: "Default", icon: "default", entries: [defaultEntry] });
+    }
 
     // Latest — enabled models with a last-used timestamp, most recent first, cap 10.
     const latest = allEnabled
@@ -298,7 +374,7 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
     if (favorites.length > 0) top.push({ key: "favorites", label: "Favorites", icon: "favorites", entries: favorites });
 
     return [...top, ...providerSections];
-  }, [providers, prefs, search]);
+  }, [providers, prefs, search, defaultEntry]);
 
   return (
     <div className="flex flex-wrap items-center gap-2 gap-y-2 px-4 pb-1.5">
@@ -390,6 +466,7 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
                 {/* Section separator + header */}
                 {idx > 0 && <hr className="border-t border-border my-1" />}
                 <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                  {section.icon === "default" && <BadgeCheck className="w-3 h-3" />}
                   {section.icon === "latest" && <Clock className="w-3 h-3" />}
                   {section.icon === "favorites" && <Star className="w-3 h-3 fill-current" />}
                   <span>{section.label}</span>
