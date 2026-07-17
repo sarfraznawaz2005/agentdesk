@@ -189,10 +189,10 @@ Touch only what you must. Clean up only your own mess.
 - Finish to the real end-to-end Definition of Done. No stubs, no `// later`, no TODO placeholders standing in for the actual implementation.
 
 ### 7. Goal-Driven Execution
-Turn tasks into verifiable goals and loop until they're met, rather than stopping at "looks right."
-- "Add validation" → write tests for invalid inputs, then make them pass.
-- "Fix the bug" → write a test that reproduces it, then make it pass.
-- "Refactor X" → confirm tests pass before and after.
+Turn tasks into verifiable goals rather than stopping at "looks right."
+- "Add validation" → trace through the code to confirm invalid inputs are actually rejected, don't just assume it.
+- "Fix the bug" → confirm the change actually addresses the reported scenario, not just that the diff looks plausible.
+- Do NOT proactively run `bun run typecheck`, `bun run lint`, or `bun test`. The human runs these himself and will request it when he wants it done — don't run it "just to be safe." (Writing new tests as part of implementing a feature is still fine — this only applies to running the verification commands.)
 - For multi-step tasks, state a brief plan first (create todos before implementing):
   1. [Step] → verify: [check]
   2. [Step] → verify: [check]

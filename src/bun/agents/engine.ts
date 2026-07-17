@@ -107,7 +107,7 @@ export class AgentEngine {
 	 *  conversationId is supplied by the caller (pm-tools.ts/review-cycle.ts/etc. all
 	 *  know exactly which conversation they're dispatching into) — null only for
 	 *  genuinely conversation-less runs. */
-	registerAgentAbort: ((controller: AbortController, agentName: string, conversationId: string | null) => void) | null = null;
+	registerAgentAbort: ((controller: AbortController, agentName: string, conversationId: string | null, isChatScoped?: boolean) => void) | null = null;
 	unregisterAgentAbort: ((controller: AbortController) => void) | null = null;
 
 	constructor(projectId: string, callbacks: AgentEngineCallbacks) {
@@ -509,8 +509,11 @@ export class AgentEngine {
 						// let `allTasks.every(...)` on an empty array vacuously report "ALL DONE".
 						if (!agentFailed && !quickChat) {
 						try {
-							const { getRunningAgentCount } = await import("../engine-manager");
-							const agentsRunning = getRunningAgentCount(this.projectId);
+							const { getChatScopedAgentCount } = await import("../engine-manager");
+							// Chat-scoped: an unrelated Issue Fixer/scheduled agent running in
+							// the same project must not be mistaken for the review agent this
+							// hint is actually asking about.
+							const agentsRunning = getChatScopedAgentCount(this.projectId);
 
 							const allTasks = await db
 								.select({ id: kanbanTasks.id, title: kanbanTasks.title, column: kanbanTasks.column, assignedAgentId: kanbanTasks.assignedAgentId, blockedBy: kanbanTasks.blockedBy, createdAt: kanbanTasks.createdAt })
@@ -1582,8 +1585,11 @@ export class AgentEngine {
 				!planApprovalRequested &&
 				!content.startsWith("[DISPATCH CORRECTION]")
 			) {
-				const { getRunningAgentCount } = await import("../engine-manager");
-				if (getRunningAgentCount(this.projectId) === 0) {
+				const { getChatScopedAgentCount } = await import("../engine-manager");
+				// Chat-scoped: an unrelated Issue Fixer/scheduled agent running
+				// elsewhere in the project must not mask a genuine dispatch
+				// hallucination in THIS turn's own claim.
+				if (getChatScopedAgentCount(this.projectId) === 0) {
 					console.warn(`[PM] Post-stream correction (${postStreamDetectionSource}): confirmed no agents running — scheduling re-injection`);
 					const originalReq = content.startsWith("[Agent Report]")
 						? ""
@@ -1598,7 +1604,7 @@ export class AgentEngine {
 							.catch(err => console.error("[PM] Post-stream correction sendMessage failed:", err));
 					}, 150);
 				} else {
-					console.log(`[PM] Post-stream check: agents are running (count=${getRunningAgentCount(this.projectId)}) — no correction needed`);
+					console.log(`[PM] Post-stream check: agents are running (count=${getChatScopedAgentCount(this.projectId)}) — no correction needed`);
 				}
 			}
 

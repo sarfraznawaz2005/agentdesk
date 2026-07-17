@@ -158,7 +158,11 @@ async function runIssueFix(input: IssueFixInput): Promise<void> {
 	});
 
 	const abort = new AbortController();
-	registerAgentController(input.projectId, abort, "issue-fixer", conversationId);
+	// isChatScoped: false — Issue Fixer has its own independent lifecycle and
+	// UI, and must never block, or be blocked by, or count toward, main-
+	// project-chat write-agent dispatches or "N agents running" displays
+	// (see AgentControllerEntry.isChatScoped).
+	registerAgentController(input.projectId, abort, "issue-fixer", conversationId, false);
 	broadcastToWebview("issueFixerRunStarted", {
 		projectId: input.projectId,
 		runId,

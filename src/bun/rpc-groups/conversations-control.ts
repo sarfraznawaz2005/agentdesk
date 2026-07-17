@@ -1,7 +1,7 @@
 import * as conversationsRpc from "../rpc/conversations";
 import * as dashboardRpc from "../rpc/dashboard";
 import * as dashboardAgentRpc from "../rpc/dashboard-agent";
-import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentsForConversation, abortAgentByName, abortAgentByNameInConversation, getRunningAgentCount, getRunningAgentNames, getRunningAgentNamesForConversation, getAllRunningAgents } from "../engine-manager";
+import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentsForConversation, abortAgentByName, abortAgentByNameInConversation, getRunningAgentCount, getRunningAgentNamesForConversation, getChatScopedAgentNames, getChatScopedAgentCount, getChatScopedAgentsByProject } from "../engine-manager";
 import { enqueueMessage, removeQueuedMessage, getQueuedMessages, clearQueueForConversation } from "../message-queue-manager";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
@@ -164,6 +164,9 @@ export const handlers: Record<string, (params: any) => any> = {
 	},
 
 	stopAllAgents: (params) => {
+		// Deliberately unfiltered (not getChatScopedAgentCount) — abortAllAgents
+		// below actually stops every agent regardless of surface, so the count
+		// must match what's really being stopped, including Issue Fixer/scheduler.
 		const count = getRunningAgentCount(params.projectId);
 		engines.get(params.projectId)?.stopAll();
 		abortAllAgents(params.projectId);
@@ -171,10 +174,12 @@ export const handlers: Record<string, (params: any) => any> = {
 	},
 
 	// Project-wide — used by the dashboard's "N agents working" project cards.
-	// For the per-conversation running-agent badge/count, use
+	// Chat-scoped: excludes Issue Fixer and directly-scheduled agent runs,
+	// which have their own independent lifecycle/UI (see isChatScoped). For
+	// the per-conversation running-agent badge/count, use
 	// getRunningAgentsForConversation instead.
 	getRunningAgents: (params) => {
-		const names = getRunningAgentNames(params.projectId);
+		const names = getChatScopedAgentNames(params.projectId);
 		if (names.length === 0) return [];
 		// Look up display names from the agents table in one query
 		const placeholders = names.map(() => "?").join(", ");
@@ -234,10 +239,12 @@ export const handlers: Record<string, (params: any) => any> = {
 		const result: Array<{ projectId: string; agentCount: number }> = [];
 		const seen = new Set<string>();
 
-		// Engine-based projects (PM streaming or PM-dispatched sub-agents)
+		// Engine-based projects (PM streaming or PM-dispatched sub-agents).
+		// Chat-scoped: excludes Issue Fixer and directly-scheduled agent runs —
+		// see isChatScoped.
 		for (const [projectId, engine] of engines) {
 			seen.add(projectId);
-			const subAgentCount = getRunningAgentCount(projectId);
+			const subAgentCount = getChatScopedAgentCount(projectId);
 			// If sub-agents are running, show their count.
 			// If only the PM itself is processing (planning phase or writing summary),
 			// count it as 1 so the dashboard reflects any active work.
@@ -245,9 +252,11 @@ export const handlers: Record<string, (params: any) => any> = {
 			if (total > 0) result.push({ projectId, agentCount: total });
 		}
 
-		// Projects with registered running agents that have no engine (e.g. direct
-		// runInlineAgent calls from the scheduler for non-PM agent_task jobs).
-		const allRunning = getAllRunningAgents();
+		// Chat-scoped projects with no engine yet — in practice this should
+		// never fire (a chat-scoped agent always has a matching engine, created
+		// either by the PM turn that dispatched it or by review-cycle's
+		// getOrCreateEngine call), but kept as a defensive fallback.
+		const allRunning = getChatScopedAgentsByProject();
 		for (const [projectId, agentNames] of Object.entries(allRunning)) {
 			if (!seen.has(projectId) && agentNames.length > 0) {
 				result.push({ projectId, agentCount: agentNames.length });

@@ -231,6 +231,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   if ((activeConversationId ?? null) !== draftConv) {
     if (attachedFiles.length > 0) setAttachedFiles([]);
     if (mentionedFiles.length > 0) setMentionedFiles([]);
+    // Also close the slash/file popover — otherwise switching conversations
+    // (e.g. clicking "New Conv") while it's open leaves it stuck open, now
+    // floating over an input that's no longer the one the user was typing in.
+    if (popoverMode !== null) setPopoverMode(null);
+    if (popoverQuery !== "") setPopoverQuery("");
   }
 
   // ---- Shell result bubbles (ephemeral, in-chat) -------------------------

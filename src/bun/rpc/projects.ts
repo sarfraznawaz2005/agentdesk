@@ -1,7 +1,8 @@
 import { eq, and, like, sql } from "drizzle-orm";
 import { mkdirSync, existsSync, readdirSync, statSync, readFileSync, symlinkSync, lstatSync, rmSync, readlinkSync, unlinkSync } from "fs";
 import { readdir } from "fs/promises";
-import { join, relative, resolve, basename } from "path";
+import { join, relative, resolve, basename, sep } from "path";
+import ignore, { type Ignore } from "ignore";
 import { isPathAccessible } from "../lib/path-utils";
 import { db } from "../db";
 import { sqlite } from "../db/connection";
@@ -1024,6 +1025,45 @@ const IGNORED_DIRS = new Set([
 	".gradle",
 ]);
 
+/** Add one .gitignore's patterns to `ig`, rooted at `dirRelFromRoot` (POSIX, "" for workspace root). */
+function addGitignoreAt(ig: Ignore, dirAbs: string, dirRelFromRoot: string): void {
+	const gitignorePath = join(dirAbs, ".gitignore");
+	if (!existsSync(gitignorePath)) return;
+	try {
+		const prefix = dirRelFromRoot ? `${dirRelFromRoot}/` : "";
+		for (const rawLine of readFileSync(gitignorePath, "utf-8").split("\n")) {
+			const line = rawLine.trimEnd();
+			if (!line || line.trimStart().startsWith("#")) continue;
+			if (!prefix) {
+				ig.add(line);
+			} else if (line.startsWith("!")) {
+				ig.add(`!${prefix}${line.slice(1)}`);
+			} else if (line.startsWith("/")) {
+				ig.add(`${prefix}${line.slice(1)}`);
+			} else {
+				ig.add(`${prefix}${line}`);
+			}
+		}
+	} catch {
+		// Unreadable .gitignore — treat as no patterns from this level
+	}
+}
+
+/** Build a gitignore filter covering every .gitignore from the workspace root down to targetDir. */
+function buildIgnoreFilter(workspaceRoot: string, targetDir: string): Ignore {
+	const ig = ignore();
+	const relSegments = relative(workspaceRoot, targetDir).split(sep).filter(Boolean);
+	let dirAbs = workspaceRoot;
+	let dirRel = "";
+	addGitignoreAt(ig, dirAbs, dirRel);
+	for (const segment of relSegments) {
+		dirAbs = join(dirAbs, segment);
+		dirRel = dirRel ? `${dirRel}/${segment}` : segment;
+		addGitignoreAt(ig, dirAbs, dirRel);
+	}
+	return ig;
+}
+
 /**
  * List the immediate contents of a workspace directory (lazy — one level at a time).
  * The caller passes an optional subPath to navigate into subdirectories.
@@ -1059,6 +1099,7 @@ export async function listWorkspaceFiles(
 	}
 
 	const results: Array<{ name: string; path: string; isDirectory: boolean; size: number; updatedAt: string }> = [];
+	const ig = buildIgnoreFilter(workspaceRoot, targetDir);
 
 	for (const name of entries) {
 		// Skip hidden files/dirs and ignored directories
@@ -1074,6 +1115,13 @@ export async function listWorkspaceFiles(
 
 			// Relative path from workspace root — safe to expose to the frontend
 			const relativePath = relative(workspaceRoot, fullPath);
+
+			// Skip gitignored entries (.env is deliberately exempt — it's almost
+			// always gitignored but still relevant to see/edit from this panel).
+			if (name !== ".env") {
+				const posixRel = relativePath.split(sep).join("/");
+				if (ig.ignores(isDirectory ? `${posixRel}/` : posixRel)) continue;
+			}
 
 			results.push({
 				name,

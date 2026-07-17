@@ -23,7 +23,7 @@ import {
 	projects,
 	kanbanTasks,
 } from "../db/schema";
-import { runInlineAgent, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
+import { runInlineAgent, isWriteConcurrencyExempt, type InlineAgentCallbacks, type MessagePart } from "./agent-loop";
 import { getKanbanTask, moveKanbanTask, updateKanbanTask } from "../rpc/kanban";
 import { getSetting } from "../rpc/settings";
 import { isAutoExecuteEnabled } from "../rpc/projects";
@@ -32,8 +32,19 @@ import {
 	registerAgentController,
 	unregisterAgentController,
 	getOrCreateEngine,
-	getRunningAgentCount,
+	getChatScopedAgentNames,
 } from "../engine-manager";
+
+/** Count of currently running agents that would race over the same git working
+ *  directory if a write agent were dispatched alongside them — excludes
+ *  read-only agents, code-reviewer, any custom agent with zero write-capable
+ *  tools enabled (see isWriteConcurrencyExempt), and Issue Fixer/scheduled
+ *  agent runs (see isChatScoped — those have independent lifecycles). */
+async function getRunningWriteAgentCount(projectId: string): Promise<number> {
+	const names = getChatScopedAgentNames(projectId);
+	const exemptFlags = await Promise.all(names.map((name) => isWriteConcurrencyExempt(name)));
+	return exemptFlags.filter((exempt) => !exempt).length;
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -166,7 +177,7 @@ function isAgentCancelled(result: { status: string; summary: string }): boolean 
 // Auto-continue: trigger PM to dispatch next task after review passes
 // ---------------------------------------------------------------------------
 
-async function triggerPMAutoContinue(projectId: string, completedTaskTitle: string): Promise<void> {
+async function triggerPMAutoContinue(projectId: string, completedTaskTitle: string, taskId: string): Promise<void> {
 	try {
 		// Read the auto-execute setting live so the Project Settings toggle applies
 		// immediately. When off we still notify the PM (so the user sees the task is
@@ -174,14 +185,21 @@ async function triggerPMAutoContinue(projectId: string, completedTaskTitle: stri
 		const autoExec = await isAutoExecuteEnabled(projectId);
 
 		const eng = getOrCreateEngine(projectId);
-		const conversationId = eng.getActiveConversationId();
+		// Prefer the completed task's own dedicated conversation (recorded at
+		// dispatch time, same lookup spawnReviewAgent uses) over the engine-wide
+		// "last active" fallback, which is clobbered by ANY conversation's
+		// activity (e.g. an unrelated "hi" sent elsewhere while this task ran)
+		// and would otherwise misdirect the next-task dispatch there.
+		const conversationId = taskConversations.get(taskId) || eng.getActiveConversationId();
 		if (!conversationId) return;
 
 		// Wait a moment for the review cycle to fully clean up
 		await new Promise((r) => setTimeout(r, 1000));
 
-		// Don't auto-continue if PM is already processing or agents are running
-		if (eng.isProcessing() || getRunningAgentCount(projectId) > 0) return;
+		// Don't auto-continue if PM is already processing or a write agent is
+		// running elsewhere — read-only agents/code-reviewer never race over
+		// files, so they must not delay dispatching the next task.
+		if (eng.isProcessing() || (await getRunningWriteAgentCount(projectId)) > 0) return;
 
 		// Build a specific next-action hint so PM knows exactly what to dispatch
 		// instead of vague "continue" text that can cause hallucination.
@@ -617,7 +635,7 @@ export function notifyTaskInReview(projectId: string, taskId: string): void {
 				console.log(`[ReviewCycle] Review passed for "${task.title}" — moving to done`);
 				await moveKanbanTask(taskId, "done", undefined, "review-cycle");
 				// Auto-continue: trigger PM to dispatch next task
-				await triggerPMAutoContinue(projectId, task.title);
+				await triggerPMAutoContinue(projectId, task.title, taskId);
 			} else if (currentRounds < maxRounds - 1) {
 				// Review failed, rounds remaining — send back for fixes
 				reviewRounds.set(taskId, currentRounds + 1);
@@ -628,11 +646,13 @@ export function notifyTaskInReview(projectId: string, taskId: string): void {
 				// Determine which agent should fix — use assigned agent from kanban task
 				const fixAgent = task.assignedAgentId ?? "backend-engineer";
 
-				// Wait for any PM-dispatched agents to finish before spawning fix agent
-				// to avoid concurrent write agents
+				// Wait for any other PM-dispatched write agent to finish before
+				// spawning the fix agent, to avoid concurrent write agents racing over
+				// the same git working directory. Read-only agents/code-reviewer never
+				// write files, so they must not be waited on here.
 				const pollStart = Date.now();
 				const MAX_WAIT_MS = 5 * 60_000; // 5 minutes max wait
-				while (getRunningAgentCount(projectId) > 0 && Date.now() - pollStart < MAX_WAIT_MS) {
+				while ((await getRunningWriteAgentCount(projectId)) > 0 && Date.now() - pollStart < MAX_WAIT_MS) {
 					await new Promise((r) => setTimeout(r, 2000));
 				}
 

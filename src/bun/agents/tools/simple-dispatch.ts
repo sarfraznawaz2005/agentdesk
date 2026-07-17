@@ -13,7 +13,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { agents as agentsTable } from "../../db/schema";
-import { runInlineAgent, READ_ONLY_AGENTS, type InlineAgentCallbacks } from "../agent-loop";
+import { runInlineAgent, READ_ONLY_AGENTS, isWriteConcurrencyExempt, type InlineAgentCallbacks } from "../agent-loop";
 import type { ProviderConfig } from "../../providers/types";
 
 export interface SimpleDispatchDeps {
@@ -69,14 +69,17 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 					return JSON.stringify({ success: false, error: "Task description is required." });
 				}
 				const isReadOnly = READ_ONLY_AGENTS.has(args.agent);
+				// Broader than isReadOnly: also exempts code-reviewer and any custom
+				// agent with zero write-capable tools enabled — see isWriteConcurrencyExempt.
+				const bypassesWriteGuard = await isWriteConcurrencyExempt(args.agent);
 				if (dispatching.has(args.agent)) {
 					return JSON.stringify({ success: false, error: `${args.agent} is already running. Only one instance of each agent can run at a time.` });
 				}
-				if (!isReadOnly && writeAgentRunning) {
+				if (!bypassesWriteGuard && writeAgentRunning) {
 					return JSON.stringify({ success: false, error: "A write agent is already running. Wait for it to complete, or use run_agents_parallel for read-only work." });
 				}
 				dispatching.add(args.agent);
-				if (!isReadOnly) writeAgentRunning = true;
+				if (!bypassesWriteGuard) writeAgentRunning = true;
 				try {
 					const { displayName } = await resolveAgent(args.agent);
 					const result = await runInlineAgent({
@@ -98,7 +101,7 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 					return JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) });
 				} finally {
 					dispatching.delete(args.agent);
-					if (!isReadOnly) writeAgentRunning = false;
+					if (!bypassesWriteGuard) writeAgentRunning = false;
 				}
 			},
 		}),

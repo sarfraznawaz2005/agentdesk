@@ -31,7 +31,7 @@ export function getRunningSchedulerMessages(): Array<{ messageId: string; jobId:
 	return [...runningSchedulerMessages.entries()].map(([messageId, jobId]) => ({ messageId, jobId }));
 }
 
-type GetOrCreateEngine = (projectId: string) => { sendMessage: (conversationId: string, content: string) => Promise<unknown> };
+type GetOrCreateEngine = (projectId: string) => { sendMessage: (conversationId: string, content: string, metadata?: { source: "scheduler" }) => Promise<unknown> };
 
 let engineResolver: GetOrCreateEngine | null = null;
 
@@ -59,7 +59,9 @@ export async function executeTask(
 				const { id: conversationId } = await createConversation(projectId, "Scheduled prompt");
 				// Notify frontend so the new conversation appears in the sidebar
 				broadcastToWebview("conversationUpdated", { conversationId, updatedAt: new Date().toISOString(), projectId });
-				await engineResolver(projectId).sendMessage(conversationId, prompt);
+				// source: "scheduler" exempts this PM turn's own write-agent dispatches
+				// from the main-project-chat concurrency guards (see pm-tools.ts).
+				await engineResolver(projectId).sendMessage(conversationId, prompt, { source: "scheduler" });
 				output = "Agent task dispatched";
 				break;
 			}
@@ -159,7 +161,9 @@ export async function executeTask(
 					const { id: convId } = await createConversation(projectId, "Scheduled agent task");
 					// Notify frontend so the new conversation appears in the sidebar
 					broadcastToWebview("conversationUpdated", { conversationId: convId, updatedAt: new Date().toISOString(), projectId });
-					await engineResolver(projectId).sendMessage(convId, instructions);
+					// source: "scheduler" exempts this PM turn's own write-agent dispatches
+					// from the main-project-chat concurrency guards (see pm-tools.ts).
+					await engineResolver(projectId).sendMessage(convId, instructions, { source: "scheduler" });
 				} else {
 					// Run the specified agent directly via runInlineAgent
 					const { runInlineAgent, READ_ONLY_AGENTS } = await import("../agents/agent-loop");
@@ -201,11 +205,15 @@ export async function executeTask(
 						`Project ID: ${projectId}`,
 					].filter(Boolean).join("\n");
 
-					// Register an AbortController so the stop button and dashboard
-					// "N agents working" badge work correctly. Chained to the job-level
-					// signal so the Scheduler/Inbox Stop button cancels this run too.
+					// Register an AbortController so the Scheduler/Inbox Stop button and
+					// stop-all work correctly. Chained to the job-level signal so the
+					// Scheduler/Inbox Stop button cancels this run too.
+					// isChatScoped: false — scheduled agent runs have their own
+					// independent lifecycle/UI and must never block, or be blocked by, or
+					// count toward, main-project-chat write-agent dispatches or "N agents
+					// running" displays (the dashboard project cards no longer show this).
 					const abortController = new AbortController();
-					registerAgentController(projectId, abortController, agentId, convId);
+					registerAgentController(projectId, abortController, agentId, convId, false);
 					const onJobAbort = () => abortController.abort();
 					abortSignal?.addEventListener("abort", onJobAbort);
 
@@ -306,14 +314,18 @@ export async function executeTask(
 				const schedulerJobId = config._jobId as string | undefined;
 				if (!instructions) throw new Error("agent_task_simple requires instructions");
 
-				// Register an AbortController so the dashboard "N agents working" badge
-				// and stop button work when this task is associated with a project.
+				// Register an AbortController so stop-all works when this task is
+				// associated with a project.
 				const simpleAbortController = simpleProjectId ? new AbortController() : null;
 				if (simpleProjectId && simpleAbortController) {
 					// This mode is always project-less/conversation-less (see comment
 					// above) — null means it's exempt from any conversation-scoped
 					// abort and only reachable via this project's stopAllAgents.
-					registerAgentController(simpleProjectId, simpleAbortController, agentId, null);
+					// isChatScoped: false — same reasoning as the agent_task branch
+					// above, scheduled runs must never block, be blocked by, or count
+					// toward main-project-chat write-agent dispatches or "N agents
+					// running" displays.
+					registerAgentController(simpleProjectId, simpleAbortController, agentId, null, false);
 				}
 
 				// Resolve provider

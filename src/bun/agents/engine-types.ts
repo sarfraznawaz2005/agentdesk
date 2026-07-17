@@ -241,8 +241,11 @@ export function applyAnthropicCaching(
 // ---------------------------------------------------------------------------
 
 export interface MessageMetadata {
-	/** Where the message originated from. Defaults to "app". */
-	source: "app" | "discord" | "whatsapp" | "email";
+	/** Where the message originated from. Defaults to "app". "scheduler" marks
+	 *  a cron-triggered PM turn (pm_prompt/agent_task) — used to exempt it from
+	 *  the write-agent concurrency guards in pm-tools.ts, which are scoped to
+	 *  genuine main-project-chat activity only. */
+	source: "app" | "discord" | "whatsapp" | "email" | "scheduler";
 	/** External channel ID (Discord channel, WhatsApp number, etc.) */
 	channelId?: string;
 	/** Sender username on the external platform */

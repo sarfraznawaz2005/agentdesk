@@ -279,6 +279,36 @@ export const READ_ONLY_AGENTS = new Set([
 ]);
 
 /**
+ * Agents that never mutate files or the git working directory, so they're
+ * safe to dispatch/run concurrently with a write agent — broader than
+ * READ_ONLY_AGENTS. code-reviewer keeps run_shell (to run tests/lint as part
+ * of review) and kanban write tools (to record its verdict via submit_review),
+ * so it can't be tool-stripped like a READ_ONLY_AGENTS member via
+ * filterReadOnlyTools below, but it genuinely never touches project files —
+ * it only reports issues — so write-agent concurrency guards (pm-tools.ts,
+ * review-cycle.ts) must not block it, or be blocked by it, purely because
+ * some other agent/code-reviewer is running.
+ */
+export const WRITE_CONCURRENCY_EXEMPT_AGENTS = new Set([...READ_ONLY_AGENTS, "code-reviewer"]);
+
+/**
+ * Whether an agent can run concurrently with a write agent without risking a
+ * file/git race. True for the static exemption list above (fast path, no DB
+ * hit); for any other agent — built-in or custom — true when NONE of its
+ * currently enabled tools are write-capable. This lets a custom agent a user
+ * builds as genuinely read-only (e.g. no FILE_WRITE/GIT_WRITE/run_shell
+ * ticked in Settings → Agents → Tools) get the same concurrency treatment as
+ * code-explorer/code-reviewer, without needing a dedicated "read-only" flag
+ * on the agents table. getToolsForAgent is in-process cached, so this is
+ * cheap to call per running agent.
+ */
+export async function isWriteConcurrencyExempt(agentName: string): Promise<boolean> {
+	if (WRITE_CONCURRENCY_EXEMPT_AGENTS.has(agentName)) return true;
+	const tools = await getToolsForAgent(agentName);
+	return !Object.keys(tools).some((name) => WRITE_TOOLS.has(name));
+}
+
+/**
  * Per-agent exceptions to the read-only write-tool filter. The task-planner is
  * read-only (parallelizable, no file/shell/git writes) yet is the sole task
  * author, so it keeps `create_task` even though that tool is in WRITE_TOOLS.

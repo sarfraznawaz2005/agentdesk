@@ -22,13 +22,15 @@ import {
 	conversations as conversationsTable,
 } from "../../db/schema";
 import type { AgentActivityEvent } from "../types";
-import { runInlineAgent, pruneAgentToolResults, READ_ONLY_AGENTS, type InlineAgentCallbacks } from "../agent-loop";
+import { runInlineAgent, pruneAgentToolResults, READ_ONLY_AGENTS, isWriteConcurrencyExempt, type InlineAgentCallbacks } from "../agent-loop";
 import { buildContext } from "../context";
 import { BUILTIN_AGENT_DESCRIPTIONS, extractFirstSentence } from "../prompts";
 import type { MessageMetadata } from "../engine";
 import { createProjectHandler, getProjectsList } from "../../rpc/projects";
 import { schedulerTools } from "./scheduler";
 import { imageGenTools } from "./image-gen";
+import { createMemoryTools } from "./memory";
+import { createGlobalMemoryTools } from "./global-memory";
 import { getConversations, createConversation, deleteConversation, getMessages } from "../../rpc/conversations";
 import { getInboxMessages, searchInboxMessages } from "../../rpc/inbox";
 import { getSettings, getSetting, saveSetting } from "../../rpc/settings";
@@ -63,8 +65,8 @@ export interface PMToolsDeps {
 		defaultValue?: string;
 		context?: string;
 	}) => Promise<string>;
-	/** Register/unregister an abort controller for a running agent (per-project tracking for stop-all AND per-conversation tracking for stop-this-conversation — conversationId must be the actual conversation the dispatched agent belongs to, null only if genuinely conversation-less). */
-	registerAgentAbort?: (controller: AbortController, agentName: string, conversationId: string | null) => void;
+	/** Register/unregister an abort controller for a running agent (per-project tracking for stop-all AND per-conversation tracking for stop-this-conversation — conversationId must be the actual conversation the dispatched agent belongs to, null only if genuinely conversation-less). isChatScoped defaults true if omitted. */
+	registerAgentAbort?: (controller: AbortController, agentName: string, conversationId: string | null, isChatScoped?: boolean) => void;
 	unregisterAgentAbort?: (controller: AbortController) => void;
 	/** Stop the PM's current stream (used after plan approval submission). */
 	stopPMStream?: () => void;
@@ -278,9 +280,21 @@ export function createPMTools(deps: PMToolsDeps) {
 	let writeAgentRunning = false;
 	const effectiveAgentNames = deps.agentNames ?? AGENT_NAMES;
 
+	// PM gets the same per-(agent, project) memory sub-agents use, bound to its
+	// own virtual agent name "project-manager", plus the PM-exclusive global
+	// memory tools (not project-scoped — see tools/global-memory.ts).
+	const pmMemoryTools = createMemoryTools("project-manager", deps.projectId);
+	const globalMemoryTools = createGlobalMemoryTools();
+
 	const tools = {
 		...schedulerTools,
 		generate_image: imageGenTools.generate_image.tool,
+		save_memory: pmMemoryTools.save_memory.tool,
+		recall_memory: pmMemoryTools.recall_memory.tool,
+		delete_memory: pmMemoryTools.delete_memory.tool,
+		save_global_memory: globalMemoryTools.save_global_memory.tool,
+		recall_global_memory: globalMemoryTools.recall_global_memory.tool,
+		delete_global_memory: globalMemoryTools.delete_global_memory.tool,
 		run_agent: tool({
 			description: `Run a specialist sub-agent to complete a task. The agent runs inline in the main chat — you and the user see all its tool calls and output. The agent gets a fresh context with your task description and explores the codebase itself. Use for implementation, review, debugging, testing, or any task needing specialist skills.
 
@@ -378,6 +392,17 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// Re-entrancy guard: only one write-agent at a time.
 					// Use effectiveProjectId so cross-project dispatches check the right project.
 					const isReadOnly = READ_ONLY_AGENTS.has(args.agent);
+					// This PM turn was triggered by the scheduler (pm_prompt/agent_task),
+					// not a live main-project-chat message — the write-agent concurrency
+					// guards below exist only to protect chat-driven (and kanban
+					// auto-review) write dispatches from racing each other; scheduled runs
+					// have their own independent lifecycle and must be exempt in both
+					// directions (never blocked by other activity, never counted against it).
+					const isScheduledTurn = deps.getActiveMetadata?.()?.source === "scheduler";
+					// Broader than isReadOnly: also exempts code-reviewer, any other
+					// built-in or custom agent that currently has zero write-capable tools
+					// enabled (see isWriteConcurrencyExempt), and any scheduled-turn dispatch.
+					const bypassesWriteGuard = isScheduledTurn || (await isWriteConcurrencyExempt(args.agent));
 
 					// Prevent duplicate dispatch: block if this exact agent is already running
 					// IN THIS CONVERSATION, OR currently being dispatched by a concurrent tool
@@ -403,7 +428,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							// the synthesis/hallucination-retry logic below entirely).
 							return JSON.stringify({
 								success: false,
-								error: `${args.agent} is already running in this conversation. Only one instance of each agent can run at a time per conversation. Wait for it to complete.`,
+								error: `${args.agent} is already running in this conversation. Only one instance of each agent can run at a time per conversation. Tell the user now — do not promise to automatically retry or dispatch it once it finishes, since you will not be re-invoked when it clears. Ask the user to send another message once it's done.`,
 							});
 						}
 					}
@@ -415,7 +440,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// the closure reads it at call time, so a no-op clear when unset is harmless.
 					releaseGuards = () => {
 						dispatchingAgents.delete(dispatchKey);
-						if (!isReadOnly) writeAgentRunning = false;
+						if (!bypassesWriteGuard) writeAgentRunning = false;
 					};
 
 					// Plan mode: only read-only agents are allowed.
@@ -427,7 +452,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						});
 					}
 
-					if (!isReadOnly) {
+					if (!bypassesWriteGuard) {
 						if (writeAgentRunning) {
 							// Do NOT call stopPMStream here — nothing was dispatched, so the PM
 							// must stay free to explain this to the user (see the matching
@@ -435,17 +460,32 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							dispatchingAgents.delete(dispatchKey);
 							return JSON.stringify({
 								success: false,
-								error: "A write agent is already running. Wait for it to complete before dispatching another write agent. Use run_agents_parallel for read-only exploration tasks.",
+								error: "A write agent is already running in this conversation. Tell the user now — do not promise to automatically retry once it finishes, since you will not be re-invoked when it clears. Ask the user to send another message once it's done. Use run_agents_parallel for read-only exploration tasks in the meantime.",
 							});
 						}
-						// Also check global running count — a review-cycle fix agent may be running
-						const { getRunningAgentCount } = await import("../../engine-manager");
-						if (getRunningAgentCount(effectiveProjectId) > 0) {
+						// Also check for OTHER write agents running anywhere else in this
+						// project — e.g. a review-cycle fix agent, or a write agent dispatched
+						// from a different conversation. Two write agents touching the same git
+						// working directory concurrently would race/conflict, so this stays
+						// project-wide (unlike the conversation-scoped checks above). Agents
+						// that never write files (read-only, code-reviewer, or any custom
+						// agent with zero write-capable tools enabled — see
+						// isWriteConcurrencyExempt) are excluded here — they must never block
+						// a write dispatch just because they happen to be running in another
+						// conversation in the same project (observed live: PM refused to write
+						// a file because two unrelated code-explorer agents were running in a
+						// different conversation). getChatScopedAgentNames also excludes Issue
+						// Fixer and scheduled agent runs — see isChatScoped.
+						const { getChatScopedAgentNames } = await import("../../engine-manager");
+						const runningNames = getChatScopedAgentNames(effectiveProjectId);
+						const runningExemptFlags = await Promise.all(runningNames.map((name) => isWriteConcurrencyExempt(name)));
+						const otherWriteAgents = runningNames.filter((_, i) => !runningExemptFlags[i]);
+						if (otherWriteAgents.length > 0) {
 							// Do NOT call stopPMStream here — same reasoning as above.
 							dispatchingAgents.delete(dispatchKey);
 							return JSON.stringify({
 								success: false,
-								error: "Another agent is currently running (possibly from automatic code review). Wait for it to complete before dispatching a new write agent.",
+								error: "Another write agent is currently running elsewhere in this project (possibly automatic code review, or a different conversation). Tell the user now — do not promise to automatically retry once it finishes, since you will not be re-invoked when it clears. Ask the user to send another message once it's done.",
 							});
 						}
 						// Block kanban-task dispatch if any task is in review — review must complete first
@@ -459,7 +499,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 								dispatchingAgents.delete(dispatchKey);
 								return JSON.stringify({
 									success: false,
-									error: `Cannot dispatch new agent: ${reviewTasks.length} task(s) in review column (${reviewTasks.map(t => t.title).join(", ")}). Wait for code review to complete or spawn review agent if it is not running. Use get_next_task to check the correct next action.`,
+									error: `Cannot dispatch new agent: ${reviewTasks.length} task(s) in review column (${reviewTasks.map(t => t.title).join(", ")}). Spawn a review agent if one is not already running, or use get_next_task to check the correct next action. If you cannot proceed, tell the user now — do not promise to automatically retry, since you will not be re-invoked when review clears.`,
 								});
 							}
 						}
@@ -475,7 +515,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 
 					if (agentRows.length > 0 && !agentRows[0].isEnabled) {
 						dispatchingAgents.delete(dispatchKey);
-						if (!isReadOnly) writeAgentRunning = false;
+						if (!bypassesWriteGuard) writeAgentRunning = false;
 						return JSON.stringify({
 							success: false,
 							error: `Agent "${args.agent}" is disabled and cannot be dispatched. Enable it in Settings → Agents or choose a different agent.`,
@@ -487,7 +527,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// (e.g. from training-data inference rather than the current prompt).
 					if (agentRows.length > 0 && agentRows[0].isBuiltin === 0 && agentRows[0].availableToPm === 0) {
 						dispatchingAgents.delete(dispatchKey);
-						if (!isReadOnly) writeAgentRunning = false;
+						if (!bypassesWriteGuard) writeAgentRunning = false;
 						return JSON.stringify({
 							success: false,
 							error: `Agent "${args.agent}" is not available to the PM. Toggle "Make Agent Available to PM" in Settings → Agents to dispatch it.`,
@@ -504,7 +544,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							const existingTask = await getKanbanTask(args.kanban_task_id);
 							if (!existingTask) {
 								dispatchingAgents.delete(dispatchKey);
-								if (!isReadOnly) writeAgentRunning = false;
+								if (!bypassesWriteGuard) writeAgentRunning = false;
 								return JSON.stringify({
 									success: false,
 									error: `Task ID "${args.kanban_task_id}" not found. Use get_next_task or list_tasks to get valid task IDs.`,
@@ -614,8 +654,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// message elsewhere in the project can never abort this dispatch.
 					const { registerAgentController, unregisterAgentController } = await import("../../engine-manager");
 					const registerAbort = isCrossProject
-						? (c: AbortController, name: string) => registerAgentController(effectiveProjectId, c, name, agentConversationId)
-						: (c: AbortController, name: string) => deps.registerAgentAbort?.(c, name, agentConversationId);
+						? (c: AbortController, name: string) => registerAgentController(effectiveProjectId, c, name, agentConversationId, !isScheduledTurn)
+						: (c: AbortController, name: string) => deps.registerAgentAbort?.(c, name, agentConversationId, !isScheduledTurn);
 					const unregisterAbort = isCrossProject
 						? (c: AbortController) => unregisterAgentController(effectiveProjectId, c)
 						: (c: AbortController) => deps.unregisterAgentAbort?.(c);
@@ -626,7 +666,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					} catch (err) {
 						// Registration failed — clear dispatch guard and bail
 						dispatchingAgents.delete(dispatchKey);
-						if (!isReadOnly) writeAgentRunning = false;
+						if (!bypassesWriteGuard) writeAgentRunning = false;
 						throw err;
 					}
 
@@ -659,7 +699,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							doneEng.activeAgentConversationId = null;
 						}
 						dispatchingAgents.delete(dispatchKey);
-						if (!isReadOnly) writeAgentRunning = false;
+						if (!bypassesWriteGuard) writeAgentRunning = false;
 						unregisterAbort(agentAbort);
 
 						// Auto-mark todo item done on successful completion
@@ -862,7 +902,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						}
 					}).catch((err) => {
 						dispatchingAgents.delete(dispatchKey);
-						if (!isReadOnly) writeAgentRunning = false;
+						if (!bypassesWriteGuard) writeAgentRunning = false;
 						unregisterAbort(agentAbort);
 
 						// Don't restart PM if the agent was aborted by user (stop button)
@@ -2037,9 +2077,13 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					// 1. Tasks in review — check if review agent is running
 					const inReview = allTasks.filter(t => t.column === "review");
 					if (inReview.length > 0) {
-						const { getRunningAgentCount } = await import("../../engine-manager");
-						const agentsRunning = getRunningAgentCount(effectiveProjId);
-						if (agentsRunning > 0) {
+						const { getChatScopedAgentNames } = await import("../../engine-manager");
+						// Check specifically for a running code-reviewer — any other agent
+						// (e.g. a read-only code-explorer running in a different conversation,
+						// or a same-named scheduled agent) must not be mistaken for an active
+						// review and block dispatch.
+						const reviewerRunning = getChatScopedAgentNames(effectiveProjId).includes("code-reviewer");
+						if (reviewerRunning) {
 							return JSON.stringify({
 								action: "wait",
 								reason: `${inReview.length} task(s) in review — code review agent is running. Wait for it to complete.`,
@@ -2896,13 +2940,13 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 				project_id: z.string().optional().describe("Specific project to check (all its conversations combined). Omit to check all projects system-wide."),
 			}),
 			execute: async ({ project_id }) => {
-				const { getRunningAgentNames, getRunningAgentCount, getSystemActivity } = await import("../../engine-manager");
+				const { getChatScopedAgentNames, getChatScopedAgentCount, getSystemActivity } = await import("../../engine-manager");
 				const { getActiveReviewCount } = await import("../review-cycle");
 
 				if (project_id) {
 					return JSON.stringify({
-						runningAgentCount: getRunningAgentCount(project_id),
-						runningAgents: getRunningAgentNames(project_id),
+						runningAgentCount: getChatScopedAgentCount(project_id),
+						runningAgents: getChatScopedAgentNames(project_id),
 						activeReviews: getActiveReviewCount(),
 					});
 				}
@@ -2948,8 +2992,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 			inputSchema: z.object({}),
 			execute: async () => {
 				try {
-					const { getAllRunningAgents } = await import("../../engine-manager");
-					const runningByProject = getAllRunningAgents();
+					const { getChatScopedAgentsByProject } = await import("../../engine-manager");
+					const runningByProject = getChatScopedAgentsByProject();
 					const busyNames = new Set(Object.values(runningByProject).flat());
 
 					const allRows = await db.select().from(agentsTable).orderBy(agentsTable.name);

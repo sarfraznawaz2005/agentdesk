@@ -240,6 +240,31 @@ export const agentMemories = sqliteTable("agent_memories", {
 });
 
 // ---------------------------------------------------------------------------
+// global_memories
+// ---------------------------------------------------------------------------
+// PM-only durable memory that is NOT scoped to any project — persistent facts
+// about the user (name, habits, preferences, recurring context) that should
+// follow them across every project, the way Claude Code's own cross-session
+// memory works. Distinct from `agent_memories`, which is per-(agent, project).
+// Size/caps mirror agent_memories (see agents/tools/global-memory.ts).
+export const globalMemories = sqliteTable("global_memories", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	title: text("title").notNull(),
+	description: text("description").notNull().default(""),
+	content: text("content").notNull(),
+	recallCount: integer("recall_count").notNull().default(0),
+	lastRecalledAt: text("last_recalled_at"),
+	createdAt: text("created_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at")
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ---------------------------------------------------------------------------
 // kanban_tasks
 // ---------------------------------------------------------------------------
 // Kanban board tasks within a project, managed by agents and humans.

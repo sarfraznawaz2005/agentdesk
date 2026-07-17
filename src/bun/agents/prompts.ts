@@ -7,6 +7,7 @@ import { settings, agents, notes, plugins } from "../db/schema";
 import { skillRegistry } from "../skills/registry";
 import { isFreelanceEnabled } from "../freelance/feature-flag";
 import { buildMemoryIndexSection } from "./tools/memory";
+import { buildGlobalMemoryIndexSection } from "./tools/global-memory";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -938,12 +939,14 @@ export async function getPMSystemPrompt(
 	planMode?: boolean,
 	quickChat?: boolean,
 ): Promise<{ prompt: string; agentNames: string[] }> {
-	const [constitution, userProfile, knowledgeSection, featureBranchEnabled, agentsSectionResult] = await Promise.all([
+	const [constitution, userProfile, knowledgeSection, featureBranchEnabled, agentsSectionResult, memorySection, globalMemorySection] = await Promise.all([
 		loadConstitution(),
 		loadUserProfile(),
 		loadAgentKnowledgeListing(project.id),
 		isFeatureBranchWorkflowEnabled(project.id),
 		buildAgentsSection(),
+		buildMemoryIndexSection("project-manager", project.id),
+		buildGlobalMemoryIndexSection(),
 	]);
 	const userSection = buildUserSection(userProfile);
 	const workspaceInstructions = loadWorkspaceInstructions(project.workspacePath);
@@ -1017,6 +1020,12 @@ export async function getPMSystemPrompt(
 	}
 	if (featureBranchEnabled && !quickChat) {
 		prompt += `\n\n---\n\n${FEATURE_BRANCH_SECTION}`;
+	}
+	if (globalMemorySection) {
+		prompt += `\n\n---\n\n${globalMemorySection}`;
+	}
+	if (memorySection) {
+		prompt += `\n\n---\n\n${memorySection}`;
 	}
 	return { prompt, agentNames: agentsSectionResult.agentNames };
 }

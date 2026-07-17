@@ -59,6 +59,7 @@ import * as v56 from "./migrations/v56_collections";
 import * as v57 from "./migrations/v57_quick-chat-projects";
 import * as v58 from "./migrations/v58_model-capabilities-cache";
 import * as v59 from "./migrations/v59_ai-telemetry-events";
+import * as v60 from "./migrations/v60_global-memories";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -142,6 +143,7 @@ const migrations: Migration[] = [
 	{ version: 57, name: v57.name, run: v57.run },
 	{ version: 58, name: v58.name, run: v58.run },
 	{ version: 59, name: v59.name, run: v59.run },
+	{ version: 60, name: v60.name, run: v60.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;

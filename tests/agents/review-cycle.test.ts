@@ -34,6 +34,7 @@ mock.module("../../src/bun/engine-manager", () => ({
 	getOrCreateEngine: () => ({ getActiveConversationId: () => PM_ACTIVE_CONV }),
 	getRunningAgentCount: () => 0,
 	getRunningAgentNames: () => [],
+	getChatScopedAgentNames: () => [],
 	abortAllAgents: () => {},
 	engines: new Map(),
 	resolveUserQuestion: () => false,
@@ -62,6 +63,7 @@ mock.module("../../src/bun/agents/agent-loop", () => ({
 		return { status: "cancelled", summary: "Cancelled by test", filesModified: [], tokensUsed: { prompt: 0, completion: 0, total: 0 }, messageIds: [] };
 	},
 	READ_ONLY_AGENTS: new Set(["code-explorer", "research-expert", "task-planner"]),
+	isWriteConcurrencyExempt: async (agentName: string) => ["code-explorer", "research-expert", "task-planner", "code-reviewer"].includes(agentName),
 }));
 
 // Import after mocks.

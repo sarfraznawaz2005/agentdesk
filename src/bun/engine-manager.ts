@@ -43,13 +43,26 @@ interface AgentControllerEntry {
 	controller: AbortController;
 	agentName: string;
 	conversationId: string | null;
+	/** Whether this running agent belongs to genuine main-project-chat activity
+	 *  (regular chat dispatch, scheduled PM turns, or kanban auto-review/fix) —
+	 *  as opposed to an independent background surface like Issue Fixer or a
+	 *  directly-scheduled agent run, which has its own lifecycle and UI.
+	 *  Governs BOTH the write-agent concurrency guards in
+	 *  pm-tools.ts/review-cycle.ts (blocking a new write dispatch, or being
+	 *  waited on before one) AND every "N agents running" count/list surfaced
+	 *  to the user or to PM tools (dashboard project cards, get_agent_status,
+	 *  /info, the per-conversation badge). Defaults to true; false for Issue
+	 *  Fixer/scheduler entries. Deliberately does NOT affect stop-all,
+	 *  stop-by-name, health checks, or app-reset — those must still see and
+	 *  control everything regardless of surface. */
+	isChatScoped: boolean;
 }
 const runningAgentControllers = new Map<string, Map<AbortController, AgentControllerEntry>>();
 
-export function registerAgentController(projectId: string, controller: AbortController, agentName: string, conversationId: string | null): void {
+export function registerAgentController(projectId: string, controller: AbortController, agentName: string, conversationId: string | null, isChatScoped = true): void {
 	let map = runningAgentControllers.get(projectId);
 	if (!map) { map = new Map(); runningAgentControllers.set(projectId, map); }
-	map.set(controller, { controller, agentName, conversationId });
+	map.set(controller, { controller, agentName, conversationId, isChatScoped });
 }
 
 export function unregisterAgentController(projectId: string, controller: AbortController): void {
@@ -151,20 +164,59 @@ export function getRunningAgentNamesForConversation(projectId: string, conversat
  */
 const sessionHadAgentActivity = new Map<string, boolean>();
 
-/** Returns names of currently running agents for a project. */
+/** Returns names of currently running agents that belong to main-project-chat
+ *  activity (regular chat dispatch, scheduled PM turns, kanban auto-review/fix
+ *  — excludes Issue Fixer and directly-scheduled agent runs, see
+ *  AgentControllerEntry.isChatScoped). This is the correct source for BOTH the
+ *  write-agent concurrency guards (pm-tools.ts's otherWriteAgents check,
+ *  review-cycle.ts's fix-agent wait) AND any "N agents running" count/list
+ *  shown to the user or a PM tool. Safety-critical call sites (engine
+ *  eviction, health checks, app reset, stop-all) must keep using the
+ *  unfiltered getRunningAgentNames/getRunningAgentCount/getAllRunningAgents
+ *  below instead — they need to see and control every surface. */
+export function getChatScopedAgentNames(projectId: string): string[] {
+	const map = runningAgentControllers.get(projectId);
+	if (!map) return [];
+	return [...map.values()].filter((e) => e.isChatScoped).map((e) => e.agentName);
+}
+
+/** Chat-scoped equivalent of getRunningAgentCount — see getChatScopedAgentNames. */
+export function getChatScopedAgentCount(projectId: string): number {
+	return getChatScopedAgentNames(projectId).length;
+}
+
+/** Returns names of currently running agents for a project — UNFILTERED,
+ *  includes Issue Fixer/scheduler. Only for safety-critical call sites (see
+ *  getChatScopedAgentNames); UI/PM-tool "running agents" surfaces should use
+ *  getChatScopedAgentNames instead. */
 export function getRunningAgentNames(projectId: string): string[] {
 	const map = runningAgentControllers.get(projectId);
 	if (!map) return [];
 	return [...map.values()].map(e => e.agentName);
 }
 
-/** Returns all running agents across every project, keyed by projectId. */
+/** Returns all running agents across every project, keyed by projectId —
+ *  UNFILTERED, includes Issue Fixer/scheduler. Only for safety-critical call
+ *  sites (app reset); see getChatScopedAgentsByProject for the display/PM-tool
+ *  equivalent. */
 export function getAllRunningAgents(): Record<string, string[]> {
 	const result: Record<string, string[]> = {};
 	for (const [pid, map] of runningAgentControllers) {
 		if (map.size > 0) {
 			result[pid] = [...map.values()].map(e => e.agentName);
 		}
+	}
+	return result;
+}
+
+/** Chat-scoped equivalent of getAllRunningAgents — excludes Issue
+ *  Fixer/scheduler entries in every project. Used by getSystemActivity, which
+ *  feeds get_agent_status, /info, and the dashboard PM widget. */
+export function getChatScopedAgentsByProject(): Record<string, string[]> {
+	const result: Record<string, string[]> = {};
+	for (const [pid, map] of runningAgentControllers) {
+		const names = [...map.values()].filter((e) => e.isChatScoped).map((e) => e.agentName);
+		if (names.length > 0) result[pid] = names;
 	}
 	return result;
 }
@@ -178,7 +230,7 @@ export function getSystemActivity(): {
 	busyEngines: Array<{ projectId: string; pmStreaming: boolean; queuedAgents: string[] }>;
 	totalRunningAgents: number;
 } {
-	const runningAgentsByProject = getAllRunningAgents();
+	const runningAgentsByProject = getChatScopedAgentsByProject();
 	const totalRunningAgents = Object.values(runningAgentsByProject).reduce((s, a) => s + a.length, 0);
 	const busyEngines: Array<{ projectId: string; pmStreaming: boolean; queuedAgents: string[] }> = [];
 
@@ -1021,7 +1073,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 		// abort running agents. conversationId is supplied by the caller (e.g.
 		// pm-tools.ts knows exactly which conversation it's dispatching into,
 		// including cross-project dispatch cases) rather than assumed here.
-		engine.registerAgentAbort = (c, name, conversationId) => registerAgentController(projectId, c, name, conversationId);
+		engine.registerAgentAbort = (c, name, conversationId, isChatScoped) => registerAgentController(projectId, c, name, conversationId, isChatScoped);
 		engine.unregisterAgentAbort = (c) => unregisterAgentController(projectId, c);
 		// abortAllAgents/abortAgentsForConversation (explicit "stop everything"/
 		// "stop this conversation") are called directly by the stopAllAgents/
