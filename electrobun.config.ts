@@ -32,7 +32,7 @@ export default {
 	app: {
 		name: "AgentDesk",
 		identifier: "com.sarfrazai.agentdesk",
-		version: "2.7.0",
+		version: "2.8.0",
 		// macOS Quick Chat deep link — the Finder Quick Action bundle
 		// (quick-chat/os-integration.ts) invokes `open agentdesk://quick-chat?path=...`,
 		// which macOS delivers to a running AgentDesk instance (or launches one) via

@@ -1,5 +1,18 @@
 [
     {
+        "version":  "2.8.0",
+        "title":  "Enhanced AI SDK Features",
+        "changes":  [
+                        "Open Quick Chat directly from the Documents folder.",
+                        "Improved agent concurrency handling for better performance.",
+                        "New AI Usage tab now tracks real costs and provides analytics with a streaming performance indicator.",
+                        "Model names are now displayed on personal and sub-agent responses for clarity.",
+                        "Media tool support added for inline rendering in the agent engine.",
+                        "Cache for model capabilities and classification of model types introduced.",
+                        "Updated documentation to reflect new features and migration tasks for AI SDK 7."
+                    ]
+    },
+    {
         "version":  "2.7.0",
         "title":  "New Chat Features and UI Improvements",
         "changes":  [
