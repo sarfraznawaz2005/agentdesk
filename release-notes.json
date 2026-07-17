@@ -1,5 +1,14 @@
 [
     {
+        "version":  "2.8.1",
+        "title":  "Enhanced User Experience",
+        "changes":  [
+                        "New production context menu for Cut/Copy/Paste functionality",
+                        "Improved Quick Chat features",
+                        "Native directory picker and preview hidden in remote mode"
+                    ]
+    },
+    {
         "version":  "2.8.0",
         "title":  "Enhanced AI SDK Features",
         "changes":  [
