@@ -3,6 +3,7 @@ import { useChatStore } from "@/stores/chat-store";
 import { useKanbanStore } from "@/stores/kanban-store";
 import { useNavigate } from "@tanstack/react-router";
 import { rpc } from "@/lib/rpc";
+import { IS_REMOTE } from "@/lib/remote-transport";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -634,15 +635,20 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
                 placeholder="/path/to/workspace"
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBrowse}
-                disabled={browsingDir}
-                aria-label="Browse for workspace directory"
-              >
-                <FolderOpen aria-hidden="true" />
-              </Button>
+              {/* Native directory picker — desktop only. In web mode it would
+                  open a dialog on the desktop the remote user can't see, so hide
+                  it; the path can still be typed (matches settings/general.tsx). */}
+              {!IS_REMOTE && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBrowse}
+                  disabled={browsingDir}
+                  aria-label="Browse for workspace directory"
+                >
+                  <FolderOpen aria-hidden="true" />
+                </Button>
+              )}
             </div>
           </FieldRow>
 

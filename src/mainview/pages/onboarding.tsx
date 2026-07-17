@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { IS_REMOTE } from "@/lib/remote-transport";
 import { ModelInput } from "@/components/ui/model-input";
 import { toast } from "@/components/ui/toast";
 import { rpc } from "@/lib/rpc";
@@ -351,14 +352,19 @@ function StepAboutYou({
               onChange={(e) => onChangeWorkspace(e.target.value)}
               className="flex-1"
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="default"
-              onClick={handleBrowseWorkspace}
-            >
-              Browse
-            </Button>
+            {/* Native directory picker — desktop only. In web mode it would open
+                a dialog on the desktop the remote user can't see, so hide it; the
+                path can still be typed (matches settings/general.tsx). */}
+            {!IS_REMOTE && (
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                onClick={handleBrowseWorkspace}
+              >
+                Browse
+              </Button>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Root folder where all project workspaces are created. Each project gets a subfolder. You can change this later in Settings.

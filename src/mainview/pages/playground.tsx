@@ -52,6 +52,7 @@ import { VoiceInputButton } from "@/components/chat/voice-input-button";
 import { usePlaygroundStore } from "@/stores/playground-store";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
+import { IS_REMOTE } from "@/lib/remote-transport";
 
 // Map a broadcast part payload to the MessagePartData shape MessageParts renders.
 function toPartData(p: {
@@ -818,11 +819,16 @@ export function PlaygroundPage() {
                 <RefreshCw className="h-3.5 w-3.5" />
               </Button>
             </Tip>
-            <Tip content="Open in browser" side="bottom">
-              <Button variant="ghost" size="sm" onClick={() => rpc.openExternalUrl(preview.url)}>
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
-            </Tip>
+            {/* preview.url is the desktop's own localhost dev server — opening it
+                in a remote user's own browser would resolve to their machine,
+                not the desktop's, so hide this action in web mode. */}
+            {!IS_REMOTE && (
+              <Tip content="Open in browser" side="bottom">
+                <Button variant="ghost" size="sm" onClick={() => rpc.openExternalUrl(preview.url)}>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              </Tip>
+            )}
             <Tip content="Download as zip" side="bottom">
               <Button variant="ghost" size="sm" onClick={handleDownloadZip}>
                 <Download className="h-3.5 w-3.5" />
@@ -948,18 +954,28 @@ export function PlaygroundPage() {
                 previewDevice !== "desktop" && "justify-center overflow-x-hidden bg-muted/20",
               )}
             >
-              <iframe
-                key={store.reloadNonce}
-                src={preview.url + (preview.url.includes("?") ? "&" : "?") + "_r=" + store.reloadNonce}
-                title="Playground preview"
-                className={cn(
-                  "h-full border-0 bg-white",
-                  previewDevice === "desktop" && "w-full",
-                  previewDevice === "tablet" && "w-[768px] shrink-0 border-x border-border shadow-sm",
-                  previewDevice === "mobile" && "w-[390px] shrink-0 border-x border-border shadow-md",
-                )}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-pointer-lock"
-              />
+              {IS_REMOTE ? (
+                // preview.url is a localhost dev server running on the DESKTOP —
+                // unreachable from a remote browser tab, which has its own
+                // localhost. View source / download zip still work (RPC-based).
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+                  <p className="text-sm font-medium">Live preview isn't available over Remote Access</p>
+                  <p className="text-xs">Open this project on the desktop to see the live preview, or use View source / Download as zip here.</p>
+                </div>
+              ) : (
+                <iframe
+                  key={store.reloadNonce}
+                  src={preview.url + (preview.url.includes("?") ? "&" : "?") + "_r=" + store.reloadNonce}
+                  title="Playground preview"
+                  className={cn(
+                    "h-full border-0 bg-white",
+                    previewDevice === "desktop" && "w-full",
+                    previewDevice === "tablet" && "w-[768px] shrink-0 border-x border-border shadow-sm",
+                    previewDevice === "mobile" && "w-[390px] shrink-0 border-x border-border shadow-md",
+                  )}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-pointer-lock"
+                />
+              )}
             </div>
             {showConsole && store.consoleErrors.length > 0 && (
               <div className="max-h-40 shrink-0 overflow-y-auto border-t border-border bg-zinc-950 p-2 font-mono text-[11px] text-zinc-200">
