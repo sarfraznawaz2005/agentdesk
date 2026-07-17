@@ -108,6 +108,15 @@ export type ProjectsRequests = {
     params: { workspacePath: string };
     response: { success: boolean; projectId: string; conversationId: string; error?: string };
   };
+  /**
+   * Open (or reuse/focus) a Quick Chat window rooted at the OS Documents
+   * folder — the in-app "Open Quick Chat" entry point on the Dashboard, for
+   * when there's no folder to inherit from an OS Explorer/Finder right-click.
+   */
+  openQuickChatDefault: {
+    params: Record<string, never>;
+    response: { success: boolean; error?: string };
+  };
   /** Promote a Quick Chat project to a normal, visible project (no file copy). */
   promoteQuickChatProject: {
     params: { projectId: string };

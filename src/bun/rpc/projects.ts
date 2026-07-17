@@ -14,6 +14,7 @@ import { runGit } from "../lib/git-runner";
 import { gitAuthArgs, resolveGitHubToken } from "./github-api";
 import { encryptSecret } from "../lib/secret-crypto";
 import { clearQueueForProject } from "../message-queue-manager";
+import { Utils } from "electrobun/bun";
 
 /** Per-project setting keys whose values are secrets and must be encrypted at rest. */
 const PROJECT_SECRET_KEYS = new Set(["githubToken"]);
@@ -353,6 +354,47 @@ export async function openQuickChatForPath(
 	const conv = await createConversation(projectId);
 
 	return { success: true, projectId, conversationId: conv.id };
+}
+
+/**
+ * Resolve the user's ACTUAL Documents folder. Electrobun's Utils.paths.documents
+ * returns the default %USERPROFILE%\Documents and does NOT honor a relocated
+ * Documents known-folder (mirrors resolveDownloadsDir in rpc/playground.ts).
+ * On Windows we read the real path from the registry; otherwise fall back.
+ */
+function resolveDocumentsDir(): string {
+	if (process.platform === "win32") {
+		try {
+			const proc = Bun.spawnSync(
+				[
+					"reg", "query",
+					"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
+					"/v", "Personal",
+				],
+				{ stdout: "pipe", stderr: "pipe" },
+			);
+			const m = proc.stdout.toString().match(/REG_SZ\s+(.+)/);
+			const resolved = m?.[1]?.trim();
+			if (resolved && existsSync(resolved)) return resolved;
+		} catch { /* fall through to default */ }
+	}
+	return Utils.paths.documents || Utils.paths.home;
+}
+
+/**
+ * Opens (or focuses) a Quick Chat window rooted at the OS Documents folder —
+ * the in-app "Open Quick Chat" entry point on the Dashboard. Unlike the OS
+ * Explorer/Finder context-menu entry, there's no folder to inherit from the
+ * caller, so this always targets the OS-standard default location.
+ */
+export async function openQuickChatDefault(): Promise<{ success: boolean; error?: string }> {
+	const documentsDir = resolveDocumentsDir();
+	const result = await openQuickChatForPath(documentsDir);
+	if (!result.success) return { success: false, error: result.error };
+
+	const { openQuickChatWindow } = await import("../quick-chat/window");
+	await openQuickChatWindow(result.projectId, result.conversationId, basename(documentsDir));
+	return { success: true };
 }
 
 /**

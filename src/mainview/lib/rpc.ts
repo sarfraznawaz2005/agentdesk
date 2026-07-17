@@ -595,6 +595,10 @@ export const rpc = {
   openQuickChatForPath: (workspacePath: string) =>
     electroviewRpc.request.openQuickChatForPath({ workspacePath }),
 
+  /** Open (or focus) a Quick Chat window rooted at the OS Documents folder — the in-app "Open Quick Chat" entry point. */
+  openQuickChatDefault: () =>
+    electroviewRpc.request.openQuickChatDefault({}),
+
   /** Promote a Quick Chat project to a normal, visible project (no file copy). */
   promoteQuickChatProject: (projectId: string) =>
     electroviewRpc.request.promoteQuickChatProject({ projectId }),

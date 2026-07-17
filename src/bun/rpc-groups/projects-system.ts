@@ -48,6 +48,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	getProjectRepoState: (params) => projectsRpc.getProjectRepoState(params.projectId),
 	cloneProjectRepo: (params) => projectsRpc.cloneProjectRepo(params.projectId),
 	openQuickChatForPath: (params) => projectsRpc.openQuickChatForPath(params.workspacePath),
+	openQuickChatDefault: () => projectsRpc.openQuickChatDefault(),
 	promoteQuickChatProject: (params) => projectsRpc.promoteQuickChatProject(params.projectId),
 	getQuickChatRoute: (params) => projectsRpc.getQuickChatRoute(params.windowId),
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, FolderOpen, ArrowUpDown, ChevronsUpDown } from "lucide-react";
+import { Plus, FolderOpen, ArrowUpDown, ChevronsUpDown, MessageSquarePlus } from "lucide-react";
 import { useHeaderActions } from "@/lib/header-context";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export function DashboardPage() {
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState(false);
 	const [modalOpen, setModalOpen] = useState(false);
+	const [openingQuickChat, setOpeningQuickChat] = useState(false);
 
 	// Active agent counts per project (updated in real-time via agentInlineStart/Complete events)
 	const [activeProjectAgents, setActiveProjectAgents] = useState<Record<string, number>>({});
@@ -55,6 +56,21 @@ export function DashboardPage() {
 	const [cardsCollapsed, setCardsCollapsed] = useState<boolean>(() => {
 		try { return localStorage.getItem("dashboard_cards_collapsed") === "true"; } catch { return false; }
 	});
+
+	const handleOpenQuickChat = useCallback(async () => {
+		setOpeningQuickChat(true);
+		try {
+			const result = await rpc.openQuickChatDefault();
+			if (!result.success) {
+				toast("error", result.error ?? "Could not open Quick Chat.");
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Could not open Quick Chat.";
+			toast("error", message);
+		} finally {
+			setOpeningQuickChat(false);
+		}
+	}, []);
 
 	function toggleCardsCollapsed() {
 		setCardsCollapsed((prev) => {
@@ -288,15 +304,21 @@ export function DashboardPage() {
 
 	useHeaderActions(
 		() =>
-			// Projects are created on the desktop (the workspace lives on the machine),
-			// so the web app doesn't offer project creation.
+			// Projects (and Quick Chat) are created on the desktop (the workspace
+			// lives on the machine), so the web app doesn't offer either.
 			IS_REMOTE ? null : (
-				<Button onClick={() => setModalOpen(true)}>
-					<Plus aria-hidden="true" />
-					New Project
-				</Button>
+				<>
+					<Button variant="outline" onClick={handleOpenQuickChat} disabled={openingQuickChat}>
+						<MessageSquarePlus aria-hidden="true" />
+						Open Quick Chat
+					</Button>
+					<Button onClick={() => setModalOpen(true)}>
+						<Plus aria-hidden="true" />
+						New Project
+					</Button>
+				</>
 			),
-		[],
+		[handleOpenQuickChat, openingQuickChat],
 	);
 
 	return (
