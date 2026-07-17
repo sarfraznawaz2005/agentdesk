@@ -1455,14 +1455,24 @@ Persistent 44px bottom bar (excludes the app sidebar's width) listing every regi
 **Watch for:** z-index is deliberately `z-40` (below the expanded-chat Dialog's `z-50` scrim) — bumping this above 50 would let the footer poke through an open expanded-chat modal.
 
 ### Quick Chat window (OS Explorer "Open in AgentDesk")
-A reduced-chrome `BrowserWindow` (no main-app Sidebar/TopNav) opened from the OS Explorer/Finder folder context menu against an arbitrary, project-less folder; reuses the normal `ChatLayout`/PM engine with only Chat + Docs tabs, a running-agent badge, and a "Create Project" button that promotes the folder into a real tracked project (`rpc.promoteQuickChatProject`) without copying/moving anything on disk. One window per folder — reopening the same folder focuses the existing window instead of duplicating it.
+A reduced-chrome `BrowserWindow` (no main-app Sidebar/TopNav) opened from the OS Explorer/Finder folder context menu against an arbitrary, project-less folder; reuses the normal `ChatLayout`/PM engine with only Chat + Docs tabs, a running-agent badge, and a "Create Project" button that promotes the folder into a real tracked project (`rpc.promoteQuickChatProject`) without copying/moving anything on disk. One window per folder — reopening the same folder focuses the existing window instead of duplicating it. The Dashboard's own "Open Quick Chat" button (no folder to inherit from an OS Explorer caller) always targets a fixed `AgentDesk Quick Chat` subfolder under the resolved OS Documents directory, created on first use (`openQuickChatDefault` in `src/bun/rpc/projects.ts`).
 **Key files:**
 - `src/mainview/pages/quick-chat.tsx` — `QuickChatPage`
 - `src/bun/quick-chat/window.ts` — `openQuickChatWindow`, `hasQuickChatWindow`/`hasAnyQuickChatWindows`, per-window RPC instance via `createRpc()` (never the shared singleton)
 - `src/bun/quick-chat/os-integration.ts` — `registerQuickChatMenu`/`unregisterQuickChatMenu` (Windows HKCU registry via a PowerShell launcher script + handoff file; macOS Automator Quick Action/Service — its lowest-confidence, never-live-tested piece)
 - `src/bun/quick-chat/launch-args.ts` — handoff-file protocol between the OS menu launch and app startup
+- `src/bun/rpc/projects.ts` — `openQuickChatDefault`, `resolveDocumentsDir`
 **Data:** `projects.isQuickChat` flag; promoted projects clear that flag
 **Watch for:** the initial route (`#/quick-chat/<id>?c=<conversationId>`) is delivered via the BrowserWindow's `preload` script text, not a URL hash or a post-dom-ready RPC push — both alternatives were tried and proven unreliable; don't "simplify" this back to a hash/query URL or an `rpc.send`-based push.
+
+### Production context menu (Cut/Copy/Paste only, no Inspect)
+WebView2's built-in right-click context menu is production's only way to Cut/Copy/Paste text, but it also exposes "Inspect" — Electrobun has no setting to remove just that one item, and fully disabling the native menu (tried previously) took clipboard access away from every production user too. Production/canary builds now suppress the native menu (`event.preventDefault()` on `contextmenu`) and render a minimal frontend Cut/Copy/Paste/Select-All menu instead, backed by Bun's native clipboard (not the web Clipboard API, to sidestep WebView2 permission-prompt uncertainty on paste). The dev channel and web/remote-pairing mode are both untouched — dev keeps the native menu (incl. Inspect) for debugging; a paired browser tab is the user's own real browser, where suppressing its menu would be pointless.
+**Key files:**
+- `src/mainview/components/production-context-menu.tsx` — `ProductionContextMenu`, mounted once in `App.tsx`; gated by `!import.meta.env.DEV && !IS_REMOTE`
+- `src/bun/rpc-groups/projects-system.ts` — `readClipboardText`/`writeClipboardText` handlers (wrap Electrobun's `Utils.clipboardReadText`/`clipboardWriteText`)
+- `src/shared/rpc/system.ts` — `readClipboardText`/`writeClipboardText` contract
+**Data:** none
+**Watch for:** only `<input>`/`<textarea>` are treated as editable (no `contentEditable` elements exist in this codebase today) — if one is ever added, this menu's Cut/Paste/Select-All logic needs a contentEditable branch (Range/Selection API) or it'll silently no-op there.
 
 ### Quick Chat → main-app fallback bridge
 Helper that lets the pull-based route-recovery path (`App.tsx`) hand a conversation id directly to a freshly (re)mounted `QuickChatPage` if the window's hash-based route delivery came up empty (e.g. after a cold-start webview recreation).

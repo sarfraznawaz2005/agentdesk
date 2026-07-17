@@ -366,11 +366,14 @@ async function ensureMainWindow(): Promise<void> {
 		win.webview.on("dom-ready", () => {
 			win.maximize();
 			brandWindow("AgentDesk", appIconPath);
-			// Right-click context menu stays enabled in every build (previously
-			// disabled in production to remove Inspect Element access) — it's
-			// WebView2's only built-in way to copy/paste/cut text, so disabling
-			// it took that away from every production user for the sake of
-			// hiding a devtools entry point.
+			// WebView2's native right-click context menu (including Inspect) is
+			// left alone here — it's only reachable in the dev channel anyway,
+			// since production/canary builds replace it entirely with a
+			// frontend-rendered Cut/Copy/Paste-only menu (see
+			// components/production-context-menu.tsx) that never exposes
+			// devtools. An earlier attempt just disabled WebView2's default menu
+			// outright in production, which also took away copy/paste — that's
+			// why this isn't done at the native/webview-settings level.
 			initCoreBackgroundServices().catch((err) => console.error("[startup] Core background services error:", err));
 			initFullInstanceServices(isDevMode).catch((err) => console.error("[startup] Full-instance services error:", err));
 			initSchedulingServices().catch((err) => console.error("[startup] Scheduling services error:", err));

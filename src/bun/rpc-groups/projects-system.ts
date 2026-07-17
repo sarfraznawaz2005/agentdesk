@@ -286,4 +286,11 @@ export const handlers: Record<string, (params: any) => any> = {
 			return { success: false };
 		}
 	},
+
+	// System clipboard
+	readClipboardText: () => ({ text: Utils.clipboardReadText() }),
+	writeClipboardText: (params) => {
+		Utils.clipboardWriteText(params.text);
+		return { success: true };
+	},
 };

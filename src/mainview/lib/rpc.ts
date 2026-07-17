@@ -1190,6 +1190,14 @@ export const rpc = {
   getDataPath: () =>
     electroviewRpc.request.getDataPath({}),
 
+  /** Read the OS clipboard's text via Bun's native clipboard API. */
+  readClipboardText: () =>
+    electroviewRpc.request.readClipboardText({}),
+
+  /** Write text to the OS clipboard via Bun's native clipboard API. */
+  writeClipboardText: (text: string) =>
+    electroviewRpc.request.writeClipboardText({ text }),
+
   /** Enhance a user prompt via AI. */
   enhancePrompt: (projectId: string, text: string, providerId?: string, modelId?: string) =>
     electroviewRpc.request.enhancePrompt({ projectId, text, providerId, modelId }),

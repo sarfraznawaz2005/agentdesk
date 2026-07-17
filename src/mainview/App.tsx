@@ -5,6 +5,7 @@ import { initTheme, syncThemeFromDB } from "./lib/theme";
 import { initBackground, syncBackgroundFromDB } from "./lib/app-background";
 import { rpc } from "./lib/rpc";
 import { setPendingQuickChatConversationId } from "./lib/quick-chat-fallback";
+import { ProductionContextMenu } from "./components/production-context-menu";
 
 initTheme(); // synchronous — runs before render, no flash
 initBackground(); // synchronous — runs before render, no flash
@@ -38,7 +39,12 @@ function App() {
     checkQuickChatRouteFallback();
   }, []);
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ProductionContextMenu />
+    </>
+  );
 }
 
 export default App;

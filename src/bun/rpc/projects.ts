@@ -381,19 +381,27 @@ function resolveDocumentsDir(): string {
 	return Utils.paths.documents || Utils.paths.home;
 }
 
+/** Fixed subfolder name created under the OS Documents folder for the
+ * Dashboard's "Open Quick Chat" entry point — keeps its notes/history out of
+ * the user's real Documents root instead of scattering files there. */
+const QUICK_CHAT_DEFAULT_FOLDER = "AgentDesk Quick Chat";
+
 /**
- * Opens (or focuses) a Quick Chat window rooted at the OS Documents folder —
- * the in-app "Open Quick Chat" entry point on the Dashboard. Unlike the OS
- * Explorer/Finder context-menu entry, there's no folder to inherit from the
- * caller, so this always targets the OS-standard default location.
+ * Opens (or focuses) a Quick Chat window rooted at a fixed "AgentDesk Quick
+ * Chat" folder under the OS Documents folder — the in-app "Open Quick Chat"
+ * entry point on the Dashboard. Unlike the OS Explorer/Finder context-menu
+ * entry, there's no folder to inherit from the caller, so this always targets
+ * the same well-known location, creating it if it doesn't already exist.
  */
 export async function openQuickChatDefault(): Promise<{ success: boolean; error?: string }> {
-	const documentsDir = resolveDocumentsDir();
-	const result = await openQuickChatForPath(documentsDir);
+	const targetDir = join(resolveDocumentsDir(), QUICK_CHAT_DEFAULT_FOLDER);
+	if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
+
+	const result = await openQuickChatForPath(targetDir);
 	if (!result.success) return { success: false, error: result.error };
 
 	const { openQuickChatWindow } = await import("../quick-chat/window");
-	await openQuickChatWindow(result.projectId, result.conversationId, basename(documentsDir));
+	await openQuickChatWindow(result.projectId, result.conversationId, basename(targetDir));
 	return { success: true };
 }
 

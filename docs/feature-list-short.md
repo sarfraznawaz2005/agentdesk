@@ -84,3 +84,4 @@
 62. System health page
 63. Auto-install missing dependencies (Recommendations)
 64. Project-level settings (auto-execute, shell approval, auto-commit, context limit)
+65. Right-click text menu in production/canary builds (Cut/Copy/Paste/Select-All, no Inspect option)

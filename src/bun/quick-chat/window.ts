@@ -19,9 +19,11 @@
 // tracking closure per call — safe to share the underlying handler
 // implementations (stateless) but never the rpc object itself across windows.
 //
-// Self-contained: applies the same navigation-rules lockdown, context-menu
-// disable, maximize, and titlebar-icon treatment the main window gets in
-// index.ts, so a Quick-Chat-only launch (no main window at all — see
+// Self-contained: applies the same navigation-rules lockdown, maximize, and
+// titlebar-icon treatment the main window gets in index.ts (the production
+// Cut/Copy/Paste-only context menu is a frontend concern — see
+// components/production-context-menu.tsx — so it applies here automatically,
+// no per-window wiring needed), so a Quick-Chat-only launch (no main window at all — see
 // docs/quick-chat-plan.md Subsystem 6) doesn't lose any of that. Window-state
 // (size/position) is a single shared file, not per-project — mirrors
 // preview-window.ts's single state file rather than accumulating one file per
@@ -189,8 +191,8 @@ function attachWindowListeners(projectId: string, win: any, folderName: string):
 	});
 
 	// Mirrors index.ts's main-window dom-ready treatment: maximize, titlebar
-	// icon, (in production) disable the right-click context menu, and — once,
-	// across every Quick Chat window — kick off the background-services hook.
+	// icon, and — once, across every Quick Chat window — kick off the
+	// background-services hook.
 	// The initial route itself is NOT handled here — see the `preload` option
 	// on the BrowserWindow constructor in openQuickChatWindow below.
 	win.webview.on("dom-ready", () => {

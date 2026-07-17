@@ -208,6 +208,20 @@ export type SystemRequests = {
     response: { success: boolean };
   };
 
+  // System clipboard — used by the production custom text-selection context
+  // menu (see components/system/production-context-menu.tsx) since WebView2's
+  // own default context menu is suppressed in production builds. Native
+  // clipboard access (not the web Clipboard API) so paste works with no
+  // permission-prompt uncertainty in the embedded webview.
+  readClipboardText: {
+    params: Record<string, never>;
+    response: { text: string | null };
+  };
+  writeClipboardText: {
+    params: { text: string };
+    response: { success: boolean };
+  };
+
   // Open a URL in the system default browser
   openExternalUrl: {
     params: { url: string };
