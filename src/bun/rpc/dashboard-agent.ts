@@ -217,6 +217,7 @@ export async function sendDashboardAgentMessage(
 					instructions: system,
 					messages:    newHistory,
 					tools,
+					toolsContext: { run_shell: { projectId: "", conversationId: "" }, request_human_input: { projectId: "" } } as never,
 					stopWhen:    [isStepCount(100)],
 					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
 				});
