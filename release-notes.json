@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.8.3",
+        "title":  "Enhanced API Tracking Features",
+        "changes":  [
+                        "New OpenCode headers added for improved API request tracking and session management."
+                    ]
+    },
+    {
         "version":  "2.8.2",
         "title":  "Enhanced User Experience",
         "changes":  [
