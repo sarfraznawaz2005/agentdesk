@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, ExternalLink, RefreshCw, Square } from "lucide-react";
 import { useIssueFixerStore, initIssueFixerListeners, type IssueFixerPart } from "@/stores/issue-fixer-store";
 import { MessageParts, TextBlock, type MessagePartData } from "@/components/chat/message-parts";
+import { ToolCallFeed } from "@/components/chat/tool-call-feed";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
@@ -31,6 +32,20 @@ function toPartData(p: IssueFixerPart): MessagePartData {
 		createdAt: new Date().toISOString(),
 		agentName: p.agentName,
 	};
+}
+
+/** Derive the currently in-flight tool call (if any), for the compact
+ * "what's happening right now" indicator shown below the MessageParts cards
+ * — full detail is already visible via those cards; this just fills the gap
+ * between them instead of leaving a bare status-badge spinner. */
+function currentRunningTool(parts: IssueFixerPart[]): { id: string; toolName: string; isSkill: boolean } | null {
+	for (let i = parts.length - 1; i >= 0; i--) {
+		const p = parts[i];
+		if (p.type === "tool_call" && p.toolState === "running" && p.toolName) {
+			return { id: p.id, toolName: p.toolName, isSkill: p.toolName === "read_skill" || p.toolName === "find_skills" };
+		}
+	}
+	return null;
 }
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -276,6 +291,10 @@ export function IssueFixerProjectTab({ projectId }: { projectId: string }) {
 									hasRunningAgents={run.running}
 									onStopAgent={run.running ? stopRun : undefined}
 								/>
+								{run.running && (() => {
+									const runningTool = currentRunningTool(run.parts);
+									return runningTool ? <ToolCallFeed toolCalls={[runningTool]} /> : null;
+								})()}
 							</div>
 						)}
 					</TabsContent>

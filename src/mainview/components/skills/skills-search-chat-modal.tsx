@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
 import { CodeBlock } from "@/components/chat/code-block";
 import { TypingRow } from "@/components/chat/message-list";
-import { ToolCallCard } from "@/components/chat/tool-call-card";
+import { ToolCallFeed } from "@/components/chat/tool-call-feed";
 import type { ToolCallPartData } from "@/components/chat/tool-call-card";
 import { rpc } from "@/lib/rpc";
 import { SaveToCollectionModal } from "@/components/collections/save-to-collection-modal";
@@ -606,11 +606,13 @@ export function SkillsSearchChatModal({ open, onClose }: SkillsSearchChatModalPr
                   </div>
                 )}
                 {toolCalls.size > 0 && (
-                  <div className="space-y-1">
-                    {[...toolCalls.values()].map((tc) => (
-                      <ToolCallCard key={tc.id} part={tc} />
-                    ))}
-                  </div>
+                  <ToolCallFeed
+                    toolCalls={[...toolCalls.values()].map((tc) => ({
+                      id: tc.id,
+                      toolName: tc.toolName ?? "",
+                      isSkill: tc.toolName === "read_skill" || tc.toolName === "find_skills",
+                    }))}
+                  />
                 )}
                 {streamingId && (
                   <MessageBubble

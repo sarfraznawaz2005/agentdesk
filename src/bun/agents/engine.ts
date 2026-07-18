@@ -103,6 +103,23 @@ export class AgentEngine {
 	/** Set to true by stopAll() — causes inline agent launches to bail out */
 	private stopped = false;
 
+	/**
+	 * Conversations the user just hit Stop on. Every automatic "agent/review
+	 * finished, continue the PM" restart trigger (onAgentDone, the post-stream
+	 * dispatch-correction retry, review-cycle's triggerPMAutoContinue/
+	 * notifyTaskInReview) checks this set via isConversationStopped() and
+	 * skips instead of silently starting a brand-new PM turn the Stop click
+	 * can no longer reach. Deliberately NOT enforced centrally in sendMessage()
+	 * itself — `agent_report`-typed messages also cover legitimate explicit
+	 * user actions (e.g. the Retry-agent button), which must never be blocked
+	 * by an earlier, unrelated stop. Set by stopAll(conversationId); cleared
+	 * the moment a genuine new message comes in for that conversation — see
+	 * sendMessage's `this.stopped = false` line. No TTL needed: it can't leak
+	 * because the user's very next real interaction with the conversation
+	 * always clears it.
+	 */
+	private userStoppedConvs = new Set<string>();
+
 	/** Register/unregister abort controllers for running agents (set by engine-manager).
 	 *  conversationId is supplied by the caller (pm-tools.ts/review-cycle.ts/etc. all
 	 *  know exactly which conversation they're dispatching into) — null only for
@@ -150,6 +167,7 @@ export class AgentEngine {
 		// abort a running PM turn or sub-agent are the explicit Stop button
 		// (stopGeneration/stopAgent) or a genuine error.
 		this.stopped = false;
+		this.userStoppedConvs.delete(conversationId);
 
 		// Set synchronously (no `await` before this point) so a second
 		// sendMessage call for the SAME conversation arriving in the same tick
@@ -490,6 +508,15 @@ export class AgentEngine {
 							return;
 						}
 
+						// The agent finished on its own (not "cancelled") but the user hit
+						// Stop while it was wrapping up — same intent as the check above,
+						// just covering the race where the agent's own status can't reflect
+						// a Stop click that landed after it had already started finishing.
+						if (this.userStoppedConvs.has(conversationId)) {
+							console.log(`[Engine] Conversation ${conversationId} was stopped by user — not auto-continuing after ${agentName}`);
+							return;
+						}
+
 						const summary = result.status === "completed"
 							? `${displayName} completed successfully: ${result.summary}`
 							: `${displayName} ${result.status}: ${result.summary}`;
@@ -648,6 +675,9 @@ export class AgentEngine {
 			// that, just carving out the one category that has real visual content to show.
 			// Shared across both the CLI-path branch (8a) and the streamText branch (8b) below.
 			const MEDIA_TOOLS = new Set(["generate_image", "read_image", "read_audio"]);
+			// Also shared across both branches — classifies list_tasks/get_task as
+			// "status_check" rather than "tool_call" for the live PM-activity feed.
+			const STATUS_CHECK_TOOLS = new Set(["list_tasks", "get_task"]);
 			let mediaPartSortOrder = 0;
 			const mediaPartIdByCallId = new Map<string, string>();
 			let pmHasPartsSet = false;
@@ -683,7 +713,6 @@ export class AgentEngine {
 						timestamp: new Date().toISOString(),
 					});
 				};
-				const STATUS_CHECK_TOOLS = new Set(["list_tasks", "get_task"]);
 				const toolCallNames = new Map<string, string>();
 
 				this.callbacks.onStreamReset(conversationId, assistantMessageId);
@@ -983,12 +1012,15 @@ export class AgentEngine {
 						}
 						reasoningEmittedFromStream = false;
 
-						const STATUS_CHECK_TOOLS = new Set(["list_tasks", "get_task"]);
+						// tool_call/status_check activity is now emitted live from the
+						// "tool-call" stream part below (the instant the model requests the
+						// call), not here — here would only fire after the whole step
+						// (every tool call it made, already executed) finishes, which made
+						// the PM-activity feed appear to dump everything at once instead of
+						// showing calls as they actually happen.
 						for (const tc of stepAny.toolCalls ?? []) {
 							if (tc.toolName === "run_agent" || tc.toolName === "run_agents_parallel") continue;
 							const tcArgs = tc.input ?? tc.args;
-							const type = STATUS_CHECK_TOOLS.has(tc.toolName) ? "status_check" : "tool_call";
-							emitActivity(type, { toolName: tc.toolName, args: tcArgs, status: "completed" });
 							if (tc.toolName === "read_skill" && (tcArgs as Record<string, unknown>)?.name) {
 								console.log(`[skills] PM loaded skill "${(tcArgs as Record<string, unknown>).name}" (project: ${this.projectId})`);
 							}
@@ -1141,6 +1173,21 @@ export class AgentEngine {
 							stepHasParallelAgent = true;
 							agentDispatchedThisTurn = true;
 							parallelAgentDispatchedThisTurn = true;
+						} else if (tc.toolName && !isNoStreaming) {
+							// Live PM-activity emission — fires the instant the model requests
+							// this call, not after the whole step (incl. execution) finishes,
+							// so the "what is the PM doing" feed updates one call at a time
+							// instead of appearing to dump everything at once.
+							this.callbacks.onAgentActivity?.({
+								projectId: this.projectId,
+								conversationId,
+								agentId: "project-manager",
+								agentName: "project-manager",
+								agentColor: pmColor,
+								type: STATUS_CHECK_TOOLS.has(tc.toolName) ? "status_check" : "tool_call",
+								data: { toolName: tc.toolName, status: "completed" },
+								timestamp: new Date().toISOString(),
+							});
 						}
 					} else if (part.type === "tool-result") {
 						const tr = part as { toolName?: string; output?: unknown };
@@ -1600,6 +1647,12 @@ export class AgentEngine {
 						`${originalReq}\n\nCall run_agent NOW as a tool call. Do not write any text first.`;
 					// Defer past the processing lock (see comment above).
 					setTimeout(() => {
+						// Re-check at fire time, not schedule time — the user can click
+						// Stop during this 150ms window, and Stop means stop, full stop.
+						if (this.userStoppedConvs.has(conversationId)) {
+							console.log(`[PM] Conversation ${conversationId} was stopped by user — skipping dispatch correction`);
+							return;
+						}
 						this.sendMessage(conversationId, correctionMsg, { type: "agent_report" } as never)
 							.catch(err => console.error("[PM] Post-stream correction sendMessage failed:", err));
 					}, 150);
@@ -1651,6 +1704,7 @@ export class AgentEngine {
 	 */
 	stopAll(conversationId?: string): void {
 		if (conversationId) {
+			this.userStoppedConvs.add(conversationId);
 			this.pmAbortByConv.get(conversationId)?.abort();
 			this.pmAbortByConv.delete(conversationId);
 			return;
@@ -1669,6 +1723,11 @@ export class AgentEngine {
 	/** Returns true if stopped flag is set (used by PM tools to check before launching agents). */
 	isStopped(): boolean {
 		return this.stopped;
+	}
+
+	/** Returns true if the user hit Stop on this conversation and no new message has arrived since (see userStoppedConvs). Used to skip spawning a fresh review agent for a task the user just stopped, before that reviewer would even exist to be abortable. */
+	isConversationStopped(conversationId: string): boolean {
+		return this.userStoppedConvs.has(conversationId);
 	}
 
 	/** Inject a lookup for "which sub-agents are running for one conversation" (avoids circular import with engine-manager) — used by sendMessage()'s busy-check. */

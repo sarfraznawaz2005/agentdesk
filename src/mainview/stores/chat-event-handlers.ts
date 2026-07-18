@@ -153,6 +153,9 @@ function onStreamReset(e: Event): void {
       streamingContent: "",
       streamingMessageId: messageId,
       isStreaming: true,
+      // A fresh PM stream is starting — wipe last turn's tool-call feed so it
+      // doesn't linger into (or bleed together with) this new one.
+      pmActivityLog: [],
     };
   });
 }
@@ -200,6 +203,7 @@ function onStreamComplete(e: Event): void {
       streamingMessageId: null as string | null,
       streamingContent: "",
       pmThinkingText: "",
+      pmActivityLog: [],
     };
 
     // Resolve metadata: prefer backend-supplied, but if it lacks reasoning
@@ -310,6 +314,7 @@ function onStreamError(e: Event): void {
     streamingMessageId: null,
     streamingContent: "",
     pmThinkingText: "",
+    pmActivityLog: [],
   });
 
   const errorMessage: Message = {
@@ -794,6 +799,25 @@ function onPmThinking(e: Event): void {
   useChatStore.setState({ pmThinkingText: text });
 }
 
+// PM's own direct tool calls (list_tasks, read_file, search_content, etc.) —
+// appended to an ephemeral, per-turn log shown live under the "Thinking…"
+// indicator. Cleared on stream reset/complete/error (see those handlers) —
+// never persisted, purely a "what is the PM doing right now" UI signal.
+function onPmActivity(e: Event): void {
+  const { conversationId, toolName, isSkill } = (e as CustomEvent<{
+    conversationId: string;
+    toolName: string;
+    isSkill: boolean;
+  }>).detail;
+
+  const state = useChatStore.getState();
+  if (state.activeConversationId !== conversationId) return;
+
+  useChatStore.setState((prev) => ({
+    pmActivityLog: [...prev.pmActivityLog, { id: crypto.randomUUID(), toolName, isSkill }],
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -829,5 +853,6 @@ export function initChatEventHandlers(): void {
   window.addEventListener("agentdesk:context-usage", onContextUsage);
   window.addEventListener("agentdesk:stream-performance", onStreamPerformance);
   window.addEventListener("agentdesk:pm-thinking", onPmThinking);
+  window.addEventListener("agentdesk:pm-activity", onPmActivity);
   window.addEventListener("agentdesk:part-created", onPartCreatedForHasParts);
 }

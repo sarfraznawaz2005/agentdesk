@@ -109,6 +109,7 @@ const BROADCAST_EVENTS: Record<string, string> = {
   conversationCompacted: "agentdesk:conversation-compacted",
   newMessage: "agentdesk:new-message",
   pmThinking: "agentdesk:pm-thinking",
+  pmActivity: "agentdesk:pm-activity",
   dashboardPMChunk: "agentdesk:dashboard-pm-chunk",
   dashboardPMComplete: "agentdesk:dashboard-pm-complete",
   dashboardPMToolCall: "agentdesk:dashboard-pm-tool-call",

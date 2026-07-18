@@ -28,6 +28,27 @@ async function readFileText(filePath: string): Promise<string> {
 	return hasBom ? "\uFEFF" + text : text;
 }
 
+/**
+ * mkdir -p that tolerates a directory that already exists. Plain
+ * `mkdir(dir, { recursive: true })` should already be a no-op in that case,
+ * but on Windows Bun throws EEXIST anyway when the existing directory carries
+ * the Windows "read-only" attribute — the marker Explorer sets on a relocated
+ * special folder (e.g. Downloads moved via its Properties > Location tab).
+ * Node.js's mkdir handles the identical case fine; this is a Bun/Windows-only
+ * quirk (verified: fails for the exact existing dir, succeeds the moment a
+ * new subdirectory actually needs creating). Any other error — permissions,
+ * a file blocking the path, etc. — still propagates.
+ */
+async function ensureDir(dirPath: string): Promise<void> {
+	try {
+		await mkdir(dirPath, { recursive: true });
+	} catch (err) {
+		if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
+		const st = await stat(dirPath).catch(() => null);
+		if (!st?.isDirectory()) throw err;
+	}
+}
+
 /** Write file and notify plugins (LSP servers) of the change. Returns any diagnostics. */
 async function writeAndNotify(filePath: string, content: string): Promise<string[]> {
 	await Bun.write(filePath, content);
@@ -263,7 +284,7 @@ const writeFileTool = tool({
 			const parentDir = path.dirname(resolvedPath);
 
 			// Create parent directories if they don't exist (equivalent to mkdir -p)
-			await mkdir(parentDir, { recursive: true });
+			await ensureDir(parentDir);
 
 			const diags = await writeAndNotify(resolvedPath, args.content);
 			return `Successfully wrote ${args.content.length} bytes to "${resolvedPath}"${formatDiagnosticsSuffix(diags)}`;
@@ -543,7 +564,7 @@ const moveFileTool = tool({
 			const resolvedDest = validatePath(args.destination);
 
 			const destParent = path.dirname(resolvedDest);
-			await mkdir(destParent, { recursive: true });
+			await ensureDir(destParent);
 
 			await rename(resolvedSource, resolvedDest);
 			return `Successfully moved "${resolvedSource}" to "${resolvedDest}"`;
@@ -565,7 +586,7 @@ const appendFileTool = tool({
 			if (contentErr) return contentErr;
 			const resolvedPath = validatePath(args.path);
 			const parentDir = path.dirname(resolvedPath);
-			await mkdir(parentDir, { recursive: true });
+			await ensureDir(parentDir);
 			// Use fs.appendFile — no full-file read before write
 			await fsAppendFile(resolvedPath, args.content);
 			// Notify LSP with current content (read-back is only for diagnostics)
@@ -814,7 +835,7 @@ const copyFileTool = tool({
 			const resolvedDest = validatePath(args.destination);
 
 			const destParent = path.dirname(resolvedDest);
-			await mkdir(destParent, { recursive: true });
+			await ensureDir(destParent);
 
 			await fsCopyFile(resolvedSource, resolvedDest);
 			return `Successfully copied "${resolvedSource}" to "${resolvedDest}"`;
@@ -1063,7 +1084,7 @@ export function createTrackedFileTools(
 				if (contentErr) return contentErr;
 				const resolvedPath = vp(args.path);
 				const parentDir = path.dirname(resolvedPath);
-				await mkdir(parentDir, { recursive: true });
+				await ensureDir(parentDir);
 				const diags = await writeAndNotify(resolvedPath, args.content);
 				tracker.trackWrite(resolvedPath);
 
@@ -1208,7 +1229,7 @@ export function createTrackedFileTools(
 				if (contentErr) return contentErr;
 				const resolvedPath = vp(args.path);
 				const parentDir = path.dirname(resolvedPath);
-				await mkdir(parentDir, { recursive: true });
+				await ensureDir(parentDir);
 				// Use fs.appendFile — no full-file read before write
 				await fsAppendFile(resolvedPath, args.content);
 				tracker.trackWrite(resolvedPath);
@@ -1249,7 +1270,7 @@ export function createTrackedFileTools(
 				const resolvedSource = vp(args.source);
 				const resolvedDest = vp(args.destination);
 				const destParent = path.dirname(resolvedDest);
-				await mkdir(destParent, { recursive: true });
+				await ensureDir(destParent);
 				await rename(resolvedSource, resolvedDest);
 				tracker.remove(resolvedSource);
 				return `Successfully moved "${resolvedSource}" to "${resolvedDest}"`;
@@ -1430,7 +1451,7 @@ const createDirectoryTool = tool({
 	execute: async (args): Promise<string> => {
 		try {
 			const resolvedPath = validatePath(args.path);
-			await mkdir(resolvedPath, { recursive: true });
+			await ensureDir(resolvedPath);
 			return JSON.stringify({ success: true, path: resolvedPath });
 		} catch (err) {
 			return `Error creating directory: ${err instanceof Error ? err.message : String(err)}`;
@@ -1454,7 +1475,7 @@ const downloadFileTool = tool({
 	execute: async (args): Promise<string> => {
 		try {
 			const resolvedPath = validatePath(args.destination);
-			await mkdir(path.dirname(resolvedPath), { recursive: true });
+			await ensureDir(path.dirname(resolvedPath));
 
 			let insecureTls = false;
 			let response: Response;
@@ -1666,7 +1687,7 @@ const archiveTool = tool({
 					return JSON.stringify({ error: "sources is required for create action" });
 				}
 
-				await mkdir(path.dirname(resolvedArchive), { recursive: true });
+				await ensureDir(path.dirname(resolvedArchive));
 
 				if (args.format === "zip") {
 					const { default: archiver } = await import("archiver");
@@ -1721,7 +1742,7 @@ const archiveTool = tool({
 				const dest = args.destination
 					? validatePath(args.destination)
 					: path.dirname(resolvedArchive);
-				await mkdir(dest, { recursive: true });
+				await ensureDir(dest);
 
 				if (args.format === "zip" || resolvedArchive.endsWith(".zip")) {
 					const { default: extractZip } = await import("extract-zip");

@@ -5,6 +5,7 @@ import { MessageBubble, type Message } from "./message-bubble";
 import { MessageActionsProvider } from "./message-actions-context";
 import { AgentAvatar } from "@/components/ui/agent-avatar";
 import { useChatStore } from "@/stores/chat-store";
+import { ToolCallFeed } from "./tool-call-feed";
 
 // Error boundary that catches rendering errors in individual messages
 // and shows a fallback instead of crashing the entire chat panel.
@@ -92,6 +93,7 @@ export function MessageList({
   showModelName = false,
 }: MessageListProps) {
   const isCompacting = useChatStore((s) => s.isCompacting);
+  const pmActivityLog = useChatStore((s) => s.pmActivityLog);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
@@ -339,6 +341,12 @@ export function MessageList({
             </div>
           )}
 
+          {showTypingDots && pmActivityLog.length > 0 && (
+            <div className="px-4 pb-2 overflow-hidden">
+              <PmActivityFeed events={pmActivityLog} />
+            </div>
+          )}
+
           {showWaitingRow && (
             <div className="px-4 py-2 overflow-hidden">
               <WaitingRow />
@@ -465,6 +473,24 @@ export function TypingRow() {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Live, ephemeral indicator of the PM's own direct tool calls for the
+ * current turn (list_tasks, read_file, search_content, etc.) — shown just
+ * below the "Thinking…" indicator so the user can see what the PM is
+ * actually doing instead of a bare spinner. Never persisted: the store
+ * clears this list on stream reset/complete/error, so it vanishes once the
+ * PM finishes replying. Indented (pl-8) to align under the avatar; the
+ * indicator itself (only the most recent call, replacing the previous one)
+ * is shared across every chat surface in the app — see ToolCallFeed.
+ */
+function PmActivityFeed({ events }: { events: Array<{ id: string; toolName: string; isSkill: boolean }> }) {
+  return (
+    <div className="pl-8">
+      <ToolCallFeed toolCalls={events} />
     </div>
   );
 }

@@ -72,6 +72,12 @@ interface ChatState {
   // PM thinking/reasoning text (streamed live, cleared on stream complete)
   pmThinkingText: string;
 
+  // PM's own direct tool calls for the current turn — ephemeral, shown live
+  // under the "Thinking…" indicator (only the most recent call is displayed,
+  // replacing the previous one — see ToolCallFeed) and cleared on stream
+  // reset/complete/error.
+  pmActivityLog: Array<{ id: string; toolName: string; isSkill: boolean }>;
+
   // Pending shell approval requests (shown inline in chat)
   shellApprovalRequests: ShellApprovalRequest[];
 
@@ -231,6 +237,7 @@ const initialState = {
   activeInlineAgent: null as ActiveInlineAgent | null,
   runningAgentCount: 0,
   pmThinkingText: "",
+  pmActivityLog: [] as Array<{ id: string; toolName: string; isSkill: boolean }>,
   shellApprovalRequests: [] as ShellApprovalRequest[],
   pmPending: false,
   isCompacting: false,
@@ -307,6 +314,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       streamingMessageId: null,
       streamingContent: "",
       pmThinkingText: "",
+      pmActivityLog: [],
       // Same leak this whole block guards against, applied to the agent
       // badge/count: runningInlineAgents is gated on activeConversationId in
       // chat-event-handlers.ts, so switching away from a conversation with
@@ -560,7 +568,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     // conversations, review-cycle/issue-fixer agents included).
     const conversationId = get().activeConversationId ?? undefined;
     await rpc.stopGeneration(projectId, conversationId);
-    set({ isStreaming: false, streamingMessageId: null, streamingContent: "", activeAgents: {}, runningInlineAgents: {}, runningAgentCount: 0, activeInlineAgent: null, pmThinkingText: "", pmPending: false });
+    set({ isStreaming: false, streamingMessageId: null, streamingContent: "", activeAgents: {}, runningInlineAgents: {}, runningAgentCount: 0, activeInlineAgent: null, pmThinkingText: "", pmActivityLog: [], pmPending: false });
   },
 
   stopAgent: async (projectId: string, agentName: string) => {
@@ -620,7 +628,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   clearActivity: () => {
-    set({ activeAgents: {}, runningInlineAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0, liveTokensPerSecond: 0, liveTimeToFirstOutputMs: null });
+    set({ activeAgents: {}, runningInlineAgents: {}, activeInlineAgent: null, runningAgentCount: 0, shellApprovalRequests: [], pmThinkingText: "", pmActivityLog: [], pmPending: false, isCompacting: false, liveContextTokens: 0, liveContextLimit: 0, liveTokensPerSecond: 0, liveTimeToFirstOutputMs: null });
   },
 
   // Re-sync activeAgents from backend — called after navigation back to a project page,

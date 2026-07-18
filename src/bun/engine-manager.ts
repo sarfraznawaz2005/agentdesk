@@ -1057,13 +1057,30 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				broadcastToProject(projectId, "messageQueueUpdated", { projectId, conversationId, queue });
 			},
 			onAgentActivity(event) {
-				// Only forward PM thinking events — other activity types were removed in v2
+				// v2 removed all non-thinking activity from the UI; thinking + the PM's
+				// own tool calls (below) are the only two forwarded today.
 				if (event.type === "thinking" && event.data?.text) {
 					broadcastToProject(projectId, "pmThinking", {
 						conversationId: event.conversationId,
 						text: event.data.text,
 						isPartial: event.data.isPartial ?? false,
 					});
+				}
+				// PM's own direct tool calls (list_tasks, read_file, search_content, etc.)
+				// — reinstated as an ephemeral, non-persisted "what is the PM doing right
+				// now" indicator (v2 removed all non-thinking activity from the UI).
+				// Scoped to agentId === "project-manager" so sub-agent tool calls (which
+				// already render permanently via message parts / tool-call-card.tsx) are
+				// never duplicated here.
+				if ((event.type === "tool_call" || event.type === "status_check") && event.agentId === "project-manager") {
+					const toolName = event.data?.toolName;
+					if (typeof toolName === "string") {
+						broadcastToProject(projectId, "pmActivity", {
+							conversationId: event.conversationId,
+							toolName,
+							isSkill: toolName === "read_skill" || toolName === "find_skills",
+						});
+					}
 				}
 			},
 			askUserQuestion: (payload) => askUserQuestion(payload),

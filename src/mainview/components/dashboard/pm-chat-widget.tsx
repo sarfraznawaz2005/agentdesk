@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { MessageSquare, X, Send, Square, Trash2, Loader2, Wrench, Sparkles, Info, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { MessageSquare, X, Send, Square, Trash2, Loader2, Info, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { rpc } from "@/lib/rpc";
@@ -17,6 +17,7 @@ import { QuickAttachBar } from "./quick-attach-bar";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { VoiceInputButton } from "@/components/chat/voice-input-button";
 import { InlineImage } from "@/components/chat/tool-call-card";
+import { ToolCallFeed } from "@/components/chat/tool-call-feed";
 
 // Stable id for the sidebar chat launcher registry (mirrors bg-indigo-600 = #4f46e5).
 const PM_LAUNCHER_ID = "pm";
@@ -777,20 +778,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
             })()}
 
             {/* Tool call indicators — shown while PM is using tools */}
-            {isStreaming && toolCalls.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {toolCalls.map((tc) => (
-                  <div key={tc.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    {tc.isSkill ? (
-                      <Sparkles className="h-3 w-3 text-indigo-400 shrink-0" />
-                    ) : (
-                      <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />
-                    )}
-                    <span className="font-mono truncate">{tc.toolName}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {isStreaming && toolCalls.length > 0 && <ToolCallFeed toolCalls={toolCalls} />}
 
             {/* Thinking indicator — shown while waiting for first token */}
             {isStreaming && !messages.some((m) => m.streaming) && (
@@ -977,16 +965,7 @@ export function PmChatWidget({ visible = true }: { visible?: boolean }) {
                 </div>
               ));
             })()}
-            {isStreaming && toolCalls.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {toolCalls.map((tc) => (
-                  <div key={tc.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    {tc.isSkill ? <Sparkles className="h-3 w-3 text-indigo-400 shrink-0" /> : <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />}
-                    <span className="font-mono truncate">{tc.toolName}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {isStreaming && toolCalls.length > 0 && <ToolCallFeed toolCalls={toolCalls} />}
             {isStreaming && !messages.some((m) => m.streaming) && (
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3">

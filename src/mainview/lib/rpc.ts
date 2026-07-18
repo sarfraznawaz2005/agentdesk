@@ -193,6 +193,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       pmThinking: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:pm-thinking", { detail: payload }));
       },
+      pmActivity: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:pm-activity", { detail: payload }));
+      },
       dashboardPMChunk: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:dashboard-pm-chunk", { detail: payload }));
       },

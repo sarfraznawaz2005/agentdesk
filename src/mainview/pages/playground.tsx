@@ -44,6 +44,7 @@ import {
 import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
 import { MessageParts, type MessagePartData } from "@/components/chat/message-parts";
+import { ToolCallFeed } from "@/components/chat/tool-call-feed";
 import { CodeBlock } from "@/components/chat/code-block";
 import { QuickAttachBar } from "@/components/dashboard/quick-attach-bar";
 import { AttachFileTextButton } from "@/components/chat/attach-file-text-button";
@@ -83,6 +84,21 @@ function toPartData(p: {
     createdAt: new Date().toISOString(),
     agentName: p.agentName,
   };
+}
+
+// Derive the currently in-flight tool call (if any) from the live parts list,
+// for the compact "what's happening right now" indicator shown in the gap
+// between MessageParts cards — full detail is already visible via those
+// cards; this just fills the gap with something more useful than a generic
+// "is working…" spinner.
+function currentRunningTool(parts: MessagePartData[]): { id: string; toolName: string; isSkill: boolean } | null {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    if (p.type === "tool_call" && p.toolState === "running" && p.toolName) {
+      return { id: p.id, toolName: p.toolName, isSkill: p.toolName === "read_skill" || p.toolName === "find_skills" };
+    }
+  }
+  return null;
 }
 
 // Random pick helper for templates whose prompt should vary on each click.
@@ -1016,8 +1032,11 @@ export function PlaygroundPage() {
                 )}
                 {store.running && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Playground Agent is working…
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                    {(() => {
+                      const runningTool = currentRunningTool(store.parts);
+                      return runningTool ? <ToolCallFeed toolCalls={[runningTool]} /> : "Playground Agent is working…";
+                    })()}
                   </div>
                 )}
                 {store.error && !store.running && (

@@ -196,6 +196,14 @@ async function triggerPMAutoContinue(projectId: string, completedTaskTitle: stri
 		// Wait a moment for the review cycle to fully clean up
 		await new Promise((r) => setTimeout(r, 1000));
 
+		// Re-check at fire time, not at dispatch time — the user can click Stop
+		// during this 1s window (or while the review itself was running), and
+		// Stop means stop, full stop, no auto-continuing to the next task.
+		if (eng.isConversationStopped(conversationId)) {
+			console.log(`[ReviewCycle] Conversation ${conversationId} was stopped by user — not auto-continuing after task "${completedTaskTitle}"`);
+			return;
+		}
+
 		// Don't auto-continue if PM is already processing or a write agent is
 		// running elsewhere — read-only agents/code-reviewer never race over
 		// files, so they must not delay dispatching the next task.
@@ -563,6 +571,20 @@ export function notifyTaskInReview(projectId: string, taskId: string): void {
 
 	(async () => {
 		try {
+			// Belt-and-suspenders for the Stop button: the reviewer this function
+			// is about to spawn isn't registered with registerAgentAbort (and so
+			// isn't reachable by abortAgentsForConversation) until deep inside
+			// spawnReviewAgent below — if the user clicks Stop in the window
+			// between the coding agent finishing and the reviewer actually
+			// starting, there is nothing to abort. Catch that case explicitly by
+			// skipping the spawn outright when the conversation was just stopped.
+			const eng = getOrCreateEngine(projectId);
+			const stopCheckConversationId = taskConversations.get(taskId) || eng.getActiveConversationId() || "";
+			if (stopCheckConversationId && eng.isConversationStopped(stopCheckConversationId)) {
+				console.log(`[ReviewCycle] Skipping review spawn for task ${taskId} — conversation ${stopCheckConversationId} was just stopped by the user`);
+				return;
+			}
+
 			const task = await getKanbanTask(taskId);
 			if (!task) {
 				console.warn(`[ReviewCycle] Task ${taskId} not found — skipping review`);

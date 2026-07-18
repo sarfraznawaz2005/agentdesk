@@ -303,6 +303,15 @@ export type WebviewSchema = RPCSchema<{
       isPartial: boolean;
     };
 
+    // PM's own direct tool calls (list_tasks, read_file, search_content, etc.)
+    // — ephemeral, shown live under the "Thinking…" indicator while the PM is
+    // working and cleared by the frontend once the turn ends. Not persisted.
+    pmActivity: {
+      conversationId: string;
+      toolName: string;
+      isSkill: boolean;
+    };
+
     // Dashboard PM chat (floating widget)
     dashboardPMChunk: {
       sessionId: string;

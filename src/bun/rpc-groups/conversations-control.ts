@@ -54,6 +54,16 @@ export const handlers: Record<string, (params: any) => any> = {
 		engines.get(params.projectId)?.stopAll(params.conversationId);
 		if (params.conversationId) {
 			abortAgentsForConversation(params.projectId, params.conversationId);
+			// Clear this conversation's queue server-side, atomically with the
+			// abort — the frontend also clears it via a separate RPC call, but
+			// that's a second, unsequenced round-trip. Relying on it alone let a
+			// backend queue-drain (fired from the abort's own onStreamComplete,
+			// near-synchronously) win the race and silently re-send the queued
+			// message as a brand-new PM turn the Stop click already missed.
+			if (getQueuedMessages(params.projectId, params.conversationId).length > 0) {
+				clearQueueForConversation(params.projectId, params.conversationId);
+				broadcastToWebview("messageQueueUpdated", { projectId: params.projectId, conversationId: params.conversationId, queue: [] });
+			}
 		} else {
 			abortAllAgents(params.projectId);
 		}

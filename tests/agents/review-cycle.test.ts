@@ -31,7 +31,7 @@ mock.module("../../src/bun/engine-manager", () => ({
 	broadcastToWebview: () => {},
 	registerAgentController: () => {},
 	unregisterAgentController: () => {},
-	getOrCreateEngine: () => ({ getActiveConversationId: () => PM_ACTIVE_CONV }),
+	getOrCreateEngine: () => ({ getActiveConversationId: () => PM_ACTIVE_CONV, isConversationStopped: () => false, isProcessing: () => false }),
 	getRunningAgentCount: () => 0,
 	getRunningAgentNames: () => [],
 	getChatScopedAgentNames: () => [],

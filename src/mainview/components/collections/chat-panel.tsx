@@ -8,8 +8,6 @@ import {
 	Square,
 	Trash2,
 	Loader2,
-	Wrench,
-	Sparkles,
 	RefreshCw,
 	Check,
 	Copy,
@@ -31,6 +29,7 @@ import { useCollectionsStore } from "@/stores/collections-store";
 import type { CollectionChatCitationDto } from "../../../shared/rpc/collections";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { VoiceInputButton } from "@/components/chat/voice-input-button";
+import { ToolCallFeed } from "@/components/chat/tool-call-feed";
 
 // Streaming, tool-calling Collections chat widget — mirrors
 // src/mainview/components/dashboard/pm-chat-widget.tsx's feature set (zoom, expand,
@@ -246,16 +245,7 @@ function MessageThread({
 				</div>
 			))}
 
-			{isStreaming && toolCalls.length > 0 && (
-				<div className="flex flex-col gap-1">
-					{toolCalls.map((tc) => (
-						<div key={tc.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-							{tc.isSkill ? <Sparkles className="h-3 w-3 text-primary/70 shrink-0" /> : <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />}
-							<span className="font-mono truncate">{tc.toolName}</span>
-						</div>
-					))}
-				</div>
-			)}
+			{isStreaming && toolCalls.length > 0 && <ToolCallFeed toolCalls={toolCalls} skillIconClassName="text-primary/70" />}
 
 			{isStreaming && !messages.some((m) => m.streaming) && (
 				<div className="flex justify-start">
