@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Star,
+  Copy,
 } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
@@ -425,6 +426,16 @@ function FindWorkingModelsDialog({
     setRunning(false);
   }
 
+  async function handleCopyWorking() {
+    const working = results.filter((r) => r.status === "success").map((r) => r.model);
+    try {
+      await navigator.clipboard.writeText(working.join("\n"));
+      toast("success", working.length > 0 ? `Copied ${working.length} working model${working.length === 1 ? "" : "s"}.` : "No working models to copy yet.");
+    } catch {
+      toast("error", "Failed to copy to clipboard.");
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -433,7 +444,7 @@ function FindWorkingModelsDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md flex flex-col max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>Find Working Models</DialogTitle>
           <DialogDescription>
@@ -454,7 +465,7 @@ function FindWorkingModelsDialog({
             No working models found.
           </div>
         ) : (
-        <div className="max-h-80 overflow-y-auto grid gap-0.5 -mx-1 px-1">
+        <div className="max-h-[32rem] overflow-y-auto grid gap-0.5 -mx-1 px-1">
           {visibleResults.map((r) => (
             <button
               key={r.model}
@@ -484,6 +495,12 @@ function FindWorkingModelsDialog({
         )}
 
         <DialogFooter>
+          {testedCount > 1 && (
+            <Button variant="ghost" onClick={handleCopyWorking} className="sm:mr-auto">
+              <Copy aria-hidden="true" />
+              Copy Working
+            </Button>
+          )}
           {running ? (
             <Button variant="outline" onClick={handleStop}>
               Stop
