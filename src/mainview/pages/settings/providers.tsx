@@ -380,8 +380,9 @@ function FindWorkingModelsDialog({
     // Resume: skip models already resolved from a previous Start/Stop cycle.
     const toTest = results.filter((r) => r.status !== "success" && r.status !== "failed").map((r) => r.model);
     const effectiveApiKey = NO_KEY_PROVIDERS.includes(providerType) ? "public" : apiKey.trim();
-    for (const model of toTest) {
+    for (let i = 0; i < toTest.length; i++) {
       if (cancelledRef.current) break;
+      const model = toTest[i];
       setResults((prev) => prev.map((r) => (r.model === model ? { ...r, status: "testing" } : r)));
       try {
         const result = await rpc.testProviderWithCredentials({
@@ -399,6 +400,12 @@ function FindWorkingModelsDialog({
         setResults((prev) =>
           prev.map((r) => (r.model === model ? { ...r, status: "failed", error: err instanceof Error ? err.message : String(err) } : r))
         );
+      }
+      // Small pacing gap between requests — many providers (esp. free tiers)
+      // cap requests-per-minute, and back-to-back calls risk mistaking a
+      // rate-limit rejection for the model itself not working.
+      if (i < toTest.length - 1 && !cancelledRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
     }
     setRunning(false);
