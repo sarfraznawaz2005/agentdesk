@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.8.5",
+        "title":  "New Model Testing Feature",
+        "changes":  [
+                        "Added a Find Working Models dialog for easier testing of provider models."
+                    ]
+    },
+    {
         "version":  "2.8.3",
         "title":  "Enhanced API Tracking Features",
         "changes":  [
