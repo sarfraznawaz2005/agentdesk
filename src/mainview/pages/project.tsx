@@ -322,7 +322,7 @@ export function ProjectPage() {
         ))}
 
         {/* Agent name + kanban counts — pushed right */}
-        <div className="ml-auto flex items-center gap-4 text-xs font-medium">
+        <div className="ml-auto flex items-center gap-4 text-xs font-medium pr-1">
           {/* Count of agents running in THIS conversation (not other conversations
               in this project, not other projects) — only worth showing once there's
               actually more than one to disambiguate; a single agent is already

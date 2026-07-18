@@ -322,6 +322,186 @@ function ProviderCard({
 }
 
 // ---------------------------------------------------------------------------
+// Find Working Models dialog — tests every discovered model against the
+// provider's live credentials (sequentially, so it doesn't hammer rate
+// limits) and lets the user pick one of the ones that actually respond.
+// ---------------------------------------------------------------------------
+
+interface ModelTestResult {
+  model: string;
+  status: "pending" | "testing" | "success" | "failed";
+  error?: string;
+}
+
+interface FindWorkingModelsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  models: string[];
+  providerType: string;
+  apiKey: string;
+  baseUrl: string;
+  onSelect: (model: string) => void;
+}
+
+function FindWorkingModelsDialog({
+  open,
+  onOpenChange,
+  models,
+  providerType,
+  apiKey,
+  baseUrl,
+  onSelect,
+}: FindWorkingModelsDialogProps) {
+  const [results, setResults] = useState<ModelTestResult[]>([]);
+  const [running, setRunning] = useState(false);
+  const cancelledRef = useRef(false);
+  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Reset (but don't start) whenever the dialog opens — the user kicks off
+  // testing explicitly via the Start button.
+  useEffect(() => {
+    if (!open) return;
+    cancelledRef.current = true;
+    setRunning(false);
+    setResults(models.map((model) => ({ model, status: "pending" })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset once per dialog open, not on every prop identity change
+  }, [open]);
+
+  // Follow the model currently being checked, not just the bottom of the list —
+  // keeps the active row in view as testing progresses through the list.
+  useEffect(() => {
+    const active = results.find((r) => r.status === "testing");
+    if (active) itemRefs.current[active.model]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [results]);
+
+  async function handleStart() {
+    cancelledRef.current = false;
+    setRunning(true);
+    // Resume: skip models already resolved from a previous Start/Stop cycle.
+    const toTest = results.filter((r) => r.status !== "success" && r.status !== "failed").map((r) => r.model);
+    const effectiveApiKey = NO_KEY_PROVIDERS.includes(providerType) ? "public" : apiKey.trim();
+    for (const model of toTest) {
+      if (cancelledRef.current) break;
+      setResults((prev) => prev.map((r) => (r.model === model ? { ...r, status: "testing" } : r)));
+      try {
+        const result = await rpc.testProviderWithCredentials({
+          providerType,
+          apiKey: effectiveApiKey,
+          baseUrl: baseUrl.trim() || undefined,
+          defaultModel: model,
+        });
+        if (cancelledRef.current) break;
+        setResults((prev) =>
+          prev.map((r) => (r.model === model ? { ...r, status: result.success ? "success" : "failed", error: result.error } : r))
+        );
+      } catch (err) {
+        if (cancelledRef.current) break;
+        setResults((prev) =>
+          prev.map((r) => (r.model === model ? { ...r, status: "failed", error: err instanceof Error ? err.message : String(err) } : r))
+        );
+      }
+    }
+    setRunning(false);
+  }
+
+  const testedCount = results.filter((r) => r.status === "success" || r.status === "failed").length;
+  const workingCount = results.filter((r) => r.status === "success").length;
+  const allTested = models.length > 0 && testedCount === models.length;
+  // Once a run has stopped (finished or user-cancelled), the raw per-model
+  // progress is no longer useful — narrow the list down to just the models
+  // that actually worked, since those are the only ones selectable anyway.
+  const finished = !running && testedCount > 0;
+  const visibleResults = finished ? results.filter((r) => r.status === "success") : results;
+
+  function handleStop() {
+    cancelledRef.current = true;
+    setRunning(false);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) cancelledRef.current = true;
+        onOpenChange(v);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Find Working Models</DialogTitle>
+          <DialogDescription>
+            {running
+              ? `Testing models... (${testedCount}/${models.length})`
+              : testedCount === 0
+              ? `${models.length} model${models.length === 1 ? "" : "s"} found. Click Start to test them against your credentials.`
+              : workingCount === 0
+              ? `No working models found${allTested ? "" : " (stopped early)"}.`
+              : `${workingCount} of ${testedCount} tested model${testedCount === 1 ? "" : "s"} responded successfully${
+                  allTested ? "" : " (stopped early)"
+                }. Select one to use as the default model.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        {finished && workingCount === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No working models found.
+          </div>
+        ) : (
+        <div className="max-h-80 overflow-y-auto grid gap-0.5 -mx-1 px-1">
+          {visibleResults.map((r) => (
+            <button
+              key={r.model}
+              ref={(el) => { itemRefs.current[r.model] = el; }}
+              type="button"
+              disabled={r.status !== "success"}
+              onClick={() => {
+                onSelect(r.model);
+                onOpenChange(false);
+              }}
+              title={r.error}
+              className={cn(
+                "flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors",
+                r.status === "success" ? "hover:bg-muted cursor-pointer" : "cursor-default"
+              )}
+            >
+              <span className={cn("truncate font-mono text-xs", r.status === "failed" && "text-muted-foreground line-through")}>
+                {r.model}
+              </span>
+              {r.status === "pending" && <span className="text-xs text-muted-foreground shrink-0">Pending</span>}
+              {r.status === "testing" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" aria-hidden="true" />}
+              {r.status === "success" && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" aria-hidden="true" />}
+              {r.status === "failed" && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+        )}
+
+        <DialogFooter>
+          {running ? (
+            <Button variant="outline" onClick={handleStop}>
+              Stop
+            </Button>
+          ) : allTested ? (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleStart} disabled={models.length === 0}>
+                {testedCount > 0 ? "Resume" : "Start"}
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Add / Edit dialog
 // ---------------------------------------------------------------------------
 
@@ -349,6 +529,7 @@ function ProviderDialog({
   const [loadingModels, setLoadingModels] = useState(false);
   const [toolChoiceWarning, setToolChoiceWarning] = useState<string | null>(null);
   const [claudeSubscriptionEnabled, setClaudeSubscriptionEnabled] = useState(false);
+  const [findWorkingOpen, setFindWorkingOpen] = useState(false);
   // Read inside the model-auto-fetch effect below without making it a dependency —
   // that effect should only re-run on providerType/apiKey/baseUrl changes, not on
   // every keystroke in the Default Model field.
@@ -687,10 +868,25 @@ function ProviderDialog({
 
           {/* Default Model */}
           <div className="grid gap-1.5">
-            <Label htmlFor="provider-default-model">
-              Default Model
-              {loadingModels && <span className="ml-2 text-xs text-muted-foreground font-normal">loading...</span>}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="provider-default-model">
+                Default Model
+                {loadingModels && <span className="ml-2 text-xs text-muted-foreground font-normal">loading...</span>}
+              </Label>
+              <button
+                type="button"
+                onClick={() => setFindWorkingOpen(true)}
+                disabled={
+                  saving ||
+                  loadingModels ||
+                  availableModels.length === 0 ||
+                  (!NO_KEY_PROVIDERS.includes(form.providerType) && !form.apiKey.trim())
+                }
+                className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline"
+              >
+                Find Working
+              </button>
+            </div>
             <ModelInput
               id="provider-default-model"
               placeholder={loadingModels ? "Loading models..." : "Type or select a model..."}
@@ -760,6 +956,16 @@ function ProviderDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <FindWorkingModelsDialog
+        open={findWorkingOpen}
+        onOpenChange={setFindWorkingOpen}
+        models={availableModels}
+        providerType={form.providerType}
+        apiKey={form.apiKey}
+        baseUrl={form.baseUrl}
+        onSelect={(model) => updateField("defaultModel", model)}
+      />
     </Dialog>
   );
 }
