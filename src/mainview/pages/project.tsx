@@ -328,7 +328,11 @@ export function ProjectPage() {
               actually more than one to disambiguate; a single agent is already
               unambiguous from the name badge alone. */}
           {runningAgentCount > 1 && (
-            <span className="text-muted-foreground tabular-nums" title={`${runningAgentCount} agents running in this conversation`}>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold tabular-nums">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
+              </span>
               {runningAgentCount} running
             </span>
           )}
@@ -352,7 +356,7 @@ export function ProjectPage() {
             );
           })()}
           {runningAgentsList.length > 1 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {runningAgentsList.map((agent) => {
                 const agentName = agent.agentName ?? "";
                 const displayName = agent.agentDisplayName ?? agentName;

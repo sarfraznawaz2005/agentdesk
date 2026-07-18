@@ -648,7 +648,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
             {thinkingContent && !isUser && (
               <div
                 className={cn(
-                  "bg-background border px-4 pt-2 pb-2.5 rounded-t-lg",
+                  "bg-background border border-l-[3px] border-l-slate-600 px-4 pt-2 pb-2.5 rounded-t-lg",
                   isStreaming ? "border-amber-500 border-b-border" : "border-border",
                 )}
               >
@@ -664,7 +664,7 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                   : isUser
                   ? "bg-indigo-600 text-white rounded-2xl rounded-br-md"
                   : cn(
-                      "bg-background border text-foreground",
+                      "bg-background border border-l-[3px] border-l-slate-600 text-foreground",
                       isStreaming ? "border-amber-500" : "border-border",
                       thinkingContent
                         ? "rounded-b-lg border-t-0"

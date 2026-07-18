@@ -434,16 +434,27 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 
 	const sorted = [...parts].sort((a, b) => a.sortOrder - b.sortOrder);
 
-	// Group into segments: agent blocks (start → end) and top-level parts
+	// Group into segments: agent blocks (start → end) and consecutive runs of
+	// the PM's own top-level parts (grouped so they render as one bordered card,
+	// same shape as an agent block).
 	const segments: Array<
 		| { type: "agent_block"; agentName: string; start: MessagePartData; end?: MessagePartData; children: MessagePartData[] }
-		| { type: "part"; part: MessagePartData }
+		| { type: "pm_group"; parts: MessagePartData[] }
 	> = [];
 
 	let currentBlock: { agentName: string; start: MessagePartData; children: MessagePartData[] } | null = null;
+	let pmGroup: MessagePartData[] = [];
+
+	const flushPmGroup = () => {
+		if (pmGroup.length > 0) {
+			segments.push({ type: "pm_group", parts: pmGroup });
+			pmGroup = [];
+		}
+	};
 
 	for (const part of sorted) {
 		if (part.type === "agent_start") {
+			flushPmGroup();
 			// Close any open block
 			if (currentBlock) {
 				segments.push({ type: "agent_block", ...currentBlock, end: undefined });
@@ -454,18 +465,19 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 				segments.push({ type: "agent_block", ...currentBlock, end: part });
 				currentBlock = null;
 			} else {
-				segments.push({ type: "part", part });
+				pmGroup.push(part);
 			}
 		} else if (currentBlock) {
 			currentBlock.children.push(part);
 		} else {
-			segments.push({ type: "part", part });
+			pmGroup.push(part);
 		}
 	}
 	// Close any trailing open block
 	if (currentBlock) {
 		segments.push({ type: "agent_block", ...currentBlock, end: undefined });
 	}
+	flushPmGroup();
 
 	return (
 		<div className="space-y-0.5">
@@ -515,7 +527,16 @@ export const MessageParts = memo(function MessageParts({ parts, onStopAgent, has
 						</div>
 					);
 				}
-				return <PartRenderer key={seg.part.id} part={seg.part} />;
+				return (
+					<div
+						key={seg.parts[0].id}
+						className="border border-border border-l-[3px] border-l-slate-600 rounded-lg my-2 overflow-hidden pl-3 pr-2 py-1"
+					>
+						{seg.parts.map((p) => (
+							<PartRenderer key={p.id} part={p} />
+						))}
+					</div>
+				);
 			})}
 		</div>
 	);
