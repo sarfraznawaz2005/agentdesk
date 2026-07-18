@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.8.2",
+        "title":  "Enhanced User Experience",
+        "changes":  [
+                        "Improved agent engine to better handle user stop actions and enhance the activity feed.",
+                        "Added workspace path handling and an \u0027Open in Explorer\u0027 button to the context panel."
+                    ]
+    },
+    {
         "version":  "2.8.1",
         "title":  "Enhanced User Experience",
         "changes":  [
