@@ -11,6 +11,7 @@ import {
   EyeOff,
   Star,
   Copy,
+  RefreshCw,
 } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
@@ -341,6 +342,11 @@ interface FindWorkingModelsDialogProps {
   providerType: string;
   apiKey: string;
   baseUrl: string;
+  // Only set when editing an already-saved provider — Disable Non-Working
+  // writes to the model_preferences table, which is keyed by a real
+  // provider id, so there's nothing to disable for a provider that hasn't
+  // been saved yet.
+  providerId?: string;
   onSelect: (model: string) => void;
 }
 
@@ -351,10 +357,17 @@ function FindWorkingModelsDialog({
   providerType,
   apiKey,
   baseUrl,
+  providerId,
   onSelect,
 }: FindWorkingModelsDialogProps) {
   const [results, setResults] = useState<ModelTestResult[]>([]);
   const [running, setRunning] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  // Current enabled/disabled state (Models settings) for this provider's
+  // models, keyed by model id — lets the dialog notice when a model that was
+  // previously disabled (e.g. via a past Disable Non-Working click) now
+  // tests successfully, so it can offer to flip it back on.
+  const [enabledMap, setEnabledMap] = useState<Record<string, boolean>>({});
   const cancelledRef = useRef(false);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -367,6 +380,22 @@ function FindWorkingModelsDialog({
     setResults(models.map((model) => ({ model, status: "pending" })));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset once per dialog open, not on every prop identity change
   }, [open]);
+
+  // Pull current Models-settings enablement for this provider so the
+  // "Re-enable" affordance can tell a previously-disabled model apart from
+  // one that's already enabled.
+  useEffect(() => {
+    if (!open || !providerId) { setEnabledMap({}); return; }
+    rpc.getModelPreferences()
+      .then((rows) => {
+        const map: Record<string, boolean> = {};
+        for (const r of rows) {
+          if (r.providerId === providerId) map[r.modelId] = r.isEnabled;
+        }
+        setEnabledMap(map);
+      })
+      .catch(() => setEnabledMap({}));
+  }, [open, providerId]);
 
   // Follow the model currently being checked, not just the bottom of the list —
   // keeps the active row in view as testing progresses through the list.
@@ -436,6 +465,53 @@ function FindWorkingModelsDialog({
     }
   }
 
+  // Models this run found failing that are currently enabled in Models
+  // settings, and models it found working that are currently disabled there
+  // (most likely from a past sync, before the provider's models changed) —
+  // together these are exactly what a sync needs to change.
+  const modelsToDisable = providerId
+    ? results.filter((r) => r.status === "failed" && enabledMap[r.model] !== false).map((r) => r.model)
+    : [];
+  const modelsToEnable = providerId
+    ? results.filter((r) => r.status === "success" && enabledMap[r.model] === false).map((r) => r.model)
+    : [];
+
+  // Reconciles Models settings with this run's results in one step: disables
+  // whatever just failed, re-enables whatever just started working again, so
+  // the chat model picker only ever offers models known to actually respond.
+  async function handleSyncModels() {
+    if (!providerId) return;
+    if (modelsToDisable.length === 0 && modelsToEnable.length === 0) {
+      toast("success", "Models settings already match these results.");
+      return;
+    }
+    setSyncing(true);
+    const [disableRes, enableRes] = await Promise.all([
+      modelsToDisable.length > 0
+        ? rpc.setModelsEnabled(providerId, modelsToDisable, false).catch(() => null)
+        : Promise.resolve({ success: true }),
+      modelsToEnable.length > 0
+        ? rpc.setModelsEnabled(providerId, modelsToEnable, true).catch(() => null)
+        : Promise.resolve({ success: true }),
+    ]);
+    setSyncing(false);
+    if (disableRes?.success && enableRes?.success) {
+      setEnabledMap((prev) => {
+        const next = { ...prev };
+        for (const m of modelsToDisable) next[m] = false;
+        for (const m of modelsToEnable) next[m] = true;
+        return next;
+      });
+      const parts: string[] = [];
+      if (modelsToDisable.length > 0) parts.push(`disabled ${modelsToDisable.length} non-working`);
+      if (modelsToEnable.length > 0) parts.push(`re-enabled ${modelsToEnable.length} working`);
+      const total = modelsToDisable.length + modelsToEnable.length;
+      toast("success", `${parts.join(", ")} model${total === 1 ? "" : "s"} in Models settings.`);
+    } else {
+      toast("error", "Failed to update some models.");
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -444,7 +520,7 @@ function FindWorkingModelsDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-md flex flex-col max-h-[85vh]">
+      <DialogContent className="sm:max-w-lg flex flex-col max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>Find Working Models</DialogTitle>
           <DialogDescription>
@@ -494,13 +570,39 @@ function FindWorkingModelsDialog({
         </div>
         )}
 
-        <DialogFooter>
-          {testedCount > 1 && (
-            <Button variant="ghost" onClick={handleCopyWorking} className="sm:mr-auto">
+        {testedCount > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleCopyWorking}>
               <Copy aria-hidden="true" />
               Copy Working
             </Button>
-          )}
+            {providerId ? (
+              <Tip
+                content="Disables models that just failed and re-enables ones that just started working again, in Models settings."
+                side="top"
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSyncModels}
+                  disabled={syncing || (modelsToDisable.length === 0 && modelsToEnable.length === 0)}
+                >
+                  {syncing ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+                  Sync Working Models
+                </Button>
+              </Tip>
+            ) : (
+              <Tip content="Save the provider first to manage its models" side="top">
+                <Button variant="ghost" size="sm" disabled>
+                  <RefreshCw aria-hidden="true" />
+                  Sync Working Models
+                </Button>
+              </Tip>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
           {running ? (
             <Button variant="outline" onClick={handleStop}>
               Stop
@@ -988,6 +1090,7 @@ function ProviderDialog({
         providerType={form.providerType}
         apiKey={form.apiKey}
         baseUrl={form.baseUrl}
+        providerId={editingProvider?.id}
         onSelect={(model) => updateField("defaultModel", model)}
       />
     </Dialog>

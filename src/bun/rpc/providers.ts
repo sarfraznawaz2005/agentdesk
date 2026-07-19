@@ -212,6 +212,38 @@ export async function testProviderWithCredentialsHandler(params: {
 }
 
 /**
+ * Test one specific model against a saved provider's stored credentials
+ * (Models settings tab's per-row "Test Connection" icon). Unlike
+ * testProviderHandler, this does not touch the provider's persisted isValid
+ * flag — that column reflects the provider's own default model, not an
+ * arbitrary one tested here.
+ */
+export async function testProviderModelHandler(params: {
+	providerId: string;
+	modelId: string;
+}): Promise<{ success: boolean; error?: string }> {
+	const rows = await db.select().from(aiProviders).where(eq(aiProviders.id, params.providerId));
+	if (rows.length === 0) {
+		return { success: false, error: "Provider not found" };
+	}
+	const row = rows[0];
+	const config = {
+		id: row.id,
+		name: row.name,
+		providerType: row.providerType,
+		apiKey: row.apiKey,
+		baseUrl: row.baseUrl,
+		defaultModel: params.modelId,
+	};
+	try {
+		const adapter = createProviderAdapter(config);
+		return await adapter.testConnection();
+	} catch (err) {
+		return { success: false, error: err instanceof Error ? err.message : String(err) };
+	}
+}
+
+/**
  * Load a provider from the DB, call its adapter's testConnection(), then
  * persist the result back into the isValid column.
  */

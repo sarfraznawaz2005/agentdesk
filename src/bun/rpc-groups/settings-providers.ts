@@ -49,6 +49,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	listProviderModelsById: (params) => providersRpc.listProviderModelsByIdHandler(params.providerId),
 	getProviderApiKey: (params) => providersRpc.getProviderApiKeyHandler(params.id),
 	testProviderWithCredentials: (params) => providersRpc.testProviderWithCredentialsHandler(params),
+	testProviderModel: (params) => providersRpc.testProviderModelHandler(params),
 	deleteProvider: async (params) => {
 		const result = await providersRpc.deleteProviderHandler(params.id);
 		if (result.success) broadcastToWebview("providersChanged", { reason: "deleted" });

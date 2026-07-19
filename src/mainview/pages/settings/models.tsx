@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Star, X } from "lucide-react";
+import { Loader2, Search, Star, Wifi, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,8 @@ export function ModelsSettings() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTypeFilters, setActiveTypeFilters] = useState<Set<ModelType>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [testingKey, setTestingKey] = useState<string | null>(null);
 
   // ---- Load on mount -------------------------------------------------------
 
@@ -156,6 +159,77 @@ export function ModelsSettings() {
     if (!res?.success) toast("error", "Failed to update models.");
   }, []);
 
+  // ---- Multi-select + bulk enable/disable -----------------------------------
+  // Independent of the per-provider "enable all" switch above — this lets the
+  // user hand-pick an arbitrary set of models (across providers) and flip them
+  // together, e.g. after spotting a batch of dead ones in the list.
+
+  const toggleSelect = useCallback((key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectProvider = useCallback((providerId: string, modelIds: string[], checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const m of modelIds) {
+        const key = prefKey(providerId, m);
+        if (checked) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const bulkSetEnabled = useCallback(async (enabled: boolean) => {
+    const byProvider = new Map<string, string[]>();
+    for (const key of selected) {
+      const sep = key.indexOf("|");
+      const providerId = key.slice(0, sep);
+      const model = key.slice(sep + 1);
+      const arr = byProvider.get(providerId) ?? [];
+      arr.push(model);
+      byProvider.set(providerId, arr);
+    }
+    setPrefs((prev) => {
+      const next = { ...prev };
+      for (const key of selected) {
+        next[key] = { isEnabled: enabled, isFavorite: prev[key]?.isFavorite ?? false };
+      }
+      return next;
+    });
+    const results = await Promise.all(
+      [...byProvider.entries()].map(([providerId, modelIds]) =>
+        rpc.setModelsEnabled(providerId, modelIds, enabled).catch(() => null),
+      ),
+    );
+    if (results.some((r) => !r?.success)) toast("error", "Failed to update some models.");
+    setSelected(new Set());
+  }, [selected]);
+
+  // ---- Per-model connection test ---------------------------------------------
+
+  const handleTestModel = useCallback(async (providerId: string, model: string) => {
+    const key = prefKey(providerId, model);
+    setTestingKey(key);
+    try {
+      const result = await rpc.testProviderModel({ providerId, modelId: model });
+      if (result.success) {
+        toast("success", `"${model}" is working.`);
+      } else {
+        toast("error", result.error ? `Test failed: ${result.error}` : `"${model}" failed to respond.`);
+      }
+    } catch {
+      toast("error", "Connection test failed.");
+    } finally {
+      setTestingKey(null);
+    }
+  }, []);
+
   // ---- Type + search filter --------------------------------------------------
 
   const getModelType = useCallback(
@@ -207,6 +281,15 @@ export function ModelsSettings() {
       // DB insertion order, which is meaningless to a user.
       .sort((a, b) => a.providerName.localeCompare(b.providerName, undefined, { sensitivity: "base" }));
   }, [providers, search, activeTypeFilters, getModelType]);
+
+  // Every model key currently visible under the active search/type filters,
+  // spanning all providers — backs the "select all visible" shortcut so bulk
+  // enable/disable isn't limited to one provider at a time.
+  const filteredKeys = useMemo(
+    () => filtered.flatMap((p) => p.models.map((m) => prefKey(p.providerId, m))),
+    [filtered],
+  );
+  const allFilteredSelected = filteredKeys.length > 0 && filteredKeys.every((k) => selected.has(k));
 
   // Enabled/total counts from the FULL (unfiltered) provider lists, so the
   // headline + per-provider tallies stay stable while searching. A model counts
@@ -317,6 +400,41 @@ export function ModelsSettings() {
         </div>
       )}
 
+      {/* Bulk select bar — a "select all visible" shortcut spanning every
+          provider currently shown, plus bulk Enable/Disable once something's
+          selected. Always present (not just once something's selected) so
+          the cross-provider select-all is reachable in one click. */}
+      {filteredKeys.length > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/40">
+          <input
+            type="checkbox"
+            aria-label={allFilteredSelected ? "Deselect all visible models" : "Select all visible models"}
+            checked={allFilteredSelected}
+            ref={(el) => {
+              if (el) el.indeterminate = !allFilteredSelected && selected.size > 0;
+            }}
+            onChange={(e) => setSelected(e.target.checked ? new Set(filteredKeys) : new Set())}
+            className="h-4 w-4 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <span className="text-sm text-muted-foreground">
+            {selected.size > 0 ? `${selected.size} model${selected.size === 1 ? "" : "s"} selected` : "Select all visible"}
+          </span>
+          {selected.size > 0 && (
+            <div className="ml-auto flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => bulkSetEnabled(true)}>
+                Enable
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => bulkSetEnabled(false)}>
+                Disable
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                Clear
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {providers.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No providers configured. Add one under the Providers tab first.
@@ -336,15 +454,32 @@ export function ModelsSettings() {
           models: provider.models,
         };
         const allEnabled = counts.total > 0 && counts.enabled === counts.total;
+        const providerModelKeys = provider.models.map((m) => prefKey(provider.providerId, m));
+        const allSelected = providerModelKeys.length > 0 && providerModelKeys.every((k) => selected.has(k));
+        const someSelected = providerModelKeys.some((k) => selected.has(k));
         return (
         <div key={provider.providerId}>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold text-foreground">
-              {provider.providerName}
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                ({counts.enabled} enabled out of {counts.total})
-              </span>
-            </h4>
+            <div className="flex items-center gap-2">
+              {provider.models.length > 0 && (
+                <input
+                  type="checkbox"
+                  aria-label={`Select all ${provider.providerName} models`}
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allSelected && someSelected;
+                  }}
+                  onChange={(e) => toggleSelectProvider(provider.providerId, provider.models, e.target.checked)}
+                  className="h-4 w-4 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              )}
+              <h4 className="text-sm font-semibold text-foreground">
+                {provider.providerName}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  ({counts.enabled} enabled out of {counts.total})
+                </span>
+              </h4>
+            </div>
             {counts.total > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
@@ -367,10 +502,20 @@ export function ModelsSettings() {
                   const pref = prefs[prefKey(provider.providerId, model)];
                   const enabled = pref?.isEnabled ?? true;
                   const favorite = pref?.isFavorite ?? false;
+                  const key = prefKey(provider.providerId, model);
+                  const isSelected = selected.has(key);
+                  const isTesting = testingKey === key;
                   return (
                     <div key={model}>
                       {i > 0 && <Separator />}
                       <div className="flex items-center gap-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${model}`}
+                          checked={isSelected}
+                          onChange={() => toggleSelect(key)}
+                          className="shrink-0 h-4 w-4 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
                         <button
                           type="button"
                           aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
@@ -391,6 +536,20 @@ export function ModelsSettings() {
                           {model}
                         </span>
                         <ModelTypeBadge type={types[provider.providerId]?.[model]} />
+                        <button
+                          type="button"
+                          aria-label={`Test connection for ${model}`}
+                          title="Test connection"
+                          disabled={isTesting}
+                          onClick={() => handleTestModel(provider.providerId, model)}
+                          className="shrink-0 p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isTesting ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
+                          )}
+                        </button>
                         <Switch
                           checked={enabled}
                           onCheckedChange={(v) => setEnabled(provider.providerId, model, v)}

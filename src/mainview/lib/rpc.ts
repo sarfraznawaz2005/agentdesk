@@ -503,6 +503,10 @@ export const rpc = {
   testProviderWithCredentials: (params: { providerType: string; apiKey: string; baseUrl?: string; defaultModel?: string }) =>
     electroviewRpc.request.testProviderWithCredentials(params),
 
+  /** Test one specific model of a saved provider (Models tab's per-row Test Connection icon). */
+  testProviderModel: (params: { providerId: string; modelId: string }) =>
+    electroviewRpc.request.testProviderModel(params),
+
   /** List available models from a provider (without saving). */
   listProviderModels: (params: {
     providerType: string;

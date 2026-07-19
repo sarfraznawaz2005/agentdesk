@@ -47,6 +47,10 @@ export type ProvidersRequests = {
     params: { providerType: string; apiKey: string; baseUrl?: string; defaultModel?: string };
     response: { success: boolean; error?: string };
   };
+  testProviderModel: {
+    params: { providerId: string; modelId: string };
+    response: { success: boolean; error?: string };
+  };
   getConnectedProviderModels: {
     params: Record<string, never>;
     response: Array<{
