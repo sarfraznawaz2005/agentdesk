@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.8.7",
+        "title":  "New Model Testing Feature",
+        "changes":  [
+                        "Added model testing functionality to the provider settings page."
+                    ]
+    },
+    {
         "version":  "2.8.6",
         "title":  "New Features and Improvements",
         "changes":  [
