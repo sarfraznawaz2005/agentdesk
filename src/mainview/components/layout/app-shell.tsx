@@ -23,6 +23,7 @@ import { HeaderProvider, useHeaderContext } from "@/lib/header-context";
 import { ProjectSwitcher } from "./project-switcher";
 import { ProjectAvatar } from "@/components/project-avatar";
 import { AlwaysMountedInbox } from "@/components/freelance/always-mounted-inbox";
+import { AmbientScreen } from "@/components/ambient/ambient-screen";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { IS_REMOTE } from "@/lib/remote-transport";
 import { useIsMobile } from "@/lib/use-is-mobile";
@@ -244,7 +245,7 @@ function AppShellContent() {
   // they send a message, and can configure a provider directly in Quick
   // Chat's own Settings → AI tab — no need to leave the window.
   useEffect(() => {
-    if (location.pathname === "/onboarding" || location.pathname.startsWith("/quick-chat")) {
+    if (location.pathname === "/onboarding" || location.pathname.startsWith("/quick-chat") || location.pathname.startsWith("/ambient-display")) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCheckingFirstLaunch(false);
       return;
@@ -348,6 +349,18 @@ function AppShellContent() {
     );
   }
 
+  // The projected TV/display window (docs/ambient-screen-plan.md Subsystem 7)
+  // is a passive, kiosk-style view with no user account/chat context of its
+  // own — no Sidebar/TopNav, no dialogs/toasts (nothing there could ever
+  // resolve them, unlike Quick Chat's real chat session above).
+  if (location.pathname.startsWith("/ambient-display")) {
+    return (
+      <div className="h-screen overflow-hidden">
+        <Outlet />
+      </div>
+    );
+  }
+
   if (checkingFirstLaunch) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -444,6 +457,7 @@ function AppShellContent() {
       <ChatLauncherFooter sidebarCollapsed={sidebarCollapsed} isMobile={isMobile} />
       {/* Global "maintenance underway" overlay — sits above every page. */}
       <MaintenanceOverlay />
+      <AmbientScreen />
     </div>
     </TooltipProvider>
   );

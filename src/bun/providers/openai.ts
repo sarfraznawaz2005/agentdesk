@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateText } from "ai";
+import { generateText, generateSpeech } from "ai";
 import type { LanguageModel } from "ai";
 import type { ProviderAdapter, ProviderConfig } from "./types";
 import { getDefaultModel } from "./models";
@@ -135,6 +135,18 @@ export class OpenAIAdapter implements ProviderAdapter {
 	getFilesApi() {
 		if (this.isCustom) return undefined;
 		return createOpenAI({ apiKey: this.config.apiKey, headers: PROVIDER_HEADERS }).files();
+	}
+
+	/**
+	 * Only real OpenAI exposes a speech/TTS endpoint through @ai-sdk/openai's
+	 * `.speech()` — custom/OpenAI-compatible backends (§6.7) have no
+	 * equivalent, same reasoning as getFilesApi() above.
+	 */
+	async generateSpeech(modelId: string, text: string): Promise<{ base64: string; mimeType: string }> {
+		if (this.isCustom) throw new Error("This provider doesn't support speech generation.");
+		const provider = createOpenAI({ apiKey: this.config.apiKey, headers: PROVIDER_HEADERS });
+		const result = await generateSpeech({ model: provider.speech(modelId), text });
+		return { base64: result.audio.base64, mimeType: result.audio.mediaType };
 	}
 
 	async listModels(): Promise<string[]> {

@@ -24,7 +24,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, beforeTitle, af
   return (
     <header
       className={cn(
-        "relative h-14 shrink-0 flex items-center justify-between px-4 md:px-6",
+        "relative h-14 shrink-0 grid grid-cols-[1fr_minmax(0,1fr)_1fr] items-center gap-4 px-4 md:px-6",
         "border-b border-border bg-background/60 backdrop-blur-sm"
       )}
     >
@@ -36,7 +36,7 @@ export function TopNav({ title, workspacePath, dataPath, phrase, beforeTitle, af
           }
         `}</style>
       )}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 min-w-0 justify-self-start">
         {onMenuClick && (
           <button
             type="button"
@@ -75,26 +75,26 @@ export function TopNav({ title, workspacePath, dataPath, phrase, beforeTitle, af
         )}
         {afterTitle}
       </div>
-      {phrase && (
-        <span
-          className="max-md:hidden absolute left-1/2 -translate-x-1/2 text-lg font-bold pointer-events-none select-none whitespace-nowrap"
-          style={{
-            backgroundImage: "linear-gradient(90deg, #3b82f6 0%, #ec4899 35%, #a855f7 65%, #3b82f6 100%)",
-            backgroundSize: "200% auto",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            color: "transparent",
-            animation: "gradientSweep 3s linear infinite",
-          }}
-        >
-          {phrase}
-        </span>
-      )}
-      {children && (
-        <div className="flex items-center gap-3 shrink-0 ml-4">
-          {children}
-        </div>
-      )}
+      <div className="min-w-0 text-center">
+        {phrase && (
+          <span
+            className="max-md:hidden inline-block max-w-full truncate align-middle text-lg font-bold pointer-events-none select-none"
+            style={{
+              backgroundImage: "linear-gradient(90deg, #3b82f6 0%, #ec4899 35%, #a855f7 65%, #3b82f6 100%)",
+              backgroundSize: "200% auto",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+              animation: "gradientSweep 3s linear infinite",
+            }}
+          >
+            {phrase}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 justify-self-end min-w-0">
+        {children}
+      </div>
     </header>
   );
 }

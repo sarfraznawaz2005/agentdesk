@@ -182,6 +182,8 @@ const SHELL_INPUT_SCHEMA = z.object({
 const SHELL_CONTEXT_SCHEMA = z.object({
 	projectId: z.string().optional(),
 	conversationId: z.string().optional(),
+	agentName: z.string().optional(),
+	agentDisplayName: z.string().optional(),
 });
 
 function makeShellTool(autoApprove: boolean) {
@@ -193,13 +195,18 @@ function makeShellTool(autoApprove: boolean) {
 			const { command, workingDirectory, timeout = 300_000 } = rawArgs as z.infer<typeof SHELL_INPUT_SCHEMA>;
 			// Supplied by agent-loop.ts's toolsContext (AI SDK v7 runtime-context
 			// mechanism, replacing an earlier hidden-args-mutation hack) so the
-			// approval gate below resolves THIS agent's actual project/conversation,
-			// not whichever project's engine the backend happened to touch most
-			// recently. Other call sites (freelance/skills-search/recommendations)
-			// use the autoApprove=true variant, which never reads these — optional
-			// here so passing no context there stays a no-op.
+			// approval gate below resolves THIS agent's actual project/conversation
+			// and identity — not whichever project's engine the backend happened to
+			// touch most recently, and not a generic "Sub-Agent" placeholder (the
+			// approval request needs the real agent name so the Activity Log can
+			// color-code it the same as start/complete entries). Other call sites
+			// (freelance/skills-search/recommendations) use the autoApprove=true
+			// variant, which never reads these — optional here so passing no
+			// context there stays a no-op.
 			const projectId = context?.projectId ?? "";
 			const conversationId = context?.conversationId ?? "";
+			const agentId = context?.agentName ?? "sub-agent";
+			const agentDisplayName = context?.agentDisplayName || context?.agentName || "Sub-Agent";
 
 			// --- Safety check ---------------------------------------------------
 			if (isBlockedCommand(command)) {
@@ -209,7 +216,7 @@ function makeShellTool(autoApprove: boolean) {
 			// --- Approval gate (skipped for freelance/auto-approved contexts) ----
 			if (!autoApprove && approvalHandler && !sessionAutoApprovedProjects.has(projectId)) {
 				try {
-					const decision = await approvalHandler(command, "sub-agent", "Sub-Agent", projectId, conversationId);
+					const decision = await approvalHandler(command, agentId, agentDisplayName, projectId, conversationId);
 					if (decision === "deny") {
 						return JSON.stringify({ exitCode: null, stdout: "", stderr: "Command denied by user" });
 					}

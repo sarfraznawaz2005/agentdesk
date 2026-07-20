@@ -39,4 +39,12 @@ export interface ProviderAdapter {
 	 * OpenCode, etc.), which have no such endpoint.
 	 */
 	getFilesApi?(): FilesV4 | undefined;
+	/**
+	 * Generate speech audio from text using a TTS-capable model. Optional —
+	 * omitted entirely by providers with no speech-generation capability
+	 * (same pattern as generateImage above). Backs Ambient Mode's
+	 * configurable TTS model setting (docs/ambient-pm-voice-plan.md
+	 * Subsystem 6) — only real OpenAI implements this today.
+	 */
+	generateSpeech?(modelId: string, text: string): Promise<{ base64: string; mimeType: string }>;
 }

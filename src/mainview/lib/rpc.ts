@@ -118,6 +118,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       kanbanTaskUpdated: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:kanban-task-updated", { detail: payload }));
       },
+      ambientAssistantPart: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:ambient-assistant-part", { detail: payload }));
+      },
       agentSessionComplete: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:agent-session-complete", { detail: payload }));
       },
@@ -141,6 +144,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       collectionEmbeddingModelStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:collection-embedding-model-status", { detail: payload }));
+      },
+      ambientLocalVoiceStatus: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:ambient-local-voice-status", { detail: payload }));
       },
       shellApprovalRequest: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-request", { detail: payload }));
@@ -466,6 +472,35 @@ export const rpc = {
   /** Permanently remove a paired device from the list. */
   deleteRemoteDevice: (id: string) =>
     electroviewRpc.request.deleteDevice({ id }),
+
+  // ---- Ambient Mode — "Project to display" --------------------------------
+
+  /** List connected displays (for the "Project to display" picker). */
+  getAmbientDisplays: () => electroviewRpc.request.getAmbientDisplays({}),
+  /** Open Ambient Mode full-screen on the given display. */
+  openAmbientDisplayWindow: (displayId: number) =>
+    electroviewRpc.request.openAmbientDisplayWindow({ displayId }),
+  /** Close the projected display window, if one is open. */
+  closeAmbientDisplayWindow: () => electroviewRpc.request.closeAmbientDisplayWindow({}),
+  /** Polled snapshot of cross-project activity — used by the projected display window. */
+  getAmbientActivitySnapshot: () => electroviewRpc.request.getAmbientActivitySnapshot({}),
+  /** Ground truth for whether a projected display window is open — the main overlay polls this since the projected window can be closed via its own Exit button too. */
+  getAmbientProjectionState: () => electroviewRpc.request.getAmbientProjectionState({}),
+  /** Ambient Mode's cross-project voice-assistant turn — one question in, one final answer out. Tool-call progress streams separately via the "ambientAssistantPart" push event. `turnId` lets a later barge-in cancel this specific turn via cancelAmbientAssistantTurn. */
+  runAmbientAssistantQuery: (question: string, turnId: string) => electroviewRpc.request.runAmbientAssistantQuery({ question, turnId }),
+  /** Cancels a still-in-flight ambient turn by its turnId — a no-op if it already finished. */
+  cancelAmbientAssistantTurn: (turnId: string) => electroviewRpc.request.cancelAmbientAssistantTurn({ turnId }),
+  /** Generate speech audio from an alternate TTS model — Ambient Mode's configurable-voice setting. */
+  generateAmbientSpeech: (providerId: string, modelId: string, text: string) =>
+    electroviewRpc.request.generateAmbientSpeech({ providerId, modelId, text }),
+  /** Status of Ambient Mode's offline/local TTS voice (downloaded on demand). */
+  getAmbientLocalVoiceStatus: () => electroviewRpc.request.getAmbientLocalVoiceStatus({}),
+  /** Downloads the offline/local TTS voice's engine + model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalVoiceStatus events. */
+  downloadAmbientLocalVoice: () => electroviewRpc.request.downloadAmbientLocalVoice({}),
+  /** Best-effort warmup of the offline voice's onnxruntime session — call once when Ambient Mode opens. */
+  preloadAmbientLocalVoice: () => electroviewRpc.request.preloadAmbientLocalVoice({}),
+  /** Relays an [ambient] debug log line to the backend's ambient.log — the webview has no direct filesystem access. Use lib/log-ambient.ts's logAmbient() instead of calling this directly. */
+  logAmbientDebug: (message: string) => electroviewRpc.request.logAmbientDebug({ message }),
 
   /** Fetch a single setting by key. */
   getSetting: (key: string, category?: string) =>

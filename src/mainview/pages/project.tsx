@@ -364,7 +364,7 @@ export function ProjectPage() {
                 const badgeClass = AGENT_BADGE_COLORS[agentName.split("#")[0]] ?? "bg-muted text-muted-foreground ring-border";
                 return (
                   <Tip key={agent.messageId} content={displayName}>
-                    <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold ring-1", badgeClass)}>
+                    <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-bold ring-1", badgeClass)}>
                       {initials}
                     </span>
                   </Tip>

@@ -21,6 +21,7 @@ import { CouncilPage } from "./pages/council";
 import { FreelancePage } from "./pages/freelance";
 import { PlaygroundPage } from "./pages/playground";
 import { QuickChatPage } from "./pages/quick-chat";
+import { AmbientDisplayPage } from "./pages/ambient-display";
 
 // Use hash-based history so Electrobun's webview doesn't need a server
 // for navigation. URLs look like: app://index.html#/settings
@@ -127,6 +128,12 @@ const quickChatRoute = createRoute({
   component: QuickChatPage,
 });
 
+const ambientDisplayRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ambient-display",
+  component: AmbientDisplayPage,
+});
+
 const routeTree = rootRoute.addChildren([
   onboardingRoute,
   indexRoute,
@@ -145,6 +152,7 @@ const routeTree = rootRoute.addChildren([
   freelanceRoute,
   playgroundRoute,
   quickChatRoute,
+  ambientDisplayRoute,
 ]);
 
 export const router = createRouter({

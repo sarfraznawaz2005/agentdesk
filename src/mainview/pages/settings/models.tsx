@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
+import { Tip } from "@/components/ui/tooltip";
 import { ModelTypeBadge } from "@/components/ui/model-type-badge";
 import { MODEL_TYPE_BADGE_STYLES, MODEL_TYPE_FILTER_LABELS, type ModelType } from "@/lib/model-types";
 
@@ -42,6 +43,16 @@ export function ModelsSettings() {
   const [activeTypeFilters, setActiveTypeFilters] = useState<Set<ModelType>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [testingKey, setTestingKey] = useState<string | null>(null);
+  // Hide disabled models from the list — persisted in localStorage (a view
+  // preference, not synced state like the enable/favorite prefs above).
+  const [hideDisabled, setHideDisabled] = useState<boolean>(() => {
+    try { return localStorage.getItem("models_hide_disabled") === "true"; } catch { return false; }
+  });
+
+  const handleHideDisabledChange = useCallback((v: boolean) => {
+    setHideDisabled(v);
+    try { localStorage.setItem("models_hide_disabled", String(v)); } catch { /* ignore */ }
+  }, []);
 
   // ---- Load on mount -------------------------------------------------------
 
@@ -270,6 +281,7 @@ export function ModelsSettings() {
         models: p.models
           .filter((m) => {
             if (activeTypeFilters.size > 0 && !activeTypeFilters.has(getModelType(p.providerId, m))) return false;
+            if (hideDisabled && prefs[prefKey(p.providerId, m)]?.isEnabled === false) return false;
             if (!q) return true;
             return m.toLowerCase().includes(q) || p.providerName.toLowerCase().includes(q);
           })
@@ -280,7 +292,7 @@ export function ModelsSettings() {
       // Alphabetical by provider name — the raw order otherwise just follows
       // DB insertion order, which is meaningless to a user.
       .sort((a, b) => a.providerName.localeCompare(b.providerName, undefined, { sensitivity: "base" }));
-  }, [providers, search, activeTypeFilters, getModelType]);
+  }, [providers, search, activeTypeFilters, getModelType, hideDisabled, prefs]);
 
   // Every model key currently visible under the active search/type filters,
   // spanning all providers — backs the "select all visible" shortcut so bulk
@@ -400,38 +412,57 @@ export function ModelsSettings() {
         </div>
       )}
 
-      {/* Bulk select bar — a "select all visible" shortcut spanning every
-          provider currently shown, plus bulk Enable/Disable once something's
-          selected. Always present (not just once something's selected) so
-          the cross-provider select-all is reachable in one click. */}
-      {filteredKeys.length > 0 && (
+      {/* Bulk select bar (left half) — a "select all visible" shortcut
+          spanning every provider currently shown, plus bulk Enable/Disable
+          once something's selected — shares the row with the "hide
+          disabled" toggle (right half). The row renders whenever there are
+          any providers at all, even if the current search/type filters (or
+          "hide disabled" itself) match zero models, so the toggle stays
+          reachable to undo that. */}
+      {providers.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/40">
-          <input
-            type="checkbox"
-            aria-label={allFilteredSelected ? "Deselect all visible models" : "Select all visible models"}
-            checked={allFilteredSelected}
-            ref={(el) => {
-              if (el) el.indeterminate = !allFilteredSelected && selected.size > 0;
-            }}
-            onChange={(e) => setSelected(e.target.checked ? new Set(filteredKeys) : new Set())}
-            className="h-4 w-4 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          <span className="text-sm text-muted-foreground">
-            {selected.size > 0 ? `${selected.size} model${selected.size === 1 ? "" : "s"} selected` : "Select all visible"}
-          </span>
-          {selected.size > 0 && (
-            <div className="ml-auto flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => bulkSetEnabled(true)}>
-                Enable
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => bulkSetEnabled(false)}>
-                Disable
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-                Clear
-              </Button>
-            </div>
-          )}
+          <div className="flex w-1/2 min-w-0 items-center gap-2">
+            {filteredKeys.length > 0 && (
+              <>
+                <input
+                  type="checkbox"
+                  aria-label={allFilteredSelected ? "Deselect all visible models" : "Select all visible models"}
+                  checked={allFilteredSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allFilteredSelected && selected.size > 0;
+                  }}
+                  onChange={(e) => setSelected(e.target.checked ? new Set(filteredKeys) : new Set())}
+                  className="h-4 w-4 shrink-0 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <span className="text-sm text-muted-foreground truncate">
+                  {selected.size > 0 ? `${selected.size} model${selected.size === 1 ? "" : "s"} selected` : "Select all visible"}
+                </span>
+                {selected.size > 0 && (
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => bulkSetEnabled(true)}>
+                      Enable
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => bulkSetEnabled(false)}>
+                      Disable
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex w-1/2 items-center justify-end gap-2">
+            <Switch
+              id="hide-disabled-models"
+              checked={hideDisabled}
+              onCheckedChange={handleHideDisabledChange}
+            />
+            <label htmlFor="hide-disabled-models" className="text-sm text-muted-foreground cursor-pointer select-none">
+              Hide disabled models
+            </label>
+          </div>
         </div>
       )}
 
@@ -536,20 +567,21 @@ export function ModelsSettings() {
                           {model}
                         </span>
                         <ModelTypeBadge type={types[provider.providerId]?.[model]} />
-                        <button
-                          type="button"
-                          aria-label={`Test connection for ${model}`}
-                          title="Test connection"
-                          disabled={isTesting}
-                          onClick={() => handleTestModel(provider.providerId, model)}
-                          className="shrink-0 p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isTesting ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
-                          )}
-                        </button>
+                        <Tip content="Test connection">
+                          <button
+                            type="button"
+                            aria-label={`Test connection for ${model}`}
+                            disabled={isTesting}
+                            onClick={() => handleTestModel(provider.providerId, model)}
+                            className="shrink-0 p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isTesting ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
+                            )}
+                          </button>
+                        </Tip>
                         <Switch
                           checked={enabled}
                           onCheckedChange={(v) => setEnabled(provider.providerId, model, v)}

@@ -1506,7 +1506,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			// workaround for that structural-typing gap, not a suppressed real error:
 			// the object's shape genuinely matches run_shell's/request_human_input's
 			// own contextSchema declarations (verified by hand, both optional).
-			toolsContext: { run_shell: { projectId, conversationId }, request_human_input: { projectId } } as never,
+			toolsContext: { run_shell: { projectId, conversationId, agentName, agentDisplayName }, request_human_input: { projectId } } as never,
 			// Global (not per-tool) call context — flows automatically into every
 			// telemetry event's `runtimeContext` field (see telemetry-sink.ts, Phase
 			// 3.1) so the eventual Analytics page can attribute usage/cost/latency

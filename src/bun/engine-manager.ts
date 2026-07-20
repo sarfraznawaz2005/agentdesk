@@ -222,6 +222,42 @@ export function getChatScopedAgentsByProject(): Record<string, string[]> {
 }
 
 /**
+ * Active agent count per project — backs the getActiveProjectAgents RPC
+ * (rpc-groups/conversations-control.ts) and Ambient Mode's TV-projection
+ * snapshot (rpc/ambient.ts), which both need the identical computation.
+ */
+export function getActiveProjectAgentsList(): Array<{ projectId: string; agentCount: number }> {
+	const result: Array<{ projectId: string; agentCount: number }> = [];
+	const seen = new Set<string>();
+
+	// Engine-based projects (PM streaming or PM-dispatched sub-agents).
+	// Chat-scoped: excludes Issue Fixer and directly-scheduled agent runs —
+	// see isChatScoped.
+	for (const [projectId, engine] of engines) {
+		seen.add(projectId);
+		const subAgentCount = getChatScopedAgentCount(projectId);
+		// If sub-agents are running, show their count.
+		// If only the PM itself is processing (planning phase or writing summary),
+		// count it as 1 so the dashboard reflects any active work.
+		const total = subAgentCount > 0 ? subAgentCount : (engine.isProcessing() ? 1 : 0);
+		if (total > 0) result.push({ projectId, agentCount: total });
+	}
+
+	// Chat-scoped projects with no engine yet — in practice this should
+	// never fire (a chat-scoped agent always has a matching engine, created
+	// either by the PM turn that dispatched it or by review-cycle's
+	// getOrCreateEngine call), but kept as a defensive fallback.
+	const allRunning = getChatScopedAgentsByProject();
+	for (const [projectId, agentNames] of Object.entries(allRunning)) {
+		if (!seen.has(projectId) && agentNames.length > 0) {
+			result.push({ projectId, agentCount: agentNames.length });
+		}
+	}
+
+	return result;
+}
+
+/**
  * Returns a system-wide activity summary: running agents + any engine that is
  * currently streaming (PM generating) or has agents queued.
  */
@@ -570,6 +606,10 @@ function installShellApprovalHandler(): void {
 		const payload = { requestId, projectId, conversationId, agentId, agentName, command, timestamp };
 
 		broadcastToProject(projectId, "shellApprovalRequest", payload);
+		recordGlobalActivity(projectId, `waiting for you to approve: ${command}`, {
+			key: agentId.split("#")[0],
+			label: agentName,
+		});
 
 		// Write through to the DB so a reconnecting web client can re-render this
 		// pending request, and a restart can emit a clean expiry signal (TASK-478).
@@ -715,6 +755,10 @@ export function askUserQuestion(payload: {
 	};
 
 	broadcastToProject(projectId, "userQuestionRequest", requestPayload);
+	recordGlobalActivity(projectId, `asked: ${payload.question}`, {
+		key: payload.agentId.split("#")[0],
+		label: payload.agentName,
+	});
 
 	// Write through so a reconnecting web client can re-render the question
 	// (TASK-478). Background autonomous questions (short timeoutMs) are also
@@ -790,6 +834,74 @@ export function getPendingApprovals(projectId: string): {
 		shell: live.filter((r) => r.kind === "shell").map((r) => r.payload),
 		question: live.filter((r) => r.kind === "question").map((r) => r.payload),
 	};
+}
+
+/**
+ * Total shell + question approvals currently awaiting a response, across
+ * every project with a live engine — backs Ambient Mode's TV-projection
+ * snapshot (rpc/ambient.ts), which has no per-project scope to ask about like
+ * the main window's shellApprovalRequests store does.
+ */
+export function getGlobalPendingApprovalCount(): number {
+	let total = 0;
+	for (const projectId of engines.keys()) {
+		const { shell, question } = getPendingApprovals(projectId);
+		total += shell.length + question.length;
+	}
+	return total;
+}
+
+export interface GlobalActivityLogEntry {
+	id: string;
+	timestamp: number;
+	projectId: string;
+	/** Raw agent type key (e.g. "code-explorer"), for color-coding. Absent for non-agent entries. */
+	agentKey?: string;
+	/** Human-readable name to render in the agent's colored badge. */
+	agentLabel?: string;
+	text: string;
+}
+
+const GLOBAL_ACTIVITY_LOG_LIMIT = 50;
+const globalActivityLog: GlobalActivityLogEntry[] = [];
+let globalActivityLogIdCounter = 0;
+
+const GLOBAL_ACTIVITY_ACRONYMS = new Set(["qa", "ui", "ux", "api", "db", "ml"]);
+
+/**
+ * "code-explorer" -> "Code Explorer" — mirrors the frontend's own
+ * formatAgentKey (use-global-agent-activity.ts) for entries where only the
+ * raw agent key is known, not its display name.
+ */
+function formatGlobalActivityAgentKey(key: string): string {
+	return key
+		.split(/[-_]/)
+		.map((w) => (GLOBAL_ACTIVITY_ACRONYMS.has(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+		.join(" ");
+}
+
+/**
+ * Backend-side mirror of the rolling activity log the main window's
+ * useGlobalAgentActivity hook builds itself from live push events — the
+ * ambient TV-projection window (rpc/ambient.ts) has no per-project broadcast
+ * target to receive those pushes (same reason getGlobalPendingApprovalCount
+ * above exists), so it polls this instead. In-memory only, resets on
+ * restart — same ephemeral nature as the frontend's own rolling log.
+ */
+export function recordGlobalActivity(projectId: string, text: string, agent?: { key: string; label: string }): void {
+	globalActivityLog.unshift({
+		id: `${Date.now()}-${globalActivityLogIdCounter++}`,
+		timestamp: Date.now(),
+		projectId,
+		agentKey: agent?.key,
+		agentLabel: agent?.label,
+		text,
+	});
+	if (globalActivityLog.length > GLOBAL_ACTIVITY_LOG_LIMIT) globalActivityLog.length = GLOBAL_ACTIVITY_LOG_LIMIT;
+}
+
+export function getRecentGlobalActivity(): GlobalActivityLogEntry[] {
+	return globalActivityLog;
 }
 
 /**
@@ -973,7 +1085,8 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				});
 			},
 			onAgentInlineStart: (conversationId, messageId, agentName, agentDisplayName, task) => {
-				broadcastToProject(projectId, "agentInlineStart", { conversationId, messageId, agentName, agentDisplayName, task });
+				broadcastToProject(projectId, "agentInlineStart", { projectId, conversationId, messageId, agentName, agentDisplayName, task });
+				recordGlobalActivity(projectId, `started: ${task}`, { key: agentName.split("#")[0], label: agentDisplayName });
 			},
 			onContextUsage: (conversationId, promptTokens, contextLimit) => {
 				broadcastToProject(projectId, "contextUsage", { conversationId, promptTokens, contextLimit });
@@ -982,7 +1095,13 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 				broadcastToProject(projectId, "streamPerformance", { conversationId, tokensPerSecond, timeToFirstOutputMs });
 			},
 			onAgentInlineComplete: (conversationId, messageId, agentName, status, summary, tokensUsed) => {
-				broadcastToProject(projectId, "agentInlineComplete", { conversationId, messageId, agentName, status, summary, tokensUsed });
+				broadcastToProject(projectId, "agentInlineComplete", { projectId, conversationId, messageId, agentName, status, summary, tokensUsed });
+				const verb = status === "failed" ? "failed" : status === "cancelled" ? "cancelled" : "completed";
+				const globalActivityKey = agentName.split("#")[0];
+				recordGlobalActivity(projectId, `${verb}: ${summary || status}`, {
+					key: globalActivityKey,
+					label: formatGlobalActivityAgentKey(globalActivityKey),
+				});
 				// A sub-agent finished work in the main chat (skip user-cancelled runs).
 				if (status !== "cancelled") {
 					recordActivity(projectId, "chat").catch(() => {});
@@ -1030,6 +1149,7 @@ export function getOrCreateEngine(projectId: string): AgentEngine {
 					taskId,
 					action: "moved",
 				});
+				recordGlobalActivity(pid, `Task ${taskId} moved`);
 			},
 			onConversationTitleChanged: (conversationId, title) => {
 				broadcastToProject(projectId, "conversationTitleChanged", {

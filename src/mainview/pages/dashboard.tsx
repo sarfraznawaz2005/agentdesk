@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, FolderOpen, ArrowUpDown, ChevronsUpDown, MessageSquarePlus } from "lucide-react";
+import { Plus, FolderOpen, ArrowUpDown, ChevronsUpDown, Radar } from "lucide-react";
 import { useHeaderActions } from "@/lib/header-context";
+import { useAmbientStore } from "@/stores/ambient-store";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -18,6 +19,7 @@ import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
 import { rpc } from "@/lib/rpc";
 import { cn } from "@/lib/utils";
+import { useGlobalAgentActivity } from "@/lib/use-global-agent-activity";
 
 interface Project {
 	id: string;
@@ -40,13 +42,10 @@ export function DashboardPage() {
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState(false);
 	const [modalOpen, setModalOpen] = useState(false);
-	const [openingQuickChat, setOpeningQuickChat] = useState(false);
+	const activateAmbientMode = useAmbientStore((s) => s.activate);
 
-	// Active agent counts per project (updated in real-time via agentInlineStart/Complete events)
-	const [activeProjectAgents, setActiveProjectAgents] = useState<Record<string, number>>({});
-
-	// Task stats per project
-	const [taskStats, setTaskStats] = useState<Record<string, { done: number; total: number }>>({});
+	// Active agent counts + task stats per project, shared with Ambient Mode.
+	const { activeProjectAgents, taskStats } = useGlobalAgentActivity();
 
 	// Filter, sort state
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -56,21 +55,6 @@ export function DashboardPage() {
 	const [cardsCollapsed, setCardsCollapsed] = useState<boolean>(() => {
 		try { return localStorage.getItem("dashboard_cards_collapsed") === "true"; } catch { return false; }
 	});
-
-	const handleOpenQuickChat = useCallback(async () => {
-		setOpeningQuickChat(true);
-		try {
-			const result = await rpc.openQuickChatDefault();
-			if (!result.success) {
-				toast("error", result.error ?? "Could not open Quick Chat.");
-			}
-		} catch (err) {
-			const message = err instanceof Error ? err.message : "Could not open Quick Chat.";
-			toast("error", message);
-		} finally {
-			setOpeningQuickChat(false);
-		}
-	}, []);
 
 	function toggleCardsCollapsed() {
 		setCardsCollapsed((prev) => {
@@ -102,64 +86,19 @@ export function DashboardPage() {
 		}
 	}, []);
 
-	const loadTaskStats = useCallback(async () => {
-		try {
-			const stats = await rpc.getProjectTaskStats();
-			const map: Record<string, { done: number; total: number }> = {};
-			for (const s of stats) map[s.projectId] = { done: s.done, total: s.total };
-			setTaskStats(map);
-		} catch { /* ignore */ }
-	}, []);
-
 	useEffect(() => {
 		loadProjects();
-		loadTaskStats();
-	}, [loadProjects, loadTaskStats]);
+	}, [loadProjects]);
 
 	// Refresh the project list live when a project is created elsewhere — including
 	// background creators with no UI round-trip (channel global-mode auto-create,
 	// workspace sync) — so the new project appears without navigating away and back.
+	// (Task stats refresh on the same event inside useGlobalAgentActivity.)
 	useEffect(() => {
-		const onProjectsUpdated = () => {
-			loadProjects();
-			loadTaskStats();
-		};
+		const onProjectsUpdated = () => loadProjects();
 		window.addEventListener("agentdesk:projects-updated", onProjectsUpdated);
 		return () => window.removeEventListener("agentdesk:projects-updated", onProjectsUpdated);
-	}, [loadProjects, loadTaskStats]);
-
-
-	// Load initial active-agent counts and keep them up to date via events.
-	// Re-fetch on agent start/complete and stream-complete (catches PM finishing
-	// its summary after sub-agents are done). A 10s polling interval acts as a
-	// safety net for channel-dispatched agents whose events fire before the
-	// dashboard mounts, or for the PM planning/summary phases where no
-	// agentInlineStart event fires.
-	useEffect(() => {
-		const fetchCounts = () => {
-			rpc.getActiveProjectAgents().then((list) => {
-				const counts: Record<string, number> = {};
-				for (const { projectId, agentCount } of list) {
-					counts[projectId] = agentCount;
-				}
-				setActiveProjectAgents(counts);
-			}).catch(() => {});
-		};
-
-		fetchCounts();
-
-		const interval = setInterval(fetchCounts, 10_000);
-
-		window.addEventListener("agentdesk:agent-inline-start", fetchCounts);
-		window.addEventListener("agentdesk:agent-inline-complete", fetchCounts);
-		window.addEventListener("agentdesk:stream-complete", fetchCounts);
-		return () => {
-			clearInterval(interval);
-			window.removeEventListener("agentdesk:agent-inline-start", fetchCounts);
-			window.removeEventListener("agentdesk:agent-inline-complete", fetchCounts);
-			window.removeEventListener("agentdesk:stream-complete", fetchCounts);
-		};
-	}, []);
+	}, [loadProjects]);
 
 	// Persist sort preference
 	useEffect(() => {
@@ -303,22 +242,25 @@ export function DashboardPage() {
 	];
 
 	useHeaderActions(
-		() =>
-			// Projects (and Quick Chat) are created on the desktop (the workspace
-			// lives on the machine), so the web app doesn't offer either.
-			IS_REMOTE ? null : (
-				<>
-					<Button variant="outline" onClick={handleOpenQuickChat} disabled={openingQuickChat}>
-						<MessageSquarePlus aria-hidden="true" />
-						Open Quick Chat
+		() => (
+			<>
+				{hasProjects && (
+					<Button variant="outline" onClick={() => activateAmbientMode()}>
+						<Radar aria-hidden="true" />
+						Ambient Mode
 					</Button>
+				)}
+				{/* Projects are created on the desktop (the workspace lives on the
+				    machine), so the web app doesn't offer creating one. */}
+				{!IS_REMOTE && (
 					<Button onClick={() => setModalOpen(true)}>
 						<Plus aria-hidden="true" />
 						New Project
 					</Button>
-				</>
-			),
-		[handleOpenQuickChat, openingQuickChat],
+				)}
+			</>
+		),
+		[hasProjects, activateAmbientMode],
 	);
 
 	return (

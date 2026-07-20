@@ -10,6 +10,7 @@ import * as freelanceInboxRpc from "../rpc/freelance-inbox";
 import * as freelanceOutboxRpc from "../rpc/freelance-outbox";
 import * as freelanceExpertRpc from "../rpc/freelance-expert";
 import * as remoteAccessRpc from "../rpc/remote-access";
+import * as ambientRpc from "../rpc/ambient";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handlers: Record<string, (params: any) => any> = {
@@ -144,4 +145,18 @@ export const handlers: Record<string, (params: any) => any> = {
 	renameDevice: (params) => remoteAccessRpc.renameDevice(params),
 	revokeDevice: (params) => remoteAccessRpc.revokeDevice(params),
 	deleteDevice: (params) => remoteAccessRpc.deleteDevice(params),
+
+	// Ambient Mode — "Project to display" (TV/second-screen mode)
+	getAmbientDisplays: () => ambientRpc.getAmbientDisplays(),
+	openAmbientDisplayWindow: (params) => ambientRpc.openAmbientDisplayWindow(params.displayId),
+	closeAmbientDisplayWindow: () => ambientRpc.closeAmbientDisplayWindow(),
+	getAmbientActivitySnapshot: () => ambientRpc.getAmbientActivitySnapshot(),
+	getAmbientProjectionState: () => ambientRpc.getAmbientProjectionState(),
+	runAmbientAssistantQuery: (params) => ambientRpc.runAmbientAssistantQuery(params.question, params.turnId),
+	cancelAmbientAssistantTurn: (params) => ambientRpc.cancelAmbientAssistantTurn(params.turnId),
+	generateAmbientSpeech: (params) => ambientRpc.generateAmbientSpeech(params.providerId, params.modelId, params.text),
+	getAmbientLocalVoiceStatus: () => ambientRpc.getAmbientLocalVoiceStatus(),
+	downloadAmbientLocalVoice: () => ambientRpc.downloadAmbientLocalVoice(),
+	preloadAmbientLocalVoice: () => ambientRpc.preloadAmbientLocalVoice(),
+	logAmbientDebug: (params) => ambientRpc.logAmbientDebug(params.message),
 };

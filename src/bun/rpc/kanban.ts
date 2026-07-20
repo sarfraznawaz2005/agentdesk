@@ -268,6 +268,26 @@ export function getProjectTaskStats(): Array<{ projectId: string; done: number; 
 	`).all() as Array<{ projectId: string; done: number; total: number }>;
 }
 
+/**
+ * Every task currently sitting in the "review" column, across ALL projects —
+ * backs the Ambient Assistant's get_review_queue tool
+ * (docs/ambient-pm-voice-plan.md). No existing query answers "what's waiting
+ * on review" cross-project; getProjectTaskStats only tracks done-vs-total.
+ */
+export function getReviewQueue(): Array<{ taskId: string; projectId: string; projectName: string; title: string }> {
+	return sqlite.prepare(`
+		SELECT
+			kanban_tasks.id AS taskId,
+			kanban_tasks.project_id AS projectId,
+			projects.name AS projectName,
+			kanban_tasks.title AS title
+		FROM kanban_tasks
+		JOIN projects ON projects.id = kanban_tasks.project_id
+		WHERE kanban_tasks."column" = 'review'
+		ORDER BY kanban_tasks.updated_at DESC
+	`).all() as Array<{ taskId: string; projectId: string; projectName: string; title: string }>;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

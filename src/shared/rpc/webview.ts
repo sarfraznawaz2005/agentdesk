@@ -1,4 +1,5 @@
 import type { RPCSchema } from "electrobun/bun";
+import type { AmbientAssistantPartDto } from "./ambient";
 
 export type WebviewSchema = RPCSchema<{
   requests: {
@@ -95,6 +96,14 @@ export type WebviewSchema = RPCSchema<{
       message?: string;
     };
 
+    // Ambient Mode's local/offline TTS voice download progress (streamed from Bun
+    // during downloadAmbientLocalVoice), same shape as collectionEmbeddingModelStatus.
+    ambientLocalVoiceStatus: {
+      status: "downloading" | "ready" | "error";
+      progress?: number;
+      message?: string;
+    };
+
     // WhatsApp real-time events
     whatsappQR: {
       channelId: string;
@@ -136,11 +145,18 @@ export type WebviewSchema = RPCSchema<{
       running: boolean;
     };
 
+    // Ambient Assistant — one push per tool-call/text part, live during a turn
+    ambientAssistantPart: AmbientAssistantPartDto;
+
     // Kanban real-time updates
     kanbanTaskUpdated: {
       projectId: string;
       taskId: string;
       action: "created" | "updated" | "moved" | "deleted";
+      /** Destination column, only set when action === "moved". */
+      toColumn?: string;
+      /** Set only when a code-reviewer's "changes_requested" verdict moved the task back to "working" — disambiguates from a plain agent give-up move, since both land on toColumn "working". */
+      reason?: "review_changes_requested";
     };
 
     // A project's PM went idle with no agents running or queued — i.e. an entire
@@ -236,6 +252,7 @@ export type WebviewSchema = RPCSchema<{
       };
     };
     agentInlineStart: {
+      projectId: string;
       conversationId: string;
       messageId: string;
       agentName: string;
@@ -243,6 +260,7 @@ export type WebviewSchema = RPCSchema<{
       task: string;
     };
     agentInlineComplete: {
+      projectId: string;
       conversationId: string;
       messageId: string;
       agentName: string;

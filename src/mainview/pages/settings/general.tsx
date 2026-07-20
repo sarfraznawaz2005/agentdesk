@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Download, CheckCircle2, AlertCircle } from "lucide-react";
 import { rpc } from "@/lib/rpc";
+import type { AmbientLocalVoiceStatusDto } from "../../../shared/rpc/ambient";
 import { IS_REMOTE } from "@/lib/remote-transport";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -33,12 +34,22 @@ interface UserProfile {
   userEmail: string;
 }
 
+type LocalVoiceLiveProgress = { status: "downloading" | "ready" | "error"; progress?: number; message?: string };
+const LOCAL_VOICE_VALUE = "local|piper-ryan-high";
+
 interface ApplicationSettings {
   timezone: string;
   globalWorkspacePath: string;
   preventSystemSleep: boolean;
   launchAtStartup: boolean;
   allowQuickChat: boolean;
+  ambientModeEnabled: boolean;
+  ambientModeIdleMinutes: number;
+  ambientModeVoiceEnabled: boolean;
+  ambientModeTtsEnabled: boolean;
+  /** null = use the default browser speechSynthesis voice (zero-config). Combined key so a model id, which isn't globally unique, resolves to one specific provider. */
+  ambientTtsProviderId: string | null;
+  ambientTtsModelId: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +67,12 @@ const APPLICATION_DEFAULTS: ApplicationSettings = {
   preventSystemSleep: false,
   launchAtStartup: false,
   allowQuickChat: true,
+  ambientModeEnabled: true,
+  ambientModeIdleMinutes: 15,
+  ambientModeVoiceEnabled: true,
+  ambientModeTtsEnabled: true,
+  ambientTtsProviderId: null,
+  ambientTtsModelId: null,
 };
 
 function isValidEmail(v: string): boolean {
@@ -204,7 +221,73 @@ function FieldRow({ id, label, description, children }: FieldRowProps) {
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
       </div>
-      <div className="w-full max-w-xs">{children}</div>
+      <div className="ml-auto w-full max-w-xs">{children}</div>
+    </div>
+  );
+}
+
+// The offline "Ryan" voice's engine + model are downloaded on demand (never
+// bundled — see src/bun/ambient/local-voice-manager.ts) so this card mirrors
+// Collections' embedding-model download UI (settings-tab.tsx): a status pill,
+// a progress bar while downloading (driven by the ambientLocalVoiceStatus
+// broadcast), and a Download/Re-download button.
+function LocalVoiceDownloadPanel({
+  status,
+  live,
+  onDownload,
+}: {
+  status: AmbientLocalVoiceStatusDto | null;
+  live: LocalVoiceLiveProgress | null;
+  onDownload: () => void;
+}) {
+  const effectiveStatus = live?.status === "downloading" ? "downloading" : status?.status ?? "not_downloaded";
+  const progress = live?.status === "downloading" ? live.progress ?? 0 : status?.progress ?? 0;
+  const isBusy = effectiveStatus === "downloading";
+
+  return (
+    <div className="rounded-md border p-3 space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{status ? `~${status.sizeMb} MB` : "…"}</span>
+        {effectiveStatus === "ready" && (
+          <span className="inline-flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Ready
+          </span>
+        )}
+        {effectiveStatus === "downloading" && (
+          <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+            <Download className="w-3.5 h-3.5 animate-pulse" />
+            Downloading
+          </span>
+        )}
+        {effectiveStatus === "error" && (
+          <span className="inline-flex items-center gap-1.5 font-medium text-destructive">
+            <AlertCircle className="w-3.5 h-3.5" />
+            Error
+          </span>
+        )}
+        {effectiveStatus === "not_downloaded" && (
+          <span className="font-medium text-muted-foreground">Not downloaded</span>
+        )}
+      </div>
+
+      {isBusy && (
+        <div className="space-y-1.5">
+          <div className="text-xs text-muted-foreground truncate">{live?.message ?? "Downloading…"}</div>
+          <div className="w-full bg-muted rounded-full h-1.5">
+            <div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      )}
+
+      {effectiveStatus === "error" && live?.message && (
+        <div className="text-xs text-destructive">{live.message}</div>
+      )}
+
+      <Button size="sm" variant="outline" onClick={onDownload} disabled={isBusy}>
+        <Download className="w-3.5 h-3.5" />
+        {effectiveStatus === "ready" ? "Re-download" : effectiveStatus === "downloading" ? "Downloading…" : "Download"}
+      </Button>
     </div>
   );
 }
@@ -219,6 +302,9 @@ export function GeneralSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [speechModels, setSpeechModels] = useState<Array<{ providerId: string; providerName: string; modelId: string }>>([]);
+  const [localVoiceStatus, setLocalVoiceStatus] = useState<AmbientLocalVoiceStatusDto | null>(null);
+  const [localVoiceLive, setLocalVoiceLive] = useState<LocalVoiceLiveProgress | null>(null);
 
   // ---- Load settings on mount -----------------------------------------------
 
@@ -265,6 +351,31 @@ export function GeneralSettings() {
             appData.allow_quick_chat !== undefined
               ? appData.allow_quick_chat !== false && appData.allow_quick_chat !== "false"
               : APPLICATION_DEFAULTS.allowQuickChat,
+          ambientModeEnabled:
+            appData.ambient_mode_enabled !== undefined
+              ? appData.ambient_mode_enabled !== false && appData.ambient_mode_enabled !== "false"
+              : APPLICATION_DEFAULTS.ambientModeEnabled,
+          ambientModeIdleMinutes:
+            appData.ambient_mode_idle_minutes !== undefined &&
+            !Number.isNaN(Number(appData.ambient_mode_idle_minutes))
+              ? Number(appData.ambient_mode_idle_minutes)
+              : APPLICATION_DEFAULTS.ambientModeIdleMinutes,
+          ambientModeVoiceEnabled:
+            appData.ambient_mode_voice_enabled !== undefined
+              ? appData.ambient_mode_voice_enabled !== false && appData.ambient_mode_voice_enabled !== "false"
+              : APPLICATION_DEFAULTS.ambientModeVoiceEnabled,
+          ambientModeTtsEnabled:
+            appData.ambient_mode_tts_enabled !== undefined
+              ? appData.ambient_mode_tts_enabled !== false && appData.ambient_mode_tts_enabled !== "false"
+              : APPLICATION_DEFAULTS.ambientModeTtsEnabled,
+          ambientTtsProviderId:
+            typeof appData.ambient_tts_provider_id === "string" && appData.ambient_tts_provider_id
+              ? appData.ambient_tts_provider_id
+              : APPLICATION_DEFAULTS.ambientTtsProviderId,
+          ambientTtsModelId:
+            typeof appData.ambient_tts_model_id === "string" && appData.ambient_tts_model_id
+              ? appData.ambient_tts_model_id
+              : APPLICATION_DEFAULTS.ambientTtsModelId,
         });
       } catch {
         if (!cancelled) {
@@ -282,6 +393,74 @@ export function GeneralSettings() {
       cancelled = true;
     };
   }, []);
+
+  // ---- Load Ambient Mode's TTS voice picker options --------------------------
+  // Reuses the same getConnectedProviderModels + getModelTypes RPCs the
+  // Settings > AI > Models page already uses for its type badges. Filtered to
+  // type === "speech" AND providerType === "openai" — the classification tag
+  // alone isn't enough: custom/OpenAI-compatible endpoints can have models
+  // whose NAME matches the "speech" heuristic (e.g. a Mistral-compatible
+  // "voxtral-mini-tts" model, confirmed live) but @ai-sdk/openai-compatible
+  // has no .speech() accessor at all, so generateAmbientSpeech (bun/ambient/
+  // tts.ts) could never actually call them — only real, non-custom OpenAI
+  // implements ProviderAdapter.generateSpeech today (src/bun/providers/openai.ts).
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([rpc.getConnectedProviderModels(), rpc.getModelTypes()]).then(([providers, types]) => {
+      if (cancelled) return;
+      const options: Array<{ providerId: string; providerName: string; modelId: string }> = [];
+      for (const p of providers) {
+        if (p.providerType !== "openai") continue;
+        const providerTypes = types[p.providerId] ?? {};
+        for (const modelId of p.models) {
+          if (providerTypes[modelId] === "speech") options.push({ providerId: p.providerId, providerName: p.providerName, modelId });
+        }
+      }
+      setSpeechModels(options);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // ---- Ambient Mode's offline/local TTS voice (downloaded on demand — see
+  // src/bun/ambient/local-voice-manager.ts) -----------------------------------
+  // Same dual status/live-progress shape as Collections' embedding model card
+  // (settings-tab.tsx): `status` is the polled snapshot, `live` is the
+  // broadcast-pushed progress while a download is in flight.
+  const refreshLocalVoiceStatus = useCallback(async () => {
+    try {
+      const result = await rpc.getAmbientLocalVoiceStatus();
+      setLocalVoiceStatus(result);
+    } catch (err) {
+      console.error("Failed to load local voice status:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshLocalVoiceStatus();
+  }, [refreshLocalVoiceStatus]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<LocalVoiceLiveProgress>).detail;
+      setLocalVoiceLive(detail);
+      if (detail.status === "ready" || detail.status === "error") refreshLocalVoiceStatus();
+    };
+    window.addEventListener("agentdesk:ambient-local-voice-status", handler);
+    return () => window.removeEventListener("agentdesk:ambient-local-voice-status", handler);
+  }, [refreshLocalVoiceStatus]);
+
+  const handleDownloadLocalVoice = useCallback(async () => {
+    setLocalVoiceLive({ status: "downloading", progress: 0, message: "Starting download…" });
+    try {
+      const result = await rpc.downloadAmbientLocalVoice();
+      if (!result.success) toast("error", "Voice download failed — see Settings for details.");
+    } catch (err) {
+      console.error("Failed to download local voice:", err);
+      toast("error", "Voice download failed.");
+    } finally {
+      refreshLocalVoiceStatus();
+    }
+  }, [refreshLocalVoiceStatus]);
 
   // ---- Change helpers -------------------------------------------------------
 
@@ -308,6 +487,10 @@ export function GeneralSettings() {
       toast("error", "Please enter a valid email address.");
       return;
     }
+    if (!Number.isFinite(application.ambientModeIdleMinutes) || application.ambientModeIdleMinutes < 1) {
+      toast("error", "Ambient Mode idle minutes must be at least 1.");
+      return;
+    }
     setSaving(true);
     try {
       await Promise.all([
@@ -318,9 +501,25 @@ export function GeneralSettings() {
         rpc.saveSetting("prevent_system_sleep", application.preventSystemSleep, "general"),
         rpc.saveSetting("launch_at_startup", application.launchAtStartup, "general"),
         rpc.saveSetting("allow_quick_chat", application.allowQuickChat, "general"),
+        rpc.saveSetting("ambient_mode_enabled", application.ambientModeEnabled, "general"),
+        rpc.saveSetting("ambient_mode_idle_minutes", application.ambientModeIdleMinutes, "general"),
+        rpc.saveSetting("ambient_mode_voice_enabled", application.ambientModeVoiceEnabled, "general"),
+        rpc.saveSetting("ambient_mode_tts_enabled", application.ambientModeTtsEnabled, "general"),
+        rpc.saveSetting("ambient_tts_provider_id", application.ambientTtsProviderId ?? "", "general"),
+        rpc.saveSetting("ambient_tts_model_id", application.ambientTtsModelId ?? "", "general"),
       ]);
       setDirty(false);
       toast("success", "Settings saved.");
+      window.dispatchEvent(new CustomEvent("agentdesk:ambient-settings-changed", {
+        detail: {
+          enabled: application.ambientModeEnabled,
+          idleMinutes: application.ambientModeIdleMinutes,
+          voiceEnabled: application.ambientModeVoiceEnabled,
+          ttsEnabled: application.ambientModeTtsEnabled,
+          ttsProviderId: application.ambientTtsProviderId,
+          ttsModelId: application.ambientTtsModelId,
+        },
+      }));
     } catch {
       toast("error", "Failed to save settings. Please try again.");
     } finally {
@@ -517,6 +716,135 @@ export function GeneralSettings() {
             />
           </div>
 
+        </CardContent>
+      </Card>
+
+      {/* ---- Ambient Mode --------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ambient Mode</CardTitle>
+          <CardDescription>
+            A full-screen, voice-interactive view of what your agents are working on.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="ambient-mode-enabled-toggle">Auto-activate when idle</Label>
+              <p className="text-xs text-muted-foreground">
+                Automatically opens Ambient Mode after a period of inactivity, like a screensaver. The Dashboard button always opens it on demand regardless of this setting.
+              </p>
+            </div>
+            <Switch
+              id="ambient-mode-enabled-toggle"
+              checked={application.ambientModeEnabled}
+              onCheckedChange={(val) => handleApplicationChange("ambientModeEnabled", val)}
+            />
+          </div>
+
+          <Separator />
+
+          <FieldRow
+            id="ambient-idle-minutes"
+            label="Idle timeout"
+            description="Minutes of inactivity (while AgentDesk is focused) before Ambient Mode auto-activates."
+          >
+            <div className="flex items-center justify-end gap-2">
+              <Input
+                id="ambient-idle-minutes"
+                type="number"
+                min={1}
+                max={120}
+                value={application.ambientModeIdleMinutes}
+                onChange={(e) => handleApplicationChange("ambientModeIdleMinutes", Number(e.target.value))}
+                disabled={!application.ambientModeEnabled}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">minutes</span>
+            </div>
+          </FieldRow>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="ambient-voice-toggle">Voice input</Label>
+              <p className="text-xs text-muted-foreground">
+                Lets you talk to the PM inside Ambient Mode. The mic stays off until you tap "Talk to PM".
+              </p>
+            </div>
+            <Switch
+              id="ambient-voice-toggle"
+              checked={application.ambientModeVoiceEnabled}
+              onCheckedChange={(val) => handleApplicationChange("ambientModeVoiceEnabled", val)}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="ambient-tts-toggle">Spoken replies</Label>
+              <p className="text-xs text-muted-foreground">
+                Reads the PM's replies aloud inside Ambient Mode.
+              </p>
+            </div>
+            <Switch
+              id="ambient-tts-toggle"
+              checked={application.ambientModeTtsEnabled}
+              onCheckedChange={(val) => handleApplicationChange("ambientModeTtsEnabled", val)}
+            />
+          </div>
+
+          <Separator />
+
+          <FieldRow
+            id="ambient-tts-voice"
+            label="Voice"
+            description="Uses your browser's built-in voice by default. Pick a configured speech model, or the offline Ryan voice, for higher-quality audio instead."
+          >
+            <div className="space-y-2">
+              <Select
+                value={
+                  application.ambientTtsProviderId && application.ambientTtsModelId
+                    ? `${application.ambientTtsProviderId}|${application.ambientTtsModelId}`
+                    : "default"
+                }
+                onValueChange={(val) => {
+                  if (val === "default") {
+                    handleApplicationChange("ambientTtsProviderId", null);
+                    handleApplicationChange("ambientTtsModelId", null);
+                    return;
+                  }
+                  const [providerId, modelId] = val.split("|");
+                  handleApplicationChange("ambientTtsProviderId", providerId);
+                  handleApplicationChange("ambientTtsModelId", modelId);
+                }}
+                disabled={!application.ambientModeTtsEnabled}
+              >
+                <SelectTrigger id="ambient-tts-voice" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default (browser voice)</SelectItem>
+                  <SelectItem value={LOCAL_VOICE_VALUE}>Ryan (offline, local)</SelectItem>
+                  {speechModels.map((m) => (
+                    <SelectItem key={`${m.providerId}|${m.modelId}`} value={`${m.providerId}|${m.modelId}`}>
+                      {m.providerName} — {m.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {application.ambientTtsProviderId === "local" && (
+                <LocalVoiceDownloadPanel
+                  status={localVoiceStatus}
+                  live={localVoiceLive}
+                  onDownload={handleDownloadLocalVoice}
+                />
+              )}
+            </div>
+          </FieldRow>
         </CardContent>
       </Card>
 

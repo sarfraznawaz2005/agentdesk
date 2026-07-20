@@ -563,7 +563,15 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
   // Render plan messages with a distinct card layout
   if (isPlan) {
     return (
-      <div className="flex items-start gap-2">
+      <div
+        className="flex items-start gap-2"
+        // Marks an unresolved plan awaiting Approve/Reject — only true for the
+        // conversation's last message (once the PM responds, a newer message
+        // takes over "last" and this stops matching). Ambient Mode's idle
+        // timer queries for this attribute to avoid popping up over a plan
+        // the user hasn't acted on yet.
+        data-plan-approval-pending={isLastMessage || undefined}
+      >
         <AgentAvatar name="task-planner" size="sm" />
         <div className="flex-1 min-w-0 max-w-[90%]">
           <div className="rounded-2xl rounded-bl-md border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">

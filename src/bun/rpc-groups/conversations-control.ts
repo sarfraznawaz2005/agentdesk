@@ -1,7 +1,7 @@
 import * as conversationsRpc from "../rpc/conversations";
 import * as dashboardRpc from "../rpc/dashboard";
 import * as dashboardAgentRpc from "../rpc/dashboard-agent";
-import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentsForConversation, abortAgentByName, abortAgentByNameInConversation, getRunningAgentCount, getRunningAgentNamesForConversation, getChatScopedAgentNames, getChatScopedAgentCount, getChatScopedAgentsByProject } from "../engine-manager";
+import { engines, getOrCreateEngine, broadcastToWebview, resolveShellApproval, resolveUserQuestion, getPendingApprovals, setAppFocused as setAppFocusedFn, abortAllAgents, abortAgentsForConversation, abortAgentByName, abortAgentByNameInConversation, getRunningAgentCount, getRunningAgentNamesForConversation, getChatScopedAgentNames, getActiveProjectAgentsList } from "../engine-manager";
 import { enqueueMessage, removeQueuedMessage, getQueuedMessages, clearQueueForConversation } from "../message-queue-manager";
 import { db } from "../db";
 import { aiProviders } from "../db/schema";
@@ -245,36 +245,7 @@ export const handlers: Record<string, (params: any) => any> = {
 		};
 	},
 
-	getActiveProjectAgents: () => {
-		const result: Array<{ projectId: string; agentCount: number }> = [];
-		const seen = new Set<string>();
-
-		// Engine-based projects (PM streaming or PM-dispatched sub-agents).
-		// Chat-scoped: excludes Issue Fixer and directly-scheduled agent runs —
-		// see isChatScoped.
-		for (const [projectId, engine] of engines) {
-			seen.add(projectId);
-			const subAgentCount = getChatScopedAgentCount(projectId);
-			// If sub-agents are running, show their count.
-			// If only the PM itself is processing (planning phase or writing summary),
-			// count it as 1 so the dashboard reflects any active work.
-			const total = subAgentCount > 0 ? subAgentCount : (engine.isProcessing() ? 1 : 0);
-			if (total > 0) result.push({ projectId, agentCount: total });
-		}
-
-		// Chat-scoped projects with no engine yet — in practice this should
-		// never fire (a chat-scoped agent always has a matching engine, created
-		// either by the PM turn that dispatched it or by review-cycle's
-		// getOrCreateEngine call), but kept as a defensive fallback.
-		const allRunning = getChatScopedAgentsByProject();
-		for (const [projectId, agentNames] of Object.entries(allRunning)) {
-			if (!seen.has(projectId) && agentNames.length > 0) {
-				result.push({ projectId, agentCount: agentNames.length });
-			}
-		}
-
-		return result;
-	},
+	getActiveProjectAgents: () => getActiveProjectAgentsList(),
 
 	// Shell/Question
 	respondShellApproval: (params) => ({

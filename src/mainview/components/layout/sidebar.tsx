@@ -22,6 +22,7 @@ import {
   Cpu,
   Briefcase,
   FlaskConical,
+  MessageSquarePlus,
   WifiOff,
   type LucideIcon,
   icons,
@@ -29,6 +30,7 @@ import {
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
+import { toast } from "@/components/ui/toast";
 import { IS_REMOTE } from "@/lib/remote-transport";
 import { useIsMobile } from "@/lib/use-is-mobile";
 import { Tip } from "@/components/ui/tooltip";
@@ -141,6 +143,48 @@ function NavItemButton({
 /** Resolve a Lucide icon name (e.g. "Puzzle") to a component, with a fallback. */
 function resolveIcon(name: string): LucideIcon {
   return (icons as Record<string, LucideIcon>)[name] ?? Puzzle;
+}
+
+/** Opens (or focuses) the Quick Chat window — desktop-only, mirrors NavItemButton's styling. */
+function QuickChatButton({ collapsed }: { collapsed: boolean }) {
+  const [opening, setOpening] = useState(false);
+
+  const handleClick = async () => {
+    setOpening(true);
+    try {
+      const result = await rpc.openQuickChatDefault();
+      if (!result.success) {
+        toast("error", result.error ?? "Could not open Quick Chat.");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not open Quick Chat.";
+      toast("error", message);
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const button = (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={opening}
+      className={cn(
+        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+        "text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50",
+      )}
+    >
+      <MessageSquarePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
+      {!collapsed && <span className="flex-1 truncate text-left">Open Quick Chat</span>}
+    </button>
+  );
+
+  return collapsed ? (
+    <Tip content="Open Quick Chat" side="right">
+      {button}
+    </Tip>
+  ) : button;
 }
 
 type UpdateState = "idle" | "checking" | "no-update" | "available" | "downloading" | "ready" | "error";
@@ -439,6 +483,15 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
           />
         ))}
 
+        {/* Quick Chat is a desktop-only feature (the workspace lives on the
+            machine) — no separate route, so it lives below a divider instead
+            of in NAV_ITEMS. */}
+        {!IS_REMOTE && (
+          <>
+            <div className="my-1 border-t border-border" />
+            <QuickChatButton collapsed={collapsed} />
+          </>
+        )}
       </nav>
 
       {/* Footer: version / No-Internet indicator + update panel */}

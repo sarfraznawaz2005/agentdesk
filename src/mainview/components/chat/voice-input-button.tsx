@@ -24,6 +24,8 @@ export function VoiceInputButton({ listening, error, onClick, disabled }: VoiceI
             : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted",
         )}
         aria-label={listening ? "Stop voice input" : "Start voice input"}
+        // Queried by Ambient Mode's idle timer to avoid auto-activating mid-dictation.
+        data-voice-listening={listening || undefined}
       >
         <Mic className="w-4 h-4" />
       </button>

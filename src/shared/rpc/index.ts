@@ -45,6 +45,7 @@ import type { RecommendationsRequests, DependencyId, DependencyStatus } from "./
 import type { IssuesRequests, IssueSource, ExternalIssue, IssueSourceStatus } from "./issues";
 import type { WhatsNewRequests, ReleaseEntry } from "./whats-new";
 import type { RemoteAccessRequests, RemoteDeviceDto, RemoteAccessStatusDto, DevicePairingDto } from "./remote-access";
+import type { AmbientRequests, AmbientDisplayDto, AmbientActivitySnapshot, AmbientAssistantPartDto } from "./ambient";
 import type { WebviewSchema } from "./webview";
 
 type BunRequests =
@@ -77,7 +78,8 @@ type BunRequests =
   & RecommendationsRequests
   & IssuesRequests
   & WhatsNewRequests
-  & RemoteAccessRequests;
+  & RemoteAccessRequests
+  & AmbientRequests;
 
 export type AgentDeskRPC = {
   bun: RPCSchema<{
@@ -150,5 +152,9 @@ export type {
   RemoteDeviceDto,
   RemoteAccessStatusDto,
   DevicePairingDto,
+  AmbientRequests,
+  AmbientDisplayDto,
+  AmbientActivitySnapshot,
+  AmbientAssistantPartDto,
   WebviewSchema,
 };

@@ -5,10 +5,37 @@ import type { ToolRegistryEntry } from "./index";
 
 // Lazily resolved at call-time to avoid circular-import initialisation issues.
 // By the time any execute() runs, all modules are fully loaded.
-async function notifyKanban(projectId: string, taskId: string, action: string) {
+// toColumn/reason let consumers (Ambient Mode's Activity Log) render specific
+// review-cycle transitions ("sent to review", "review approved", "changes
+// requested") instead of a generic "Task X moved" line — reason is only set
+// at the one call site (submit_review's changes_requested branch) where
+// toColumn alone ("working") is ambiguous between that and a plain agent
+// give-up move.
+async function notifyKanban(
+	projectId: string,
+	taskId: string,
+	action: string,
+	toColumn?: string,
+	reason?: "review_changes_requested",
+) {
 	try {
-		const { broadcastToWebview } = await import("../../engine-manager");
-		broadcastToWebview("kanbanTaskUpdated", { projectId, taskId, action });
+		const { broadcastToWebview, recordGlobalActivity } = await import("../../engine-manager");
+		broadcastToWebview("kanbanTaskUpdated", { projectId, taskId, action, toColumn, reason });
+
+		// Mirrors the frontend's own onKanbanTaskUpdated text-construction
+		// (use-global-agent-activity.ts) so the TV-projection view shows the
+		// same specific review-cycle wording, not just "Task X moved".
+		let text: string;
+		if (reason === "review_changes_requested") {
+			text = `Task ${taskId} — review requested changes, back to working`;
+		} else if (action === "moved" && toColumn === "review") {
+			text = `Task ${taskId} sent to review`;
+		} else if (action === "moved" && toColumn === "done") {
+			text = `Task ${taskId} — review approved, done`;
+		} else {
+			text = `Task ${taskId} ${action}`;
+		}
+		recordGlobalActivity(projectId, text);
 	} catch {
 		// Non-critical — the board will sync on next manual refresh if this fails
 	}
@@ -332,7 +359,7 @@ function createKanbanToolsImpl(actorId: string): Record<string, ToolRegistryEntr
 						actorId,
 					);
 					if (task?.projectId) {
-						notifyKanban(task.projectId, args.id, "moved");
+						notifyKanban(task.projectId, args.id, "moved", args.column);
 						if (args.column === "review") {
 							// Notify review cycle to spawn code-reviewer for this task
 							await notifyTaskInReviewHandler(task.projectId, args.id);
@@ -637,10 +664,11 @@ function createKanbanToolsImpl(actorId: string): Record<string, ToolRegistryEntr
 					// Move task based on verdict
 					if (args.verdict === "approved") {
 						await kanbanRpc.moveKanbanTask(args.task_id, "done", undefined, "code-reviewer");
+						notifyKanban(task.projectId, args.task_id, "moved", "done");
 					} else {
 						await kanbanRpc.moveKanbanTask(args.task_id, "working", undefined, "code-reviewer");
+						notifyKanban(task.projectId, args.task_id, "moved", "working", "review_changes_requested");
 					}
-					notifyKanban(task.projectId, args.task_id, "moved");
 
 					return JSON.stringify({
 						success: true,
@@ -753,7 +781,7 @@ function createKanbanToolsImpl(actorId: string): Record<string, ToolRegistryEntr
 					}
 					await kanbanRpc.moveKanbanTask(args.task_id, "review", undefined, actorId);
 					if (task.projectId) {
-						notifyKanban(task.projectId, args.task_id, "moved");
+						notifyKanban(task.projectId, args.task_id, "moved", "review");
 						await notifyTaskInReviewHandler(task.projectId, args.task_id);
 					}
 

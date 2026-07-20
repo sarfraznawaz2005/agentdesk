@@ -827,7 +827,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 									const recentNotes = await getProjectNotes(effectiveProjectId);
 									const planDoc = recentNotes[0];
 									if (planDoc?.content?.trim()) {
-										const { broadcastToWebview } = await import("../../engine-manager");
+										const { broadcastToWebview, recordGlobalActivity } = await import("../../engine-manager");
 										const planTitle = planDoc.title ?? "Implementation Plan";
 										const planContent = planDoc.content;
 										const planMessageId = crypto.randomUUID();
@@ -863,6 +863,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 											conversationId: deps.conversationId,
 											plan: { title: planTitle, content: planContent },
 										});
+										recordGlobalActivity(effectiveProjectId, `proposed a plan for approval: ${planTitle}`);
 
 										// Save a context message to the DB so PM has the note_id
 										// available when it restarts on the user's "approve" reply.
@@ -1874,7 +1875,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 					}
 
 					// In-app: show approval card in the UI
-					const { broadcastToWebview } = await import("../../engine-manager");
+					const { broadcastToWebview, recordGlobalActivity } = await import("../../engine-manager");
 					const planMessageId = crypto.randomUUID();
 					const metadata = JSON.stringify({ type: "plan", title, projectId: deps.projectId, conversationId: deps.conversationId });
 
@@ -1902,6 +1903,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						conversationId: deps.conversationId,
 						plan: { title, content: planContent },
 					});
+					recordGlobalActivity(deps.projectId, `proposed a plan for approval: ${title}`);
 
 					// Desktop notification so the user is alerted even if they're on a
 					// different project or the app isn't focused — mirrors the shell

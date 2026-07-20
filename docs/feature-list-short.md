@@ -59,29 +59,30 @@
 43. Chat widgets on dashboard (PM and custom agents)
 44. Quick Chat (open any folder without creating a project)
 45. Attaching/saving notes between chat and Collections
+46. Ambient Mode (full-screen voice-interactive status overlay, opens from the Dashboard or auto-activates when idle; talk to it hands-free — no tap needed to end your turn or start the next one, it keeps listening automatically until you tap Stop — and ask about any project's status or tell it to start work on one; you can interrupt it by talking while it's thinking or replying, or by tapping Interrupt; it answers or dispatches, showing what it's checking along the way, and can be projected onto a second monitor/TV; its voice can be the browser default, a configured speech model, or a downloadable fully-offline voice with its own download-progress option in Settings)
 
 ## Bigger Features
-46. Freelance stuff (chat, auto-shortlist, auto-bidding/replies)
-47. Issue Fixer agent
-48. Playground agent
-49. Council
-50. Collections chat
-51. Scheduler (cron jobs)
-52. Automation rules
+47. Freelance stuff (chat, auto-shortlist, auto-bidding/replies)
+48. Issue Fixer agent
+49. Playground agent
+50. Council
+51. Collections chat
+52. Scheduler (cron jobs)
+53. Automation rules
 
 ## Git & Remote
-53. Git tab (branches, commits, diffs, pull requests, conflict resolver)
-54. Remote Access (control the desktop app from your phone/browser)
-55. Remote Sync (deploy files to a server via SFTP/FTP)
-56. Live preview annotations (comment on your running app for the AI)
+54. Git tab (branches, commits, diffs, pull requests, conflict resolver)
+55. Remote Access (control the desktop app from your phone/browser)
+56. Remote Sync (deploy files to a server via SFTP/FTP)
+57. Live preview annotations (comment on your running app for the AI)
 
 ## Settings & Admin
-57. Agent constitution editor
-58. Environment variables management
-59. Notification preferences
-60. Data backup & export/import
-61. Audit log
-62. System health page
-63. Auto-install missing dependencies (Recommendations)
-64. Project-level settings (auto-execute, shell approval, auto-commit, context limit)
-65. Right-click text menu in production/canary builds (Cut/Copy/Paste/Select-All, no Inspect option)
+58. Agent constitution editor
+59. Environment variables management
+60. Notification preferences
+61. Data backup & export/import
+62. Audit log
+63. System health page
+64. Auto-install missing dependencies (Recommendations)
+65. Project-level settings (auto-execute, shell approval, auto-commit, context limit)
+66. Right-click text menu in production/canary builds (Cut/Copy/Paste/Select-All, no Inspect option)
