@@ -150,20 +150,122 @@ This is pure client-side logic in `use-voice-input.ts` (or a new
 
 ## 4. Quick-ack, then real turn
 
-Two-phase response, both spoken via TTS:
+Built simpler than originally planned here, after going through a build →
+drop → rebuild cycle in practice:
 
-1. **Instant ack** (fires the moment silence-detected end-of-turn happens):
-   one small `generateText` call (no tools, short system prompt: *"the user
-   just said X — respond with a single short natural acknowledgment/filler,
-   like a human would while about to go check something; do not answer the
-   question yet"*) using the same already-configured model. Spoken
-   immediately.
-2. **Real turn** (fires in parallel with #1, or right after): the Ambient
-   Assistant's actual tool-calling turn — tool calls stream live into the new
-   side pane (Subsystem 5), and the final answer is spoken once ready.
+- **First attempt** (this section, original text): a per-turn `generateText`
+  call to have the model itself produce a contextual filler line. Built, then
+  dropped as unnecessary on the theory that the tool-call pane's own
+  "Thinking…" row already gives instant feedback — true for a user looking
+  at the screen, not for voice-first use, where that silence is the actual
+  complaint.
+- **What's actually implemented**: no extra model call at all. A short,
+  **fixed** ack phrase (randomly one of a small rotating set — see
+  `ACK_PHRASES` in `use-text-to-speech.ts`) is spoken if `ACK_DELAY_MS` (700ms)
+  passes with no answer yet, gated on the turn still being the active one at
+  that point (so an already-superseded/abandoned turn never speaks up after
+  the fact) — see `ambient-screen.tsx`'s `processTurn`. Since the phrase is
+  always one of the same fixed strings, the generated/offline voice path
+  (`useAmbientVoicePlayback`) generates each phrase's audio once per (voice,
+  model, speed) combo and replays the cached clip on every later turn,
+  instead of paying that voice's 1–13s synthesis cost (measured live) again
+  and again — the browser default voice has no generation cost either way.
+  700ms comfortably avoids ever firing for a closing-remark reply (resolves
+  in <20ms, `assistant.ts`'s `isClosingRemark` shortcut) while still landing
+  well before a real turn's answer — even a plain no-tool-call reply
+  measured 7s+ through the Claude Subscription CLI subprocess's own startup
+  cost.
 
-Both phases target the *same* underlying question — the ack is generated
-from the raw transcript before the real turn's tool calls have run.
+Both the ack and the real answer go through the same `speak()`-family call,
+which cancels whichever utterance is already playing rather than queuing —
+so the real answer explicitly awaits the ack's own promise first (if one
+started) rather than racing it, and any turn that gets superseded by a
+barge-in has its TTS (`tts.cancel()`) stopped immediately so a stale ack can
+never keep sounding into, or stack with, the new turn's own.
+
+### 4b. A second bridge: tried, then explicitly dropped — but its bug fix stayed
+
+A live UI-inspector screenshot showed a longer reply's real answer taking a
+visible moment to actually start speaking after its text had already
+appeared in the tool-call pane — for the generated/offline voice, `speak()`'s
+own audio-generation step is what's slow (measured live at 1–13s, scaling
+roughly with reply length), a *second*, separate wait after the
+RPC/tool-calling one `ACK_PHRASES` already bridges. A second filler phrase
+("Here's what I found.", spoken while that generation ran in the background)
+was built to bridge it the same way, then explicitly reverted — not worth
+keeping.
+
+**What stayed:** building it surfaced a real, separate bug, kept independent
+of whether the filler itself exists. `generateAmbientSpeech` has no abort
+mechanism, so a `tts.cancel()` mid-generation couldn't actually stop that
+network/local-model call — it would still resolve later and play its
+now-stale audio regardless of the cancel, for *either* the real answer's own
+`speak()` or `speakAck()`'s ack-phrase generation. A generation token
+(`generationTokenRef` in `use-ambient-voice-playback.ts`, bumped by every
+`speak()`/`speakAck()`/`cancel()` call) now lets a late-arriving, superseded
+generation's result be silently discarded instead of playing over whatever's
+current.
+
+### 4c. The real fix for "it takes a while to speak back": stream the answer, don't wait for it
+
+4a/4b both bridge dead air with *fillers* — the actual answer still only
+starts speaking once the model has finished generating the *entire* thing,
+however long that takes. Asked directly "are there any speed improvements
+possible, real or via UX, so this feels real-time" — the honest answer for
+the single biggest lever was architectural, not another filler: overlap TTS
+with generation instead of running them one after the other.
+
+**How:** both model-invocation paths already expose real token-level text
+deltas — the Claude Subscription CLI path's `onTextToken` (previously wired
+to a no-op) and the regular `streamText` path's `text-delta` stream part.
+`runAmbientAssistantTurn` (`assistant.ts`) now feeds every delta from either
+path into one shared `handleTextDelta`, which does two things with it:
+
+1. **Sentence chunking.** `extractCompleteSentences` pulls out each complete
+   sentence as soon as punctuation + whitespace closes it, firing a new
+   `onTextChunk` callback per sentence (any trailing incomplete sentence is
+   flushed once the turn finishes, so the very last chunk that never ends in
+   punctuation still gets spoken). `rpc/ambient.ts` broadcasts each one via a
+   new `ambientAssistantTextChunk` push event
+   (`AmbientAssistantTextChunkDto { messageId, chunk }`). `ambient-screen.tsx`
+   queues them and speaks them one at a time via a small drain loop —
+   whichever sentence is ready plays while the model is still generating the
+   rest, on **any** provider/model that streams deltas (both CLI and
+   non-CLI), not just one specific one. A turn whose provider/path doesn't
+   stream token deltas at all simply never fires `onTextChunk`; the frontend
+   notices no chunk ever arrived and falls back to speaking the complete
+   `answer` string in one shot exactly as before this feature — a pure
+   addition, no regression for that case.
+2. **Live pane text.** The same deltas also feed a `createThrottledAccumulator`
+   (the same "Full Streaming" throttling helper the Claude Subscription CLI
+   path/PM chat/dashboard widgets already use — 75ms default flush) that
+   emits a growing `"text"`-type part under one stable id via the existing
+   `onPart`/`ambientAssistantPart` mechanism tool-call parts already use. No
+   frontend change was needed for this half at all: `ambient-screen.tsx`'s
+   existing merge-by-id logic and the tool-call pane's existing
+   `answerText` render already handle a part whose `content` grows over
+   several updates — they were written generically enough to just work.
+
+**Ordering/staleness:** a barge-in's existing `tts.cancel()` plus each turn's
+own `isStillActive()` check (comparing against `activeTurnIdRef.current`) is
+enough to stop a superseded turn's drain loop from continuing — no new
+per-chunk cancellation plumbing needed beyond what barge-in already had.
+`speakAck()`'s filler gets naturally cut short by the first real chunk's own
+`speak()` call (which cancels whatever's currently playing rather than
+queuing) — a deliberate tradeoff: interrupting "One moment plea-" to get
+real content playing sooner is worth it there, unlike the no-streaming
+fallback path, which still lets the ack finish gracefully since there's no
+racing content to gain speed from in that case.
+
+**One rare edge case, handled:** the CLI path can retry a whole attempt from
+scratch on a verification failure (`onRetract`), discarding whatever it
+streamed live via `onTextToken` for the failed attempt — unlike `onText`
+(already safe; buffered and only replayed for the attempt that succeeds).
+`handleTextDelta`'s state (accumulator, sentence remainder, part id) is
+reset on `onRetract` so the retry's own text doesn't concatenate onto the
+discarded attempt's. Not actually reachable for ambient today
+(`verifyToolCall: false` disables the whole retry mechanism for this
+caller), but wired correctly in case that ever changes.
 
 ## 5. Live tool-call side pane
 

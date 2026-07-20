@@ -376,6 +376,10 @@ async function streamAndPersist(
         instructions: systemPrompt,
         messages: history,
         tools,
+        // run_shell (autoApprovedShellTool) declares a contextSchema — even though every
+        // field is optional, the AI SDK still requires the top-level toolsContext entry to
+        // be an object (undefined fails validation). See shell.ts's SHELL_CONTEXT_SCHEMA.
+        toolsContext: { run_shell: {} } as never,
         stopWhen: [isStepCount(100)],
         abortSignal: signal,
       });

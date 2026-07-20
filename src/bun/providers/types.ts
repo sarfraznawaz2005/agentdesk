@@ -46,5 +46,5 @@ export interface ProviderAdapter {
 	 * configurable TTS model setting (docs/ambient-pm-voice-plan.md
 	 * Subsystem 6) — only real OpenAI implements this today.
 	 */
-	generateSpeech?(modelId: string, text: string): Promise<{ base64: string; mimeType: string }>;
+	generateSpeech?(modelId: string, text: string, speed?: number): Promise<{ base64: string; mimeType: string }>;
 }

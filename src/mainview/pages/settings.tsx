@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ProvidersSettings } from "./settings/providers";
 import { ModelsSettings } from "./settings/models";
 import { GeneralSettings } from "./settings/general";
+import { AmbientSettings } from "./settings/ambient";
 import { ConstitutionSettings } from "./settings/constitution";
 import { GithubSettings } from "./settings/github";
 import { SearchSettings } from "./settings/search-settings";
@@ -82,6 +83,7 @@ export function SettingsPage({ aiOnly }: SettingsPageProps = {}) {
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="channels">Channels</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="ambient">Ambient</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="plugins">Plugins</TabsTrigger>
@@ -120,6 +122,10 @@ export function SettingsPage({ aiOnly }: SettingsPageProps = {}) {
             { value: "github", label: "GitHub", content: <GithubSettings /> },
             { value: "search", label: "Search", content: <SearchSettings /> },
           ]} />
+        </TabsContent>
+
+        <TabsContent value="ambient">
+          <AmbientSettings />
         </TabsContent>
 
         <TabsContent value="notifications">

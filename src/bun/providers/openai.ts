@@ -142,10 +142,10 @@ export class OpenAIAdapter implements ProviderAdapter {
 	 * `.speech()` — custom/OpenAI-compatible backends (§6.7) have no
 	 * equivalent, same reasoning as getFilesApi() above.
 	 */
-	async generateSpeech(modelId: string, text: string): Promise<{ base64: string; mimeType: string }> {
+	async generateSpeech(modelId: string, text: string, speed?: number): Promise<{ base64: string; mimeType: string }> {
 		if (this.isCustom) throw new Error("This provider doesn't support speech generation.");
 		const provider = createOpenAI({ apiKey: this.config.apiKey, headers: PROVIDER_HEADERS });
-		const result = await generateSpeech({ model: provider.speech(modelId), text });
+		const result = await generateSpeech({ model: provider.speech(modelId), text, speed });
 		return { base64: result.audio.base64, mimeType: result.audio.mediaType };
 	}
 

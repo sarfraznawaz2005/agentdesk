@@ -241,12 +241,12 @@ export async function preloadLocalVoice(): Promise<{ success: boolean }> {
 	}
 }
 
-export async function synthesizeLocalVoice(text: string): Promise<{ base64: string; mimeType: string }> {
+export async function synthesizeLocalVoice(text: string, speed = 1.0): Promise<{ base64: string; mimeType: string }> {
 	if (!isLocalVoiceReady()) throw new Error("The offline voice hasn't been downloaded yet — download it in Settings first.");
 	const t0 = performance.now();
 	const tts = await loadEngine();
 	const tLoaded = performance.now();
-	const audio = tts.generate({ text, generationConfig: { sid: 0, speed: 1.0 } });
+	const audio = tts.generate({ text, generationConfig: { sid: 0, speed } });
 	logAmbient(`synthesizeLocalVoice — engine ready in ${Math.round(tLoaded - t0)}ms, generate() in ${Math.round(performance.now() - tLoaded)}ms — "${text}"`);
 	const wav = encodeWav(audio.samples, audio.sampleRate);
 	return { base64: wav.toString("base64"), mimeType: "audio/wav" };

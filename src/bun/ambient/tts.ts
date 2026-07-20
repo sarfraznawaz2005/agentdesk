@@ -10,7 +10,7 @@ import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 
-export async function generateAmbientSpeech(providerId: string, modelId: string, text: string): Promise<{ base64: string; mimeType: string }> {
+export async function generateAmbientSpeech(providerId: string, modelId: string, text: string, speed?: number): Promise<{ base64: string; mimeType: string }> {
 	const rows = await db.select().from(aiProviders).where(eq(aiProviders.id, providerId)).limit(1);
 	const provider = rows[0];
 	if (!provider) throw new Error("That provider is no longer configured — pick a voice again in Settings.");
@@ -20,5 +20,5 @@ export async function generateAmbientSpeech(providerId: string, modelId: string,
 		apiKey: provider.apiKey, baseUrl: provider.baseUrl, defaultModel: provider.defaultModel,
 	});
 	if (!adapter.generateSpeech) throw new Error(`${provider.name} doesn't support speech generation.`);
-	return adapter.generateSpeech(modelId, text);
+	return adapter.generateSpeech(modelId, text, speed);
 }

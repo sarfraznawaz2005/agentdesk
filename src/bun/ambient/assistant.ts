@@ -5,7 +5,7 @@
 // conversation), this has no per-project scope or DB-backed conversation row —
 // just an in-memory, FIFO-capped turn history (see conversationHistory below)
 // shared across every turn for the life of the app process.
-// Mirrors rpc/dashboard-agent.ts's shape (a standalone, non-project chat
+// Mirrors rpc/dashboard.ts's PM widget shape (a standalone, non-project chat
 // surface with its own tools) including its dual-path model invocation: the
 // Claude Subscription direct-HTTP OAuth path 429s for anything but Haiku, so
 // non-Haiku models must route through the official Agent SDK CLI runner
@@ -18,7 +18,7 @@ import { streamText, isStepCount, tool, type ModelMessage } from "ai";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
-import { aiProviders } from "../db/schema";
+import { aiProviders, projects } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
@@ -31,7 +31,58 @@ import { getCronJobs } from "../rpc/cron";
 import { getListingCounts } from "../rpc/freelance";
 import { getCurrentBranch, getGitStatus } from "../rpc/git";
 import { getPullRequests } from "../rpc/pulls";
+import { join } from "path";
+import { Utils } from "electrobun/bun";
+import { buildUserProfileSection, loadUserTimezone, SECURITY_RULES_SECTION } from "../agents/prompts";
+import { skillRegistry } from "../skills/registry";
+import { skillTools } from "../agents/tools/skills";
+import { webTools } from "../agents/tools/web";
+import { kanbanTools } from "../agents/tools/kanban";
+import { gitTools } from "../agents/tools/git";
+import { schedulerTools } from "../agents/tools/scheduler";
+import { fileOpsTools } from "../agents/tools/file-ops";
+import { systemTools } from "../agents/tools/system";
+import { processTools } from "../agents/tools/process";
+import { createMemoryTools, buildMemoryIndexSection } from "../agents/tools/memory";
+import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { logAmbient } from "./debug-log";
+
+// The ambient assistant's memory (save_memory/recall_memory/delete_memory)
+// deliberately reuses agent_memories — a per-(agentName, projectId) durable
+// store — rather than global_memories (PM-only, shared by every real
+// project's PM, about the user in general — see agents/tools/global-memory.ts's
+// own header). "Agent-specific, not global" means this assistant's memories
+// must be its OWN, isolated from both of those: not mixed into the shared
+// global pool, and not a real project's PM memory either. agent_memories.projectId
+// is a NOT NULL foreign key into `projects`, so there is no "no project"
+// option — the fix is a real, hidden pseudo-project row (same isQuickChat=1
+// hiding mechanism Quick Chat already uses to keep a project out of
+// getProjectsList/Dashboard) that exists ONLY to give this assistant its own
+// memory scope. Created once, cached in memory for the process lifetime.
+const AMBIENT_MEMORY_AGENT_NAME = "ambient-assistant";
+const AMBIENT_MEMORY_PROJECT_NAME = "__ambient_assistant_memory__";
+let ambientMemoryProjectId: string | null = null;
+
+async function ensureAmbientMemoryProjectId(): Promise<string> {
+	if (ambientMemoryProjectId) return ambientMemoryProjectId;
+	const existing = await db.select({ id: projects.id }).from(projects).where(eq(projects.name, AMBIENT_MEMORY_PROJECT_NAME)).limit(1);
+	if (existing[0]) {
+		ambientMemoryProjectId = existing[0].id;
+		return ambientMemoryProjectId;
+	}
+	const id = crypto.randomUUID();
+	await db.insert(projects).values({
+		id,
+		name: AMBIENT_MEMORY_PROJECT_NAME,
+		description: "Internal — private memory storage for Ambient Mode's voice assistant. Not a real project; hidden from every project list.",
+		workspacePath: join(Utils.paths.userData, "ambient", "memory-workspace"),
+		status: "active",
+		isQuickChat: 1,
+	});
+	logAmbient(`created hidden pseudo-project for ambient assistant memory: ${id}`);
+	ambientMemoryProjectId = id;
+	return id;
+}
 
 const TURN_TIMEOUT_MS = 120_000;
 
@@ -89,6 +140,29 @@ function closingRemarkReply(text: string): string {
 	return "You're welcome! Let me know if there's anything else.";
 }
 
+// Feeds the ambient voice pipeline's TTS streaming (see runAmbientAssistantTurn's
+// handleTextDelta/onTextChunk below): extracts every complete sentence out of
+// a growing text buffer, leaving any trailing incomplete one for the next
+// call. Deliberately simple (no abbreviation handling for "Mr." / "3.14" —
+// splitting a little too eagerly just produces a slightly shorter TTS chunk,
+// not a wrong answer, so it's not worth the complexity of a real sentence
+// tokenizer here) — sentence-ending punctuation followed by whitespace is
+// "good enough" for chunking a spoken reply, not for grammatical correctness.
+function extractCompleteSentences(buffer: string): { sentences: string[]; remainder: string } {
+	const sentences: string[] = [];
+	let remainder = buffer;
+	const sentenceEnd = /[.!?]+(?=\s)\s*/;
+	while (true) {
+		const match = remainder.match(sentenceEnd);
+		if (!match || match.index === undefined) break;
+		const end = match.index + match[0].length;
+		const sentence = remainder.slice(0, end).trim();
+		if (sentence) sentences.push(sentence);
+		remainder = remainder.slice(end);
+	}
+	return { sentences, remainder };
+}
+
 /**
  * Structurally the same shape as the persisted message-part rows
  * (`getMessageParts`'s response in shared/rpc/conversations.ts) so the tool-
@@ -118,16 +192,19 @@ async function getDefaultProvider() {
 	return any[0];
 }
 
-function buildAmbientTools() {
+async function buildAmbientTools() {
+	const ambientProjectId = await ensureAmbientMemoryProjectId();
+	const memoryTools = createMemoryTools(AMBIENT_MEMORY_AGENT_NAME, ambientProjectId);
 	return {
 		list_projects: tool({
 			description:
-				"List every project in AgentDesk with its id, name, and status. Call this first whenever " +
-				"the user names a project — you need its id before calling get_project_status or dispatching work to it.",
+				"List every project in AgentDesk with its id, name, status, and workspace path. Call this first " +
+				"whenever the user names a project — you need its id before calling get_project_status or dispatching " +
+				"work to it, or its workspacePath before calling git_log/git_diff.",
 			inputSchema: z.object({}),
 			execute: async () => {
 				const projectsList = await getProjectsList();
-				return JSON.stringify(projectsList.map((p) => ({ id: p.id, name: p.name, status: p.status })));
+				return JSON.stringify(projectsList.map((p) => ({ id: p.id, name: p.name, status: p.status, workspacePath: p.workspacePath })));
 			},
 		}),
 		get_project_status: tool({
@@ -224,24 +301,159 @@ function buildAmbientTools() {
 				return JSON.stringify({ branch: branch.branch, dirtyFileCount: status.files.length, openPullRequestCount: openPrs.length });
 			},
 		}),
+		search_projects: tool({
+			description:
+				"Fuzzy-search projects by name or description — use this instead of list_projects when the user's spoken project " +
+				"name might not match exactly (voice transcription can mishear names). Returns the closest matches, best first.",
+			inputSchema: z.object({ query: z.string().describe("Search query matched against project names and descriptions.") }),
+			execute: async ({ query }) => {
+				const rows = await db.select({ id: projects.id, name: projects.name, description: projects.description, workspacePath: projects.workspacePath }).from(projects);
+				const q = query.toLowerCase();
+				const scored = rows
+					.map((p) => {
+						const name = p.name.toLowerCase();
+						const desc = (p.description ?? "").toLowerCase();
+						let score = 0;
+						if (name === q) score = 100;
+						else if (name.includes(q)) score = 80;
+						else if (q.includes(name)) score = 60;
+						else if (desc.includes(q)) score = 40;
+						else for (const w of q.split(/\s+/)) {
+							if (name.includes(w)) score += 20;
+							else if (desc.includes(w)) score += 10;
+						}
+						return { ...p, score };
+					})
+					.filter((p) => p.score > 0)
+					.sort((a, b) => b.score - a.score)
+					.slice(0, 5);
+				return JSON.stringify({ matches: scored });
+			},
+		}),
+		// Skills — explicitly requested so the ambient assistant can load and
+		// follow the same specialized instructions the main PM and dashboard
+		// widget can (see buildSystemPrompt's "Available Skills" section below).
+		read_skill: skillTools.read_skill.tool,
+		find_skills: skillTools.find_skills.tool,
+		// General web access — the ambient assistant otherwise has zero way to
+		// answer anything outside AgentDesk's own data (e.g. "what's today's
+		// exchange rate", general knowledge questions asked mid-conversation).
+		web_search: webTools.web_search.tool,
+		// Richer per-task detail than get_project_status's aggregate counts —
+		// project-scoped, same as every other tool here.
+		list_tasks: kanbanTools.list_tasks.tool,
+		get_task: kanbanTools.get_task.tool,
+		// Richer git detail alongside the existing get_git_status summary.
+		git_log: gitTools.git_log.tool,
+		git_diff: gitTools.git_diff.tool,
+		// Lets a voice request like "remind me to check the build in 10 minutes"
+		// actually create something, not just report on existing jobs
+		// (get_scheduled_jobs above is read-only listing).
+		create_cron_job: schedulerTools.create_cron_job,
+		list_cron_jobs: schedulerTools.list_cron_jobs,
+		// File exploration — project-scoped via the workspacePath list_projects/
+		// search_projects now return, same as git_log/git_diff above.
+		read_file: fileOpsTools.read_file.tool,
+		file_info: fileOpsTools.file_info.tool,
+		directory_tree: fileOpsTools.directory_tree.tool,
+		search_files: fileOpsTools.search_files.tool,
+		search_content: fileOpsTools.search_content.tool,
+		// App/host environment introspection — no project scoping needed.
+		environment_info: systemTools.environment_info.tool,
+		get_env: systemTools.get_env.tool,
+		// Sleep — lets a multi-step voice request pace itself (e.g. "check again
+		// in a minute") without needing a full cron job for something this short.
+		sleep: systemTools.sleep.tool,
+		// Check whether a given process/port is running — useful for "is the dev
+		// server still up" type status questions.
+		check_process: processTools.check_process.tool,
+		// Web access beyond search — fetch a specific URL's content, or make an
+		// arbitrary HTTP request (API testing, checking a webhook, etc.).
+		web_fetch: webTools.web_fetch.tool,
+		http_request: webTools.http_request.tool,
+		// Durable memory — save_memory/recall_memory/delete_memory — private to
+		// this assistant (see ensureAmbientMemoryProjectId's comment above for
+		// why this is neither the shared global-memory pool nor a real
+		// project's own PM memory).
+		save_memory: memoryTools.save_memory.tool,
+		recall_memory: memoryTools.recall_memory.tool,
+		delete_memory: memoryTools.delete_memory.tool,
 	};
 }
 
-const SYSTEM_PROMPT =
-	"You are AgentDesk's ambient voice assistant — a cross-project status and dispatch helper the " +
-	"user talks to via a voice interface, separate from any single project's own PM chat. Answer " +
-	"questions about what's happening across the user's projects: active agents, task completion, " +
-	"pending approvals, recent activity, code review backlog, unread channel messages, scheduled " +
-	"jobs, freelance/Auto-Earn status, and per-project git status. Use the tools available to check " +
-	"real data — never guess or make up numbers. When the user asks you to start, begin, or take " +
-	"action on work for a named project, use dispatch_to_project rather than trying to do the work " +
-	"yourself — you are a router to that project's own PM, not a coding agent. Keep replies short " +
-	"and conversational, like a spoken answer, not a written report — one or two sentences unless " +
-	"the user clearly asked for a list. If the user names a project, call list_projects first to " +
-	"resolve the name to an id before calling any project-specific tool.";
+// Rebuilt fresh per turn (not a static const) — the whole point of the date/
+// time and user-profile sections below is that they're only correct if
+// recomputed every time, the same reasoning rpc/dashboard.ts's
+// buildDashboardSystemPrompt applies to its own PM widget (the closest
+// architectural sibling to this surface: same in-memory-only, cross-project,
+// no-DB-conversation shape).
+async function buildSystemPrompt(): Promise<string> {
+	const userTimezone = await loadUserTimezone();
+	const now = new Date();
+	const localTime = now.toLocaleString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: userTimezone });
+
+	let prompt =
+		"You are `AgentDesk Project Manager` — the same Project Manager identity used everywhere else " +
+		"in AgentDesk, answering here through Ambient Mode's cross-project voice interface, separate " +
+		"from any single project's own PM chat.\n\n" +
+		`Current time: ${localTime} (${userTimezone})\n\n` +
+		"Answer questions about what's happening across the user's projects: active agents, task " +
+		"completion, pending approvals, recent activity, code review backlog, unread channel messages, " +
+		"scheduled jobs, freelance/Auto-Earn status, and per-project git status. Use the tools available " +
+		"to check real data — never guess or make up numbers. When the user asks you to start, begin, or " +
+		"take action on work for a named project, use dispatch_to_project rather than trying to do the " +
+		"work yourself — you are a router to that project's own PM, not a coding agent. Keep replies " +
+		"short and conversational, like a spoken answer, not a written report — one or two sentences " +
+		"unless the user clearly asked for a list. If the user names a project, call list_projects (or " +
+		"search_projects if the name might have been misheard) first to resolve it to an id before " +
+		"calling any project-specific tool. You can also create reminders/scheduled jobs, search the " +
+		"web, fetch a URL's content, or make direct HTTP requests for general questions outside " +
+		"AgentDesk's own data, read installed skills for specialized instructions, explore and read a " +
+		"project's files (read_file/file_info/directory_tree/search_files/search_content, using its " +
+		"workspacePath), check whether a process/port is running (check_process), and check host/" +
+		"environment details (environment_info/get_env). Use save_memory to remember durable facts across " +
+		"conversations (user preferences, things they explicitly asked you to remember) and " +
+		"recall_memory to retrieve them — this memory is private to you, separate from any project's " +
+		"own PM.\n\n" +
+		SECURITY_RULES_SECTION;
+
+	const userSection = await buildUserProfileSection();
+	if (userSection) prompt += `\n\n${userSection}`;
+
+	const skills = skillRegistry.getAll();
+	if (skills.length > 0) {
+		const lines = skills.map((s) => {
+			const agentTag = s.preferredAgent ? ` [agent: ${s.preferredAgent}]` : "";
+			return `- **${s.name}**: ${s.description.slice(0, 120)}${agentTag}`;
+		});
+		prompt +=
+			"\n\n## Available Skills\n\nThe following skills are installed. Use `read_skill` to load a " +
+			"skill's full instructions before following it. Use `find_skills` to search by keyword.\n\n" +
+			lines.join("\n");
+	}
+
+	// Your own memory index — private to this assistant, not the shared
+	// global-memory pool or any real project's PM memory (see
+	// ensureAmbientMemoryProjectId's comment). Empty until save_memory is used
+	// at least once.
+	const ambientProjectId = await ensureAmbientMemoryProjectId();
+	const memorySection = await buildMemoryIndexSection(AMBIENT_MEMORY_AGENT_NAME, ambientProjectId);
+	if (memorySection) prompt += `\n\n${memorySection}`;
+
+	return prompt;
+}
 
 export interface RunAmbientAssistantTurnOptions {
 	onPart?: (part: AmbientAssistantPart) => void;
+	// Fired once per complete sentence as the answer streams in (real
+	// token-level deltas — both the CLI path's onTextToken and streamText's
+	// text-delta give these), so the caller can start speaking the answer
+	// sentence-by-sentence instead of waiting for the whole thing to finish
+	// generating. Never fires for a provider/path that doesn't stream deltas
+	// (only the closing-remark shortcut and non-streaming fallbacks) — the
+	// caller is expected to fall back to speaking the final `answer` string
+	// directly if no chunks ever arrived.
+	onTextChunk?: (chunk: string) => void;
 	abortSignal?: AbortSignal;
 	// Lets the caller's own turn id double as the broadcast messageId, so a
 	// frontend that tracks multiple turns (e.g. a barge-in leaving an older
@@ -271,12 +483,50 @@ export async function runAmbientAssistantTurn(question: string, opts: RunAmbient
 
 	const provider = await getDefaultProvider();
 	const modelId = provider.defaultModel ?? getDefaultModel(provider.providerType);
-	const tools = buildAmbientTools();
+	const tools = await buildAmbientTools();
 	const signal = opts.abortSignal ? AbortSignal.any([opts.abortSignal, AbortSignal.timeout(TURN_TIMEOUT_MS)]) : AbortSignal.timeout(TURN_TIMEOUT_MS);
 	pushHistory({ role: "user", content: question });
 
+	// Streams the answer live, two ways, from the same token-level deltas
+	// (CLI path's onTextToken, streamText's text-delta — see handleTextDelta
+	// below): (1) a growing "text" part under one stable id, throttled via the
+	// same createThrottledAccumulator every other "Full Streaming" path in
+	// this codebase uses, so the tool-call pane shows the answer forming
+	// instead of staying on "Thinking…" until it's all done; (2) complete
+	// sentences handed to onTextChunk as they finish, so the caller can start
+	// speaking the answer before the model has finished generating the rest
+	// of it. `textPartId`/`textSortOrder` are allocated lazily on the first
+	// delta, not upfront, so the part's position in the pane reflects when
+	// text actually started streaming relative to any tool calls, exactly
+	// like tool-call parts already get their own sortOrder assigned live.
+	let textPartId: string | null = null;
+	let textSortOrder: number | null = null;
+	let sentenceRemainder = "";
+	const textAccumulator = createThrottledAccumulator((accumulated) => {
+		if (textPartId === null || textSortOrder === null) return;
+		emitPart({
+			id: textPartId, messageId, type: "text", content: accumulated,
+			toolName: null, toolInput: null, toolOutput: null, toolState: null,
+			sortOrder: textSortOrder, timeStart: null, timeEnd: null,
+		});
+	});
+	function handleTextDelta(delta: string) {
+		if (!delta) return;
+		if (textPartId === null) {
+			textPartId = crypto.randomUUID();
+			textSortOrder = sortOrder++;
+		}
+		textAccumulator.push(delta);
+		sentenceRemainder += delta;
+		const { sentences, remainder } = extractCompleteSentences(sentenceRemainder);
+		sentenceRemainder = remainder;
+		for (const sentence of sentences) opts.onTextChunk?.(sentence);
+	}
+
 	const usingCli = provider.providerType === "claude-subscription" && !isHaikuModel(modelId);
-	logAmbient(`provider=${provider.providerType} model=${modelId} path=${usingCli ? "claude-cli" : "streamText"} historyLen=${conversationHistory.length}`);
+	const tPrompt = performance.now();
+	const systemPrompt = await buildSystemPrompt();
+	logAmbient(`provider=${provider.providerType} model=${modelId} path=${usingCli ? "claude-cli" : "streamText"} historyLen=${conversationHistory.length} systemPromptBuilt in ${Math.round(performance.now() - tPrompt)}ms (${systemPrompt.length} chars)`);
 
 	let fullText = "";
 	const tCall = performance.now();
@@ -286,7 +536,7 @@ export async function runAmbientAssistantTurn(question: string, opts: RunAmbient
 		const orderByCallId = new Map<string, number>();
 		const cliResult = await runClaudeCliTask({
 			task: flattenHistoryForCli(conversationHistory),
-			systemPrompt: SYSTEM_PROMPT,
+			systemPrompt,
 			tools,
 			modelId,
 			timeoutMs: TURN_TIMEOUT_MS,
@@ -294,8 +544,22 @@ export async function runAmbientAssistantTurn(question: string, opts: RunAmbient
 			verifyToolCall: false, // ambient status/dispatch turns may legitimately need zero tool calls
 			onText: (text) => { fullText += text; },
 			onReasoning: () => { /* not surfaced — matches dashboard-agent.ts's chat path */ },
-			onTextToken: () => { /* no token-level throttled broadcast needed for a one-shot turn */ },
-			onRetract: () => { /* no throttled accumulator in play here to reset */ },
+			onTextToken: (delta) => handleTextDelta(delta),
+			// A verification failure is retrying the whole attempt from scratch —
+			// unlike fullText (built from the buffered/replayed onText, already
+			// safe by construction), everything handleTextDelta built from the
+			// live, unbuffered onTextToken stream belongs to the discarded
+			// attempt and must not bleed into the retry's own text. The
+			// accumulator has no reset-content method (only cancel-pending-timer),
+			// so instead of trying to reuse it, drop the id/sortOrder entirely —
+			// the next delta allocates a fresh one, same as a brand new turn would.
+			onRetract: () => {
+				logAmbient("ambient text stream retracted (verification retry) — discarding partial streamed text/chunks");
+				textAccumulator.cancel();
+				textPartId = null;
+				textSortOrder = null;
+				sentenceRemainder = "";
+			},
 			onToolCallStart: (toolName, args) => {
 				const callId = crypto.randomUUID();
 				const order = sortOrder++;
@@ -334,7 +598,7 @@ export async function runAmbientAssistantTurn(question: string, opts: RunAmbient
 		});
 		const result = streamText({
 			model: adapter.createModel(modelId),
-			instructions: SYSTEM_PROMPT,
+			instructions: systemPrompt,
 			messages: conversationHistory,
 			tools,
 			stopWhen: [isStepCount(20)],
@@ -344,7 +608,9 @@ export async function runAmbientAssistantTurn(question: string, opts: RunAmbient
 		const orderByCallId = new Map<string, number>();
 		for await (const part of result.stream) {
 			if (part.type === "text-delta") {
-				fullText += (part as { text?: string }).text ?? "";
+				const delta = (part as { text?: string }).text ?? "";
+				fullText += delta;
+				handleTextDelta(delta);
 			} else if (part.type === "tool-call") {
 				const order = sortOrder++;
 				orderByCallId.set(part.toolCallId, order);
@@ -380,12 +646,35 @@ export async function runAmbientAssistantTurn(question: string, opts: RunAmbient
 
 	if (!fullText.trim()) throw new Error("The ambient assistant returned an empty response. Check your provider quota or default model.");
 
+	// Cancel (not flush) the accumulator's pending timer — the definitive
+	// emitPart just below already delivers the complete `fullText` a moment
+	// later, so letting the throttled timer ALSO fire here would just emit
+	// the same content twice in a row (confirmed live: two back-to-back
+	// "part received" broadcasts with identical content). Any trailing text
+	// that never reached a sentence boundary (e.g. an answer with no closing
+	// punctuation, or one short/fast enough that everything arrived in a
+	// single delta before the first sentence-end match) still needs to reach
+	// onTextChunk, though — otherwise the caller never speaks it.
+	textAccumulator.cancel();
+	if (sentenceRemainder.trim()) {
+		opts.onTextChunk?.(sentenceRemainder.trim());
+		sentenceRemainder = "";
+	}
+
 	pushHistory({ role: "assistant", content: fullText });
 
+	// Reuses the same id/sortOrder the streamed updates above already used
+	// (falls back to fresh ones only if no delta ever streamed in — e.g. a
+	// provider/path without token-level streaming) so this is recognized as
+	// the SAME part finishing, not a second one — sets the definitive final
+	// content/timeEnd rather than leaving the pane on whatever the last
+	// throttled update happened to contain.
+	if (textPartId === null) textPartId = crypto.randomUUID();
+	if (textSortOrder === null) textSortOrder = sortOrder++;
 	emitPart({
-		id: crypto.randomUUID(), messageId, type: "text", content: fullText,
+		id: textPartId, messageId, type: "text", content: fullText,
 		toolName: null, toolInput: null, toolOutput: null, toolState: null,
-		sortOrder: sortOrder++, timeStart: null, timeEnd: new Date().toISOString(),
+		sortOrder: textSortOrder, timeStart: null, timeEnd: new Date().toISOString(),
 	});
 
 	return { answer: fullText };

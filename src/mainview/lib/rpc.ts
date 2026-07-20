@@ -121,6 +121,9 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       ambientAssistantPart: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:ambient-assistant-part", { detail: payload }));
       },
+      ambientAssistantTextChunk: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:ambient-assistant-text-chunk", { detail: payload }));
+      },
       agentSessionComplete: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:agent-session-complete", { detail: payload }));
       },
@@ -147,6 +150,15 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       },
       ambientLocalVoiceStatus: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:ambient-local-voice-status", { detail: payload }));
+      },
+      ambientLocalSttStatus: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:ambient-local-stt-status", { detail: payload }));
+      },
+      ambientSttSegmentStart: () => {
+        window.dispatchEvent(new CustomEvent("agentdesk:ambient-stt-segment-start"));
+      },
+      ambientSttSegment: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:ambient-stt-segment", { detail: payload }));
       },
       shellApprovalRequest: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:shell-approval-request", { detail: payload }));
@@ -490,9 +502,9 @@ export const rpc = {
   runAmbientAssistantQuery: (question: string, turnId: string) => electroviewRpc.request.runAmbientAssistantQuery({ question, turnId }),
   /** Cancels a still-in-flight ambient turn by its turnId — a no-op if it already finished. */
   cancelAmbientAssistantTurn: (turnId: string) => electroviewRpc.request.cancelAmbientAssistantTurn({ turnId }),
-  /** Generate speech audio from an alternate TTS model — Ambient Mode's configurable-voice setting. */
-  generateAmbientSpeech: (providerId: string, modelId: string, text: string) =>
-    electroviewRpc.request.generateAmbientSpeech({ providerId, modelId, text }),
+  /** Generate speech audio from an alternate TTS model — Ambient Mode's configurable-voice setting. `speed` is a 1.0=normal multiplier. */
+  generateAmbientSpeech: (providerId: string, modelId: string, text: string, speed?: number) =>
+    electroviewRpc.request.generateAmbientSpeech({ providerId, modelId, text, speed }),
   /** Status of Ambient Mode's offline/local TTS voice (downloaded on demand). */
   getAmbientLocalVoiceStatus: () => electroviewRpc.request.getAmbientLocalVoiceStatus({}),
   /** Downloads the offline/local TTS voice's engine + model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalVoiceStatus events. */
@@ -501,6 +513,14 @@ export const rpc = {
   preloadAmbientLocalVoice: () => electroviewRpc.request.preloadAmbientLocalVoice({}),
   /** Relays an [ambient] debug log line to the backend's ambient.log — the webview has no direct filesystem access. Use lib/log-ambient.ts's logAmbient() instead of calling this directly. */
   logAmbientDebug: (message: string) => electroviewRpc.request.logAmbientDebug({ message }),
+  /** Status of Ambient Mode's offline/local STT pipeline (downloaded on demand). */
+  getAmbientLocalSttStatus: () => electroviewRpc.request.getAmbientLocalSttStatus({}),
+  /** Downloads the offline/local STT pipeline's mic-capture library + engine + VAD + ASR model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalSttStatus events. */
+  downloadAmbientLocalStt: () => electroviewRpc.request.downloadAmbientLocalStt({}),
+  /** Starts continuous native mic capture for the local STT pipeline — each detected utterance streams out via the ambientSttSegment push event. Idempotent. */
+  startAmbientLocalListening: () => electroviewRpc.request.startAmbientLocalListening({}),
+  /** Stops the continuous local mic capture started by startAmbientLocalListening. */
+  stopAmbientLocalListening: () => electroviewRpc.request.stopAmbientLocalListening({}),
 
   /** Fetch a single setting by key. */
   getSetting: (key: string, category?: string) =>

@@ -14,12 +14,12 @@ import { join, dirname } from "node:path";
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
 let logPath: string | null = null;
 
-// Both off for now — the diagnostic push that justified these is done. Flip
-// either back to true if a future investigation needs them again (no other
-// change needed — every logAmbient() call site throughout the ambient
-// pipeline stays exactly as is).
+// File logging on (console still off per explicit prior instruction) — the
+// local STT feature build/verification pass needs a persisted record of the
+// whole ambient pipeline. Flip LOG_TO_FILE back to false once done with it —
+// no other change needed, every logAmbient() call site stays exactly as is.
 const LOG_TO_CONSOLE = false;
-const LOG_TO_FILE = false;
+const LOG_TO_FILE = true;
 
 function getLogPath(): string {
 	if (!logPath) logPath = join(Utils.paths.userData, "logs", "ambient.log");

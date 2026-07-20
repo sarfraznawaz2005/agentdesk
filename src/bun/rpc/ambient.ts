@@ -1,5 +1,5 @@
 import { Screen } from "electrobun/bun";
-import type { AmbientDisplayDto, AmbientActivitySnapshot, AmbientAssistantPartDto, AmbientLocalVoiceStatusDto } from "../../shared/rpc/ambient";
+import type { AmbientDisplayDto, AmbientActivitySnapshot, AmbientAssistantPartDto, AmbientLocalVoiceStatusDto, AmbientLocalSttStatusDto } from "../../shared/rpc/ambient";
 import { getActiveProjectAgentsList, getGlobalPendingApprovalCount, getRecentGlobalActivity, broadcastToWebview } from "../engine-manager";
 import { getProjectTaskStats } from "./kanban";
 import { getProjectsList } from "./projects";
@@ -13,6 +13,7 @@ import {
 	downloadLocalVoice,
 	preloadLocalVoice,
 } from "../ambient/local-voice-manager";
+import { getLocalSttStatus, downloadLocalStt, startLocalListening, stopLocalListening } from "../ambient/local-stt-manager";
 import { logAmbient } from "../ambient/debug-log";
 
 export function getAmbientDisplays(): AmbientDisplayDto[] {
@@ -99,8 +100,18 @@ export async function runAmbientAssistantQuery(question: string, turnId: string)
 	try {
 		const result = await runAmbientAssistantTurn(question, {
 			onPart: (part: AmbientAssistantPartDto) => {
-				logAmbient(`emitPart(${turnId}) type=${part.type}${part.type === "tool_call" ? ` tool=${part.toolName}` : ""}`);
+				// Progressive "text" updates (timeEnd still null) fire on every
+				// throttled accumulator flush during streaming — logging each one
+				// would flood the log for a long answer; tool calls and the final,
+				// definitive text update (timeEnd set) still get logged as before.
+				if (part.type !== "text" || part.timeEnd !== null) {
+					logAmbient(`emitPart(${turnId}) type=${part.type}${part.type === "tool_call" ? ` tool=${part.toolName}` : ""}`);
+				}
 				broadcastToWebview("ambientAssistantPart", part);
+			},
+			onTextChunk: (chunk) => {
+				logAmbient(`emitTextChunk(${turnId}): "${chunk}"`);
+				broadcastToWebview("ambientAssistantTextChunk", { messageId: turnId, chunk });
 			},
 			abortSignal: controller.signal,
 			messageId: turnId,
@@ -108,7 +119,18 @@ export async function runAmbientAssistantQuery(question: string, turnId: string)
 		logAmbient(`runAmbientAssistantQuery(${turnId}) done in ${Math.round(performance.now() - t0)}ms — "${result.answer}"`);
 		return result;
 	} catch (err) {
-		logAmbient(`runAmbientAssistantQuery(${turnId}) failed after ${Math.round(performance.now() - t0)}ms: ${err instanceof Error ? err.message : String(err)}`);
+		const message = err instanceof Error ? err.message : String(err);
+		logAmbient(`runAmbientAssistantQuery(${turnId}) failed after ${Math.round(performance.now() - t0)}ms: ${message}`);
+		// A barge-in cancellation is routine, expected ambient behavior (happens
+		// on purpose, often several times per session) — NOT an application
+		// error. Letting it throw here would surface it through
+		// rpc-registration.ts's generic withErrorToast wrapper as a red
+		// "Cancelled by user" toast for something the user caused intentionally.
+		// Checking our OWN controller (not the merged signal passed downstream,
+		// which also includes a timeout) distinguishes a real user-triggered
+		// cancel from a genuine failure — a timeout or provider error still
+		// throws and still gets toasted, since those are worth surfacing.
+		if (controller.signal.aborted) return { answer: message };
 		throw err;
 	} finally {
 		activeTurnControllers.delete(turnId);
@@ -133,17 +155,17 @@ export async function cancelAmbientAssistantTurn(turnId: string): Promise<{ succ
 	return { success: true };
 }
 
-/** Ambient Mode's configurable TTS model (docs/ambient-pm-voice-plan.md Subsystem 6). */
-export async function generateAmbientSpeech(providerId: string, modelId: string, text: string): Promise<{ base64: string; mimeType: string }> {
+/** Ambient Mode's configurable TTS model (docs/ambient-pm-voice-plan.md Subsystem 6). `speed` is a 1.0=normal multiplier, honored by both the local voice and real OpenAI speech models. */
+export async function generateAmbientSpeech(providerId: string, modelId: string, text: string, speed?: number): Promise<{ base64: string; mimeType: string }> {
 	const t0 = performance.now();
 	try {
 		const result = providerId === LOCAL_VOICE_PROVIDER_ID
-			? await synthesizeLocalVoice(text)
-			: await generateAmbientSpeechImpl(providerId, modelId, text);
-		logAmbient(`generateAmbientSpeech(${providerId}) done in ${Math.round(performance.now() - t0)}ms`);
+			? await synthesizeLocalVoice(text, speed)
+			: await generateAmbientSpeechImpl(providerId, modelId, text, speed);
+		logAmbient(`generateAmbientSpeech(${providerId}, speed=${speed ?? 1}) done in ${Math.round(performance.now() - t0)}ms`);
 		return result;
 	} catch (err) {
-		logAmbient(`generateAmbientSpeech(${providerId}) failed after ${Math.round(performance.now() - t0)}ms: ${err instanceof Error ? err.message : String(err)}`);
+		logAmbient(`generateAmbientSpeech(${providerId}, speed=${speed ?? 1}) failed after ${Math.round(performance.now() - t0)}ms: ${err instanceof Error ? err.message : String(err)}`);
 		throw err;
 	}
 }
@@ -170,4 +192,30 @@ export async function preloadAmbientLocalVoice(): Promise<{ success: boolean }> 
 export async function logAmbientDebug(message: string): Promise<{ success: boolean }> {
 	logAmbient(`[frontend] ${message}`);
 	return { success: true };
+}
+
+/** Status of the offline/local STT pipeline (downloaded on demand — see local-stt-manager.ts). */
+export async function getAmbientLocalSttStatus(): Promise<AmbientLocalSttStatusDto> {
+	return getLocalSttStatus();
+}
+
+/** Downloads the offline/local STT pipeline's mic-capture library + engine + VAD + ASR model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalSttStatus events. */
+export async function downloadAmbientLocalStt(): Promise<{ success: boolean }> {
+	return downloadLocalStt();
+}
+
+/** Starts continuous native mic capture, gated by VAD, decoded via the local Whisper model — each detected utterance streams out via ambientSttSegment (preceded by ambientSttSegmentStart the instant VAD detects it, before decode begins). Idempotent (a no-op if already running). */
+export async function startAmbientLocalListening(): Promise<{ success: boolean; error?: string }> {
+	return startLocalListening({
+		onSegmentStart: () => broadcastToWebview("ambientSttSegmentStart", {}),
+		onSegment: (text, silenceBeforeMs) => {
+			logAmbient(`local-stt segment -> "${text}" (silenceBeforeMs=${silenceBeforeMs})`);
+			broadcastToWebview("ambientSttSegment", { text, silenceBeforeMs });
+		},
+	});
+}
+
+/** Stops the continuous local mic capture started by startAmbientLocalListening. */
+export async function stopAmbientLocalListening(): Promise<{ success: boolean }> {
+	return stopLocalListening();
 }

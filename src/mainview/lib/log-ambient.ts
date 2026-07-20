@@ -1,11 +1,11 @@
 import { rpc } from "./rpc";
 
-// Off for now — the diagnostic push that justified this is done. Flip back to
-// true if a future investigation needs it again (no other change needed —
+// On — mirrors the backend's own LOG_TO_FILE toggle in
+// src/bun/ambient/debug-log.ts, on for the same reason (verifying the new
+// local STT feature). Flip back to false once done — no other change needed,
 // every logAmbient() call site throughout the ambient pipeline stays exactly
-// as is). Mirrors the backend's own LOG_TO_CONSOLE/LOG_TO_FILE toggle in
-// src/bun/ambient/debug-log.ts.
-const ENABLED = false;
+// as is.
+const ENABLED = true;
 
 /**
  * Console + persisted-log helper for the ambient voice pipeline. Mirrors the

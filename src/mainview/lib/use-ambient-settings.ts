@@ -9,6 +9,10 @@ export interface AmbientSettings {
   /** null = use the default browser speechSynthesis voice. */
   ttsProviderId: string | null;
   ttsModelId: string | null;
+  /** 1.0 = normal speed. Honored by the browser voice (rate), the offline Ryan voice, and real speech-model voices. */
+  ttsSpeed: number;
+  /** null = use the default Web Speech API path. "local" = offline VAD+Whisper pipeline (see local-stt-manager.ts). */
+  sttProviderId: string | null;
 }
 
 const DEFAULTS: AmbientSettings = {
@@ -18,6 +22,8 @@ const DEFAULTS: AmbientSettings = {
   ttsEnabled: true,
   ttsProviderId: null,
   ttsModelId: null,
+  ttsSpeed: 1.0,
+  sttProviderId: null,
 };
 
 function toBool(v: unknown, fallback: boolean): boolean {
@@ -50,6 +56,8 @@ export function useAmbientSettings(): AmbientSettings {
         ttsEnabled: toBool(data.ambient_mode_tts_enabled, DEFAULTS.ttsEnabled),
         ttsProviderId: typeof data.ambient_tts_provider_id === "string" && data.ambient_tts_provider_id ? data.ambient_tts_provider_id : DEFAULTS.ttsProviderId,
         ttsModelId: typeof data.ambient_tts_model_id === "string" && data.ambient_tts_model_id ? data.ambient_tts_model_id : DEFAULTS.ttsModelId,
+        ttsSpeed: data.ambient_tts_speed !== undefined && !Number.isNaN(Number(data.ambient_tts_speed)) ? Number(data.ambient_tts_speed) : DEFAULTS.ttsSpeed,
+        sttProviderId: typeof data.ambient_stt_provider_id === "string" && data.ambient_stt_provider_id ? data.ambient_stt_provider_id : DEFAULTS.sttProviderId,
       });
     }).catch(() => {});
 

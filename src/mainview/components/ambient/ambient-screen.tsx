@@ -5,6 +5,7 @@ import { useGlobalAgentActivity } from "@/lib/use-global-agent-activity";
 import { useIdleTimer } from "@/lib/use-idle-timer";
 import { useAmbientSettings } from "@/lib/use-ambient-settings";
 import { useAmbientVoiceTurn } from "@/lib/use-ambient-voice-turn";
+import { useLocalSttTurn } from "@/lib/use-local-stt-turn";
 import { useAmbientVoicePlayback } from "@/lib/use-ambient-voice-playback";
 import { useChatStore } from "@/stores/chat-store";
 import { rpc } from "@/lib/rpc";
@@ -12,7 +13,7 @@ import { logAmbient } from "@/lib/log-ambient";
 import { AmbientChrome, AmbientRadarContent, ACCENT, BG, FG } from "./ambient-radar-view";
 import { ProjectToDisplayControl } from "./project-to-display-control";
 import { AmbientToolCallPane, TOOL_CALL_PANE_RESERVED_WIDTH, type AmbientTurn } from "./ambient-tool-call-pane";
-import type { AmbientAssistantPartDto } from "../../../shared/rpc/ambient";
+import type { AmbientAssistantPartDto, AmbientAssistantTextChunkDto } from "../../../shared/rpc/ambient";
 
 interface ProjectNameLookup {
   [projectId: string]: string;
@@ -41,6 +42,14 @@ const SHOW_TRANSCRIPT_IN_CENTER = false;
 // the visible log at the same 100-message combined limit.
 const MAX_TURNS = 50;
 
+// How long to wait after a turn starts before speaking a short "one moment"
+// ack phrase (see processTurn) — long enough that it never fires for a
+// closing-remark reply (resolves in <20ms, assistant.ts's isClosingRemark
+// shortcut), short enough to still land well before a real turn's answer,
+// since even a plain no-tool-call reply measured 7s+ through the Claude
+// Subscription CLI subprocess's own startup cost.
+const ACK_DELAY_MS = 700;
+
 /**
  * Full-screen "Ambient Mode" overlay — mounted once at the app-shell level and
  * shown/hidden via useAmbientStore, never a route change (so closing it
@@ -52,7 +61,7 @@ export function AmbientScreen() {
   const dismiss = useAmbientStore((s) => s.dismiss);
   const { activeProjectAgents, taskStats, activityLog } = useGlobalAgentActivity();
   const awaitingYou = useChatStore((s) => s.shellApprovalRequests.length);
-  const { voiceEnabled, ttsEnabled, ttsProviderId, ttsModelId } = useAmbientSettings();
+  const { voiceEnabled, ttsEnabled, ttsProviderId, ttsModelId, ttsSpeed, sttProviderId } = useAmbientSettings();
   const [projectNames, setProjectNames] = useState<ProjectNameLookup>({});
   const [subState, setSubState] = useState<"ambient" | "engaged">("ambient");
   const [transcript, setTranscript] = useState("");
@@ -65,6 +74,17 @@ export function AmbientScreen() {
   // which there was previously no loading indication at all (isThinking had
   // already flipped false, tts.speaking hadn't flipped true yet).
   const [preparingSpeech, setPreparingSpeech] = useState(false);
+  // True from the first streamed chunk of an answer until the whole
+  // sequence is done (queue empty AND the backend has confirmed no more are
+  // coming) — NOT the same as tts.speaking, which toggles false/true
+  // separately for EACH chunk's own utterance (confirmed live: consecutive
+  // browser-voice utterances have a real ~150-170ms gap between one's onend
+  // and the next's onstart). Without this, the mic-off/auto-restart effects
+  // below — keyed only on the raw per-utterance tts.speaking — briefly
+  // reopened the mic in that gap between every single sentence of a
+  // multi-sentence answer, only to force it shut again moments later once
+  // the next chunk started playing. See processTurn's drainQueue.
+  const [speakingAnswer, setSpeakingAnswer] = useState(false);
   // True from the first "Talk to PM" tap until the user explicitly taps
   // "Stop" (or leaves the engaged view) — drives the hands-free auto-restart
   // loop below, replacing the old manual "Ask again" tap-per-turn model.
@@ -86,7 +106,28 @@ export function AmbientScreen() {
   // the previous turn's backend call on barge-in.
   const activeTurnIdRef = useRef<string | null>(null);
   const clock = useClock();
-  const tts = useAmbientVoicePlayback(ttsProviderId, ttsModelId);
+  const tts = useAmbientVoicePlayback(ttsProviderId, ttsModelId, ttsSpeed);
+
+  // Whether the local/offline STT pipeline (see local-stt-manager.ts,
+  // docs/ambient-voice-barge-in-research.md) is downloaded and ready — gates
+  // localSttActive below. Only "local" + ready actually swaps the turn source;
+  // "local" selected but not yet downloaded falls back to the Web Speech API
+  // path automatically (same graceful-fallback shape as the TTS voice picker).
+  const [localSttReady, setLocalSttReady] = useState(false);
+  useEffect(() => {
+    if (!(open && sttProviderId === "local")) {
+      setLocalSttReady(false);
+      return;
+    }
+    let cancelled = false;
+    rpc.getAmbientLocalSttStatus().then((status) => {
+      if (!cancelled) setLocalSttReady(status.status === "ready");
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open, sttProviderId]);
+  const localSttActive = sttProviderId === "local" && localSttReady;
 
   // Live tool-call progress for the side pane (docs/ambient-pm-voice-plan.md
   // Subsystem 5) — each tool call arrives as two pushes sharing the same id
@@ -167,19 +208,27 @@ export function AmbientScreen() {
   // useAmbientVoiceTurn), route the transcript to the Ambient Assistant —
   // NOT the old per-conversation sendMessage path, which could only ever
   // answer within whatever project chat happened to already be open. Speaks
-  // the real cross-project turn's answer directly once it's ready — an
-  // earlier version spoke an instant filler "let me check"-style phrase
-  // first, but that was dropped as unnecessary now that the pane's own
-  // immediate "Thinking…" row already gives instant feedback (see
-  // handleVoiceEnd below) without needing a spoken placeholder too. See
+  // the answer sentence-by-sentence as it streams in (see
+  // AmbientAssistantTextChunkDto) rather than waiting for the whole thing to
+  // finish generating — the biggest lever for "feels real-time," since TTS
+  // now overlaps whatever generation/tool-calls are still running, on any
+  // provider that streams token deltas (both the Claude Subscription CLI
+  // path and streamText do; see assistant.ts's handleTextDelta). Falls back
+  // to speaking the complete answer in one shot if no chunk ever streamed in
+  // (e.g. a provider/path without token-level deltas). Also speaks a short
+  // "one moment"-style ack phrase if nothing's speakable yet after
+  // ACK_DELAY_MS — an earlier version of this ack was dropped as unnecessary
+  // on the theory that the pane's "Thinking…" row already gives instant
+  // feedback, but that only helps a user actually looking at the pane;
+  // voice-first use needs an audible cue too. See
   // docs/ambient-pm-voice-plan.md Subsystem 2.
-  const handleVoiceEnd = useCallback(() => {
-    const text = transcript.trim();
-    setTranscript("");
-    if (!text) {
-      logAmbient("handleVoiceEnd fired with empty transcript — ignored (no turn started)");
-      return;
-    }
+  // Shared by both turn sources (Web Speech API's handleVoiceEnd below, and
+  // the local STT hook's onSegment) — everything from "a complete utterance
+  // arrived" onward is identical regardless of which pipeline produced the
+  // text, since useLocalSttTurn's segments are already complete, final text
+  // (no separate transcript-accumulation step needed the way the Web Speech
+  // path requires).
+  const processTurn = useCallback((text: string) => {
     const turnId = crypto.randomUUID();
     // Coarse timing breakdown to actually diagnose slow-answer reports
     // instead of guessing — logs how long each stage takes: turn-end (this
@@ -197,6 +246,12 @@ export function AmbientScreen() {
     if (previousTurnId) {
       logAmbient(`barge-in — cancelling previous turn ${previousTurnId}`);
       void rpc.cancelAmbientAssistantTurn(previousTurnId).then((res) => logAmbient(`cancel(${previousTurnId}) result: ${JSON.stringify(res)}`));
+      // Also silence anything the superseded turn might still be speaking —
+      // its own ack phrase or a chunk of its answer — so it can never keep
+      // playing into or overlap with this new turn's audio. Its own
+      // drain loop (below) notices the supersession via isStillActive() and
+      // abandons whatever's left in its queue rather than continuing.
+      tts.cancel();
     }
     activeTurnIdRef.current = turnId;
     setLastExchange({ you: text, pm: "" });
@@ -209,36 +264,161 @@ export function AmbientScreen() {
       return next.length > MAX_TURNS ? next.slice(-MAX_TURNS) : next;
     });
 
+    const isStillActive = () => activeTurnIdRef.current === turnId;
+
+    // Sentence-chunk speech queue. Only one drain loop ever runs at a time
+    // (guarded by drainPromise); its own while-loop re-checks chunkQueue on
+    // every iteration, so chunks that arrive WHILE a speak() call is already
+    // in flight get picked up automatically on the next pass — no separate
+    // "more arrived, restart" handling needed. speakingAnswer spans the
+    // WHOLE sequence (see its own comment above) rather than following raw
+    // tts.speaking, which genuinely toggles false/true between each chunk's
+    // own utterance.
+    const chunkQueue: string[] = [];
+    let drainPromise: Promise<void> | null = null;
+    let chunkReceived = false;
+    let noMoreChunks = false;
+
+    const drainQueue = () => {
+      if (drainPromise) return;
+      setSpeakingAnswer(true);
+      drainPromise = (async () => {
+        while (isStillActive() && chunkQueue.length > 0) {
+          const chunk = chunkQueue.shift();
+          if (chunk === undefined) break;
+          await tts.speak(chunk);
+        }
+        drainPromise = null;
+        // Only clear it once nothing more will ever come: the turn was
+        // superseded, or the backend already confirmed no more chunks AND
+        // the queue is genuinely empty. A mid-turn lull (e.g. a slow tool
+        // call between two sentences) leaves this true, matching the
+        // ack-phase precedent of keeping the mic off for a turn that isn't
+        // done delivering its answer yet.
+        if (!isStillActive() || (noMoreChunks && chunkQueue.length === 0)) {
+          setSpeakingAnswer(false);
+        }
+      })();
+    };
+
+    const onChunk = (e: Event) => {
+      const detail = (e as CustomEvent<AmbientAssistantTextChunkDto>).detail;
+      if (!detail || detail.messageId !== turnId || !isStillActive() || !ttsEnabled || !tts.supported) return;
+      if (!chunkReceived) {
+        chunkReceived = true;
+        // The real answer has started arriving — no need for a "one moment"
+        // filler anymore. If the ack already started speaking, it gets
+        // naturally cut short the moment this chunk's own speak() call
+        // fires below (speak() cancels whatever's currently playing rather
+        // than queuing) — an acceptable, even desirable tradeoff here: it's
+        // faster to get real content playing than to let a filler finish.
+        clearTimeout(ackTimer);
+      }
+      chunkQueue.push(detail.chunk);
+      drainQueue();
+    };
+    window.addEventListener("agentdesk:ambient-assistant-text-chunk", onChunk);
+
+    // Speaks a short ack phrase once ACK_DELAY_MS passes with nothing
+    // speakable yet — guarded on the turn still being active at fire time,
+    // so an abandoned turn never speaks up after the fact. Only relevant to
+    // the single-shot fallback path below (see chunkReceived usage there) —
+    // once a chunk has streamed in, this is superseded per the comment above.
+    // Skipped entirely for short prompts ("Hi", "Thanks", "OK") — those
+    // resolve fast enough that an ack would just be unnecessary chatter.
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    let ackPromise: Promise<void> | null = null;
+    const ackTimer = wordCount > 3 ? setTimeout(() => {
+      if (!isStillActive() || chunkReceived || !ttsEnabled || !tts.supported) return;
+      logAmbient(`turn ${turnId} speaking ack phrase — still waiting after ${ACK_DELAY_MS}ms`);
+      ackPromise = tts.speakAck();
+    }, ACK_DELAY_MS) : undefined;
+
     void (async () => {
       const { answer } = await rpc.runAmbientAssistantQuery(text, turnId).catch((err: unknown) => {
         logAmbient(`turn ${turnId} RPC threw: ${err instanceof Error ? err.message : String(err)}`);
         return { answer: err instanceof Error ? err.message : "Something went wrong answering that." };
       });
+      // No-op if the ack already fired or a chunk already cancelled it — only
+      // actually prevents the ack from firing on a reply that resolved
+      // faster than ACK_DELAY_MS with no chunks (e.g. a closing remark).
+      clearTimeout(ackTimer);
+      window.removeEventListener("agentdesk:ambient-assistant-text-chunk", onChunk);
+      // The backend has flushed every chunk it will ever send for this turn
+      // by the time its RPC resolves — lets drainQueue's own post-loop check
+      // (and the explicit check below, for the case where the queue had
+      // already emptied out BEFORE this point, e.g. a fast/short answer)
+      // know it's safe to clear speakingAnswer once nothing's left queued.
+      noMoreChunks = true;
       const t1 = performance.now();
       logAmbient(`turn ${turnId} answer in ${Math.round(t1 - t0)}ms — "${answer}"`);
       // Belt-and-suspenders: even with the cancel above, still guard against
       // discarding a stale result rather than acting on it — e.g. the cancel
       // RPC itself failing, or the answer having already been in flight back
       // to the client at the moment cancel() fired server-side.
-      if (activeTurnIdRef.current !== turnId) {
+      if (!isStillActive()) {
         logAmbient(`turn ${turnId} superseded by ${activeTurnIdRef.current} — discarding its answer`);
         setTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, thinking: false, interrupted: true } : t)));
+        setSpeakingAnswer(false);
         return;
       }
       setIsThinking(false);
       setLastExchange((prev) => (prev ? { ...prev, pm: answer } : { you: text, pm: answer }));
       setTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, thinking: false } : t)));
       if (ttsEnabled && tts.supported) {
-        logAmbient(`turn ${turnId} speaking via ${ttsProviderId ?? "browser default"}`);
-        setPreparingSpeech(true);
-        await tts.speak(answer);
-        setPreparingSpeech(false);
+        if (chunkReceived) {
+          // Chunks already streamed in and are being (or have been) spoken —
+          // just wait for the queue to finish draining; by the time the RPC
+          // resolves, assistant.ts has already flushed the final trailing
+          // chunk, so nothing more will ever arrive here. The explicit
+          // setSpeakingAnswer(false) afterward covers the case where the
+          // queue had already fully drained (drainPromise back to null)
+          // before the RPC resolved — drainQueue's own post-loop check
+          // wouldn't have cleared it yet at that point, since noMoreChunks
+          // was still false when it ran.
+          logAmbient(`turn ${turnId} answer streamed via ${ttsProviderId ?? "browser default"} — waiting for remaining chunks to finish speaking`);
+          if (drainPromise) await drainPromise;
+          setSpeakingAnswer(false);
+        } else {
+          // No chunks ever arrived (a provider/path without token-level
+          // streaming, or the closing-remark shortcut) — fall back to
+          // speaking the complete answer in one shot, same as before this
+          // feature. Lets the ack phrase (if one started) finish naturally
+          // here, since there's no real content ready yet to justify cutting
+          // it short the way the chunked path above does.
+          logAmbient(`turn ${turnId} speaking via ${ttsProviderId ?? "browser default"} (no streamed chunks — single-shot fallback)`);
+          setPreparingSpeech(true);
+          if (ackPromise) await ackPromise;
+          await tts.speak(answer);
+          setPreparingSpeech(false);
+        }
         logAmbient(`turn ${turnId} TTS finished in ${Math.round(performance.now() - t1)}ms`);
       }
     })();
-  }, [transcript, ttsEnabled, tts, ttsProviderId]);
+  }, [ttsEnabled, tts, ttsProviderId]);
 
-  const voice = useAmbientVoiceTurn(transcript, setTranscript, handleVoiceEnd);
+  // Web Speech API path: pulls the accumulated transcript out of state (the
+  // silence-timer in useAmbientVoiceTurn calls this once it decides the user
+  // stopped talking) rather than receiving text directly.
+  const handleVoiceEnd = useCallback(() => {
+    const text = transcript.trim();
+    setTranscript("");
+    if (!text) {
+      logAmbient("handleVoiceEnd fired with empty transcript — ignored (no turn started)");
+      return;
+    }
+    processTurn(text);
+  }, [transcript, processTurn]);
+
+  const rawVoice = useAmbientVoiceTurn(transcript, setTranscript, handleVoiceEnd);
+  // Local STT path: each ambientSttSegment push is already a complete
+  // utterance (VAD gives a hard boundary), so it goes straight to processTurn
+  // with no transcript state involved at all.
+  const localStt = useLocalSttTurn(localSttActive, processTurn);
+  // Whichever pipeline is active drives everything below (voicePhase,
+  // auto-restart, the talk button, etc.) identically — both expose the same
+  // {listening, finalizing, error, supported, toggle, stop} shape.
+  const voice = localSttActive ? localStt : rawVoice;
 
   // Clears the instant real audio playback actually starts — speak()'s own
   // promise doesn't resolve until the WHOLE utterance finishes, so waiting
@@ -265,7 +445,7 @@ export function AmbientScreen() {
   // it's actually talking is manual-tap ("Interrupt") only.
   const voicePhase: VoicePhase = isThinking || preparingSpeech
     ? "thinking"
-    : tts.speaking
+    : tts.speaking || speakingAnswer
     ? "speaking"
     : voice.listening
     ? voice.finalizing
@@ -284,12 +464,17 @@ export function AmbientScreen() {
   // `finalizing` gap covered elsewhere); guarded on `!tts.speaking &&
   // !preparingSpeech` so it never starts the mic only to force it off again
   // moments later once real audio begins (see the echo note above).
+  // `speakingAnswer` additionally covers the brief (~150-170ms, confirmed
+  // live) gap between one streamed chunk's utterance ending and the next
+  // one's starting — tts.speaking alone genuinely toggles false there (each
+  // chunk is its own utterance), which without this let the mic reopen for
+  // a moment between every single sentence of a multi-sentence answer.
   useEffect(() => {
-    if (!sessionActive || !voiceUsable || voice.listening || tts.speaking || preparingSpeech) return;
+    if (!sessionActive || !voiceUsable || voice.listening || tts.speaking || preparingSpeech || speakingAnswer) return;
     logAmbient("auto-restart — starting to listen");
     voice.toggle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionActive, voiceUsable, voice.listening, tts.speaking, preparingSpeech]);
+  }, [sessionActive, voiceUsable, voice.listening, tts.speaking, preparingSpeech, speakingAnswer]);
 
   // Forces the mic off the instant TTS starts speaking. Thinking-phase
   // keep-alive listening can still be running right at that boundary (it
@@ -297,12 +482,12 @@ export function AmbientScreen() {
   // into "speaking" would reopen the exact echo path the guard above exists
   // to avoid.
   useEffect(() => {
-    if (tts.speaking && voice.listening) {
+    if ((tts.speaking || speakingAnswer) && voice.listening) {
       logAmbient("TTS starting to speak — forcing mic off to avoid echo self-trigger");
       voice.stop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tts.speaking, voice.listening]);
+  }, [tts.speaking, speakingAnswer, voice.listening]);
 
   // Fetch project names once when the overlay opens — this component is mounted
   // at app-shell level regardless of which page is open, so it can't assume the

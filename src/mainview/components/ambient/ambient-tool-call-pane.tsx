@@ -100,7 +100,12 @@ function ToolCallRow({ part }: { part: AmbientAssistantPartDto }) {
 function TurnBlock({ turn }: { turn: AmbientTurn }) {
   const { toolRows, answerText } = useMemo(() => {
     const rows = turn.parts.filter((p) => p.type === "tool_call").sort((a, b) => a.sortOrder - b.sortOrder);
-    const answer = turn.parts.find((p) => p.type === "text")?.content ?? null;
+    // .at(-1) not .find() — normally there's only ever one "text" part per
+    // turn, but a rare CLI verification retry (assistant.ts's onRetract) can
+    // abandon one id mid-stream and start a fresh one; picking the latest
+    // one means the pane shows the retry's real progress, not a stale/empty
+    // discarded part it happens to find first.
+    const answer = turn.parts.filter((p) => p.type === "text").at(-1)?.content ?? null;
     return { toolRows: rows, answerText: answer };
   }, [turn.parts]);
 

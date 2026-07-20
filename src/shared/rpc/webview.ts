@@ -1,5 +1,5 @@
 import type { RPCSchema } from "electrobun/bun";
-import type { AmbientAssistantPartDto } from "./ambient";
+import type { AmbientAssistantPartDto, AmbientAssistantTextChunkDto, AmbientSttSegmentDto } from "./ambient";
 
 export type WebviewSchema = RPCSchema<{
   requests: {
@@ -104,6 +104,27 @@ export type WebviewSchema = RPCSchema<{
       message?: string;
     };
 
+    // Ambient Mode's local/offline STT download progress (streamed from Bun
+    // during downloadAmbientLocalStt), same shape as ambientLocalVoiceStatus.
+    ambientLocalSttStatus: {
+      status: "downloading" | "ready" | "error";
+      progress?: number;
+      message?: string;
+    };
+
+    // Fired the instant VAD detects a new segment has started, BEFORE Whisper
+    // decode even begins (which can take 1-10s) — lets the frontend know a
+    // segment is currently being transcribed so its merge-window backstop
+    // timer can hold off flushing a pending utterance instead of guessing a
+    // fixed timeout while a slow decode is still in flight. No payload; it's
+    // purely a signal. See use-local-stt-turn.ts.
+    ambientSttSegmentStart: Record<string, never>;
+
+    // One push per VAD-bounded utterance from the local/offline STT pipeline
+    // (see local-stt-manager.ts) — each one is a COMPLETE transcript, unlike
+    // the Web Speech API path's interim-then-final result stream.
+    ambientSttSegment: AmbientSttSegmentDto;
+
     // WhatsApp real-time events
     whatsappQR: {
       channelId: string;
@@ -147,6 +168,11 @@ export type WebviewSchema = RPCSchema<{
 
     // Ambient Assistant — one push per tool-call/text part, live during a turn
     ambientAssistantPart: AmbientAssistantPartDto;
+
+    // Ambient Assistant — one push per complete sentence as the answer
+    // streams in, so the frontend can start speaking it before the whole
+    // response finishes generating. See AmbientAssistantTextChunkDto.
+    ambientAssistantTextChunk: AmbientAssistantTextChunkDto;
 
     // Kanban real-time updates
     kanbanTaskUpdated: {

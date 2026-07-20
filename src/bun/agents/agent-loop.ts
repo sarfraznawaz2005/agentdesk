@@ -1495,10 +1495,15 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			// AI SDK v7 runtime context, replacing an earlier hidden-args-mutation
 			// hack — flows into run_shell's/request_human_input's `context` execute
 			// param (see shell.ts/communication.ts) so their approval gate resolves
-			// THIS agent's actual project/conversation. Optional on both tools'
-			// contextSchema, so other run_shell/request_human_input call sites that
-			// don't pass toolsContext (freelance/skills-search/recommendations, all
-			// using the autoApprove=true variant) are unaffected.
+			// THIS agent's actual project/conversation. Every field on both tools'
+			// contextSchema is optional, but the AI SDK still validates the top-level
+			// toolsContext entry as a required object — any call site that builds its
+			// own tools set with run_shell/request_human_input MUST pass at least an
+			// empty toolsContext entry per tool, or tool execution throws
+			// AI_TypeValidationError ("tool context ... Required"). (freelance-wizard.ts,
+			// freelance-chat.ts, skills-search-chat.ts pass `toolsContext: { run_shell: {} }`
+			// directly; recommendations.ts/playground/issue-fixer route through
+			// runInlineAgent and inherit this call's toolsContext for free.)
 			// `tools` here is a runtime-assembled Record<string, Tool> (this codebase's
 			// tool sets are DB/role-driven, never a literal object) — TS can't infer
 			// InferToolSetContext through that, so it types toolsContext as `never`

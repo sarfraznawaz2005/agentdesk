@@ -37,6 +37,20 @@ declare global {
 }
 const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// Joins two transcript pieces with a space unless one side already supplies
+// the boundary itself — used everywhere onresult stitches segments together
+// (consecutive `isFinal` results, consecutive interim results, and the
+// final join against whatever text was already in the box). Without this,
+// consecutive final results landing in separate recognizer callbacks
+// concatenate with no space at all (confirmed live: "Nothing else." + "thank
+// you" became "Nothing else.thank you") — the Web Speech API gives no
+// guarantee a result carries its own leading/trailing whitespace.
+function appendWithSeparator(existing: string, addition: string): string {
+  if (!existing || !addition) return existing + addition;
+  const needsSpace = !existing.endsWith(" ") && !existing.endsWith("\n") && !addition.startsWith(" ");
+  return `${existing}${needsSpace ? " " : ""}${addition}`;
+}
+
 export interface UseVoiceInputResult {
   /** False if this webview has no speech engine — callers should hide the mic button entirely. */
   supported: boolean;
@@ -83,12 +97,12 @@ export function useVoiceInput(value: string, setValue: (value: string) => void, 
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interim += r[0].transcript;
+        const segment = r[0].transcript;
+        if (r.isFinal) finalText = appendWithSeparator(finalText, segment);
+        else interim = appendWithSeparator(interim, segment);
       }
       const base = baseValueRef.current;
-      const separator = base && !base.endsWith(" ") && !base.endsWith("\n") ? " " : "";
-      setValue(`${base}${separator}${(finalText + interim).trim()}`);
+      setValue(appendWithSeparator(base, appendWithSeparator(finalText, interim).trim()));
     };
     rec.onerror = (e) => {
       // "aborted" fires on our own stop() call — not a real error.

@@ -841,6 +841,10 @@ async function analyzeListingWorkability(
     instructions: buildAnalysisSystemPrompt(),
     messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
     tools,
+    // run_shell (autoApprovedShellTool) declares a contextSchema — even though every
+    // field is optional, the AI SDK still requires the top-level toolsContext entry to
+    // be an object (undefined fails validation). See shell.ts's SHELL_CONTEXT_SCHEMA.
+    toolsContext: { run_shell: {} } as never,
     toolChoice: "auto",
     stopWhen: [isStepCount(8)],
   });
@@ -869,6 +873,7 @@ async function analyzeListingWorkability(
         instructions: buildAnalysisSystemPrompt(),
         messages: [{ role: "user", content: `${userMessage}\n\n${TOOL_DIRECTIVE}` }],
         tools,
+        toolsContext: { run_shell: {} } as never,
         toolChoice: "required",
         stopWhen: [isStepCount(6)],
       });

@@ -230,6 +230,252 @@ native addon with no existing maintained binding, plus moving TTS playback
 to a native output stream) and should be scoped as its own follow-on
 decision rather than bundled in.
 
+## Implemented: local VAD + ASR speech input
+
+Built as `src/bun/ambient/local-stt-manager.ts` — an opt-in alternative to
+the Web Speech API path, selected via Settings → General → "Speech input" →
+"Local (offline, continuous listening)". Ships as a new feature entry (see
+`docs/feature-list.md`'s "Offline Ambient speech input"), not a replacement —
+the Web Speech API path remains the default so no existing user's behavior
+changes unless they opt in.
+
+**Model selection — validated live, not assumed.** Before committing to a
+model, a throwaway spike (`demo/stt-vad-spike/`, not shipped) exercised the
+whole pipeline against real speech, not just synthesized audio:
+
+1. `node-cpal` mic capture confirmed working under Bun on Windows (device
+   enumeration + live stream, no crash) — the concrete unknown flagged above.
+2. A synthetic TTS→VAD→ASR round-trip (using the existing "Ryan" voice's
+   output as input) confirmed the pipeline end-to-end. But real human speech
+   through a real mic exposed real accuracy problems synthetic audio didn't:
+   **Moonshine-tiny** consistently mis-heard common words ("weather" → "the
+   other"/"the better", repeatably, not a fluke). Compared four models
+   side-by-side on the same live recordings (Moonshine-tiny/-base,
+   Whisper-tiny.en/-base.en) via an offline re-decode tool — Moonshine-base
+   won that first round (most accurate *and* fastest of the four). A second,
+   longer live session with Moonshine-base still showed real misses (garbled
+   segments, some empty transcripts on genuine speech). Adding **Whisper
+   small.en** to the live comparison resolved it — noticeably more reliable
+   on real speech than any of the four smaller models tried. Whisper small.en
+   was the one actually built into the production pipeline.
+3. Net effect of using *live* speech rather than only synthetic test audio
+   for evaluation: the model choice changed twice as real problems surfaced
+   that clean TTS-generated audio never would have exposed.
+
+**Architecture actually shipped:**
+- `node-cpal` (mic capture) + Silero VAD + Whisper small.en (int8), all via
+  `sherpa-onnx-node` — downloaded on demand into
+  `{userData}/ambient/local-stt/`, same pattern as the "Ryan" TTS voice.
+  Reuses the TTS voice's engine copy read-only if already downloaded.
+- Whisper's release archive bundles both fp32 and int8 weights; only the
+  int8 files are used, and the fp32 copies are deleted right after
+  extraction (~970MB of avoidable disk use otherwise).
+- `useLocalSttTurn` (frontend) exposes the identical
+  `{listening, finalizing, error, supported, toggle, stop}` shape as the
+  existing `useAmbientVoiceTurn`, so `ambient-screen.tsx` swaps between the
+  two turn sources (`const voice = localSttActive ? localStt : rawVoice`)
+  without touching any of the barge-in/auto-restart/voicePhase logic already
+  built for the Web Speech path. Each VAD-bounded segment is already a
+  complete utterance, so this path skips the silence-timer/transcript-
+  accumulation dance entirely — a real simplification, not just a swap.
+
+**Still true, unchanged by this:** no acoustic echo cancellation was added.
+This only replaces *how audio becomes text* — it does nothing for the
+"speaking"-phase echo limitation described above. Barge-in during "thinking"
+works cleanly on this path (VAD gives a hard, immediate start-of-speech
+signal); barge-in during "speaking" is still tap-only, same as the Web
+Speech path, for the same reason.
+
+## Follow-up fix: merge window for mid-thought pauses
+
+Confirmed live once the local pipeline was actually usable: VAD's own
+`minSilenceDuration` (0.4s) is tuned for *segmentation* latency, not for
+telling "the user is done talking" apart from "the user is still forming a
+sentence." A natural pause while thinking — especially right after a
+barge-in, saying a few words then pausing to compose the rest — reliably
+exceeds 0.4s, so each pause produced a **second, independent VAD segment**,
+which `processTurn` treated as a brand new turn: it cancelled the first
+segment's still-in-flight backend call as if it were a fresh interruption,
+rather than extending the same utterance. Real interruptions and mid-thought
+pauses were indistinguishable at the point this bug lived (the frontend
+turn-dispatch layer), even though VAD itself was working exactly as designed.
+
+**What the reference systems do about this** (the actual answer to "how do
+other systems figure this out," continuing the research above): they don't
+rely on silence duration alone either.
+- **OpenAI's semantic VAD** scores whether the transcribed utterance *sounds*
+  grammatically/semantically complete, not just whether audio went quiet —
+  "the weather in…" holds the turn open longer than silence alone would.
+- **LiveKit's turn-detector** is a small model trained specifically on
+  multi-turn conversational data to predict end-of-turn probability from the
+  transcript (and audio features), with a short cooldown at the start of a
+  turn so early genuine interruptions still land.
+Both are trained-model solutions — a materially bigger lift than anything
+else in this doc (training data, a model to host/run, ongoing tuning).
+
+**What was actually built instead — a fixed merge window, not a model.**
+`useLocalSttTurn` now buffers consecutive segments arriving within 700ms of
+each other into one combined utterance (space-joined) before calling
+`onSegment`/`processTurn`, resetting the window on each new segment; only
+once 700ms passes with nothing new does it actually dispatch. `stop()`
+(explicit "Stop" tap, or the effect that force-stops the mic the instant TTS
+starts speaking) flushes whatever's buffered immediately rather than
+dropping it. Net latency added: ~700ms after VAD's own ~0.4s close, so
+~1.1s total silence before a turn is considered final — still faster than
+the Web Speech path's old 1.6s `SILENCE_MS` debounce, and it fixes the
+reported bug without training or hosting a new model.
+
+**Honest limitation, not silently glossed over:** this is genuinely blunter
+than a semantic detector — it can't tell "and then" (obviously continuing)
+from "thanks, bye" (obviously finished) the way a real turn-completion model
+could, so a very deliberate 700ms+ pause right after a truly complete
+sentence still gets merged with whatever (if anything) follows within that
+window. Flagged here as future work if the fixed window ever proves too
+blunt in practice, not represented as equivalent to what OpenAI/LiveKit do.
+
+## Log review (2026-07-20): merge window still misses multi-segment utterances when decode is slow
+
+Reviewed a full `ambient.log` session end to end (identity, memory, new tools,
+merge window, barge-in all exercised live). Everything worked — including a
+weather question answered correctly via `read_skill` + `http_request`/
+`web_search` — but the merge window from the fix above did **not** actually
+combine a genuinely continuous utterance in one observed case: "Okay, can you
+tell me how is the weather today?" / "I" / "want to know about the weather
+today." / "Yes." — one continuous thought with normal thinking pauses — landed
+as **four separate turns**, each barge-in-cancelling the previous one. Only
+the last ("Yes.") reached the model, and it only produced a sensible answer
+because `runAmbientAssistantTurn` keeps prior turns (even cancelled ones) in
+conversation history, so the model reconstructed intent from the fragments.
+That's three wasted ~8–11s Claude CLI calls (cancelled) before a useful reply.
+
+Root cause: the 700ms merge window (`use-local-stt-turn.ts`) starts counting
+from when the **decoded segment reaches the frontend**, not from when VAD
+detected the pause. Whisper decode on this pipeline routinely took 1.3–10s per
+segment (log timestamps confirm this — decode is synchronous on the Bun main
+thread, so it also delays the segment-push event itself). By the time one
+segment's text arrives, decode of the *next* segment may already be well
+underway, and the real gap between "segment A's text is usable" and "segment
+B's text is usable" regularly exceeds 700ms even for a normal thinking pause —
+the merge window is comparing the wrong two timestamps. The fix that shipped
+handles VAD's own quick segmentation gap correctly (confirmed working for
+single-pause cases in the same log); it doesn't cover pauses that straddle a
+slow decode.
+
+**Fixed — options considered:** (a) key the merge decision off VAD's own
+segment-boundary timestamps instead of frontend arrival time, so decode
+latency stops eating into the window; (b) offload Whisper decode to a worker
+thread so it stops blocking the main loop; (c) simply widen the window, which
+helps but doesn't fix the root cause and adds latency to every turn (a 10s
+decode would need an unworkable window size to reliably cover). (a) alone
+doesn't fully solve it either: even with an accurate gap measurement, the
+frontend still can't tell "no continuation is coming" from "a continuation is
+still being decoded" without *some* signal, and a fixed backstop timeout runs
+into the same conflation problem one level down. Implemented **(a) + (b)
+together**, since they solve complementary halves of the same bug:
+
+- **(b) Decode moved to a worker thread**
+  (`local-stt-manager.ts`'s `getDecodeWorker`/`decodeInWorker`, worker source
+  written to disk at runtime and loaded via `new Worker(pathToFileURL(...))`
+  — same pattern as `db/maintenance.ts`'s `runVacuumInWorker`, long-lived
+  instead of one-shot). VAD segmentation stays on the main thread (cheap);
+  only the expensive Whisper inference moves off it. This isn't just a speed
+  win — while decode blocked the main thread, incoming audio for a
+  segment the user was speaking *during* another segment's decode wasn't
+  even reaching VAD in real time, so onset detection itself was silently
+  delayed by however long the prior decode took.
+- **(a) True audio-domain silence gap, plus a segment-start signal.** Each
+  VAD segment carries a sample-accurate `start` index already; the backend
+  now tracks the previous segment's end sample and computes
+  `silenceBeforeMs` — the real gap, measured in the 16kHz audio clock, unaffected
+  by how long decode takes — and forwards it on `AmbientSttSegmentDto`.
+  `use-local-stt-turn.ts` uses it to decide "does this continue the pending
+  utterance" (≤1100ms → merge, else flush the old pending immediately and
+  start fresh) the instant a segment's text arrives, no guessing. Answering
+  "is a continuation still being decoded, or is the user really done" (needed
+  for the tail-end backstop, where there's no next segment yet to measure a
+  gap against) uses a new `ambientSttSegmentStart` push event, fired the
+  moment VAD detects a segment — *before* decode even begins — so the
+  backstop-flush timer only ever arms while nothing is in flight, regardless
+  of how long that in-flight decode takes.
+
+### Follow-up correction (same day, next log review): the segment-start signal fired too late
+
+Restarted the app, re-tested, and reviewed the resulting log. The
+`silenceBeforeMs`-based merge genuinely worked this time — "Can you take... "
++ "I always gather today." merged into one turn (`silenceBeforeMs=950`,
+under the 1100ms threshold) instead of splitting. But a different pair in the
+same session didn't merge when it should have: "Can you take?" /
+"what projects do we have?" (`silenceBeforeMs=950`, same threshold, should
+have merged) landed as two separate turns instead.
+
+Root cause: `ambientSttSegmentStart` was wired to fire when popping a
+**completed** segment off VAD's queue — which only happens once the user has
+*finished* speaking the entire continuation and VAD's own 0.4s trailing
+silence has closed it. That's not "the instant VAD detects a new segment,
+before decode begins" as designed and documented above — it's "the instant
+the *next* segment is already over." In the observed case, the user started
+speaking segment 2 (per its `silenceBeforeMs`, sourced from the same sample
+clock) *before* segment 1's decode had even finished — meaning the true
+"start" signal, if it had fired at actual speech onset, would have arrived
+in time to hold the flush-backstop open; instead it only arrived (rounding to
+"segment complete") right as/after segment 1 was already flushed.
+
+Fixed by switching to `vad.isDetected()` — a method already exposed by
+`sherpa-onnx-node`'s VAD wrapper (`vad.js`) that reports whether VAD
+currently considers itself *inside* an active speech segment, true within
+`minSpeechDuration` (0.25s) of real speech resuming, long before that segment
+closes. `local-stt-manager.ts`'s capture loop now edge-triggers
+`onSegmentStart` off this flipping false→true, instead of off the
+segment-pop loop. This is the actual "instant" signal the design called for.
+
+Also bumped `FLUSH_BACKSTOP_MS` from 700ms to 1400ms as a secondary safety
+margin: the `isDetected()` signal is now the primary defense (correct
+regardless of decode speed), but a wall-clock backstop that's *shorter* than
+`SILENCE_MERGE_THRESHOLD_MS` (1100ms) could in principle still race ahead of
+it if a segment ever decoded in well under a second — not observed with
+Whisper small.en in practice (1.3–10s per segment here), but cheap to close
+off outright rather than leave as a latent edge case.
+
+Net effect: the four-turn "weather" cascade from the first log review, and
+the two-turn "Can you take? / what projects do we have?" split from the
+second, should no longer happen — the same utterance now merges into one
+turn regardless of how fast or slow any individual segment's decode is.
+Latency for the common single-segment case grows slightly (~1.4s backstop
+after that segment's own decode, up from ~700ms) — a real, deliberate
+tradeoff for correctness, not an accident.
+
+**Toast added, then explicitly reverted.** An "Interrupted before answering:
+..." toast (`ambient-screen.tsx`) briefly fired whenever a turn was superseded
+by barge-in, alongside the tool-call pane's existing inline "— interrupted —"
+marker. Reverted per explicit direction: a barge-in is routine, expected
+ambient behavior — it happens on purpose, often several times per session —
+not something worth a notification each time. The pane's inline marker is the
+only surfacing left for a superseded turn.
+
+**A second, separate toast was found and fixed while investigating that
+request** — a UI inspector screenshot of the live overlay showed not just the
+(now-reverted) blue info toast but also a red "Cancelled by user" error
+toast neither of these changes had added on purpose. Traced to
+`rpc-registration.ts`'s `withErrorToast`: every RPC request handler is
+wrapped globally so any thrown error broadcasts a `showToast` (`type:
+"error"`) with the raw message, and `runAmbientAssistantQuery`
+(`rpc/ambient.ts`) was re-throwing the cancellation error from
+`runAmbientAssistantTurn` (`assistant.ts` line ~509, `throw new
+Error(cliResult.summary)` where `summary` is literally `"Cancelled by
+user"`) straight through that wrapper — a barge-in cancel is not an
+application error, so it shouldn't get the same generic error-toast
+treatment as a real provider failure. Fixed by checking `controller.signal
+.aborted` in `runAmbientAssistantQuery`'s catch block: if the cancellation
+was self-inflicted (our own `cancelAmbientAssistantTurn` called
+`controller.abort()`), return `{ answer: message }` normally instead of
+re-throwing, so the error never reaches the generic wrapper. Checking the
+original controller rather than the merged signal (`AbortSignal.any([...,
+AbortSignal.timeout(...)])` in `assistant.ts`) matters — a genuine timeout
+still throws and still gets toasted, since that IS worth surfacing; only the
+user-triggered case is silenced. The cancel/abort mechanism itself is
+unchanged — this only changes whether the resulting "failure" propagates as
+a throw or a normal return.
+
 ## Sources
 
 - [Voice activity detection (VAD) | OpenAI API](https://developers.openai.com/api/docs/guides/realtime-vad)
