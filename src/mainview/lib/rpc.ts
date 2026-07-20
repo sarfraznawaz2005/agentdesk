@@ -509,6 +509,8 @@ export const rpc = {
   getAmbientLocalVoiceStatus: () => electroviewRpc.request.getAmbientLocalVoiceStatus({}),
   /** Downloads the offline/local TTS voice's engine + model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalVoiceStatus events. */
   downloadAmbientLocalVoice: () => electroviewRpc.request.downloadAmbientLocalVoice({}),
+  /** Deletes the offline/local TTS voice's downloaded engine + model, freeing its disk usage. */
+  deleteAmbientLocalVoice: () => electroviewRpc.request.deleteAmbientLocalVoice({}),
   /** Best-effort warmup of the offline voice's onnxruntime session — call once when Ambient Mode opens. */
   preloadAmbientLocalVoice: () => electroviewRpc.request.preloadAmbientLocalVoice({}),
   /** Relays an [ambient] debug log line to the backend's ambient.log — the webview has no direct filesystem access. Use lib/log-ambient.ts's logAmbient() instead of calling this directly. */
@@ -517,6 +519,8 @@ export const rpc = {
   getAmbientLocalSttStatus: () => electroviewRpc.request.getAmbientLocalSttStatus({}),
   /** Downloads the offline/local STT pipeline's mic-capture library + engine + VAD + ASR model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalSttStatus events. */
   downloadAmbientLocalStt: () => electroviewRpc.request.downloadAmbientLocalStt({}),
+  /** Deletes the offline/local STT pipeline's downloaded engine + models, freeing its disk usage. */
+  deleteAmbientLocalStt: () => electroviewRpc.request.deleteAmbientLocalStt({}),
   /** Starts continuous native mic capture for the local STT pipeline — each detected utterance streams out via the ambientSttSegment push event. Idempotent. */
   startAmbientLocalListening: () => electroviewRpc.request.startAmbientLocalListening({}),
   /** Stops the continuous local mic capture started by startAmbientLocalListening. */

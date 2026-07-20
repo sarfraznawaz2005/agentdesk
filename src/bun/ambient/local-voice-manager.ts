@@ -110,7 +110,7 @@ export function getLocalVoiceStatus(): AmbientLocalVoiceStatusDto {
 	return { status, progress: status === "downloading" ? activeProgress : null, sizeMb };
 }
 
-function broadcast(status: "downloading" | "ready" | "error", progress?: number, message?: string) {
+function broadcast(status: AmbientLocalVoiceStatus, progress?: number, message?: string) {
 	broadcastToWebview("ambientLocalVoiceStatus", { status, progress, message });
 }
 
@@ -258,6 +258,28 @@ export async function downloadLocalVoice(): Promise<{ success: boolean }> {
 		inFlightDownload = null;
 	});
 	return inFlightDownload;
+}
+
+// Frees the ~140MB download. Note: if local-stt-manager.ts's pipeline was
+// downloaded after this one, it may be reusing THIS engine copy read-only
+// (see its ttsEngineDir()) — deleting it here doesn't touch the STT
+// pipeline's own marker/model files, but its next engine load will fail
+// until it's re-downloaded (surfaced as a normal, already-handled error from
+// startLocalListening, not a crash).
+export async function deleteLocalVoice(): Promise<{ success: boolean; error?: string }> {
+	if (inFlightDownload) return { success: false, error: "A download is already in progress." };
+	try {
+		cachedTts = null;
+		rmSync(rootDir(), { recursive: true, force: true });
+		lastError = null;
+		activeProgress = null;
+		broadcast("not_downloaded");
+		return { success: true };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		logAmbient(`deleteLocalVoice failed: ${message}`);
+		return { success: false, error: message };
+	}
 }
 
 async function runDownload(): Promise<{ success: boolean }> {

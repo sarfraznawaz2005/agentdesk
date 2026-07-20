@@ -45,7 +45,7 @@ const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRec
 // concatenate with no space at all (confirmed live: "Nothing else." + "thank
 // you" became "Nothing else.thank you") — the Web Speech API gives no
 // guarantee a result carries its own leading/trailing whitespace.
-function appendWithSeparator(existing: string, addition: string): string {
+export function appendWithSeparator(existing: string, addition: string): string {
   if (!existing || !addition) return existing + addition;
   const needsSpace = !existing.endsWith(" ") && !existing.endsWith("\n") && !addition.startsWith(" ");
   return `${existing}${needsSpace ? " " : ""}${addition}`;

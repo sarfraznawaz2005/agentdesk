@@ -17,7 +17,7 @@ export interface AmbientSettings {
 
 const DEFAULTS: AmbientSettings = {
   enabled: true,
-  idleMinutes: 5,
+  idleMinutes: 15,
   voiceEnabled: true,
   ttsEnabled: true,
   ttsProviderId: null,

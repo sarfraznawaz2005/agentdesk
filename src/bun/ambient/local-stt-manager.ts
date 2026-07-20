@@ -143,7 +143,7 @@ export function getLocalSttStatus(): AmbientLocalSttStatusDto {
 	return { status, progress: status === "downloading" ? activeProgress : null, sizeMb };
 }
 
-function broadcast(status: "downloading" | "ready" | "error", progress?: number, message?: string) {
+function broadcast(status: AmbientLocalSttStatus, progress?: number, message?: string) {
 	broadcastToWebview("ambientLocalSttStatus", { status, progress, message });
 }
 
@@ -308,6 +308,33 @@ export async function downloadLocalStt(): Promise<{ success: boolean }> {
 		inFlightDownload = null;
 	});
 	return inFlightDownload;
+}
+
+// Frees the (typically) ~650MB+ download. Stops any active capture session
+// and drops every cached handle first, since they hold onnxruntime/native
+// references into the files about to be removed.
+export async function deleteLocalStt(): Promise<{ success: boolean; error?: string }> {
+	if (inFlightDownload) return { success: false, error: "A download is already in progress." };
+	try {
+		stopLocalListening();
+		if (decodeWorkerHandle) {
+			decodeWorkerHandle.worker.terminate();
+			decodeWorkerHandle = null;
+		}
+		cachedEngine = null;
+		cachedRecognizer = null;
+		cachedCpal = null;
+		engineRequirePath = null;
+		rmSync(rootDir(), { recursive: true, force: true });
+		lastError = null;
+		activeProgress = null;
+		broadcast("not_downloaded");
+		return { success: true };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		logAmbient(`deleteLocalStt failed: ${message}`);
+		return { success: false, error: message };
+	}
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { rpc } from "@/lib/rpc";
 import { logAmbient } from "./log-ambient";
+import { appendWithSeparator } from "./use-voice-input";
 import type { AmbientSttSegmentDto } from "../../shared/rpc/ambient";
 
 // Two thresholds, doing two different jobs (see docs/ambient-voice-barge-in-research.md's
@@ -119,7 +120,7 @@ export function useLocalSttTurn(ready: boolean, onSegment: (text: string) => voi
 
 			const continuesPrevious = detail.silenceBeforeMs !== null && detail.silenceBeforeMs <= SILENCE_MERGE_THRESHOLD_MS;
 			if (pendingTextRef.current && continuesPrevious) {
-				pendingTextRef.current = `${pendingTextRef.current} ${detail.text}`;
+				pendingTextRef.current = appendWithSeparator(pendingTextRef.current, detail.text);
 			} else {
 				// Either nothing was pending, or the real audio gap proves this
 				// segment is a new utterance — flush whatever was pending as its

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, CheckCircle2, AlertCircle } from "lucide-react";
+import { Download, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import type { AmbientLocalVoiceStatusDto, AmbientLocalSttStatusDto } from "../../../shared/rpc/ambient";
 import { toast } from "@/components/ui/toast";
@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -81,10 +82,12 @@ function LocalDownloadPanel({
   status,
   live,
   onDownload,
+  onDelete,
 }: {
   status: AmbientLocalVoiceStatusDto | AmbientLocalSttStatusDto | null;
   live: LocalVoiceLiveProgress | null;
   onDownload: () => void;
+  onDelete: () => void;
 }) {
   const effectiveStatus = live?.status === "downloading" ? "downloading" : status?.status ?? "not_downloaded";
   const progress = live?.status === "downloading" ? live.progress ?? 0 : status?.progress ?? 0;
@@ -130,11 +133,68 @@ function LocalDownloadPanel({
         <div className="text-xs text-destructive">{live.message}</div>
       )}
 
-      <Button size="sm" variant="outline" onClick={onDownload} disabled={isBusy}>
-        <Download className="w-3.5 h-3.5" />
-        {effectiveStatus === "ready" ? "Re-download" : effectiveStatus === "downloading" ? "Downloading…" : "Download"}
-      </Button>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={onDownload} disabled={isBusy}>
+          <Download className="w-3.5 h-3.5" />
+          {effectiveStatus === "ready" ? "Re-download" : effectiveStatus === "downloading" ? "Downloading…" : "Download"}
+        </Button>
+        {effectiveStatus === "ready" && (
+          <Button size="sm" variant="outline" onClick={onDelete}>
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete
+          </Button>
+        )}
+      </div>
     </div>
+  );
+}
+
+// Shared by both the Voice and Speech input panels — deleting either just
+// frees disk space (both are trivially re-downloadable), so this is
+// deliberately lighter-weight than ResetConfirmDialog's project-data-loss
+// confirmation (no typing-the-name friction).
+function DeleteLocalModelDialog({
+  open,
+  onOpenChange,
+  label,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  label: string;
+  onConfirm: () => Promise<void>;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirm() {
+    setDeleting(true);
+    try {
+      await onConfirm();
+      onOpenChange(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete {label}?</DialogTitle>
+          <DialogDescription>
+            This removes the downloaded engine and model from disk. You can re-download it again later from this same screen.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleConfirm} disabled={deleting}>
+            {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -152,6 +212,7 @@ export function AmbientSettings() {
   const [localVoiceLive, setLocalVoiceLive] = useState<LocalVoiceLiveProgress | null>(null);
   const [localSttStatus, setLocalSttStatus] = useState<AmbientLocalSttStatusDto | null>(null);
   const [localSttLive, setLocalSttLive] = useState<LocalVoiceLiveProgress | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<"voice" | "stt" | null>(null);
 
   // ---- Load settings on mount -----------------------------------------------
 
@@ -317,6 +378,27 @@ export function AmbientSettings() {
       refreshLocalSttStatus();
     }
   }, [refreshLocalSttStatus]);
+
+  // ---- Delete (frees disk space for either downloaded pipeline) -------------
+
+  const handleConfirmDelete = useCallback(async () => {
+    const target = deleteTarget;
+    if (!target) return;
+    try {
+      const result = target === "voice" ? await rpc.deleteAmbientLocalVoice() : await rpc.deleteAmbientLocalStt();
+      if (!result.success) {
+        toast("error", result.error || "Delete failed.");
+        return;
+      }
+      toast("success", target === "voice" ? "Voice model deleted." : "Speech input model deleted.");
+    } catch (err) {
+      console.error(`Failed to delete local ${target}:`, err);
+      toast("error", "Delete failed.");
+    } finally {
+      if (target === "voice") refreshLocalVoiceStatus();
+      else refreshLocalSttStatus();
+    }
+  }, [deleteTarget, refreshLocalVoiceStatus, refreshLocalSttStatus]);
 
   // ---- Change helper ---------------------------------------------------------
 
@@ -508,6 +590,7 @@ export function AmbientSettings() {
                   status={localVoiceStatus}
                   live={localVoiceLive}
                   onDownload={handleDownloadLocalVoice}
+                  onDelete={() => setDeleteTarget("voice")}
                 />
               )}
             </div>
@@ -563,6 +646,7 @@ export function AmbientSettings() {
                   status={localSttStatus}
                   live={localSttLive}
                   onDownload={handleDownloadLocalStt}
+                  onDelete={() => setDeleteTarget("stt")}
                 />
               )}
             </div>
@@ -584,6 +668,13 @@ export function AmbientSettings() {
           {saving ? "Saving…" : "Save Changes"}
         </Button>
       </div>
+
+      <DeleteLocalModelDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+        label={deleteTarget === "voice" ? "offline voice" : "offline speech input"}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

@@ -14,12 +14,12 @@ import { join, dirname } from "node:path";
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
 let logPath: string | null = null;
 
-// File logging on (console still off per explicit prior instruction) — the
-// local STT feature build/verification pass needs a persisted record of the
-// whole ambient pipeline. Flip LOG_TO_FILE back to false once done with it —
-// no other change needed, every logAmbient() call site stays exactly as is.
+// Both off by default — logAmbient() call sites stay in place (they're cheap
+// and useful for a future debugging pass) but don't persist real user
+// transcripts to disk for every user by default. Flip LOG_TO_FILE back to
+// true locally when actively debugging the ambient pipeline.
 const LOG_TO_CONSOLE = false;
-const LOG_TO_FILE = true;
+const LOG_TO_FILE = false;
 
 function getLogPath(): string {
 	if (!logPath) logPath = join(Utils.paths.userData, "logs", "ambient.log");

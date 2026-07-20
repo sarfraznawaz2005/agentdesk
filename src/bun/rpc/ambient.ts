@@ -11,9 +11,10 @@ import {
 	synthesizeLocalVoice,
 	getLocalVoiceStatus,
 	downloadLocalVoice,
+	deleteLocalVoice,
 	preloadLocalVoice,
 } from "../ambient/local-voice-manager";
-import { getLocalSttStatus, downloadLocalStt, startLocalListening, stopLocalListening } from "../ambient/local-stt-manager";
+import { getLocalSttStatus, downloadLocalStt, deleteLocalStt, startLocalListening, stopLocalListening } from "../ambient/local-stt-manager";
 import { logAmbient } from "../ambient/debug-log";
 
 export function getAmbientDisplays(): AmbientDisplayDto[] {
@@ -180,6 +181,11 @@ export async function downloadAmbientLocalVoice(): Promise<{ success: boolean }>
 	return downloadLocalVoice();
 }
 
+/** Deletes the offline/local TTS voice's downloaded engine + model, freeing its disk usage. */
+export async function deleteAmbientLocalVoice(): Promise<{ success: boolean; error?: string }> {
+	return deleteLocalVoice();
+}
+
 /** Warms up the offline voice's onnxruntime session ahead of time (see local-voice-manager.ts's preloadLocalVoice). */
 export async function preloadAmbientLocalVoice(): Promise<{ success: boolean }> {
 	const t0 = performance.now();
@@ -202,6 +208,11 @@ export async function getAmbientLocalSttStatus(): Promise<AmbientLocalSttStatusD
 /** Downloads the offline/local STT pipeline's mic-capture library + engine + VAD + ASR model. Resolves once fully downloaded and verified; incremental progress arrives via ambientLocalSttStatus events. */
 export async function downloadAmbientLocalStt(): Promise<{ success: boolean }> {
 	return downloadLocalStt();
+}
+
+/** Deletes the offline/local STT pipeline's downloaded engine + models, freeing its disk usage. Stops any active capture session first. */
+export async function deleteAmbientLocalStt(): Promise<{ success: boolean; error?: string }> {
+	return deleteLocalStt();
 }
 
 /** Starts continuous native mic capture, gated by VAD, decoded via the local Whisper model — each detected utterance streams out via ambientSttSegment (preceded by ambientSttSegmentStart the instant VAD detects it, before decode begins). Idempotent (a no-op if already running). */

@@ -122,6 +122,10 @@ export type AmbientRequests = {
     params: Record<string, never>;
     response: { success: boolean };
   };
+  deleteAmbientLocalVoice: {
+    params: Record<string, never>;
+    response: { success: boolean; error?: string };
+  };
   preloadAmbientLocalVoice: {
     params: Record<string, never>;
     response: { success: boolean };
@@ -133,6 +137,10 @@ export type AmbientRequests = {
   downloadAmbientLocalStt: {
     params: Record<string, never>;
     response: { success: boolean };
+  };
+  deleteAmbientLocalStt: {
+    params: Record<string, never>;
+    response: { success: boolean; error?: string };
   };
   startAmbientLocalListening: {
     params: Record<string, never>;
