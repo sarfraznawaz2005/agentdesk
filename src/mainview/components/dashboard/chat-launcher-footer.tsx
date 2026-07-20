@@ -177,7 +177,7 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
       // reserves the same 44px (`pb-11` on #main-scroll-container) so every
       // page's own bottom-anchored content (chat inputs, etc.) has room above
       // this bar instead of being covered by it.
-      className="fixed bottom-0 z-40 flex h-11 items-center justify-center gap-2 overflow-hidden border-t border-border bg-background/80 backdrop-blur-sm px-3"
+      className="fixed bottom-0 z-40 flex h-11 items-center justify-center gap-2 overflow-hidden border-t border-border bg-muted/80 backdrop-blur-sm px-3"
       style={{ left: isMobile ? 0 : sidebarCollapsed ? 60 : 200, right: 0 }}
     >
       {/* Hidden measuring clone — same markup/classes as the real pills (plus a

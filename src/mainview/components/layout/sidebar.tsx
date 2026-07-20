@@ -93,7 +93,7 @@ function NavItemButton({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
         active
           ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          : "text-muted-foreground hover:bg-foreground/[8%] hover:text-foreground"
       )}
     >
       <Icon
@@ -172,7 +172,7 @@ function QuickChatButton({ collapsed }: { collapsed: boolean }) {
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-        "text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50",
+        "text-muted-foreground hover:bg-foreground/[8%] hover:text-foreground disabled:opacity-50",
       )}
     >
       <MessageSquarePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -473,7 +473,7 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
       </button>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
         {NAV_ITEMS.map((item) => (
           <NavItemButton
             key={item.href}
@@ -488,7 +488,7 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
             of in NAV_ITEMS. */}
         {!IS_REMOTE && (
           <>
-            <div className="my-1 border-t border-border" />
+            <div className="!my-2 border-t border-border" />
             <QuickChatButton collapsed={collapsed} />
           </>
         )}
