@@ -55,7 +55,9 @@ export function createSimpleDispatchTools(deps: SimpleDispatchDeps): Record<stri
 	// agent_task_simple invocation is independent.
 	const dispatching = new Set<string>();
 	let writeAgentRunning = false;
-	const projectContext = deps.workspacePath ? `Workspace: ${deps.workspacePath}` : "";
+	// No projectContext here — Identity (agent-loop.ts) already states the
+	// project name/workspace/Project ID from workspacePath+projectId below.
+	const projectContext = "";
 
 	return {
 		run_agent: tool({

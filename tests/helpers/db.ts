@@ -699,4 +699,56 @@ export function applySchema(sqlite: Database): void {
 	// v7 — reviewer-tools: data-only migration (removes tool from seeded agent),
 	//       no DDL changes needed here.
 	// -------------------------------------------------------------------------
+
+	// -------------------------------------------------------------------------
+	// v61 — general-chat: standalone Assistant agent tables (project-independent)
+	// -------------------------------------------------------------------------
+	sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS general_chat_conversations (
+      id                  TEXT PRIMARY KEY NOT NULL,
+      title               TEXT NOT NULL DEFAULT 'New conversation',
+      is_pinned           INTEGER NOT NULL DEFAULT 0,
+      is_archived         INTEGER NOT NULL DEFAULT 0,
+      deep_research_mode  INTEGER NOT NULL DEFAULT 0,
+      created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS general_chat_messages (
+      id                TEXT PRIMARY KEY NOT NULL,
+      conversation_id   TEXT NOT NULL REFERENCES general_chat_conversations(id),
+      role              TEXT NOT NULL,
+      content           TEXT NOT NULL,
+      token_count       INTEGER NOT NULL DEFAULT 0,
+      created_at        TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_general_chat_messages_conversation
+      ON general_chat_messages(conversation_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS general_chat_memories (
+      id                TEXT PRIMARY KEY NOT NULL,
+      title             TEXT NOT NULL,
+      description       TEXT NOT NULL DEFAULT '',
+      content           TEXT NOT NULL,
+      recall_count      INTEGER NOT NULL DEFAULT 0,
+      last_recalled_at  TEXT,
+      created_at        TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at        TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_general_chat_memories_title
+      ON general_chat_memories(title);
+
+    CREATE INDEX IF NOT EXISTS idx_general_chat_memories_recent
+      ON general_chat_memories(updated_at DESC);
+  `);
+
+	// -------------------------------------------------------------------------
+	// v62 — general-chat-message-metadata: add metadata to general_chat_messages
+	// -------------------------------------------------------------------------
+	const gcmCols = sqlite.prepare("PRAGMA table_info(general_chat_messages)").all() as Array<{ name: string }>;
+	if (!gcmCols.some((c) => c.name === "metadata")) {
+		sqlite.exec("ALTER TABLE general_chat_messages ADD COLUMN metadata TEXT");
+	}
 }

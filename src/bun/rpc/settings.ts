@@ -52,12 +52,15 @@ export async function getRawSetting(
 
 /**
  * Retrieve a single setting by key (optionally filtered by category).
- * Returns null if the setting does not exist.
+ * Returns null if the setting does not exist. JSON-parses the stored value,
+ * so the actual return value can be any JSON type (string, number, boolean,
+ * object, array), not just a string — callers must narrow before using it
+ * as a string (e.g. `typeof value === "string"`).
  */
 export async function getSetting(
 	key: string,
 	category?: string,
-): Promise<string | null> {
+): Promise<unknown> {
 	const rows = category
 		? await db
 				.select()

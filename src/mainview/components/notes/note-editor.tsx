@@ -2,6 +2,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,7 +79,8 @@ export function NoteEditor({
           {content.trim() ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSanitize]}
+              rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+              urlTransform={markdownUrlTransform}
               components={{
                  
                 code({ className, children, ref: _ref, ...props }) {

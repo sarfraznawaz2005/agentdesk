@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { MessageSquare, X, Send, Square, Trash2, Loader2, RefreshCw, Check, Copy, Download, ZoomIn, ZoomOut, Maximize2, Settings } from "lucide-react";
 import { AgentSettingsDialog, type Agent, type Provider } from "@/pages/agents";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
@@ -732,7 +733,8 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                     <div className="font-arabic-aware w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground overflow-hidden">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeSanitize]}
+                        rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                        urlTransform={markdownUrlTransform}
                         components={MD_COMPONENTS as never}
                       >
                         {msg.content + (msg.streaming ? "▍" : "")}
@@ -943,7 +945,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
                     </div>
                   ) : (
                     <div className="font-arabic-aware w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground overflow-hidden">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={MD_COMPONENTS as never}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]} urlTransform={markdownUrlTransform} components={MD_COMPONENTS as never}>
                         {msg.content + (msg.streaming ? "▍" : "")}
                       </ReactMarkdown>
                     </div>

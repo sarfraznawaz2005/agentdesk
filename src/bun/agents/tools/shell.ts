@@ -10,7 +10,6 @@ import { truncateShellOutput } from "./truncation";
 // ---------------------------------------------------------------------------
 
 const BLOCKED_PATTERNS: string[] = [
-	"rm -rf /", "rm -rf ~", "rm -rf .",
 	"format c:", "format d:",
 	"drop database", "drop table", "truncate table",
 	":(){ :|:& };:",
@@ -18,7 +17,52 @@ const BLOCKED_PATTERNS: string[] = [
 	"shutdown", "reboot", "init 0", "init 6",
 ];
 
+/**
+ * Matches an `rm` argument that IS a dangerous root itself (or that root plus
+ * a trailing wildcard, e.g. `/*`, `~/*`, `./**`) — not merely a path prefixed
+ * by one. `\.\.?` covers "." and "..", `\$\{?home\}?` covers `$HOME`/`${HOME}`.
+ */
+const DANGEROUS_RM_ARG_RE = /^(\/|~|\.\.?|\$\{?home\}?)\/?\*{0,2}$/i;
+
+/**
+ * `rm -rf <root>` is only catastrophic when <root> IS one of the dangerous
+ * roots (see DANGEROUS_RM_ARG_RE) — not merely a path prefixed by one. A
+ * naive substring check on "rm -rf /" / "rm -rf ." / "rm -rf ~" (the previous
+ * approach) also matched — and blocked — perfectly safe commands like
+ * `rm -rf /tmp/scratch-dir` or `rm -rf ./build-output`, since those strings
+ * literally start with the blocked substring. This tokenizes the command
+ * instead: only flags an `rm` invocation that carries both a recursive and a
+ * force flag (in any order/combination — `-rf`, `-fr`, `-r -f`, `--recursive
+ * --force`, etc., detected by just checking the concatenated flag tokens for
+ * an "r" and an "f" character) AND has an argument matching DANGEROUS_RM_ARG_RE.
+ */
+function isDangerousRmRf(command: string): boolean {
+	const tokens = command.trim().toLowerCase().split(/\s+/);
+	for (let i = 0; i < tokens.length; i++) {
+		if (tokens[i] !== "rm") continue;
+
+		const flags: string[] = [];
+		const args: string[] = [];
+		for (let j = i + 1; j < tokens.length; j++) {
+			const t = tokens[j];
+			if (t.startsWith("-")) flags.push(t);
+			// Strip one layer of surrounding quotes (`"${HOME}"`, `'~'`) so the
+			// dangerous-root regex still matches a quoted argument.
+			else args.push(t.replace(/^["']|["']$/g, ""));
+		}
+
+		const flagStr = flags.join("");
+		const hasRecursive = /r/.test(flagStr);
+		const hasForce = /f/.test(flagStr);
+		if (hasRecursive && hasForce && args.some((a) => DANGEROUS_RM_ARG_RE.test(a))) {
+			return true;
+		}
+	}
+	return false;
+}
+
 function isBlockedCommand(command: string): boolean {
+	if (isDangerousRmRf(command)) return true;
 	const lower = command.toLowerCase();
 	return BLOCKED_PATTERNS.some((pattern) => lower.includes(pattern.toLowerCase()));
 }
@@ -129,6 +173,34 @@ export function setShellApprovalHandler(handler: ShellApprovalHandler | null): v
 
 export function resetShellAutoApprove(projectId: string): void {
 	sessionAutoApprovedProjects.delete(projectId);
+}
+
+/**
+ * Reused by code-exec.ts (execute_code for project/Quick Chat sub-agents +
+ * Playground) instead of standing up a second, parallel approval channel —
+ * arbitrary code execution carries the same risk as an arbitrary shell
+ * command, so it shares the exact same handler, DB-persisted pending-approval
+ * row, desktop/channel notifications, and ShellApprovalCard UI (installed
+ * once, globally, via installShellApprovalHandler in engine-manager.ts) and
+ * the same per-project "Always allow" cache — approving one implicitly
+ * trusts the other too, which matches the actual mental model ("this
+ * project's agents may run code") better than two separate toggles would.
+ */
+export async function requestShellLikeApproval(
+	command: string,
+	agentId: string,
+	agentDisplayName: string,
+	projectId: string,
+	conversationId: string,
+): Promise<"allow" | "deny" | "always"> {
+	if (!approvalHandler || sessionAutoApprovedProjects.has(projectId)) return "allow";
+	try {
+		const decision = await approvalHandler(command, agentId, agentDisplayName, projectId, conversationId);
+		if (decision === "always") sessionAutoApprovedProjects.add(projectId);
+		return decision;
+	} catch {
+		return "deny";
+	}
 }
 
 // ---------------------------------------------------------------------------

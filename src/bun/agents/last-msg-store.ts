@@ -61,5 +61,5 @@ export function buildLastMsgInjection(content: string): string {
 		.split("\n")
 		.map((line) => `> ${line}`)
 		.join("\n");
-	return `\n\n## Your Last Message To User:\n${quoted}`;
+	return `\n\n---\n\n## Your Last Message To User:\n${quoted}`;
 }

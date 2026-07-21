@@ -40,6 +40,12 @@ mock.module("../../src/bun/engine-manager", () => ({
 	resolveUserQuestion: () => false,
 	resolveShellApproval: () => false,
 	getPendingChannelInteraction: () => null,
+	// Not used by review-cycle.ts itself — included because this is the first
+	// file (alphabetically) to mock engine-manager, and mock.module has no
+	// per-file undo: whichever file mocks a given specifier first wins for the
+	// rest of the `bun test` process, so every export any later file needs
+	// (general-chat/orchestrator.ts imports this one) must be present here.
+	isAppFocused: () => true,
 }));
 // Mock scheduler so rpc/kanban can be used without a real event bus.
 mock.module("../../src/bun/scheduler", () => ({

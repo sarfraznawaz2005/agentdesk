@@ -3,6 +3,7 @@ import { FileText, ExternalLink, FolderOpen, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { cn } from "@/lib/utils";
 import { rpc } from "../../lib/rpc";
@@ -350,7 +351,8 @@ export const DocsTab = forwardRef<DocsTabHandle, DocsTabProps>(function DocsTab(
             {selectedDoc && (
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeSanitize]}
+                rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                urlTransform={markdownUrlTransform}
                 components={{
                    
                   code({ className, children, ref: _ref, ...props }) {

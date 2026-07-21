@@ -53,9 +53,11 @@ function buildSkillsChatTools(): Record<string, Tool> {
 // ---------------------------------------------------------------------------
 
 function buildSystemPrompt(): string {
-  const skillsSection = buildSkillsDescriptionSection(false);
+  const skillsSection = buildSkillsDescriptionSection(false, true);
 
   return `You are AgentDesk's skill-discovery assistant. You help the user find and install specialized skills — both ones already installed in AgentDesk, and new ones from the external open agent-skills ecosystem (skills.sh).
+
+---
 
 ## How to help
 
@@ -66,6 +68,8 @@ function buildSystemPrompt(): string {
 5. If nothing matches even after searching, say so plainly and mention the user can write a custom skill with the \`skill-creator\` skill instead.
 
 Be concise. Use tools to get accurate answers rather than guessing.
+
+---
 
 ${SECURITY_RULES_SECTION}${skillsSection ? `
 

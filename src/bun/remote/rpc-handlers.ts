@@ -21,10 +21,11 @@ import { handlers as channelsInboxSchedulerHandlers } from "../rpc-groups/channe
 import { handlers as pluginsToolsHandlers } from "../rpc-groups/plugins-tools";
 import { handlers as featuresHandlers } from "../rpc-groups/features";
 import { handlers as collectionsHandlers } from "../rpc-groups/collections";
+import { handlers as generalChatHandlers } from "../rpc-groups/general-chat";
 
 /**
- * The combined request-handler map (all 9 rpc-groups). The type is INFERRED as
- * the precise intersection of the nine group types so that
+ * The combined request-handler map (all 10 rpc-groups). The type is INFERRED as
+ * the precise intersection of the ten group types so that
  * `BrowserView.defineRPC<AgentDeskRPC>` keeps full type-checking in
  * rpc-registration.ts. The remote WS server accepts it via a looser structural
  * `RpcRequestHandlers` parameter (the precise type is assignable to it).
@@ -39,4 +40,5 @@ export const requestHandlers = {
   ...pluginsToolsHandlers,
   ...featuresHandlers,
   ...collectionsHandlers,
+  ...generalChatHandlers,
 };

@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Plus, Pin, Pencil, Trash2, X, Check, Archive, ArchiveRestore, ChevronDown, ChevronRight, CheckSquare, Square, Clock } from "lucide-react";
+import { Plus, Pin, Pencil, Trash2, X, Check, Archive, ArchiveRestore, ChevronDown, ChevronRight, CheckSquare, Square, Clock, Search } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { relativeTime } from "../../lib/date-utils";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
@@ -7,7 +7,9 @@ import { rpc } from "../../lib/rpc";
 import type { Conversation } from "../../stores/chat-store";
 
 interface ConversationSidebarProps {
-  projectId: string;
+  /** Omit for a surface with no real project (e.g. General Chat) — the "N agents
+   *  will be stopped" warning in the delete confirmation is skipped in that case. */
+  projectId?: string;
   conversations: Conversation[];
   archivedConversations?: Conversation[];
   activeConversationId: string | null;
@@ -18,6 +20,11 @@ interface ConversationSidebarProps {
   onPin: (id: string, pinned: boolean) => void;
   onArchive?: (id: string) => void;
   onRestore?: (id: string) => void;
+  /** Hide the sidebar's own "+ New conversation" button — for a caller (e.g.
+   *  General Chat) that renders its own create button elsewhere (the app's
+   *  main navbar) instead. `onCreate` is still required and still used by
+   *  the header's "All"/select-mode bar staying in place. */
+  hideCreateButton?: boolean;
 }
 
 export function ConversationSidebar({
@@ -32,8 +39,9 @@ export function ConversationSidebar({
   onPin,
   onArchive,
   onRestore,
+  hideCreateButton = false,
 }: ConversationSidebarProps) {
-  const searchQuery = "";
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
@@ -51,7 +59,7 @@ export function ConversationSidebar({
   // conversation(s) being removed — conversation-scoped, so a sibling
   // conversation's agent never gets flagged as "in the way" here.
   useEffect(() => {
-    if (!deleteConfirmId) return;
+    if (!deleteConfirmId || !projectId) return;
     let cancelled = false;
     rpc
       .getRunningAgentsForConversation(projectId, deleteConfirmId)
@@ -65,7 +73,7 @@ export function ConversationSidebar({
   }, [deleteConfirmId, projectId]);
 
   useEffect(() => {
-    if (!bulkDeleteConfirm) return;
+    if (!bulkDeleteConfirm || !projectId) return;
     let cancelled = false;
     Promise.all(
       [...selectedIds].map((id) => rpc.getRunningAgentsForConversation(projectId, id)),
@@ -185,7 +193,7 @@ export function ConversationSidebar({
               Cancel
             </button>
           </div>
-        ) : (
+        ) : !hideCreateButton ? (
           <button
             onClick={onCreate}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
@@ -193,8 +201,28 @@ export function ConversationSidebar({
             <Plus className="w-4 h-4" />
             New conversation
           </button>
-        )}
+        ) : null}
 
+        {/* Search — filters the conversation list below by title */}
+        {!selectMode && (
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conversations"
+              className="w-full pl-7 pr-7 py-1.5 text-xs bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Bulk deletion toggle — only shown when not already in select mode */}
         {!selectMode && (

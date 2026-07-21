@@ -610,11 +610,9 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						setTaskConversation(args.kanban_task_id, agentConversationId);
 					}
 
-					// Build project context + workflow instructions if kanban task
-					const projectContext = [
-						effectiveWorkspacePath ? `Workspace: ${effectiveWorkspacePath}` : "",
-						`Project ID: ${effectiveProjectId} (use this for any tool that requires project_id)`,
-					].filter(Boolean).join("\n");
+					// No projectContext here — Identity (agent-loop.ts) already states the
+					// project name/workspace/Project ID from workspacePath+projectId below.
+					const projectContext = "";
 
 					// Append workflow-style instructions when dispatching with a kanban task
 					let taskWithInstructions = task;
@@ -987,7 +985,9 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						});
 					}
 
-					const projectContext = deps.workspacePath ? `Workspace: ${deps.workspacePath}` : "";
+					// No projectContext here — Identity (agent-loop.ts) already states the
+					// project name/workspace/Project ID from workspacePath+projectId below.
+					const projectContext = "";
 
 					// Run all read-only agents in parallel (no concurrency limit for read-only)
 					const allResults = await Promise.allSettled(
@@ -3113,9 +3113,10 @@ Reply with ONLY the branch name, nothing else.`,
 	// Quick Chat has no kanban board and no plan-approval flow — strip the PM
 	// tools that only make sense with one. See QUICK_CHAT_SECTION in prompts.ts
 	// for the matching prompt-side instructions. verify_project is intentionally
-	// KEPT — it just runs the project's configured verify/lint command and
-	// reports pass/fail, which isn't inherently kanban-dependent and is still
-	// useful standalone ("does this build?") in a Quick Chat session.
+	// KEPT — it statically traces the entry point's imports/references and
+	// reports any missing files, which isn't inherently kanban-dependent and is
+	// still useful standalone ("does every referenced file exist?") in a Quick
+	// Chat session.
 	if (deps.quickChat) {
 		const t = tools as Record<string, unknown>;
 		delete t.create_tasks_from_plan;

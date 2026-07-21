@@ -295,6 +295,39 @@ const electrobunRpc = Electroview.defineRPC<AgentDeskRPC>({
       playgroundFilesChanged: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:playground-files-changed", { detail: payload }));
       },
+      generalChatRunStarted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-run-started", { detail: payload }));
+      },
+      generalChatPart: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-part", { detail: payload }));
+      },
+      generalChatPartUpdated: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-part-updated", { detail: payload }));
+      },
+      generalChatTextDelta: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-text-delta", { detail: payload }));
+      },
+      generalChatPartsRemoved: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-parts-removed", { detail: payload }));
+      },
+      generalChatComplete: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-complete", { detail: payload }));
+      },
+      generalChatRunError: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-run-error", { detail: payload }));
+      },
+      generalChatCompacted: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-compacted", { detail: payload }));
+      },
+      generalChatConversationRenamed: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-conversation-renamed", { detail: payload }));
+      },
+      generalChatStreamPerformance: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-stream-performance", { detail: payload }));
+      },
+      generalChatContextUsage: (payload) => {
+        window.dispatchEvent(new CustomEvent("agentdesk:general-chat-context-usage", { detail: payload }));
+      },
       issueFixerRunStarted: (payload) => {
         window.dispatchEvent(new CustomEvent("agentdesk:issuefixer-run-started", { detail: payload }));
       },
@@ -1030,7 +1063,7 @@ export const rpc = {
     collectionId: string;
     title: string;
     contentMarkdown: string;
-    sourceType?: "pm_chat" | "council" | "freelance_chat" | "skills_chat" | "freelance_inbox" | "inbox_message" | "manual";
+    sourceType?: "pm_chat" | "general_chat" | "council" | "freelance_chat" | "skills_chat" | "freelance_inbox" | "inbox_message" | "manual";
     sourceRef?: { projectId?: string; projectName?: string; taskId?: string };
   }) => electroviewRpc.request.saveToCollection(params),
 
@@ -2056,4 +2089,67 @@ export const rpc = {
     electroviewRpc.request["freelance.expert.getJobTimeline"]({ jobId }),
   freelanceGetEarnings: () =>
     electroviewRpc.request["freelance.expert.getEarnings"]({}),
+
+  // ---- General Chat (standalone "Assistant" agent) -------------------------
+
+  /** Non-archived General Chat conversations, most recently updated first. */
+  listGeneralChatConversations: () =>
+    electroviewRpc.request.listGeneralChatConversations({}),
+
+  /** Archived General Chat conversations, most recently updated first. */
+  listArchivedGeneralChatConversations: () =>
+    electroviewRpc.request.listArchivedGeneralChatConversations({}),
+
+  /** Create a new General Chat conversation (reuses an empty untitled one if present). */
+  createGeneralChatConversation: (title?: string) =>
+    electroviewRpc.request.createGeneralChatConversation({ title }),
+
+  renameGeneralChatConversation: (id: string, title: string) =>
+    electroviewRpc.request.renameGeneralChatConversation({ id, title }),
+
+  deleteGeneralChatConversation: (id: string) =>
+    electroviewRpc.request.deleteGeneralChatConversation({ id }),
+
+  pinGeneralChatConversation: (id: string, pinned: boolean) =>
+    electroviewRpc.request.pinGeneralChatConversation({ id, pinned }),
+
+  archiveGeneralChatConversation: (id: string, archived: boolean) =>
+    electroviewRpc.request.archiveGeneralChatConversation({ id, archived }),
+
+  /** Copy a conversation's messages (up to upToMessageId, or all if omitted) into a new one. */
+  forkGeneralChatConversation: (id: string, upToMessageId?: string) =>
+    electroviewRpc.request.forkGeneralChatConversation({ id, upToMessageId }),
+
+  getGeneralChatMessages: (conversationId: string) =>
+    electroviewRpc.request.getGeneralChatMessages({ conversationId }),
+
+  /** Whether a turn is still in flight for this conversation — used on mount/refresh to re-derive "still working" state. */
+  getGeneralChatStatus: (conversationId: string) =>
+    electroviewRpc.request.getGeneralChatStatus({ conversationId }),
+
+  /** Delete a single message (mirrors project chat's deleteMessage). */
+  deleteGeneralChatMessage: (id: string) =>
+    electroviewRpc.request.deleteGeneralChatMessage({ id }),
+
+  /** Delete all messages in a conversation without deleting the conversation itself (the /clear slash command). */
+  clearGeneralChatConversation: (id: string) =>
+    electroviewRpc.request.clearGeneralChatConversation({ id }),
+
+  /** Fire-and-forget — the reply streams via generalChatPart / generalChatComplete broadcasts. */
+  sendGeneralChatMessage: (conversationId: string, content: string) =>
+    electroviewRpc.request.sendGeneralChatMessage({ conversationId, content }),
+
+  stopGeneralChatGeneration: (conversationId: string) =>
+    electroviewRpc.request.stopGeneralChatGeneration({ conversationId }),
+
+  setGeneralChatDeepResearchMode: (conversationId: string, enabled: boolean) =>
+    electroviewRpc.request.setGeneralChatDeepResearchMode({ conversationId, enabled }),
+
+  /** AI-summarize everything but the most recent messages (the /compact slash command). */
+  compactGeneralChatConversation: (conversationId: string) =>
+    electroviewRpc.request.compactGeneralChatConversation({ conversationId }),
+
+  /** The real context window for the conversation's currently resolved model — call on mount and whenever the model selection changes. */
+  getGeneralChatContextLimit: (conversationId: string) =>
+    electroviewRpc.request.getGeneralChatContextLimit({ conversationId }),
 } as const;

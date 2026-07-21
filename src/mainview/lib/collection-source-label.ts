@@ -2,6 +2,7 @@ import type { CollectionNoteSourceRef, CollectionNoteSourceType } from "../../sh
 
 const SOURCE_TYPE_LABELS: Record<CollectionNoteSourceType, string> = {
   pm_chat: "PM Chat",
+  general_chat: "General Chat",
   council: "Council",
   freelance_chat: "Freelance Chat",
   skills_chat: "Skills Chat",

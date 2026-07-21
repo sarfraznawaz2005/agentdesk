@@ -60,6 +60,10 @@ import * as v57 from "./migrations/v57_quick-chat-projects";
 import * as v58 from "./migrations/v58_model-capabilities-cache";
 import * as v59 from "./migrations/v59_ai-telemetry-events";
 import * as v60 from "./migrations/v60_global-memories";
+import * as v61 from "./migrations/v61_general-chat";
+import * as v62 from "./migrations/v62_general-chat-message-metadata";
+import * as v63 from "./migrations/v63_assistant-workspace-less";
+import * as v64 from "./migrations/v64_general-chat-assistant-rename";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -144,6 +148,10 @@ const migrations: Migration[] = [
 	{ version: 58, name: v58.name, run: v58.run },
 	{ version: 59, name: v59.name, run: v59.run },
 	{ version: 60, name: v60.name, run: v60.run },
+	{ version: 61, name: v61.name, run: v61.run },
+	{ version: 62, name: v62.name, run: v62.run },
+	{ version: 63, name: v63.name, run: v63.run },
+	{ version: 64, name: v64.name, run: v64.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;
@@ -347,6 +355,13 @@ function ensureRuntimeSchema(): void {
 		v57.run();
 	} catch (err) {
 		console.error("[migrate] schema-fixup: quick-chat projects column failed:", err);
+	}
+
+	// Defensive: ensure the General Chat tables exist (v61 is CREATE TABLE IF NOT EXISTS).
+	try {
+		v61.run();
+	} catch (err) {
+		console.error("[migrate] schema-fixup: general-chat tables failed:", err);
 	}
 
 	// Defensive: ensure the freelance hot-path indexes exist (v50 is all

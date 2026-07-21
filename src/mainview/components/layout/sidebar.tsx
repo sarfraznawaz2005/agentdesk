@@ -22,8 +22,10 @@ import {
   Cpu,
   Briefcase,
   FlaskConical,
+  MessageCircle,
   MessageSquarePlus,
   WifiOff,
+  HelpCircle,
   type LucideIcon,
   icons,
 } from "lucide-react";
@@ -59,6 +61,7 @@ interface SidebarProps {
 
 const BASE_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { label: "General Chat", icon: MessageCircle, href: "/general-chat" },
   { label: "Playground", icon: FlaskConical, href: "/playground" },
   { label: "Inbox", icon: Inbox, href: "/inbox" },
   { label: "Agents", icon: Bot, href: "/agents" },
@@ -69,6 +72,7 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { label: "Council", icon: Users, href: "/council" },
   { label: "Analytics", icon: BarChart2, href: "/analytics" },
   { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Help", icon: HelpCircle, href: "/help" },
 ];
 
 function NavItemButton({
@@ -92,7 +96,7 @@ function NavItemButton({
         "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
         active
-          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+          ? "bg-foreground/[8%] text-indigo-700 dark:text-indigo-300"
           : "text-muted-foreground hover:bg-foreground/[8%] hover:text-foreground"
       )}
     >
@@ -390,10 +394,10 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
   };
 
   const ALL_NAV_ITEMS: NavItem[] = [
-    ...BASE_NAV_ITEMS.slice(0, -1), // everything except Settings
+    ...BASE_NAV_ITEMS.slice(0, -2), // everything except Settings/Help
     ...pluginItems,
     ...(freelanceEnabled ? [{ label: "Freelance", icon: Briefcase, href: "/freelance" }] : []),
-    BASE_NAV_ITEMS[BASE_NAV_ITEMS.length - 1], // Settings always last
+    ...BASE_NAV_ITEMS.slice(-2), // Settings, then Help, always last
   ];
 
   const activeHref =

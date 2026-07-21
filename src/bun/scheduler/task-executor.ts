@@ -200,10 +200,9 @@ export async function executeTask(
 					// Notify frontend so the new conversation appears in the sidebar
 					broadcastToWebview("conversationUpdated", { conversationId: convId, updatedAt: new Date().toISOString(), projectId });
 
-					const projectContext = [
-						workspacePath ? `Workspace: ${workspacePath}` : "",
-						`Project ID: ${projectId}`,
-					].filter(Boolean).join("\n");
+					// No projectContext here — Identity (agent-loop.ts) already states the
+					// project name/workspace/Project ID from workspacePath+projectId below.
+					const projectContext = "";
 
 					// Register an AbortController so the Scheduler/Inbox Stop button and
 					// stop-all work correctly. Chained to the job-level signal so the
@@ -360,7 +359,7 @@ export async function executeTask(
 				let systemPrompt: string;
 				if (agentId === "project-manager") {
 					const { getPMSystemPrompt } = await import("../agents/prompts");
-					const pmPrompt = await getPMSystemPrompt({}, [], "app");
+					const pmPrompt = await getPMSystemPrompt({}, "app");
 					systemPrompt = pmPrompt.prompt;
 					pmAgentNames = pmPrompt.agentNames;
 				} else {
@@ -370,7 +369,7 @@ export async function executeTask(
 						.from(agentsTable).where(eq(agentsTable.name, agentId)).limit(1);
 					const baseSystemPrompt = agentRows[0]?.systemPrompt ?? "";
 					const { buildSkillsDescriptionSection, buildAgentMcpSection } = await import("../agents/prompts");
-					const skillsSection = buildSkillsDescriptionSection();
+					const skillsSection = buildSkillsDescriptionSection(true, true); // include the user-skills-directory note — this dispatched agent has no project-context block to learn this from
 					const mcpSection = await buildAgentMcpSection();
 					systemPrompt = [baseSystemPrompt, skillsSection, mcpSection].filter(Boolean).join("\n\n---\n\n");
 				}

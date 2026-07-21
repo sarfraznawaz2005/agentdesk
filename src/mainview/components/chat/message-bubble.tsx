@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { Check, Copy, Trash2, ClipboardList, RefreshCw, GitBranch, GitCompare, ListChecks, CheckSquare, Square, Paperclip, BookmarkPlus } from "lucide-react";
 import { cn, displayAgentName } from "@/lib/utils";
 import { relativeTimeVerbose } from "@/lib/date-utils";
@@ -584,7 +585,8 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
             <div className="px-4 py-3 max-h-[60vh] overflow-y-auto">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeSanitize]}
+                rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                urlTransform={markdownUrlTransform}
                 components={PLAN_MD_COMPONENTS as never}
               >
                 {message.content}
@@ -737,7 +739,8 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                 return (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeSanitize]}
+                    rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                    urlTransform={markdownUrlTransform}
                     components={mdComponents as never}
                   >
                     {displayContent + (isStreaming ? "▍" : "")}

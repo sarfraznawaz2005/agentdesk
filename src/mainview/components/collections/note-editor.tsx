@@ -3,6 +3,7 @@ import MDEditor from "@uiw/react-md-editor";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import {
 	bold,
 	italic,
@@ -483,7 +484,7 @@ export function NoteEditor() {
 					extraCommands={[]}
 					height="100%"
 					visibleDragbar={false}
-					previewOptions={{ rehypePlugins: [[rehypeSanitize]], components: { a: MarkdownLink } }}
+					previewOptions={{ rehypePlugins: [[rehypeSanitize, markdownSanitizeSchema]], urlTransform: markdownUrlTransform, components: { a: MarkdownLink } }}
 				/>
 			</div>
 			{attachments.length > 0 && (

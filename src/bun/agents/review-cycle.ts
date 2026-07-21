@@ -347,7 +347,9 @@ async function spawnReviewAgent(
 			agentName,
 			agentDisplayName: displayName,
 			task,
-			projectContext: `Project ID: ${projectId}`,
+			// No projectContext here — Identity (agent-loop.ts) already states the
+			// project name/workspace/Project ID whenever workspacePath+projectId are passed below.
+			projectContext: "",
 			providerConfig: {
 				id: provRow.id,
 				name: provRow.name,
@@ -421,7 +423,7 @@ export async function autoCommitTask(projectId: string, taskId: string, taskTitl
 			// Prefer the PM-declared branch name; fall back to task-title slug
 			const stored = await getSetting(`currentFeatureBranch:${projectId}`, "git");
 			const slug = taskTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
-			const branchName = (stored && stored.startsWith("feature/")) ? stored : `feature/${slug}`;
+			const branchName = (typeof stored === "string" && stored.startsWith("feature/")) ? stored : `feature/${slug}`;
 
 			// Check current branch
 			const currentResult = Bun.spawnSync(["git", "rev-parse", "--abbrev-ref", "HEAD"], { cwd: workspacePath, stderr: "pipe" });
@@ -463,7 +465,8 @@ export async function autoCommitTask(projectId: string, taskId: string, taskTitl
 		}
 
 		// Use configurable commit message format from Git settings
-		const format = await getSetting("commitMessageFormat", "git") || "feat: {task}";
+		const formatSetting = await getSetting("commitMessageFormat", "git");
+		const format = typeof formatSetting === "string" && formatSetting ? formatSetting : "feat: {task}";
 		const message = format
 			.replace("{task}", taskTitle)
 			.replace("{description}", `Task ${taskId}`)

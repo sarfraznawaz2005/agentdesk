@@ -113,7 +113,7 @@ export function categorizeFile(name: string): AttachmentType {
 }
 
 /** Build accept string for file input — all supported types */
-const ACCEPT_ALL = [
+export const ACCEPT_ALL = [
   ...Array.from(TEXT_EXTENSIONS).map(e => `.${e}`),
   ...Array.from(IMAGE_EXTENSIONS).map(e => `.${e}`),
   ...Array.from(AUDIO_EXTENSIONS).map(e => `.${e}`),
@@ -121,7 +121,7 @@ const ACCEPT_ALL = [
 ].join(",");
 
 /** Process files into AttachmentFile objects based on their type */
-async function processFiles(files: File[]): Promise<AttachmentFile[]> {
+export async function processFiles(files: File[]): Promise<AttachmentFile[]> {
   const results: AttachmentFile[] = [];
   for (const file of files) {
     const type = categorizeFile(file.name);
@@ -260,7 +260,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     },
   }));
 
-  // MCP server count + config (for /mcp command)
+  // MCP server count + config (for the toolbar's MCP status button/dialog)
   const [mcpCount, setMcpCount] = useState(0);
   const [mcpServers, setMcpServers] = useState<Record<string, { command: string; args?: string[]; disabled?: boolean }>>({});
   const [mcpLiveStatus, setMcpLiveStatus] = useState<Record<string, "connected" | "connecting" | "failed" | "disabled">>({});
@@ -485,22 +485,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       case "init":
         onSend("Analyze this project's codebase thoroughly and create a comprehensive AGENTS.md file in the project root. Include: project overview, tech stack, directory structure, key files, build commands, and any patterns you discover.");
         break;
-      case "mcp": {
-        // Show MCP info as ephemeral bubble (not sent to AI)
-        const entries = Object.entries(mcpServers);
-        let mcpText: string;
-        if (entries.length === 0) {
-          mcpText = "No MCP servers configured.";
-        } else {
-          const lines = entries.map(([name, s]) => {
-            const status = s.disabled ? "disabled" : "enabled";
-            return `  ${name}: ${s.command} (${status})`;
-          });
-          mcpText = lines.join("\n");
-        }
-        onSend(`__shell__${JSON.stringify({ command: "mcp status", output: mcpText, exitCode: 0, isError: false })}`);
-        break;
-      }
       case "info":
         onSend("/info");
         break;

@@ -264,33 +264,17 @@ export async function runFreelanceExpert(input: RunExpertInput): Promise<{ jobId
 		}
 
 		const projectContext = [
-			`## Persona (act as this person)`,
-			getPersona() || "(no persona set)",
-			``,
-			`## Additional Notes (the user's rules — follow strictly)`,
-			fl.additionalNotes?.trim() || "(none)",
-			``,
-			`## Job`,
-			`State: ${job.state}`,
-			job.listingExternalId ? `Platform project id: ${job.listingExternalId}` : "",
-			``,
-			`## Full job description`,
-			listing ? listing.body : "(no linked listing)",
-			``,
-			`## Conversation so far (most recent last)`,
-			transcript || "(no messages yet)",
-			``,
-			`## Important client/job facts (remembered — honor these)`,
-			facts.length ? facts.map((f) => `- [${f.category}] ${f.detail}`).join("\n") : "(none yet — save new ones with save_important_client_detail)",
-			``,
-			`## Stored credentials (redacted — use the credentialId with the tools)`,
-			creds.length ? JSON.stringify(creds) : "(none)",
-			``,
-			`## How to write to clients`,
-			`Before writing any message to a client (reply, bid, or proposal): (1) call read_skill('humanizer') and apply all rules, then (2) call read_skill('freelance-writing') and apply the additional freelance-specific rules. No exceptions — the client reads your output directly and it must sound like a real person wrote it.`,
-		]
-			.filter((s) => s !== "")
-			.join("\n");
+			`## Persona (act as this person)\n${getPersona() || "(no persona set)"}`,
+			`## Additional Notes (the user's rules — follow strictly)\n${fl.additionalNotes?.trim() || "(none)"}`,
+			[`## Job`, `State: ${job.state}`, job.listingExternalId ? `Platform project id: ${job.listingExternalId}` : ""]
+				.filter((s) => s !== "")
+				.join("\n"),
+			`## Full job description\n${listing ? listing.body : "(no linked listing)"}`,
+			`## Conversation so far (most recent last)\n${transcript || "(no messages yet)"}`,
+			`## Important client/job facts (remembered — honor these)\n${facts.length ? facts.map((f) => `- [${f.category}] ${f.detail}`).join("\n") : "(none yet — save new ones with save_important_client_detail)"}`,
+			`## Stored credentials (redacted — use the credentialId with the tools)\n${creds.length ? JSON.stringify(creds) : "(none)"}`,
+			`## How to write to clients\nBefore writing any message to a client (reply, bid, or proposal): (1) call read_skill('humanizer') and apply all rules, then (2) call read_skill('freelance-writing') and apply the additional freelance-specific rules. No exceptions — the client reads your output directly and it must sound like a real person wrote it.`,
+		].join("\n\n---\n\n");
 
 		const task = [
 			`Trigger: ${input.trigger}.`,

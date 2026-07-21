@@ -46,6 +46,7 @@ import type { IssuesRequests, IssueSource, ExternalIssue, IssueSourceStatus } fr
 import type { WhatsNewRequests, ReleaseEntry } from "./whats-new";
 import type { RemoteAccessRequests, RemoteDeviceDto, RemoteAccessStatusDto, DevicePairingDto } from "./remote-access";
 import type { AmbientRequests, AmbientDisplayDto, AmbientActivitySnapshot, AmbientAssistantPartDto } from "./ambient";
+import type { GeneralChatRequests, GeneralChatConversationDto, GeneralChatMessageDto } from "./general-chat";
 import type { WebviewSchema } from "./webview";
 
 type BunRequests =
@@ -79,7 +80,8 @@ type BunRequests =
   & IssuesRequests
   & WhatsNewRequests
   & RemoteAccessRequests
-  & AmbientRequests;
+  & AmbientRequests
+  & GeneralChatRequests;
 
 export type AgentDeskRPC = {
   bun: RPCSchema<{
@@ -156,5 +158,8 @@ export type {
   AmbientDisplayDto,
   AmbientActivitySnapshot,
   AmbientAssistantPartDto,
+  GeneralChatRequests,
+  GeneralChatConversationDto,
+  GeneralChatMessageDto,
   WebviewSchema,
 };

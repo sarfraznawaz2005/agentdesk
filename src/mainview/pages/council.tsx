@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } fr
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { rpc } from "@/lib/rpc";
 import { Users, Send, Loader2, CheckCircle, Copy, Check, Download, BookmarkPlus } from "lucide-react";
 import { useHeaderActions } from "@/lib/header-context";
@@ -282,7 +283,8 @@ function MessageBubble({
       message.content ? (
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeSanitize]}
+          rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+          urlTransform={markdownUrlTransform}
           components={MD_COMPONENTS as never}
         >
           {message.content}
@@ -893,6 +895,13 @@ export function CouncilPage() {
   const isRunning = sessionState === "running";
   const isWaiting = sessionState === "waiting-for-answer";
   const inputDisabled = isRunning;
+  // Auto-focus on mount and whenever the input becomes enabled again — mirrors
+  // chat-input.tsx's own effect exactly (same requestAnimationFrame defer; a
+  // synchronous focus() call can land before WebView2 has finished wiring up
+  // real keyboard input routing on a freshly-opened page).
+  useEffect(() => {
+    if (!inputDisabled) requestAnimationFrame(() => inputRef.current?.focus());
+  }, [inputDisabled]);
   const placeholder = isRunning
     ? "Council is in session..."
     : isWaiting
@@ -965,8 +974,8 @@ export function CouncilPage() {
           </div>{/* end feed */}
 
           {/* Input area */}
-          <div className="border-t border-border bg-background shrink-0 p-3 flex gap-2">
-          <div className="flex flex-1 items-center gap-0.5 rounded-lg border border-border bg-background pl-1 pr-2 py-1 transition-colors focus-within:border-green-500">
+          <div className="border-t border-border bg-background shrink-0 p-3 flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-0.5 h-11 rounded-lg border border-border bg-background pl-1 pr-2 transition-colors focus-within:border-green-500">
             <AttachFileTextButton onInsertText={insertText} disabled={inputDisabled} />
             <QuickAttachBar onInsertText={insertText} disabled={inputDisabled} />
             <input
@@ -979,7 +988,7 @@ export function CouncilPage() {
               }}
               placeholder={placeholder}
               disabled={inputDisabled}
-              className="flex-1 min-w-0 bg-transparent px-1.5 py-1 text-sm outline-none text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed"
+              className="flex-1 min-w-0 bg-transparent px-1.5 py-[9px] text-sm outline-none text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed"
             />
             {voice.supported && (
               <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={inputDisabled} />
@@ -988,7 +997,7 @@ export function CouncilPage() {
           <button
             onClick={handleSend}
             disabled={inputDisabled || !query.trim()}
-            className="bg-green-500 hover:bg-green-600 text-white rounded-lg px-4 py-2 text-sm font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isRunning ? (
               <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />

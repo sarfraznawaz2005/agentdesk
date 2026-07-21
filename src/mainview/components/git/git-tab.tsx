@@ -63,7 +63,7 @@ export function GitTab({ projectId }: GitTabProps) {
       if (val !== null) setAutoCommitEnabled(val === "true");
     });
     rpc.getSetting("commitMessageFormat", "git").then((val) => {
-      if (val) setCommitMessageFormat(val);
+      if (typeof val === "string" && val) setCommitMessageFormat(val);
     });
   }, []);
 

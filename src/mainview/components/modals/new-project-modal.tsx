@@ -56,7 +56,7 @@ export function NewProjectModal({
     rpc
       .getSetting("global_workspace_path", "general")
       .then((result) => {
-        if (result) {
+        if (typeof result === "string" && result) {
           try {
             const parsed = JSON.parse(result);
             if (typeof parsed === "string" && parsed) {

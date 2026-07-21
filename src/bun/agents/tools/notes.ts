@@ -56,7 +56,7 @@ export const notesTools: Record<string, ToolRegistryEntry> = {
 					if (!projectId) {
 						return JSON.stringify({
 							success: false,
-							error: `Project not found: "${args.project_id}". Use the project UUID (found in the Project Context section of your instructions) or the exact project name.`,
+							error: `Project not found: "${args.project_id}". Use the project UUID (found in the Identity section of your instructions) or the exact project name.`,
 						});
 					}
 					const result = await notesRpc.createNote({

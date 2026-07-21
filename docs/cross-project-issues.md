@@ -355,3 +355,89 @@ which already carried `conversationId`.
 If extending this coverage, prefer testing the underlying pure/mockable unit
 over trying to drive the full engine/agent-loop stack — that's the pattern
 used throughout this file's test suite.
+
+---
+
+## 11. General Chat audit (2026-07-21) — same bug class, different surface
+
+General Chat (`src/mainview/pages/general-chat.tsx`) is architecturally
+identical to `ChatLayout` for this bug class — one page, one set of local
+React state, switching *conversations* instead of *projects* (it has no
+project concept at all). Audited against every pattern above; real bugs found
+and fixed:
+
+- **§2 analog (found via user report, fixed first):** `isSending` and
+  `compacting` were never reset when `activeConversationId` changed — only
+  ever conditionally turned *on* by `getGeneralChatStatus`, never off. Left a
+  stray "Thinking…"/Stop button (or "Compacting conversation…") stuck on an
+  already-idle conversation whenever you switched away while a turn/compaction
+  was still running elsewhere — and the visible Stop button was inert, since
+  it correctly targeted the (idle) conversation on screen, not the one
+  actually running. Fixed by resetting both to `false` synchronously in the
+  conversation-switch effect, same as the other per-turn fields already there.
+- **§6 `chat-layout.tsx handleSend` analog:** `sendToConversation`'s optimistic
+  user-bubble append and its error-branch `isSending`/`errorText` updates were
+  unconditional — `handleSend`'s attachment-saving `await` loop (or a slow
+  `sendGeneralChatMessage` round-trip) gives a real window to switch
+  conversations first, after which the append/error would land on whatever
+  conversation is now on screen. Fixed with an `isTargetActive()` check
+  against `activeConversationIdRef` before each state update (the send itself
+  still always goes to the real `conversationId` — only local UI state is
+  guarded). Same fix applied to the attachment-loop's `setAttachError`,
+  `handleRetry`/`handleDeleteMessage`/`handleClear`'s post-`await`
+  `setMessages` calls.
+- **§6 `chat-input.tsx` attachedFiles/mentionedFiles analog:** `inputValue`,
+  `attachedFiles`, and `attachError` weren't cleared on a conversation switch
+  — an unsent draft (text + staged attachments) typed for conversation A would
+  still be sitting in the input box after switching to B, and sending would
+  attach it to B instead. Fixed by clearing all three in the same
+  conversation-switch effect. `confirmClear` (the "Clear Chat" → "Confirm?"
+  two-click state) gets the same treatment for the same reason, though the
+  risk there is more cosmetic (a stale "Confirm?" carrying onto a different
+  conversation's Clear button) than data-corrupting.
+
+**Confirmed already safe** (same protective patterns as project chat, no
+changes needed):
+
+- `getGeneralChatMessages`/`getGeneralChatStatus` (conversation-switch effect)
+  and `getGeneralChatContextLimit` (context-meter effect) already had
+  `activeConversationIdRef` staleness guards from when they were built.
+- The live event listeners (`onPart`/`onPartUpdated`/`onComplete`/`onError`/
+  `onCompacted`) all gate on `isActive(conversationId)` already — this is what
+  correctly stops a *background* conversation's completion/error from
+  touching state while a *different* one is on screen (the §2-analog bug above
+  was specifically about the state never getting reset when you first
+  navigate away, not about these listeners misfiring).
+- `ModelSelector` (reused with `projectId={activeConversationId}`) has its own
+  generic, prop-driven `projectIdRef` staleness guard (§5) — since it keys off
+  whatever `projectId` it's given, General Chat's reuse is automatically
+  covered with no extra work. It's given `messages={emptyMessages}`
+  specifically so it never renders its own internal `ContextIndicator` (which
+  reads the *shared*, project-chat-coupled `useChatStore` — would have been a
+  real leak) — General Chat's `GeneralChatContextIndicator` is a deliberately
+  separate component reading its own local state instead.
+- Backend state is already correctly `conversationId`-keyed:
+  `orchestrator.ts`'s `abortControllers`/`lastPromptTokens` are both
+  `Map<conversationId, ...>`, not flat/global fields.
+- `CrossProjectApprovalToast` suppression for General Chat's own open
+  conversation (`activeGeneralChatConversationId` in `chat-store.ts`) was
+  already fixed in an earlier session (see `docs/workflow.md`'s General Chat
+  section).
+- `execute_code` for project/Quick Chat sub-agents (new — see `docs/workflow.md`'s
+  Tool Reference) reuses `run_shell`'s existing `sessionAutoApprovedProjects`/
+  `approvalHandler` mechanism (§7's fix) directly rather than introducing a new
+  approval channel, so it inherits per-project isolation for free instead of
+  risking reintroducing §7's bug class.
+- MCP server status (`mcpServers`/`mcpLiveStatus`/`mcpDialogOpen`) is
+  correctly *not* conversation-scoped — matches §6's audit finding that MCP is
+  genuinely app-wide, not per-project/per-conversation.
+
+**Noted, not fixed (out of scope for this leak-pattern audit — no cross-conversation
+data corruption involved):** General Chat's Assistant is granted
+`request_human_input` (the same `COMMUNICATION` tools every built-in agent
+gets by default, `seed.ts`), but `general-chat.tsx` has no listener for the
+underlying ask-a-question broadcast at all — if the model ever called it
+despite the system prompt's "answer directly" instruction (see `docs/workflow.md`'s
+"Fixed: unprompted clarifying questions" entry), the call would hang until the
+backend's own timeout, not corrupt or leak into another conversation. A
+separate functionality gap, not this doc's bug class.

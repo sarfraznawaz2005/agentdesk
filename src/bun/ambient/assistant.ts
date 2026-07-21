@@ -415,10 +415,11 @@ async function buildSystemPrompt(): Promise<string> {
 		"conversations (user preferences, things they explicitly asked you to remember) and " +
 		"recall_memory to retrieve them — this memory is private to you, separate from any project's " +
 		"own PM.\n\n" +
+		"---\n\n" +
 		SECURITY_RULES_SECTION;
 
 	const userSection = await buildUserProfileSection();
-	if (userSection) prompt += `\n\n${userSection}`;
+	if (userSection) prompt += `\n\n---\n\n${userSection}`;
 
 	const skills = skillRegistry.getAll();
 	if (skills.length > 0) {
@@ -427,9 +428,10 @@ async function buildSystemPrompt(): Promise<string> {
 			return `- **${s.name}**: ${s.description.slice(0, 120)}${agentTag}`;
 		});
 		prompt +=
-			"\n\n## Available Skills\n\nThe following skills are installed. Use `read_skill` to load a " +
+			"\n\n---\n\n## Available Skills\n\nThe following skills are installed. Use `read_skill` to load a " +
 			"skill's full instructions before following it. Use `find_skills` to search by keyword.\n\n" +
-			lines.join("\n");
+			lines.join("\n") +
+			`\n\nImportant: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`;
 	}
 
 	// Your own memory index — private to this assistant, not the shared
@@ -438,7 +440,7 @@ async function buildSystemPrompt(): Promise<string> {
 	// at least once.
 	const ambientProjectId = await ensureAmbientMemoryProjectId();
 	const memorySection = await buildMemoryIndexSection(AMBIENT_MEMORY_AGENT_NAME, ambientProjectId);
-	if (memorySection) prompt += `\n\n${memorySection}`;
+	if (memorySection) prompt += `\n\n---\n\n${memorySection}`;
 
 	return prompt;
 }

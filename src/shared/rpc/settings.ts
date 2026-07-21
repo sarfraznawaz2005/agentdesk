@@ -5,7 +5,7 @@ export type SettingsRequests = {
   };
   getSetting: {
     params: { key: string; category?: string };
-    response: string | null;
+    response: unknown;
   };
   saveSetting: {
     params: { key: string; value: unknown; category: string };

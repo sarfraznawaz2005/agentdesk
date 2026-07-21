@@ -18,10 +18,12 @@ const OPTIONS: { value: StreamingMode; label: string; description: string }[] = 
     value: "hybrid",
     label: "Hybrid Streaming (current)",
     description:
-      "Today's default behavior. Project chat and the Dashboard, Collections, Freelance, and " +
-      "skills-search chat widgets stream live — except when using Claude Subscription's " +
-      "Sonnet/Opus models, which always deliver a complete response. Sub-agent cards (e.g. " +
-      "Code Explorer) and Playground update per step rather than live.",
+      "Today's default behavior. Project chat, and the Dashboard, Collections, " +
+      "Freelance, and skills-search chat widgets stream live — except when using Claude " +
+      "Subscription's Sonnet/Opus models, which always deliver a complete response. Sub-agent " +
+      "cards (e.g. Code Explorer) and Playground update per step rather than live. General Chat " +
+      "has no sub-agent system, so Hybrid behaves as Full Streaming there — always live, even on " +
+      "Claude Subscription's Sonnet/Opus models.",
   },
   {
     value: "none",

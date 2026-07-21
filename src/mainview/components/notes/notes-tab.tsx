@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { ArrowLeft, FileText, FolderOpen, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import { rpc } from "@/lib/rpc";
@@ -579,7 +580,8 @@ export function NotesTab({ projectId }: NotesTabProps) {
               {selectedContent.trim() ? (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSanitize]}
+                  rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                  urlTransform={markdownUrlTransform}
                   components={mdComponents as never}
                 >
                   {selectedContent}

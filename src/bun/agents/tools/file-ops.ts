@@ -444,7 +444,10 @@ const searchContentTool = tool({
 	description:
 		"Search the text content of files within a directory for lines matching a regex query (like grep -rn). " +
 		"Automatically skips ignored directories (node_modules, .git, dist, etc.) and respects .gitignore. " +
-		"Returns up to 100 matches in the format 'file:lineNumber:content'.",
+		"Returns up to 100 matches in the format 'file:lineNumber:content' by default. " +
+		"Set outputMode to 'files_with_matches' for just the list of matching file paths, or 'count' for a " +
+		"per-file match count instead. Set context (or contextBefore/contextAfter) to include surrounding " +
+		"lines around each match, like grep -C/-A/-B — context lines are prefixed with '-' instead of ':'.",
 	inputSchema: z.object({
 		query: z
 			.string()
@@ -458,16 +461,69 @@ const searchContentTool = tool({
 			.describe(
 				"Optional glob pattern to restrict which files are searched (e.g. '**/*.ts')",
 			),
+		outputMode: z
+			.enum(["content", "files_with_matches", "count"])
+			.optional()
+			.describe(
+				"'content' (default): matching lines as 'file:lineNumber:content'. " +
+				"'files_with_matches': only the file paths that contain a match. " +
+				"'count': a per-file match count as 'file:count'.",
+			),
+		context: z
+			.number()
+			.optional()
+			.describe("Lines of context to show before AND after each match (like grep -C). Only applies to outputMode 'content'; overridden by contextBefore/contextAfter if either is set."),
+		contextBefore: z
+			.number()
+			.optional()
+			.describe("Lines of context to show before each match (like grep -B). Only applies to outputMode 'content'."),
+		contextAfter: z
+			.number()
+			.optional()
+			.describe("Lines of context to show after each match (like grep -A). Only applies to outputMode 'content'."),
 	}),
 	execute: async (args): Promise<string> => {
 		try {
 			const resolvedDir = validatePath(args.directory);
+			const outputMode = args.outputMode ?? "content";
 
+			// --- files_with_matches / count: plain (non-JSON) ripgrep output ------
+			if (outputMode === "files_with_matches" || outputMode === "count") {
+				const rgArgs: string[] = [outputMode === "files_with_matches" ? "--files-with-matches" : "--count"];
+				if (args.filePattern) rgArgs.push("--glob", args.filePattern);
+				rgArgs.push(args.query, ".");
+
+				const { code, stdout } = await ripgrep(rgArgs, { buffer: true, preopens: { ".": resolvedDir } });
+
+				if (code === 2) return `Error: invalid regex or ripgrep failure for query "${args.query}"`;
+				if (code === 1 || !stdout.trim()) return "No matches found";
+
+				const lines = stdout.split("\n").filter((l) => l.trim()).slice(0, 200).map((line) => {
+					if (outputMode === "files_with_matches") return path.join(resolvedDir, line);
+					// "count" lines are "relativePath:count" — re-join in case the path itself has no colon
+					const idx = line.lastIndexOf(":");
+					if (idx === -1) return path.join(resolvedDir, line);
+					return `${path.join(resolvedDir, line.slice(0, idx))}:${line.slice(idx + 1)}`;
+				});
+
+				const raw = lines.join("\n");
+				const result = await truncateSearchResults(raw);
+				return result.content;
+			}
+
+			// --- content (default): JSON output, optionally with context lines --
+			const before = args.contextBefore ?? args.context ?? 0;
+			const after = args.contextAfter ?? args.context ?? 0;
+
+			// Note: ripgrep has no "--max-total-count" flag (a global match cap across
+			// all files) — only "--max-count" (per file). The 100-match ceiling across
+			// the whole search is instead enforced JS-side below via matches.length.
 			const rgArgs: string[] = [
 				"--json",
 				"--max-count", "100",
-				"--max-total-count", "100",
 			];
+			if (before > 0) rgArgs.push("-B", String(before));
+			if (after > 0) rgArgs.push("-A", String(after));
 
 			if (args.filePattern) {
 				rgArgs.push("--glob", args.filePattern);
@@ -484,7 +540,8 @@ const searchContentTool = tool({
 
 			// code 1 = no matches (not an error), code 2 = error
 			if (code === 2) {
-				// Fall back to JS grep on ripgrep error (invalid regex, etc.)
+				// Fall back to JS grep on ripgrep error (invalid regex, etc.) — context
+				// lines aren't supported by this fallback, only exact match lines.
 				const fileGlob = new Bun.Glob(args.filePattern ?? "**/*");
 				const queryRegex = new RegExp(args.query);
 				const matches: string[] = [];
@@ -511,7 +568,9 @@ const searchContentTool = tool({
 
 			if (code === 1 || !stdout.trim()) return "No matches found";
 
-			// Parse ripgrep JSON output — each line is a JSON object
+			// Parse ripgrep JSON output — each line is a JSON object. "match" lines
+			// use a ':' separator (grep convention); "context" lines (from -A/-B/-C)
+			// use '-' so the model can tell them apart from real matches.
 			const matches: string[] = [];
 			for (const line of stdout.split("\n")) {
 				if (!line.trim()) continue;
@@ -520,11 +579,12 @@ const searchContentTool = tool({
 						type: string;
 						data: { path: { text: string }; line_number: number; lines: { text: string } };
 					};
-					if (obj.type === "match") {
+					if (obj.type === "match" || obj.type === "context") {
 						const absPath = path.join(resolvedDir, obj.data.path.text);
 						const lineNum = obj.data.line_number;
 						const lineContent = obj.data.lines.text.trimEnd();
-						matches.push(`${absPath}:${lineNum}:${lineContent}`);
+						const sep = obj.type === "match" ? ":" : "-";
+						matches.push(`${absPath}${sep}${lineNum}${sep}${lineContent}`);
 						if (matches.length >= 100) break;
 					}
 				} catch { /* skip malformed JSON lines */ }

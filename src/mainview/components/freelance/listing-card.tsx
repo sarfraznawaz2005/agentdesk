@@ -4,6 +4,7 @@ import { Tip } from "../ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { Bookmark, Bot, Check, CheckCircle, CheckCircle2, Copy, Download, ExternalLink, Filter, Globe, Loader2, MapPin, MessageSquare, RefreshCw, ShieldCheck, Sparkles, Star, ThumbsDown, Timer, Trash2, UserX, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
@@ -400,7 +401,8 @@ function AnalysisModal({
             <div>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeSanitize]}
+                rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                urlTransform={markdownUrlTransform}
                 components={ANALYSIS_MD_COMPONENTS as never}
               >
                 {analysisText.replace(/\r\n/g, "\n").replace(/\r/g, "\n")}
@@ -1111,7 +1113,8 @@ export function FreelanceListingCard({
           <div className="flex-1 overflow-y-auto min-h-0 mt-1 prose-sm prose-neutral dark:prose-invert max-w-none">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSanitize]}
+              rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+              urlTransform={markdownUrlTransform}
               components={ANALYSIS_MD_COMPONENTS as never}
             >
               {(localDescription ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")}

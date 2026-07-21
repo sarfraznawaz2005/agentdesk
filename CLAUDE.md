@@ -50,8 +50,8 @@ src/
 ├── bun/        # Bun main process. Subsystems: agents/ (engine, tools/, review-cycle),
 │               #   db/ (Drizzle schema + migrations + seed), rpc/ + rpc-groups/, providers/,
 │               #   channels/ + discord/, freelance/ (Auto-Earn), issue-fixer/, issue-sources/,
-│               #   remote-sync/, playground/, scheduler/, plugins/, skills/, lsp/, mcp/,
-│               #   notifications/, claude/, annotations/, lib/. Entry: index.ts;
+│               #   remote-sync/, playground/, general-chat/, scheduler/, plugins/, skills/, lsp/,
+│               #   mcp/, notifications/, claude/, annotations/, lib/. Entry: index.ts;
 │               #   engine-manager.ts; rpc-registration.ts; windows-registry.ts
 ├── mainview/   # React 19 webview: main.tsx/App.tsx/router.tsx, pages/, components/, stores/, lib/
 └── shared/     # Types across the RPC boundary: rpc/ (index.ts assembles AgentDeskRPC), freelance/
@@ -77,6 +77,7 @@ The four wiring anchors — trace any feature from here: `src/bun/index.ts` (lif
 - **Context & caching**: progressive compaction at 60/70/85/90% of `getContextLimit(modelId)`, no iteration cap; Anthropic/OpenRouter system prompts use cache-control metadata.
 - **Playground** (`src/bun/playground/`): isolated Artifacts-style live-preview builder driven by the `playground-agent`, fully decoupled from the PM/kanban/review paths.
 - **Quick Chat** (`src/bun/quick-chat/`): OS Explorer/Finder "Open in AgentDesk" entry opens a reduced-chrome window against an arbitrary folder without creating a project first. Reuses the normal PM/engine, gated by a per-turn `quickChat` boolean (derived from `projects.isQuickChat`) that strips kanban/plan-approval PM tools and dispatched-agent kanban tools — no separate engine path. See `docs/quick-chat-plan.md` and `docs/workflow.md`'s Quick Chat section.
+- **General Chat** (`src/bun/general-chat/`): a ChatGPT-style, project-less chat surface — a normal embedded route (`/general-chat`, no second `BrowserWindow`) backed by the standalone `assistant` agent, which calls `runInlineAgent` directly (mirrors Playground, not the PM engine) and cannot dispatch sub-agents. Each conversation gets its own fresh OS-temp workspace; tool-call activity streams live but is never persisted — only final turn text is saved (flat `general_chat_messages`, no parts table). See `docs/general-chat-plan.md` and `docs/workflow.md`'s General Chat section.
 - **Ambient Mode** (`src/mainview/components/ambient/`): full-screen "Beacon" radar overlay (Dashboard button, or app-focus-scoped idle timer) showing live cross-project activity. Unlike Quick Chat, the default case is an in-window overlay (a zustand-store-gated component, not a route/window) so it inherits every `broadcastToProject` event for free; "Project to display" (a second monitor/TV) is the one path that opens a real second `BrowserWindow`, mirroring Quick Chat's own-`createRpc()` pattern. Voice ("Talk to PM") is a separate, one-shot cross-project **Ambient Assistant** (`src/bun/ambient/assistant.ts`'s `runAmbientAssistantTurn`) — NOT the per-project PM/AgentEngine: no persisted conversation of its own, its own small read-only tool set (project/agent/task/inbox/scheduler/freelance/git status) plus one write tool, `dispatch_to_project`, which hands real work off to the named project's own normal PM/plan-approval pipeline. Turn-taking is pause-based (auto-stop on silence, `use-ambient-voice-turn.ts`), an instant spoken acknowledgment plays before the real answer, and tool calls stream live into a side pane. See `docs/ambient-screen-plan.md` (the original overlay/visuals) and `docs/ambient-pm-voice-plan.md` (the voice-assistant redesign) plus `docs/workflow.md`'s Ambient Mode section.
 
 ---
@@ -91,6 +92,7 @@ Operational essentials:
 - `github_issues` is **deprecated** (read-only), superseded by `external_issues` (unified multi-source store).
 - Feature-branch name is persisted in `settings` under key `currentFeatureBranch:<projectId>` (category `git`).
 - `projects.isQuickChat` (migration v57) flags a project created via the Quick Chat OS-Explorer entry; `getProjectsList` filters it out everywhere (Dashboard, PM `list_projects`/`search_projects`) until promoted via the Quick Chat window's "Create Project" button.
+- `general_chat_conversations` / `general_chat_messages` (flat, no parts table) / `general_chat_memories` (migration v61) are fully independent of `projects`/`conversations`/`messages` — General Chat's own standalone tables.
 
 ---
 
@@ -100,7 +102,7 @@ Operational essentials:
 
 - **`project-manager`** is the orchestrator (talks to humans, dispatches sub-agents).
 - **Read-only agents** (parallelizable via `run_agents_parallel`): `code-explorer`, `research-expert`, `task-planner`. All other roles (architect, backend/frontend/mobile/ml engineer, db-expert, api-designer, qa, devops, code-reviewer, debugging/performance/security/refactoring specialists, ui-ux, data-engineer, documentation) are write agents that run sequentially.
-- **Hidden/special agents** (no `agent_tools` rows ⇒ full registry; hidden from the PM and the Agents page; never orchestrated): `playground-agent` (Playground only) and `issue-fixer` (Issue Fixer feature only; NEVER merges).
+- **Hidden/special agents** (hidden from the PM and the Agents page; never orchestrated): `playground-agent` (Playground only) and `issue-fixer` (Issue Fixer feature only; NEVER merges) both have no `agent_tools` rows ⇒ full registry. `assistant` (General Chat only) is hidden the same way but has a **fixed, curated** `agent_tools` list (not the full registry) plus its own Assistant-exclusive memory/todo/deep-research tools injected via `extraTools` — never dispatchable by the PM (excluded from `buildAgentsSection()`, not just the Agents page).
 
 ---
 
@@ -212,8 +214,7 @@ Turn tasks into verifiable goals rather than stopping at "looks right."
 - Commits follow Conventional Commits style. Never commit without user confirmation unless the user or project scope has already explicitly authorized it.
 - This app has **existing users** — every feature or change must keep working for existing users, not just new ones.
 - Keep `CLAUDE.md` and `docs/workflow.md` updated whenever they deviate from current code.
-- **Whenever a new feature is added (or an existing tracked one is removed/substantially reworked), update `docs/feature-list.md` in the same change.** That document is the standing inventory of every feature/functionality in the app, used to know what to re-check when a big architectural change happens later — it goes stale fast if new features aren't added to it as they land.
-- **Also update `docs/feature-list-short.md` in the same change whenever it's affected.** It's the condensed, plain-language manual-test checklist derived from `feature-list.md` — add a line for a genuinely new testable feature area, remove/reword a line if a feature is removed or reworked enough to change how a human would test it. Keep it in the same style: one line per concept, no file paths, no technical detail, dedupe against existing lines rather than adding a near-duplicate.
+- **Update `docs/feature-list-short.md` in the same change whenever it's affected.** It's a condensed, plain-language manual-test checklist — add a line for a genuinely new testable feature area, remove/reword a line if a feature is removed or reworked enough to change how a human would test it. Keep it in the same style: one line per concept, no file paths, no technical detail, dedupe against existing lines rather than adding a near-duplicate.
 
 ---
 

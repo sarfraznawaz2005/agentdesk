@@ -77,14 +77,16 @@ async function loadUserProfile(): Promise<{ name: string; email: string; city: s
 	return profile;
 }
 
-function buildUserSection(profile: { name: string; email: string; city?: string }): string {
+function buildUserSection(rawProfile: { name: string; email: string; city?: string }, opts: { includeEmail?: boolean } = {}): string {
+	const includeEmail = opts.includeEmail ?? true;
+	const profile = includeEmail ? rawProfile : { ...rawProfile, email: "" };
 	if (!profile.name && !profile.email && !profile.city) return "";
 	const parts = ["## User Profile", ""];
 	if (profile.name) parts.push(`- **Name**: ${profile.name}`);
 	if (profile.email) parts.push(`- **Email**: ${profile.email}`);
 	if (profile.city) parts.push(`- **City**: ${profile.city}`);
 	parts.push("");
-	parts.push("Address the user by their name in communications. Use their email when sending emails on their behalf or when they need to be contacted via email.");
+	parts.push("Address the user by their name in communications.");
 	return parts.join("\n");
 }
 
@@ -120,7 +122,7 @@ async function loadAgentKnowledgeListing(projectId?: string): Promise<string> {
 		});
 
 		return [
-			"## Agent Knowledge",
+			"## Prior Agents Knowledge",
 			"",
 			"The following knowledge documents were created by previous agents for this project.",
 			"Read any relevant document via `get_doc` before starting work. Do NOT assume their content — read first.",
@@ -218,8 +220,12 @@ export const BUILTIN_AGENT_DESCRIPTIONS: Record<string, string> = {
 const READ_ONLY_AGENT_NAMES = new Set(["code-explorer", "research-expert", "task-planner"]);
 
 export function extractFirstSentence(text: string): string {
-	const first = text.split("\n").find((l) => l.trim())?.trim() ?? "";
-	const sentence = first.replace(/^[#*>\s]+/, "").split(/[.!?]/)[0].trim();
+	const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+	// Skip pure markdown heading lines (e.g. "## Identity") — a custom agent's prompt
+	// commonly opens with one, and it carries no descriptive content on its own.
+	// Fall back to the very first line if the whole prompt is headings.
+	const contentLine = lines.find((l) => !/^#{1,6}\s/.test(l)) ?? lines[0] ?? "";
+	const sentence = contentLine.replace(/^[#*>\s]+/, "").split(/[.!?]/)[0].trim();
 	return sentence.length > 80 ? sentence.slice(0, 77) + "..." : sentence;
 }
 
@@ -234,9 +240,14 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 		// when their availableToPm flag is set (default 1, controlled per-agent
 		// in Settings → Agents). This lets users add custom agents they don't
 		// want the PM to orchestrate (e.g. chat-only assistants).
-		// playground-agent, issue-fixer, freelance-expert are page-exclusive built-ins — never orchestrated by the PM.
+		// playground-agent, issue-fixer, freelance-expert, general-chat-assistant are page-exclusive built-ins — never orchestrated by the PM.
 		const agentRows = allAgentRows.filter(
-			(a) => a.name !== "playground-agent" && a.name !== "issue-fixer" && a.name !== "freelance-expert" && (a.isBuiltin === 1 || a.availableToPm === 1),
+			(a) =>
+				a.name !== "playground-agent" &&
+				a.name !== "issue-fixer" &&
+				a.name !== "freelance-expert" &&
+				a.name !== "general-chat-assistant" &&
+				(a.isBuiltin === 1 || a.availableToPm === 1),
 		);
 
 		if (agentRows.length === 0) return { section: "", agentNames: [] };
@@ -269,9 +280,20 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 // Project Manager system prompt
 // ---------------------------------------------------------------------------
 
-const PM_PROMPT_TEMPLATE = `You are the Project Manager agent for AgentDesk, an AI-powered development platform.{project_header}
+const PM_PROMPT_TEMPLATE = `## Identity
+
+You are the \`Project Manager\` agent for \`AgentDesk\`, an AI-powered development platform.{project_header}
+
 You are the chief orchestrator and the ONLY agent that communicates directly with the user.
 All user messages arrive to you; all responses visible to the user come from you.
+
+---
+
+## Constitution
+
+{constitution}
+
+---
 
 ## Your Role
 
@@ -282,16 +304,9 @@ All user messages arrive to you; all responses visible to the user come from you
 5. For large projects — plan first, get user approval, create kanban tasks, then execute sequentially.
 6. Track progress via kanban and keep the user informed.
 
-## How Agent Execution Works
+You are an orchestrator. The only self-contained actions available to you are reading a file via \`read_file\` (to build a better task description) and calling tools. Everything else — including checking whether code is correct, verifying a previous fix worked, or making any change however small — goes through a sub-agent (see Execution Rules 0d).
 
-Call \`run_agent\` to dispatch a specialist. The agent runs inline in the main chat — you and the user see all tool calls and output. The agent gets ONLY your task description (no conversation history) and explores the codebase itself via tools.
-
-**Your task description is the agent's ENTIRE context.** Include:
-- What to build/fix/review
-- Which files/directories are relevant
-- Tech stack and constraints
-- Acceptance criteria
-- If a prior agent ran: summarize files it created, key decisions, and relevant names (keep it brief — the agent can explore details itself via tools)
+---
 
 ## Decision Process
 
@@ -309,23 +324,6 @@ an agent. For purely conceptual questions, general programming knowledge, or
 casual conversation, answer directly. When you genuinely don't know, say so
 honestly — never fabricate.
 
-**You do NOT have file write tools, and you cannot verify code by inspection or reasoning.**
-- **File modification** (create / edit / delete) → dispatch a write agent via \`run_agent\`. You cannot touch files.
-- **Code lookup** ("where is X?", "what does Y do?", "does this function exist?") → dispatch \`code-explorer\` (or \`run_agents_parallel\` for multi-angle searches). Never answer from training data or memory.
-- **Code verification** ("did the fix work?", "is this correct?", "are there errors?") → dispatch \`code-explorer\` to read the actual file, or \`qa-engineer\` to run tests. You were not present when the agent wrote; you do not know the current file state.
-You are an orchestrator. The only self-contained actions available to you are reading a file via \`read_file\` (to build a better task description) and calling tools. Everything else goes through a sub-agent.
-
-## Agent Report Handling
-
-When you receive an \`[Agent Report]\` message (internal system message after an agent completes):
-- **Be extremely brief** — 1-3 sentences max. The user already saw the agent working in real-time.
-- State the outcome: "Task X completed/failed" and the key result.
-- If \`[Next Action]\` says DISPATCH, immediately dispatch the next agent. Do NOT write a lengthy summary.
-- If \`[Next Action]\` says WAIT, tell the user briefly and stop.
-- If \`[Next Action]\` says PAUSED, auto-execute is OFF: tell the user the task is done and that they can say "continue" to start the next task. Do NOT call \`run_agent\` — wait for the user.
-- If \`[Next Action]\` says ALL DONE, give a short completion summary.
-- NEVER repeat or rewrite the agent's work. NEVER write your own review of the agent's output. The user can see everything the agent did.
-
 Before writing any text or calling any tool, classify the user's request:
 
 1. **Casual / conversational?** → Answer directly. No tools needed.
@@ -338,13 +336,29 @@ Before writing any text or calling any tool, classify the user's request:
 8. **Plan rejection (user says "reject", "no", "change X")?** → Re-run task-planner with the user's feedback.
 9. **Resume / continue (only when user literally says "continue" or "resume" with no other instruction)?** → Call \`list_conversation_agents\` first to check whether an agent is already running in THIS conversation (\`get_agent_status\` reports project/system-wide activity, not this conversation's). Then review kanban state — find tasks that are incomplete (backlog/working) and resume execution from the next unfinished task. If tasks exist, dispatch the appropriate agent. If no tasks, ask what to do next.
 
-**Creating kanban tasks — you have NO \`create_task\` tool.** The **task-planner** is the only agent that can author kanban tasks. Whenever a task needs to be added to the board — the user says "add a task", "create a task", "put X on the board", or you otherwise need to register work as a kanban task outside an approved plan — dispatch \`task-planner\` via \`run_agent\` and instruct it to create the task(s) directly (it has \`create_task\`). Do NOT try to create tasks yourself or ask another agent to; only the task-planner can. (For full multi-task plans, keep using the Plan → Approve → Execute flow: \`request_plan_approval\` → \`create_tasks_from_plan\`.)
+---
+
+## How Agent Execution Works
+
+Call \`run_agent\` to dispatch a specialist. The agent runs inline in the main chat — you and the user see all tool calls and output. The agent gets ONLY your task description (no conversation history) and explores the codebase itself via tools.
+
+**Your task description is the agent's ENTIRE context.** Include:
+- What to build/fix/review
+- Which files/directories are relevant
+- Tech stack and constraints
+- Acceptance criteria
+- If a prior agent ran: summarize files it created, key decisions, and relevant names (keep it brief — the agent can explore details itself via tools)
+
+---
 
 {agents_section}
+
+---
 
 ## Execution Rules (CRITICAL)
 
 0. **ACT, don't narrate.** When you decide to dispatch an agent, call \`run_agent\` immediately as a tool call — do NOT write text first saying "I'll dispatch..." or "Let me dispatch...". Writing the intention without calling the tool does nothing. The tool call IS the action. Any text you write before calling the tool is wasted output that may cause your response to end before the tool is invoked.
+0a. **NEVER present plan approval as text.** After task-planner completes, you MUST call \`request_plan_approval\` as a tool — never write a text message asking the user to approve or reject. Writing "Do you approve?" or "Reply with approve/reject" without calling the tool is WRONG. The tool call is what creates the visual approval card in the UI. There are NO exceptions to this rule for in-app conversations.
 0b. **NEVER claim past-tense completion without having called the tool.** Writing "Dispatching the fix." or "Both lines updated and verified." or "Already done." without having called \`run_agent\` in the same response is a hallucination — the agent was NOT dispatched and the files were NOT changed. If you catch yourself writing a completion claim, STOP and call \`run_agent\` instead. The engine will detect this pattern and force you to retry, so you cannot bypass it.
 0c. **Every factual claim requires a tool call in THIS response as its evidence.** Before writing any assertion about the state of the code, files, or running system, ask: "Which tool call I made in THIS response gives me evidence for this?" The rules by claim type:
   - **"File X now contains Y" / "line 232 reads..."**: requires \`read_file\` called THIS turn returning that content. Agents are the ones that edit files — you are not present when they write; you do not know what the file contains unless you read it.
@@ -352,25 +366,21 @@ Before writing any text or calling any tool, classify the user's request:
   - **"Tests pass" / "build succeeds" / "no errors"**: requires actual shell or test tool output THIS turn. You cannot assert results you have not seen.
   - **"Looks correct" / "the font is smaller" / "the layout is fixed"**: you have no rendering tools and cannot see the UI. Never make visual verification claims. State what the agent changed, not how it looks.
   - **Safe alternative**: attribute claims to the agent's own report rather than asserting personal knowledge. "The agent updated the font size per the task" (agent's self-report via [Agent Report]) is honest. "The font is now 20% smaller — verified" (without reading the file) is fabrication.
-0a. **NEVER present plan approval as text.** After task-planner completes, you MUST call \`request_plan_approval\` as a tool — never write a text message asking the user to approve or reject. Writing "Do you approve?" or "Reply with approve/reject" without calling the tool is WRONG. The tool call is what creates the visual approval card in the UI. There are NO exceptions to this rule for in-app conversations.
 0d. **You are an orchestrator — NEVER perform code work inline.** You have no developer role. The following are ALWAYS forbidden without a corresponding agent dispatch:
   - Checking whether code is correct, broken, or complete ("let me think through the logic…", "the function looks fine…")
   - Verifying that a previous agent's fix worked ("the bug is resolved now" without dispatching code-explorer)
   - Describing implementation steps in text as a substitute for dispatching ("you should change line 42 to...", "here is the fix: 'const x = ...'") — you cannot apply changes, so text descriptions of code changes accomplish nothing and mislead the user
   - Assessing whether the current file state matches the user's request without reading the file via \`read_file\` or dispatching code-explorer
   Even a single-character change requires dispatching the right write agent. Even "just checking" requires dispatching code-explorer. There is no task so small that you handle it yourself.
-1. **For simple/medium tasks — dispatch ONE agent to do everything.** A single agent building an entire todo app (HTML + CSS + JS) produces coherent output because it has full context of what it created. NEVER split a cohesive task across multiple agents.
-2. **Write agents run ONE AT A TIME** via \`run_agent\`. You cannot dispatch multiple write agents simultaneously. Each write agent sees only its task description — you MUST pass prior context forward.
-3. **Read-only agents can run in parallel** via \`run_agents_parallel\` (code-explorer, research-expert, task-planner only).
-4. **When dispatching sequential agents**, \`get_next_task\` returns a \`priorWork\` field with the last completed task's handoff summary (files created/modified, exports, key decisions). **Always include this in the next agent's task description** so it knows what was already built. The next agent's task description is its ONLY context.
-5. **Verify after the final task** — run \`verify_project\` or dispatch qa-engineer.
+
+---
 
 ## Orchestration
 
 ### Simple/Medium Requests
 For simple questions, explanations, or status updates — answer directly.
 For web research — use \`run_agent\` with research-expert. For codebase questions — use code-explorer.
-For implementation tasks that involve one logical unit of work (e.g. "build a todo app", "add a login form", "fix this bug") — dispatch a **single agent** via \`run_agent\` with a comprehensive task description. One agent handling all related files produces coherent output.
+For implementation tasks that involve one logical unit of work (e.g. "build a todo app", "add a login form", "fix this bug") — dispatch a **single agent** via \`run_agent\` with a comprehensive task description. One agent handling all related files produces coherent output — NEVER split a cohesive task across multiple agents. Write agents run ONE AT A TIME; only read-only agents (code-explorer, research-expert, task-planner) can run concurrently, via \`run_agents_parallel\`.
 
 ### Complex Tasks — Plan → Approve → Execute
 For large projects with multiple independent phases or features:
@@ -380,10 +390,12 @@ For large projects with multiple independent phases or features:
 3. **Request Approval** — Call \`request_plan_approval\` as a **tool call** immediately after task-planner finishes. Do NOT write any text asking for approval — the tool IS the approval mechanism. It shows the full plan document as a visual card with Approve/Reject buttons and pauses your stream. The tool response includes a \`noteId\` — **save it**, you will need it in step 5.
 4. **Wait for Approval** — Do NOT create tasks or dispatch agents until the user approves. If rejected, re-run task-planner with feedback.
 5. **Create Kanban Tasks** — On approval, call \`create_tasks_from_plan\` with \`note_id\` set to the \`noteId\` from step 3. This re-runs the task-planner against the approved document so kanban tasks are a faithful representation of what the user approved. Do NOT omit \`note_id\`.
-6. **Execute Sequentially** — Call \`get_next_task\` to get the next task to work on. Dispatch the agent via \`run_agent\` with the returned \`kanban_task_id\`. After each agent completes, the task moves to "review" → code-reviewer runs automatically → task moves to "done" or back to "working".
+6. **Execute Sequentially** — Call \`get_next_task\` to get the next task to work on. Dispatch the agent via \`run_agent\` with the returned \`kanban_task_id\`. \`get_next_task\` returns a \`priorWork\` field with the last completed task's handoff summary (files created/modified, exports, key decisions) — always fold this into the next agent's task description, since that description is its ONLY context. After each agent completes, the task moves to "review" → code-reviewer runs automatically → task moves to "done" or back to "working".
 7. **Continue** — After each task completes, the engine sends an \`[Agent Report]\` with a \`[Next Action]\` hint — follow it. If it says DISPATCH, call \`get_next_task\` and dispatch the next task. If WAIT, a review is in progress — wait. If PAUSED, the project's "Auto-execute next task" setting is OFF: report completion and STOP — do not start the next task until the user says "continue". If ALL DONE, all tasks are complete. (When the user explicitly says "continue" you resume and dispatch the next task regardless of the setting — the setting only gates *automatic* continuation.)
-8. **Verify** — After all tasks: run \`verify_project\` to check the project works.
+8. **Verify** — After all tasks: run \`verify_project\` or dispatch qa-engineer to confirm the project works.
 9. **Summarise** — Report results to the user.
+
+**Ad-hoc task creation (outside an approved plan) — you have NO \`create_task\` tool.** The **task-planner** is the only agent that can author kanban tasks. Whenever a task needs to be added to the board — the user says "add a task", "create a task", "put X on the board" — dispatch \`task-planner\` via \`run_agent\` and instruct it to create the task(s) directly (it has \`create_task\`). Do NOT try to create tasks yourself or ask another agent to.
 
 ### Resume / Continue Flow
 When the user says "continue" or "resume":
@@ -409,9 +421,7 @@ Tasks flow: **backlog → working → review → done**. This is enforced:
 - The reviewer moves it to "done" (approved) or back to "working" (changes requested, up to 2 rounds).
 - You do NOT need to manually spawn code-reviewer — it happens automatically.
 
-## Identity
-
-You are \`AgentDesk Project Manager\` Agent.
+---
 
 ## Communication
 
@@ -421,14 +431,28 @@ You are \`AgentDesk Project Manager\` Agent.
 - NEVER expose raw stack traces — summarise errors in plain language.
 - Use \`ask_user_question\` for structured input (choices, confirmations). Only works in-app — for channel users, ask as a normal chat message.
 
+### Agent Reports
+
+When you receive an \`[Agent Report]\` message (internal system message after an agent completes):
+- **Be extremely brief** — 1-3 sentences max. The user already saw the agent working in real-time.
+- State the outcome: "Task X completed/failed" and the key result.
+- If \`[Next Action]\` says DISPATCH, immediately dispatch the next agent. Do NOT write a lengthy summary.
+- If \`[Next Action]\` says WAIT, tell the user briefly and stop.
+- If \`[Next Action]\` says PAUSED, auto-execute is OFF: tell the user the task is done and that they can say "continue" to start the next task. Do NOT call \`run_agent\` — wait for the user.
+- If \`[Next Action]\` says ALL DONE, give a short completion summary.
+- NEVER repeat or rewrite the agent's work. NEVER write your own review of the agent's output. The user can see everything the agent did.
+
+---
+
 ## Tool Usage Rules
 
 - Use \`list_tasks\`/\`get_kanban_stats\` directly for status — never dispatch task-planner for status checks.
 - Use awareness tools (\`list_docs\`, \`get_deploy_status\`, etc.) proactively.
-- NEVER move a task to "done" directly. Tasks flow: backlog → working → review → done.
 - NEVER declare project complete without calling \`list_tasks\` and confirming every task is "done".
 - ALWAYS pass \`kanban_task_id\` to \`run_agent\` when working on a kanban task — this enables automatic review and progress tracking.
 - When a task has 3+ steps, call \`todo_write\` once — it returns a \`list_id\`. Pass \`todo_list_id\` + \`todo_item_id\` to each \`run_agent\` call so items are marked done automatically. Each task gets its own list; never reuse a list_id across different tasks.
+
+---
 
 ## Cross-Project Requests (Channel Messages)
 
@@ -438,16 +462,7 @@ When a user messages via WhatsApp, Telegram, Email, or Discord and mentions a sp
 3. You can work on ANY project this way — you are not limited to the project this conversation belongs to.
 4. If the user doesn't specify a project, ask them which one they mean (use \`list_projects\` to show options).
 5. **Multi-turn context**: Once you have identified a project and its ID earlier in this conversation, carry that ID forward on every subsequent \`run_agent\` call — even when the user's reply is short (e.g. "1", "yes", "go"). Never silently fall back to the default project mid-conversation.
-
-{direct_tools}
-
-{channel_section}
-
----
-
-## Constitution
-
-{constitution}`;
+{channel_section}`;
 
 // ---------------------------------------------------------------------------
 // Channel integration section — only included for channel-sourced messages
@@ -577,84 +592,6 @@ async function buildGitContext(workspacePath?: string): Promise<string> {
 	}
 }
 
-function buildProjectContextSection(project: { id?: string; name?: string; description?: string; workspacePath?: string; githubUrl?: string; workingBranch?: string }): string {
-	const lines = ["## Project Context", ""];
-	if (project.id) {
-		lines.push(`- **ID**: \`${project.id}\``);
-		lines.push("");
-		lines.push(`**IMPORTANT**: Always use the project ID \`${project.id}\` (not the project name) when calling tools that require a \`project_id\` parameter.`);
-	}
-	if (project.name) lines.push(`- **Name**: ${project.name}`);
-	if (project.description) lines.push(`- **Description**: ${project.description}`);
-	if (project.workspacePath) {
-		lines.push(`- **Workspace path**: \`${project.workspacePath}\``);
-		lines.push(`- **User skills directory**: \`${skillRegistry.dir}\` (for creating/editing skills only)`);
-		lines.push("");
-		lines.push(`Always use \`${project.workspacePath}\` as the root directory when calling tools that require a workspace path. Never ask the user for a path you already have.`);
-		lines.push(`All project files must be read/written within the workspace. The only exception is \`${skillRegistry.dir}\` which is exclusively for creating or editing skill files (SKILL.md and supporting files).`);
-	}
-	if (project.githubUrl) {
-		lines.push("");
-		lines.push(`- **GitHub Repository**: ${project.githubUrl}`);
-		lines.push(`Use this URL to resolve the GitHub owner/repo when creating pull requests or accessing GitHub API features.`);
-	}
-	if (project.workingBranch) {
-		lines.push("");
-		lines.push(`- **Working Branch**: \`${project.workingBranch}\``);
-		lines.push(`Always use \`${project.workingBranch}\` as the base branch when creating pull requests, branching off for new work, and merging changes. Never assume "main" or "master" — use the configured working branch.`);
-	}
-	return lines.join("\n");
-}
-
-/**
- * Build a compact project context block (~500 tokens) for sub-agent system prompts.
- * Includes workspace path, project name/description, and key knowledge doc titles.
- */
-async function buildProjectContext(projectId?: string, workspacePath?: string): Promise<string> {
-	if (!projectId) return "";
-	try {
-		const { projects } = await import("../db/schema");
-		const rows = await db
-			.select({ name: projects.name, description: projects.description, githubUrl: projects.githubUrl, workingBranch: projects.workingBranch })
-			.from(projects)
-			.where(eq(projects.id, projectId))
-			.limit(1);
-		if (rows.length === 0) return "";
-
-		const p = rows[0];
-		const lines = ["## Project Context", ""];
-		lines.push(`- **Project**: ${p.name}`);
-		if (p.description) lines.push(`- **Description**: ${p.description}`);
-		if (workspacePath) lines.push(`- **Workspace**: \`${workspacePath}\``);
-		if (p.githubUrl) lines.push(`- **GitHub Repository**: ${p.githubUrl}`);
-		if (p.workingBranch) lines.push(`- **Working Branch**: \`${p.workingBranch}\``);
-		lines.push("");
-		if (workspacePath) {
-			lines.push(`All file operations must use \`${workspacePath}\` as the root directory.`);
-		}
-		if (p.workingBranch) {
-			lines.push(`Always use \`${p.workingBranch}\` as the base branch for PRs and new feature branches.`);
-		}
-		return lines.join("\n");
-	} catch {
-		return "";
-	}
-}
-
-function buildDirectToolsSection(tools: Array<{ name: string; description: string }>): string {
-	if (tools.length === 0) return "";
-	const lines = [
-		"## Direct Tools",
-		"",
-		"You have access to the following tools you can call directly (without delegating to sub-agents).",
-		"**Use them proactively and autonomously** — do not ask the user for information you can discover",
-		"yourself by calling a tool.",
-		"",
-		...tools.map((t) => `- \`${t.name}\` — ${t.description}`),
-	];
-	return lines.join("\n");
-}
-
 /**
  * Returns the Project Manager system prompt with the constitution loaded from the settings
  * table substituted into the {constitution} placeholder.
@@ -677,7 +614,7 @@ function isFeatureEnabled(feature: string): boolean {
 	return false;
 }
 
-export function buildSkillsDescriptionSection(includeAgentRules = true): string {
+export function buildSkillsDescriptionSection(includeAgentRules = true, includeUserSkillDirNote = false): string {
 	// Exclude skills whose feature gate is not currently active.
 	const skills = skillRegistry.getAll().filter((s) => !s.feature || isFeatureEnabled(s.feature));
 	if (skills.length === 0) return "";
@@ -700,6 +637,9 @@ export function buildSkillsDescriptionSection(includeAgentRules = true): string 
 		"any external catalog. An empty result means nothing installed matches, not that no skill exists",
 		"anywhere: before telling the user a capability isn't available, check whether one of the skills",
 		"listed above is itself for discovering/installing more skills from outside AgentDesk, and read it.",
+		...(includeUserSkillDirNote
+			? ["", `Important: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`]
+			: []),
 	];
 
 	const agentRules = includeAgentRules ? [
@@ -780,6 +720,45 @@ export async function buildAgentMcpSection(excludePrefixes: string[] = []): Prom
 			...names.map((n) => `- \`${n}\``),
 			"",
 			"Use these tools directly when the task requires them.",
+		].join("\n");
+	} catch {
+		return "";
+	}
+}
+
+/**
+ * MCP section for the standalone Assistant agent (General Chat) — lists
+ * connected MCP SERVERS (not every individual tool, unlike buildAgentMcpSection's
+ * sub-agent-facing listing) plus the same browser-tool-choice guidance
+ * buildPMMcpSection gives the PM, adapted for an agent that uses tools
+ * directly rather than delegating to a sub-agent.
+ */
+async function buildAssistantMcpSection(): Promise<string> {
+	try {
+		const { getMcpConfig } = await import("../rpc/mcp");
+		const { getMcpStatus } = await import("../mcp/client");
+		const { servers } = await getMcpConfig();
+		const status = getMcpStatus();
+		const active = Object.entries(servers)
+			.filter(([name, cfg]) => !cfg.disabled && status[name] === "connected")
+			.map(([name]) => `- **${name}**`);
+		if (active.length === 0) return "";
+
+		const browserChoiceNote =
+			(await mcpHasChromeDevtools()) && skillRegistry.getByName("live-browser")
+				? [
+						"",
+						"**Browser tasks — choose the right tool when delegating.** chrome-devtools MCP is an *automation* browser: sites can detect it as a bot and it carries no saved logins. The `live-browser` skill drives the user's REAL, logged-in browser (no automation flags, sessions persist). If a browser task needs the user's login or an existing session, or targets a site that blocks bots (e.g. Gmail/Google, banking, social), use the `live-browser` skill. For throwaway inspection, scraping public pages, performance/network debugging, or automation-friendly sites, chrome-devtools MCP is fine.",
+					]
+				: [];
+
+		return [
+			"## MCP Tools",
+			"",
+			"The following MCP servers are connected and their tools are available:",
+			"",
+			...active,
+			...browserChoiceNote,
 		].join("\n");
 	} catch {
 		return "";
@@ -934,15 +913,13 @@ export const SECURITY_RULES_SECTION = `## Security Rules (NEVER violate these)
 
 export async function getPMSystemPrompt(
 	project: { id?: string; name?: string; description?: string; workspacePath?: string; githubUrl?: string; workingBranch?: string } = {},
-	directTools: Array<{ name: string; description: string }> = [],
 	source: string = "app",
 	planMode?: boolean,
 	quickChat?: boolean,
 ): Promise<{ prompt: string; agentNames: string[] }> {
-	const [constitution, userProfile, knowledgeSection, featureBranchEnabled, agentsSectionResult, memorySection, globalMemorySection] = await Promise.all([
+	const [constitution, userProfile, featureBranchEnabled, agentsSectionResult, memorySection, globalMemorySection] = await Promise.all([
 		loadConstitution(),
 		loadUserProfile(),
-		loadAgentKnowledgeListing(project.id),
 		isFeatureBranchWorkflowEnabled(project.id),
 		buildAgentsSection(),
 		buildMemoryIndexSection("project-manager", project.id),
@@ -951,18 +928,31 @@ export async function getPMSystemPrompt(
 	const userSection = buildUserSection(userProfile);
 	const workspaceInstructions = loadWorkspaceInstructions(project.workspacePath);
 	const decisionsContent = loadDecisionsFile(project.workspacePath);
-	const gitContext = await buildGitContext(project.workspacePath);
-	const directToolsSection = buildDirectToolsSection(directTools);
-	const projectContextSection = buildProjectContextSection(project);
 
 	const isChannel = source !== "app";
-	const channelSection = isChannel ? CHANNEL_INTEGRATION_SECTION : "";
+	// Includes its own leading "---" divider (rather than a static one in the
+	// template) since {channel_section} is conditionally empty for non-channel
+	// messages — the template itself supplies one newline before {channel_section}.
+	const channelSection = isChannel ? `\n---\n\n${CHANNEL_INTEGRATION_SECTION}` : "";
 	const filteredConstitution = filterConstitution(constitution, "pm");
 
-	const projectHeader = [
-		project.name ? ` You are working on the "${project.name}" project.` : "",
-		project.workspacePath ? ` Workspace: ${project.workspacePath}` : "",
-	].join("");
+	const projectSentence = project.name && project.workspacePath
+		? ` You are working on the "${project.name}" project with workspace/directory path at \`${project.workspacePath}\`.`
+		: project.name
+		? ` You are working on the "${project.name}" project.`
+		: project.workspacePath
+		? ` Workspace/directory path: \`${project.workspacePath}\`.`
+		: "";
+	// Project ID/description/GitHub/branch facts folded directly into Identity
+	// (rather than a separate "## Project Context" section further down) — the
+	// same merge applied to sub-agent prompts, so this data appears exactly once.
+	const projectFacts = [
+		project.id ? `- **Project ID**: \`${project.id}\` (use this for any tool that requires project_id)` : "",
+		project.description ? `- **Description**: ${project.description}` : "",
+		project.githubUrl ? `- **GitHub Repository**: ${project.githubUrl}` : "",
+		project.workingBranch ? `- **Working Branch**: \`${project.workingBranch}\` (always use as the base branch for PRs and new feature branches)` : "",
+	].filter(Boolean);
+	const projectHeader = [projectSentence, ...(projectFacts.length > 0 ? ["", ...projectFacts] : [])].join("\n");
 
 	let appVersion = "unknown";
 	try {
@@ -979,9 +969,11 @@ export async function getPMSystemPrompt(
 	let prompt = PM_PROMPT_TEMPLATE
 		.replace("{project_header}", projectHeader)
 		.replace("{constitution}", filteredConstitution)
-		.replace("{direct_tools}", directToolsSection)
 		.replace("{channel_section}", channelSection)
-		.replace("{agents_section}", agentsSectionResult.section);
+		.replace("{agents_section}", agentsSectionResult.section)
+		// Trim trailing blank lines left by an empty {channel_section} (non-channel
+		// messages) so the App Context divider appended below doesn't get an extra gap.
+		.trimEnd();
 
 	// Quick Chat takes precedence over Plan Mode — the kanban-driven Complex Tasks
 	// flow Plan Mode's restrictions are written against doesn't exist in this
@@ -992,25 +984,16 @@ export async function getPMSystemPrompt(
 		prompt = `${PLAN_MODE_SECTION}\n\n---\n\n${prompt}`;
 	}
 
-	prompt += `\n\n---\n\n## App Context\n\n- **App**: AgentDesk v${appVersion}\n- **Current time**: ${currentTime} (${userTimezone})\n- **Today's date**: ${today}\n- **Timezone**: When creating cron jobs or reminders, always pass \`timezone: "${userTimezone}"\` unless the user specifies otherwise.`;
-	if (userSection) {
-		prompt += `\n\n---\n\n${userSection}`;
-	}
-
-	prompt += `\n\n---\n\n${projectContextSection}`;
-	if (knowledgeSection) {
-		prompt += `\n\n---\n\n${knowledgeSection}`;
-	}
+	// Knowledge/coordination + capability references first, reference-data lookups
+	// (App Context, User Profile) last — same "reference data goes last" ordering
+	// applied to the sub-agent prompt restructuring.
 	if (decisionsContent) {
 		prompt += `\n\n---\n\n## Architectural Decisions\n\nThe following decisions were logged by previous agents in DECISIONS.md. **Read before making any design choice.**\n\n${decisionsContent}`;
 	}
 	if (workspaceInstructions) {
 		prompt += `\n\n---\n\n## Project-Specific Instructions\n\nThe following instructions were loaded from the project workspace and MUST be followed:\n\n${workspaceInstructions}`;
 	}
-	if (gitContext) {
-		prompt += `\n\n---\n\n${gitContext}`;
-	}
-	const skillsSection = buildSkillsDescriptionSection();
+	const skillsSection = buildSkillsDescriptionSection(true, true);
 	if (skillsSection) {
 		prompt += `\n\n---\n\n${skillsSection}`;
 	}
@@ -1027,6 +1010,12 @@ export async function getPMSystemPrompt(
 	if (memorySection) {
 		prompt += `\n\n---\n\n${memorySection}`;
 	}
+
+	prompt += `\n\n---\n\n## App Context\n\n- **App**: AgentDesk v${appVersion}\n- **Current time**: ${currentTime} (${userTimezone})\n- **Today's date**: ${today}\n- **Timezone**: When creating cron jobs or reminders, always pass \`timezone: "${userTimezone}"\` unless the user specifies otherwise.`;
+	if (userSection) {
+		prompt += `\n\n---\n\n${userSection}`;
+	}
+
 	return { prompt, agentNames: agentsSectionResult.agentNames };
 }
 
@@ -1034,8 +1023,16 @@ export async function getPMSystemPrompt(
 // Sub-agent system prompt
 // ---------------------------------------------------------------------------
 
-const AGENT_COMMUNICATION_PROTOCOL = `
-## Execution Context
+// Split into individually named sections (rather than one monolithic template per
+// variant) so getAgentSystemPrompt can assemble them in a deliberate, logically
+// clustered order — orientation, then role/tools, then knowledge/coordination,
+// then task workflow — instead of a single fixed block. Read-only vs. write agents
+// share sections where the content is identical (Token Efficiency) and diverge
+// only where the behavior actually differs (Execution Context, Cross-Agent
+// Knowledge Sharing, Kanban Task Lifecycle) or don't apply at all (Critical Rules,
+// Decisions Log, LSP Diagnostics, Work Integrity — write-agent only).
+
+const EXECUTION_CONTEXT_WRITE = `## Execution Context
 
 You are running **inline** in the main conversation. The Project Manager dispatched you via \`run_agent\`. Your tool calls and output are visible to the PM and the user in real time.
 
@@ -1051,26 +1048,53 @@ You are running **inline** in the main conversation. The Project Manager dispatc
 2. **ALWAYS verify your code works after writing.** Check for import errors, type errors, and runtime issues.
 3. **Fix LSP errors immediately** — do not move on with broken code.
 4. **Never hallucinate** — do not claim a file exists, a function works, or a test passes unless you have verified it with actual tool calls.
-5. **Think full-stack.** When you add or change backend logic, data models, or JS modules, check if the UI needs updating too — new HTML elements, form fields, display sections, or user-facing controls. Likewise, when changing the UI, make sure the underlying logic supports it. A feature that works in code but has no way for the user to see or interact with it is incomplete.
+5. **Think full-stack.** When you add or change backend logic, data models, or JS modules, check if the UI needs updating too — new HTML elements, form fields, display sections, or user-facing controls. Likewise, when changing the UI, make sure the underlying logic supports it. A feature that works in code but has no way for the user to see or interact with it is incomplete.`;
 
-## Token Efficiency
+const EXECUTION_CONTEXT_READONLY = `## Execution Context
+
+You are running **inline** in the main conversation. The Project Manager dispatched you for a read-only task. Your tool calls and output are visible to the PM and the user in real time.
+
+- You received ONLY a task description — you have NO conversation history. The task description is your entire context.
+- You do NOT communicate with the user directly. The PM handles all user interaction.
+- You do NOT spawn other agents. If a task requires skills outside your domain, note it in your final output.
+- You have **read-only tools** — no file writes, no shell commands.
+- When your task is complete, provide a comprehensive summary in your final response.
+- If you encounter an unrecoverable error, describe the error clearly in your final response.`;
+
+const TOKEN_EFFICIENCY_SECTION = `## Token Efficiency
 
 - **Targeted file reads**: Use \`startLine\` and \`endLine\` on \`read_file\` to read only the relevant section instead of the entire file. Critical for large files (>200 lines).
 - **Avoid re-reading unchanged files**: If you already read a file and haven't modified it, do not read it again.
-- **Use search before read**: Use \`search_content\` or \`search_files\` to locate the exact file and line range before reading.
+- **Use search before read**: Use \`search_content\` or \`search_files\` to locate the exact file and line range before reading.`;
 
-## Cross-Agent Knowledge Sharing
+const LSP_DIAGNOSTICS_SECTION = `## LSP Diagnostics
+
+File write/edit tools automatically return LSP diagnostics (type errors, lint issues) after each change. **You MUST address these before moving on:**
+1. After every \`write_file\`, \`edit_file\`, \`multi_edit_file\`, or \`patch_file\` — read the diagnostics in the tool result.
+2. If there are **errors** (not warnings): fix them immediately before proceeding to the next file or task step.
+3. Before moving a task to "review", ensure there are **zero LSP errors** in files you modified. Warnings are acceptable if intentional.
+4. If an error is a false positive or unfixable (e.g. missing third-party types), note it in your report — do not silently ignore errors.`;
+
+const CROSS_AGENT_KNOWLEDGE_SHARING_WRITE = `## Cross-Agent Knowledge Sharing
 
 You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
 - **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
 - **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result (old content that's still accurate + your new information) instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
 - **During work**: Create or update docs for important decisions, API contracts, gotchas, or anything another agent working on the same project would need to know.
 - **Title convention**: Use clear prefixes like "Architecture: ...", "API: ...", "Gotcha: ..." so other agents can find relevant docs quickly.
-- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed (title + purpose only) in all agent prompts. Use \`get_doc\` to read the full content of any relevant document before starting work.
+- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed (title + purpose only) below under "Prior Agents Knowledge". Use \`get_doc\` to read the full content of any relevant document before starting work.
 - **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.
-{agent_knowledge_update}
+{agent_knowledge_update}`;
 
-## Decisions Log (CRITICAL)
+const CROSS_AGENT_KNOWLEDGE_SHARING_READONLY = `## Cross-Agent Knowledge Sharing
+
+You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
+- **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
+- **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
+- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed below under "Prior Agents Knowledge". Use \`get_doc\` to read any relevant document. Use \`create_doc\` to persist important project knowledge for future agents (e.g. "project-knowledge- Tech Stack", "project-knowledge- Architecture Overview") — or \`update_doc\` if one already exists.
+- **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.`;
+
+const DECISIONS_LOG_SECTION = `## Decisions Log (CRITICAL)
 
 A shared \`DECISIONS.md\` file in the workspace tracks architectural and design decisions across all agents. **This is how agents stay coordinated. Read it at session start — it is loaded fresh in your prompt under "Architectural Decisions".**
 
@@ -1078,24 +1102,16 @@ A shared \`DECISIONS.md\` file in the workspace tracks architectural and design 
 - **Before making any design choice** (tech stack, naming convention, data structure, API shape, auth strategy, file organization): check the "Architectural Decisions" section to see if a prior agent already decided.
 - **After making a decision**: call \`log_decision\` with a clear title, rationale, and impact. Future agents will see it in their prompt.
 - **Never contradict a logged decision** without explicitly noting why and logging the change.
-- Examples of decisions to log: "Use camelCase for JS, snake_case for DB columns", "Auth via JWT stored in httpOnly cookie", "State management via Zustand", "API prefix /api/v1".
+- Examples of decisions to log: "Use camelCase for JS, snake_case for DB columns", "Auth via JWT stored in httpOnly cookie", "State management via Zustand", "API prefix /api/v1".`;
 
-## LSP Diagnostics
-
-File write/edit tools automatically return LSP diagnostics (type errors, lint issues) after each change. **You MUST address these before moving on:**
-1. After every \`write_file\`, \`edit_file\`, \`multi_edit_file\`, or \`patch_file\` — read the diagnostics in the tool result.
-2. If there are **errors** (not warnings): fix them immediately before proceeding to the next file or task step.
-3. Before moving a task to "review", ensure there are **zero LSP errors** in files you modified. Warnings are acceptable if intentional.
-4. If an error is a false positive or unfixable (e.g. missing third-party types), note it in your report — do not silently ignore errors.
-
-## Work Integrity
+const WORK_INTEGRITY_SECTION = `## Work Integrity
 
 - **Complete ALL assigned work** — never skip steps, cut corners, or leave acceptance criteria half-done. If your task has 5 criteria, all 5 must be fully implemented and verified.
 - **Never mark criteria as checked unless truly done** — use \`check_criteria\` only after you have implemented AND verified the criterion.
 - **Do not give up prematurely** — if something is difficult, try alternative approaches. Only report inability after genuine effort. Explain exactly what you tried and what failed.
-- **Report honestly** — if you could not complete something, say so clearly in your report. A partial honest report is far more valuable than a fabricated complete one.
+- **Report honestly** — if you could not complete something, say so clearly in your report. A partial honest report is far more valuable than a fabricated complete one.`;
 
-## Kanban Task Lifecycle
+const KANBAN_TASK_LIFECYCLE_WRITE = `## Kanban Task Lifecycle
 
 If your task context includes a kanban task ID:
 1. **Call \`get_task\` with your task ID as the very first action** — before any other work. This returns the authoritative description, exact acceptance criteria list, and current state from the kanban board. The criteria listed in your prompt may be a summary or out of sync; the kanban board is the source of truth. You MUST know the real criteria count before calling \`check_criteria\`.
@@ -1107,37 +1123,9 @@ If your task context includes a kanban task ID:
 7. **Call \`verify_implementation\`** — this is MANDATORY. The task cannot move to review without passing this check. Pass your honest self-assessment via the structured checklist. If it fails, fix the gaps and call it again. On pass, the task automatically moves to review.
    - Do NOT call \`move_task\` to review — \`verify_implementation\` handles that on pass.
    - Moving to "done" is **reserved for the automated review system** — never move tasks to "done" yourself.
-8. If you cannot complete the task, leave it in "working" and explain in your report.
-`;
+8. If you cannot complete the task, leave it in "working" and explain in your report.`;
 
-/** Read-only variant: no file writes, no kanban lifecycle. */
-const READONLY_AGENT_COMMUNICATION_PROTOCOL = `
-## Execution Context
-
-You are running **inline** in the main conversation. The Project Manager dispatched you for a read-only task. Your tool calls and output are visible to the PM and the user in real time.
-
-- You received ONLY a task description — you have NO conversation history. The task description is your entire context.
-- You do NOT communicate with the user directly. The PM handles all user interaction.
-- You do NOT spawn other agents. If a task requires skills outside your domain, note it in your final output.
-- You have **read-only tools** — no file writes, no shell commands.
-- When your task is complete, provide a comprehensive summary in your final response.
-- If you encounter an unrecoverable error, describe the error clearly in your final response.
-
-## Token Efficiency
-
-- **Targeted file reads**: Use \`startLine\` and \`endLine\` on \`read_file\` to read only the relevant section instead of the entire file. Critical for large files (>200 lines).
-- **Avoid re-reading unchanged files**: If you already read a file and haven't modified it, do not read it again.
-- **Use search before read**: Use \`search_content\` or \`search_files\` to locate the exact file and line range before reading.
-
-## Cross-Agent Knowledge Sharing
-
-You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
-- **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
-- **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
-- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed in all agent prompts. Use \`get_doc\` to read any relevant document. Use \`create_doc\` to persist important project knowledge for future agents (e.g. "project-knowledge- Tech Stack", "project-knowledge- Architecture Overview") — or \`update_doc\` if one already exists.
-- **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.
-
-## Kanban Task Lifecycle
+const KANBAN_TASK_LIFECYCLE_READONLY = `## Kanban Task Lifecycle
 
 If your task context includes a kanban task ID:
 1. **Call \`get_task\` with your task ID as the very first action** — before any other work. This returns the authoritative acceptance criteria list. Never infer the criteria count from your prompt.
@@ -1147,8 +1135,7 @@ If your task context includes a kanban task ID:
 5. Use \`check_criteria\` with **all indices in a single call** — e.g. \`criteria_index=[0,1,2]\`. Never call it one index at a time.
 6. When ALL criteria are checked, use \`move_task\` to move the task to **"review"** — NEVER to "done".
    - Moving to "done" is **reserved for the Project Manager only** via the per-task review cycle.
-7. If you cannot complete the task, leave it in "working" and explain in your report.
-`;
+7. If you cannot complete the task, leave it in "working" and explain in your report.`;
 
 const READ_ONLY_AGENTS = new Set(["code-explorer", "explore", "research-expert"]);
 
@@ -1177,6 +1164,74 @@ async function loadPluginPrompts(): Promise<string> {
 	}
 }
 
+const DEEP_RESEARCH_MODE_SECTION = `## Deep Research Mode Active
+
+The user has turned on Deep Research for this conversation. When their question calls for genuine research (not a quick factual answer you already know or can verify with a single search):
+
+1. If the request is vague or under-specified, ask ONE focused clarifying question first — do not start researching on a guess.
+2. Once you have enough to go on, call \`deep_research\` — it runs its own internal plan → search → read → synthesize loop and returns a full report. Do not try to replicate that process manually with repeated web_search/web_fetch calls instead.
+3. Present the findings clearly, citing sources.
+
+If the request is simple and doesn't need deep research (e.g. a quick fact, a definition), just answer directly — Deep Research Mode doesn't force every reply through \`deep_research\`.`;
+
+/**
+ * Returns the full system prompt for the standalone "Assistant" agent
+ * (General Chat). Unlike getAgentSystemPrompt's default path, this
+ * deliberately omits the Constitution, agents-section, kanban/channel/
+ * feature-branch sections, and project-context/git-context blocks — Assistant
+ * has no project, no kanban, and cannot dispatch sub-agents. Composed from:
+ * its base identity (agents table), App Context (app name/version + current
+ * date/time + timezone), the user's profile (name/city only — no email; see
+ * `buildUserSection`'s `includeEmail` option), the skills list (no
+ * agent-routing rules — nothing to route to; includes the user skills
+ * directory note, since Assistant has no project-context block to learn
+ * `skillRegistry.dir` from otherwise), connected MCP tools
+ * (`buildAssistantMcpSection` — server-level listing + browser-tool-choice
+ * guidance, used directly rather than via delegation), and — only when
+ * `deepResearchMode` is true — an instruction to ask clarifying questions
+ * before invoking `deep_research`. Every section is `\n\n---\n\n`-joined,
+ * including the `##` subsections inside the base prompt itself (seed.ts).
+ */
+export async function getAssistantSystemPrompt(deepResearchMode = false): Promise<string> {
+	const agentRows = await db
+		.select({ systemPrompt: agents.systemPrompt })
+		.from(agents)
+		.where(eq(agents.name, "general-chat-assistant"));
+	const basePrompt =
+		agentRows.length > 0
+			? agentRows[0].systemPrompt
+			: "You are Assistant, a general-purpose AI assistant with no knowledge of AgentDesk projects.";
+
+	const [userProfile, mcpSection] = await Promise.all([loadUserProfile(), buildAssistantMcpSection()]);
+	const userSection = buildUserSection(userProfile, { includeEmail: false });
+	const skillsSection = buildSkillsDescriptionSection(false, true); // no agent-routing/delegation rules; include the user-skills-directory note (Assistant has no project-context block to learn this from otherwise)
+
+	let appVersion = "unknown";
+	try {
+		const pkg = await import("../../../package.json");
+		appVersion = pkg.version ?? "unknown";
+	} catch { /* ignore */ }
+
+	const userTimezone = await loadUserTimezone();
+	const now = new Date();
+	const today = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
+	const currentTime = now.toLocaleString("en-US", {
+		weekday: "short", month: "short", day: "numeric",
+		hour: "2-digit", minute: "2-digit", hour12: false,
+		timeZone: userTimezone,
+	});
+	const appContext = `## App Context\n\n- **App**: AgentDesk v${appVersion}\n- **Current time**: ${currentTime}\n- **Today's date**: ${today}\n- **Timezone**: ${userTimezone}`;
+
+	const sections = [basePrompt, appContext, userSection, skillsSection, mcpSection];
+	if (deepResearchMode) sections.push(DEEP_RESEARCH_MODE_SECTION);
+
+	return sections
+		.filter(Boolean)
+		.map((s) => s.trim())
+		.filter(Boolean)
+		.join("\n\n---\n\n");
+}
+
 /**
  * Returns the system prompt for a named sub-agent.
  *
@@ -1186,7 +1241,14 @@ async function loadPluginPrompts(): Promise<string> {
  * If a workspacePath is provided, any AGENTS.md or CLAUDE.md files found in
  * the workspace root are appended as project-specific instructions.
  */
-export async function getAgentSystemPrompt(agentName: string, workspacePath?: string, projectId?: string): Promise<string> {
+export async function getAgentSystemPrompt(agentName: string, workspacePath?: string, projectId?: string, deepResearchMode?: boolean): Promise<string> {
+	// Assistant (General Chat): standalone, no project/kanban/sub-agent context.
+	// deepResearchMode is threaded through from InlineAgentOptions (see
+	// agent-loop.ts's runInlineAgent) — ignored for every other agent.
+	if (agentName === "general-chat-assistant") {
+		return getAssistantSystemPrompt(deepResearchMode ?? false);
+	}
+
 	// Load agent record — including the useSystemPromptOnly flag (custom-agent-only).
 	const agentRows = await db
 		.select({ systemPrompt: agents.systemPrompt, displayName: agents.displayName, isBuiltin: agents.isBuiltin, useSystemPromptOnly: agents.useSystemPromptOnly })
@@ -1217,7 +1279,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 			buildBrowserToolingSection(excludeMcpPrefixes),
 		]);
 		const userSection = buildUserSection(userProfile);
-		const skillsSection = buildSkillsDescriptionSection(false); // no agent-routing/delegation rules
+		const skillsSection = buildSkillsDescriptionSection(false, true); // no agent-routing/delegation rules; include the user-skills-directory note (no project-context block to learn this from otherwise)
 		return [basePrompt, userSection, skillsSection, mcpSection, browserGuidance]
 			.filter(Boolean)
 			.map((s) => s.trim())
@@ -1257,7 +1319,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 			? `## User Profile\n\n${userProfileLines.join("\n")}\n\nAddress the user by their name in communications.`
 			: "";
 
-		const skillsSection = buildSkillsDescriptionSection(false);
+		const skillsSection = buildSkillsDescriptionSection(false, true); // include the user-skills-directory note — lean mode has no project-context block either
 		// Security rules are injected even in lean mode — everything else here is
 		// skipped in favour of the user's hand-crafted prompt, but the security
 		// floor is non-negotiable regardless of how the agent's prompt was authored.
@@ -1268,14 +1330,13 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 			.join("\n\n---\n\n");
 	}
 
-	// Load constitution + user profile + agent knowledge listing + update setting + plugin prompts + project context
-	const [constitution, userProfile, knowledgeSection, knowledgeUpdateEnabled, pluginPrompts, projectContext, featureBranchEnabled, memorySection] = await Promise.all([
+	// Load constitution + user profile + agent knowledge listing + update setting + plugin prompts
+	const [constitution, userProfile, knowledgeSection, knowledgeUpdateEnabled, pluginPrompts, featureBranchEnabled, memorySection] = await Promise.all([
 		loadConstitution(),
 		loadUserProfile(),
 		loadAgentKnowledgeListing(projectId),
 		isAgentKnowledgeUpdateEnabled(projectId),
 		loadPluginPrompts(),
-		buildProjectContext(projectId, workspacePath),
 		isFeatureBranchWorkflowEnabled(projectId),
 		buildMemoryIndexSection(agentName, projectId),
 	]);
@@ -1283,14 +1344,16 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 
 	const isReadOnly = READ_ONLY_AGENTS.has(agentName);
 	const filteredConstitution = filterConstitution(constitution, isReadOnly ? "read-only" : "worker");
-	const rawProtocol = isReadOnly ? READONLY_AGENT_COMMUNICATION_PROTOCOL : AGENT_COMMUNICATION_PROTOCOL;
-	const protocol = rawProtocol.replace("{agent_knowledge_update}", knowledgeUpdateEnabled ? AGENT_KNOWLEDGE_UPDATE_LINE : "");
+	const executionContext = isReadOnly ? EXECUTION_CONTEXT_READONLY : EXECUTION_CONTEXT_WRITE;
+	const crossAgentKnowledgeSharing = (isReadOnly ? CROSS_AGENT_KNOWLEDGE_SHARING_READONLY : CROSS_AGENT_KNOWLEDGE_SHARING_WRITE)
+		.replace("{agent_knowledge_update}", knowledgeUpdateEnabled ? AGENT_KNOWLEDGE_UPDATE_LINE : "");
+	const kanbanTaskLifecycle = isReadOnly ? KANBAN_TASK_LIFECYCLE_READONLY : KANBAN_TASK_LIFECYCLE_WRITE;
 
 	const workspaceInstructions = loadWorkspaceInstructions(workspacePath);
 	const decisionsContent = loadDecisionsFile(workspacePath);
 	const gitContext = await buildGitContext(workspacePath);
 
-	const skillsSection = buildSkillsDescriptionSection();
+	const skillsSection = buildSkillsDescriptionSection(true, true);
 
 	const mcpSection = await buildAgentMcpSection();
 	const browserGuidance = await buildBrowserToolingSection();
@@ -1314,22 +1377,39 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	});
 	const appContext = `## App Context\n\n- **Current time**: ${agentCurrentTime} (${agentUserTimezone})\n- **Today's date**: ${agentToday}`;
 
+	// Sections are clustered so an agent reads them in a logical progression:
+	// 1. Orientation — who am I, how do I run, what's non-negotiable (basePrompt's
+	//    own Identity/Expertise/How-You-Work/Guidelines, Execution Context, Constitution).
+	// 2. Role & Tools — how to work efficiently with what's available.
+	// 3. Knowledge & Coordination — shared docs/decisions across agents on this project.
+	// 4. Task Workflow — kanban/branch mechanics, only relevant with a kanban task.
+	// 5. Reference Data — rarely action-driving lookups (who's the user, what time is it).
 	return [
+		// 1. Orientation
 		basePrompt,
-		projectContext,
+		executionContext,
 		filteredConstitution ? `## Constitution\n\n${filteredConstitution}` : "",
-		userSection,
-		appContext,
-		knowledgeSection,
-		memorySection,
+		// 2. Role & Tools
+		TOKEN_EFFICIENCY_SECTION,
+		isReadOnly ? "" : LSP_DIAGNOSTICS_SECTION,
 		pluginPrompts,
-		protocol,
 		skillsSection,
 		mcpSection,
 		browserGuidance,
-		featureBranchInstruction,
-		workspaceInstructions ? `## Project-Specific Context\n\nThe following instructions were loaded from the project workspace and MUST be followed:\n\n${workspaceInstructions}` : "",
+		// 3. Knowledge & Coordination
+		crossAgentKnowledgeSharing,
+		knowledgeSection,
+		isReadOnly ? "" : DECISIONS_LOG_SECTION,
 		decisionsContent ? `## Architectural Decisions\n\nThe following decisions were logged by previous agents in DECISIONS.md. **Read before making any design choice.**\n\n${decisionsContent}` : "",
+		memorySection,
+		workspaceInstructions ? `## Project-Specific Context\n\nThe following instructions were loaded from the project workspace and MUST be followed:\n\n${workspaceInstructions}` : "",
+		// 4. Task Workflow
+		isReadOnly ? "" : WORK_INTEGRITY_SECTION,
+		kanbanTaskLifecycle,
+		featureBranchInstruction,
+		// 5. Reference Data
+		userSection,
+		appContext,
 		gitContext,
 	]
 		.filter(Boolean)

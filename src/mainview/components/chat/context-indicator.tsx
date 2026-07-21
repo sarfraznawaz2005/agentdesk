@@ -49,9 +49,9 @@ export function ContextIndicator({ messages, projectId, variant = "compact" }: C
     const load = () =>
       rpc
         .getSetting(`project:${projectId}:contextWindowLimit`)
-        .then((val: string | null) => {
+        .then((val) => {
           if (projectIdRef.current !== projectId) return;
-          const parsed = parseInt(val ?? "", 10);
+          const parsed = parseInt(typeof val === "string" ? val : "", 10);
           if (!Number.isNaN(parsed) && parsed >= 1000) setContextLimit(parsed);
         })
         .catch(() => {});

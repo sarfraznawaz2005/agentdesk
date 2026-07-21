@@ -33,6 +33,13 @@ interface ChatState {
   activeConversationId: string | null;
   messages: Message[];
 
+  // Set by General Chat's page while it's the active route (General Chat has
+  // no real project — it broadcasts shell/plan events with its conversationId
+  // standing in for projectId — see general-chat/orchestrator.ts). Lets
+  // CrossProjectApprovalToast suppress its own conversation's requests the
+  // same way activeProjectId does for project chat / Quick Chat.
+  activeGeneralChatConversationId: string | null;
+
   // Set by a cross-project "needs your attention" toast's Open button (shell
   // approval / plan approval waiting in a project the user isn't viewing) —
   // consumed by ProjectPage's conversation auto-select effect once that
@@ -106,6 +113,8 @@ interface ChatState {
   // Actions
   /** Record which project ProjectPage is showing (null when none is open). */
   setActiveProject: (projectId: string | null) => void;
+  /** Record which conversation GeneralChatPage is showing (null when not on that route). */
+  setActiveGeneralChatConversationId: (conversationId: string | null) => void;
   /** Request that ProjectPage jump straight to a specific conversation once
    * this project's conversations finish loading (see pendingConversationTarget). */
   setPendingConversationTarget: (target: { projectId: string; conversationId: string } | null) => void;
@@ -226,6 +235,7 @@ const initialState = {
   activeProjectId: null as string | null,
   conversations: [] as Conversation[],
   activeConversationId: null as string | null,
+  activeGeneralChatConversationId: null as string | null,
   messages: [] as Message[],
   pendingConversationTarget: null as { projectId: string; conversationId: string } | null,
   messagesLoading: false,
@@ -260,6 +270,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   setActiveProject: (projectId: string | null) => {
     set({ activeProjectId: projectId });
+  },
+
+  setActiveGeneralChatConversationId: (conversationId: string | null) => {
+    set({ activeGeneralChatConversationId: conversationId });
   },
 
   setPendingConversationTarget: (target) => {

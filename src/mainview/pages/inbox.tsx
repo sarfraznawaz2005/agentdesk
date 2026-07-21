@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { relativeTime as formatTimestamp, parseDbDate } from "@/lib/date-utils";
 import { useHeaderActions } from "@/lib/header-context";
 import {
@@ -441,7 +442,8 @@ function MessageDetailPane({
               <div className="text-sm leading-relaxed break-words bg-muted/50 rounded-md p-3">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSanitize]}
+                  rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+                  urlTransform={markdownUrlTransform}
                   components={MD_COMPONENTS as never}
                 >
                   {message.agentResponse}

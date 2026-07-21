@@ -100,7 +100,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/council": "Council",
   "/freelance": "Freelance",
   "/playground": "Playground",
+  "/general-chat": "General Chat",
   "/settings": "Settings",
+  "/help": "Help",
   "/plugins": "Plugins",
   "/plugin/db-viewer": "Database Viewer",
 };

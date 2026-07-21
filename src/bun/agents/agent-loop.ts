@@ -17,7 +17,7 @@ import { spawnAsync } from "../lib/spawn-async";
 import { isDevChannel } from "../lib/dev-mode";
 import { join, isAbsolute } from "path";
 import { db } from "../db";
-import { messages, messageParts, agents as agentsTable, aiProviders, conversations } from "../db/schema";
+import { messages, messageParts, agents as agentsTable, aiProviders, conversations, projects } from "../db/schema";
 import type { ProviderConfig } from "../providers/types";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
@@ -213,6 +213,25 @@ export interface InlineAgentOptions {
 	 * run_agent/run_agents_parallel when `deps.quickChat` is true.
 	 */
 	quickChat?: boolean;
+	/**
+	 * General Chat only: when true, the Assistant agent's system prompt includes
+	 * the Deep Research Mode section (ask clarifying questions before calling
+	 * deep_research). Ignored for every other agent. See getAssistantSystemPrompt
+	 * in prompts.ts — the sole place this flag is consumed.
+	 */
+	deepResearchMode?: boolean;
+	/**
+	 * Forwarded to ClaudeCliRunOpts.verifyToolCall on the Claude Subscription
+	 * CLI/SDK path (see claude-subscription-cli-runner.ts's doc comment on that
+	 * option). Default (unset) keeps the sub-agent-safe assumption that every
+	 * task requires at least one real tool call — correct for the Playground and
+	 * PM-dispatched sub-agents, whose tasks are concrete and actionable. Set to
+	 * false for conversational callers of runInlineAgent (currently General
+	 * Chat's Assistant agent) where a turn may legitimately need zero tool calls
+	 * ("hi", "thanks", explaining something from context) — mirrors PM chat's
+	 * own verifyToolCall: false in engine.ts.
+	 */
+	verifyToolCall?: boolean;
 }
 
 export interface InlineAgentResult {
@@ -261,7 +280,7 @@ const WRITE_TOOLS = new Set([
 	"write_file", "edit_file", "multi_edit_file", "append_file", "delete_file",
 	"move_file", "copy_file", "create_directory", "patch_file", "batch_rename",
 	"archive", "download_file",
-	"run_shell",
+	"run_shell", "execute_code",
 	"git_commit", "git_push", "git_branch", "git_stash", "git_reset",
 	"git_cherry_pick",
 	"create_task", "move_task", "update_task", "delete_task",
@@ -739,7 +758,7 @@ async function getHookCommand(projectId: string | undefined, hookType: "preToolU
 	if (!projectId) return null;
 	try {
 		const value = await getSetting(`hook:${hookType}`, `project:${projectId}`);
-		return value && value.trim() ? value.trim() : null;
+		return typeof value === "string" && value.trim() ? value.trim() : null;
 	} catch {
 		return null;
 	}
@@ -877,7 +896,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	let effectiveTemperature: number | undefined;
 	let effectiveThinkingBudget: string | null = null;
 
-	const systemPromptPromise = getAgentSystemPrompt(agentName, workspacePath, projectId);
+	const systemPromptPromise = getAgentSystemPrompt(agentName, workspacePath, projectId, opts.deepResearchMode);
 	const toolsPromise = getToolsForAgent(agentName);
 
 	try {
@@ -939,37 +958,155 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	const [systemPromptBase, baseTools] = await Promise.all([systemPromptPromise, toolsPromise]);
 
 	let systemPrompt = systemPromptBase;
-	if (workspacePath) {
-		systemPrompt = `Workspace: ${workspacePath}\nAll file operations must stay within this directory.\n\n${systemPrompt}`;
+	// Assistant (General Chat) is workspace-less by design — it still gets a real,
+	// hidden per-conversation workspacePath under the hood (bounds read_file's
+	// validatePath boundary and gives generate_image/take_screenshot somewhere to
+	// write before their output is embedded as base64), but it must never be told
+	// about it: no "you have a workspace" framing, no path to reference or offer
+	// to save things into. See seed.ts's general-chat-assistant systemPrompt / docs/workflow.md.
+	if (workspacePath && agentName !== "general-chat-assistant") {
+		// Fold the agent's own opening "You are the X agent — ..." line together with
+		// the project/workspace sentence (plus Project ID and any optional project
+		// facts) into one "## Identity" section — this is the single place every
+		// dispatched agent learns its project/workspace, so callers no longer need to
+		// pass a redundant "Workspace: .../Project ID: ..." projectContext (see the
+		// now-empty projectContext at pm-tools.ts/simple-dispatch.ts/task-executor.ts/
+		// review-cycle.ts call sites — only callers with genuinely distinct context,
+		// like Playground's file listing or Issue Fixer's repo/branch info, still use it).
+		const newlineIdx = systemPrompt.indexOf("\n");
+		const identityLine = newlineIdx === -1 ? systemPrompt : systemPrompt.slice(0, newlineIdx);
+		const restOfPrompt = newlineIdx === -1 ? "" : systemPrompt.slice(newlineIdx + 1).replace(/^\n+/, "");
+
+		let project: { name: string; description: string | null; githubUrl: string | null; workingBranch: string | null } | undefined;
+		if (projectId) {
+			const rows = await db
+				.select({ name: projects.name, description: projects.description, githubUrl: projects.githubUrl, workingBranch: projects.workingBranch })
+				.from(projects)
+				.where(eq(projects.id, projectId));
+			project = rows[0];
+		}
+		const projectSentence = project
+			? ` You are working on the "${project.name}" project with workspace/directory path at \`${workspacePath}\`.`
+			: ` Workspace/directory path: \`${workspacePath}\`.`;
+
+		const identityFacts = project
+			? [
+				`- **Project ID**: \`${projectId}\` (use this for any tool that requires project_id)`,
+				project.description ? `- **Description**: ${project.description}` : "",
+				project.githubUrl ? `- **GitHub Repository**: ${project.githubUrl}` : "",
+				project.workingBranch ? `- **Working Branch**: \`${project.workingBranch}\` (always use as the base branch for PRs and new feature branches)` : "",
+			].filter(Boolean)
+			: [];
+
+		systemPrompt = [
+			"## Identity",
+			"",
+			`${identityLine}${projectSentence}`,
+			...(identityFacts.length > 0 ? ["", ...identityFacts] : []),
+			"",
+			"All file operations must stay within this directory.",
+			...(restOfPrompt ? ["", "---", "", restOfPrompt] : []),
+		].join("\n");
 	}
 	if (projectContext) {
-		systemPrompt += `\n\n## Project Context\n${projectContext}`;
+		// Some callers (Playground's workspace listing, Issue Fixer's repo/branch
+		// info, Freelance Expert's persona/job block) already lead with their own
+		// `##` heading(s) — wrapping those in an extra "## Project Context" heading
+		// would produce two consecutive `##` headings with nothing in between. Only
+		// synthesize the wrapper heading for callers that pass plain, unheaded text.
+		const alreadyHeaded = /^##\s/.test(projectContext.trimStart());
+		systemPrompt += alreadyHeaded
+			? `\n\n---\n\n${projectContext}`
+			: `\n\n---\n\n## Project Context\n${projectContext}`;
 	}
 
 	// --- 3. Set up file tracker + tools ---
 	const fileTracker = new FileTracker();
 	const trackedFileTools = createTrackedFileTools(fileTracker, undefined, workspacePath, [skillRegistry.dir]);
-	const pluginTools = await getPluginTools();
+	// Plugin tools (e.g. LSP Manager's lsp_diagnostics/lsp_hover/lsp_definition/
+	// lsp_references/lsp_document_symbols) are registered under a prefixed name
+	// (plugin__<plugin-name>__<tool-name>, see plugins/api.ts's registerTool) —
+	// a DIFFERENT tool name than the plain one that appears in defaultAgentTools'
+	// LSP group / agent_tools rows, so there is no per-agent way to grant or
+	// deny them at all: whenever a plugin is enabled (Settings → Plugins, an
+	// app-wide toggle), every agent gets its tools unconditionally, the same
+	// tier as MCP tools. That's the intended, documented behavior for every
+	// other agent — but Assistant's whole tool set is a deliberately fixed,
+	// curated list with nothing added beyond it (unlike MCP tools, which
+	// Assistant is explicitly meant to have) — so it's excluded here entirely,
+	// regardless of which plugins are installed/enabled now or in the future.
+	const pluginTools = agentName === "general-chat-assistant" ? {} : await getPluginTools();
 	const { getMcpTools } = await import("../mcp/client");
 	const mcpTools = getMcpTools();
 	// Stuck loop detection only applies to MCP tools — built-in tools are harmless to repeat.
 	const mcpToolNames = new Set(Object.keys(mcpTools));
 	// Decisions log tool — only for write agents with a workspace
 	const { createDecisionsTool } = await import("./tools/notes");
-	// Decisions tool available to all agents with a workspace (including read-only like task-planner)
-	const decisionsTools = workspacePath ? createDecisionsTool(workspacePath) : {};
+	// Decisions tool available to all agents with a REAL workspace (including
+	// read-only like task-planner) — EXCEPT Assistant. Its workspacePath is a
+	// hidden, per-conversation temp folder the user never sees or cares about
+	// (see the "Workspace: ..." system-prompt injection skip above, same
+	// exclusion) — a DECISIONS.md file logged there would be pure noise, never
+	// read by anyone, and Assistant has no `agent_tools` grant for this either
+	// (log_decision is never a row in any agent's `agent_tools` — it's granted
+	// purely by having a workspace, by design, for every other caller).
+	const decisionsTools = workspacePath && agentName !== "general-chat-assistant" ? createDecisionsTool(workspacePath) : {};
 	const decisionsToolMap: Record<string, Tool> = {};
 	for (const [k, v] of Object.entries(decisionsTools)) decisionsToolMap[k] = v.tool;
+	let tools: Record<string, Tool> = { ...baseTools, ...pluginTools, ...mcpTools, ...decisionsToolMap };
+
+	// trackedFileTools supplies the real, workspace-bound, change-tracking
+	// implementation for file tools the agent was actually granted (baseTools,
+	// from its agent_tools rows) — overlay by NAME only onto tools already
+	// present, never add one that wasn't already allowed. This used to be an
+	// unconditional spread (createTrackedFileTools always returns the full
+	// read/write/edit/multi_edit/patch/append/delete/move family regardless of
+	// caller), so ANY tool-restricted agent — Assistant's read-only set, or a
+	// custom agent with write_file unchecked in Settings → Agents → Tools —
+	// silently still got every write-capable file tool no matter what
+	// agent_tools said. filterReadOnlyTools (below) already stripped these
+	// back out for the 3 READ_ONLY_AGENTS, which is exactly why this gap went
+	// unnoticed until an agent needed a restricted-but-not-readOnly grant.
+	for (const [name, t] of Object.entries(trackedFileTools)) {
+		if (tools[name]) tools[name] = t;
+	}
+
+	// execute_code — real-workspace Python/JS execution for write-capable
+	// sub-agents (see code-exec.ts's header for why this is a closure overlay
+	// rather than an AI SDK contextSchema/context tool like run_shell — the
+	// isClaudeSubscriptionViaCli branch below never populates `context`).
+	// Same "overlay by name only" rule as trackedFileTools above: only
+	// replaces the registry stub if the agent's own agent_tools already
+	// granted "execute_code". Gated by default (requestShellLikeApproval,
+	// shared with run_shell's own approval channel); Playground overrides
+	// this with its own auto-approved instance via extraTools below, same as
+	// it already does for run_shell.
+	if (tools["execute_code"] && workspacePath && agentName !== "general-chat-assistant") {
+		const { createCodeExecTool } = await import("./tools/code-exec");
+		tools["execute_code"] = createCodeExecTool(
+			workspacePath,
+			{ projectId, conversationId, agentName, agentDisplayName },
+			false,
+		)["execute_code"];
+	}
+
 	// extraTools are merged last so they override built-ins (e.g. Playground injects an
 	// auto-approved run_shell + its preview/reject tools). The workspace-cwd wrapper below
 	// still applies to an overridden run_shell, keeping shell scoped to the workspace.
-	let tools: Record<string, Tool> = { ...baseTools, ...trackedFileTools, ...pluginTools, ...mcpTools, ...decisionsToolMap, ...(opts.extraTools ?? {}) };
+	tools = { ...tools, ...(opts.extraTools ?? {}) };
 
 	// Memory tools — overlay the per-(agent+project) bound versions over the
 	// registry stubs, but ONLY for the names the agent is actually allowed (i.e.
 	// already present in `tools` after allowlist filtering) and ONLY when there's
 	// a project to scope memory to. Mirrors the decisions-tool binding above.
-	if (projectId && agentName) {
+	// Excludes "general-chat-assistant": General Chat passes a real (non-empty) projectId
+	// (its conversationId, so run_shell's approval gate and ModelSelector's
+	// per-conversation settings work like every other agent), but Assistant's
+	// save_memory/recall_memory/delete_memory are bound to the Assistant-
+	// exclusive general_chat_memories table via extraTools (general-chat-memory.ts)
+	// — this overlay would otherwise clobber them with the per-project
+	// agent_memories version scoped to that fake "project".
+	if (projectId && agentName && agentName !== "general-chat-assistant") {
 		const { createMemoryTools } = await import("./tools/memory");
 		for (const [name, entry] of Object.entries(createMemoryTools(agentName, projectId))) {
 			if (tools[name]) tools[name] = entry.tool;
@@ -1278,6 +1415,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 				workspacePath,
 				timeoutMs,
 				abortSignal,
+				verifyToolCall: opts.verifyToolCall,
 				onText: (text) => {
 					if (finalizeLivePart("text", text)) return;
 					const textPart: MessagePart = {
@@ -1327,7 +1465,16 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 					const part = toolCallParts.get(callId);
 					if (!part) return;
 					const finalIsError = isError || toolResultIsError(part.toolName ?? "", resultText);
-					const toolOutputLimit = 10_000;
+					// Mirrors the other (AI SDK step-loop) tool-result path a few hundred
+					// lines below — image tools return large base64 payloads that must
+					// not be truncated before extractImagePayload can parse them.
+					const toolName = part.toolName ?? "";
+					const isImageTool = toolName === "read_image"
+						|| toolName === "take_screenshot"
+						|| toolName === "generate_image"
+						|| toolName === "execute_code"
+						|| toolName.includes("screenshot");
+					const toolOutputLimit = isImageTool ? 500_000 : 10_000;
 					const updates: Partial<MessagePart> = {
 						toolOutput: resultText.length > toolOutputLimit ? resultText.slice(0, toolOutputLimit) + "\n... (truncated)" : resultText,
 						toolState: finalIsError ? "error" : "success",
@@ -1511,6 +1658,13 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			// workaround for that structural-typing gap, not a suppressed real error:
 			// the object's shape genuinely matches run_shell's/request_human_input's
 			// own contextSchema declarations (verified by hand, both optional).
+			// execute_code (code-exec.ts) deliberately does NOT use this context
+			// mechanism — see that file's header comment for why (the
+			// isClaudeSubscriptionViaCli branch below never populates `context` at
+			// all, so a contextSchema-based tool would silently fail for every
+			// Claude Subscription/non-Haiku user). It's overlaid as an
+			// already-fully-bound closure instead, same pattern as
+			// trackedFileTools/createDecisionsTool a few lines up.
 			toolsContext: { run_shell: { projectId, conversationId, agentName, agentDisplayName }, request_human_input: { projectId } } as never,
 			// Global (not per-tool) call context — flows automatically into every
 			// telemetry event's `runtimeContext` field (see telemetry-sink.ts, Phase
@@ -1765,6 +1919,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						const isImageTool = tc.toolName === "read_image"
 							|| tc.toolName === "take_screenshot"
 							|| tc.toolName === "generate_image"
+							|| tc.toolName === "execute_code"
 							|| tc.toolName.includes("screenshot");
 						const toolOutputLimit = isImageTool ? 500_000 : 10_000;
 						const updates: Partial<MessagePart> = {

@@ -55,7 +55,7 @@ async function buildSystemPrompt(
   listing: typeof freelanceListings.$inferSelect,
   fullDescription: string | null,
 ): Promise<string> {
-  const skillsSection = buildSkillsDescriptionSection(false);
+  const skillsSection = buildSkillsDescriptionSection(false, true);
   let skills: string[] = [];
   try { skills = JSON.parse(listing.skills) as string[]; } catch { /* ignore */ }
 

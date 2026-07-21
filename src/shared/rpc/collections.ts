@@ -37,6 +37,7 @@ export type CollectionNoteDto = CollectionNoteSummaryDto & {
 
 export type CollectionNoteSourceType =
   | "pm_chat"
+  | "general_chat"
   | "council"
   | "freelance_chat"
   | "skills_chat"

@@ -315,14 +315,8 @@ export class AgentEngine {
 			// Chat-level thinking override takes priority over agent/project defaults
 			const pmThinkingBudget = chatThinkingLevel ?? pmAgentRows[0]?.thinkingBudget ?? projectThinkingBudget;
 			const pmColor = pmAgentRows[0]?.color ?? "#6366f1";
-			const pluginTools = await getPluginTools();
-			const directTools = Object.entries(pluginTools).map(([name, tool]) => ({
-				name,
-				description: (tool as { description?: string }).description ?? name,
-			}));
 			const { prompt: systemPrompt, agentNames: pmAgentNames } = await getPMSystemPrompt(
 				{ id: this.projectId, name: projectRow?.name, description: projectRow?.description ?? undefined, workspacePath, githubUrl: projectRow?.githubUrl ?? undefined, workingBranch: projectRow?.workingBranch ?? undefined },
-				directTools,
 				this.getActiveMetadata(conversationId)?.source ?? "app",
 				planMode,
 				quickChat,

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import {
 	X,
 	Send,
@@ -192,7 +193,7 @@ function MessageThread({
 						</div>
 					) : (
 						<div className="w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground overflow-hidden">
-							<ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={MD_COMPONENTS as never}>
+							<ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]} urlTransform={markdownUrlTransform} components={MD_COMPONENTS as never}>
 								{msg.content + (msg.streaming ? "▍" : "")}
 							</ReactMarkdown>
 						</div>

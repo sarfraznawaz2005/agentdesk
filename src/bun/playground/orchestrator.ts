@@ -18,6 +18,7 @@ import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { broadcastToWebview } from "../engine-manager";
 import { autoApprovedShellTool } from "../agents/tools/shell";
+import { createCodeExecTool } from "../agents/tools/code-exec";
 import { createPlaygroundTools } from "../agents/tools/playground";
 import { killJobsUnderPath } from "../agents/tools/process";
 import { restartPlaygroundFileWatcher, stopPlaygroundFileWatcher } from "./server";
@@ -265,10 +266,17 @@ export async function runPlayground(userMessage: string, consoleErrors?: string[
 		const projectContext = buildWorkspaceContext();
 
 		// Inject playground-only tools + an auto-approved shell (no approval prompts;
-		// the agent-loop cwd-wrapper scopes it to the playground workspace).
+		// the agent-loop cwd-wrapper scopes it to the playground workspace). execute_code
+		// gets the same auto-approve treatment, for the same reason — Playground has no
+		// human watching per-action approvals, unlike project/Quick Chat sub-agents.
 		const extraTools = {
 			...createPlaygroundTools(),
 			run_shell: autoApprovedShellTool,
+			...createCodeExecTool(
+				PLAYGROUND_FILES_DIR,
+				{ projectId: PLAYGROUND_PROJECT_ID, conversationId: PLAYGROUND_CONVERSATION_ID, agentName: "playground-agent", agentDisplayName: "Playground" },
+				true,
+			),
 		};
 
 		const callbacks: InlineAgentCallbacks = {

@@ -86,11 +86,13 @@ If the user's message is short, ambiguous, or just a bare word/name/phrase rathe
 
 Be concise and helpful.
 
+---
+
 ${SECURITY_RULES_SECTION}`;
 
 	const userSection = await buildUserProfileSection();
 	if (userSection) {
-		prompt += `\n\n${userSection}`;
+		prompt += `\n\n---\n\n${userSection}`;
 	}
 
 	const skills = skillRegistry.getAll();
@@ -99,7 +101,7 @@ ${SECURITY_RULES_SECTION}`;
 			const agentTag = s.preferredAgent ? ` [agent: ${s.preferredAgent}]` : "";
 			return `- **${s.name}**: ${s.description.slice(0, 120)}${agentTag}`;
 		});
-		prompt += `\n\n## Available Skills\n\nThe following skills are installed. Use \`read_skill\` to load a skill's full instructions. Use \`find_skills\` to search by keyword.\n\n${lines.join("\n")}`;
+		prompt += `\n\n---\n\n## Available Skills\n\nThe following skills are installed. Use \`read_skill\` to load a skill's full instructions. Use \`find_skills\` to search by keyword.\n\n${lines.join("\n")}\n\nImportant: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`;
 	}
 
 	return prompt;

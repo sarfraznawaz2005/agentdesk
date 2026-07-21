@@ -3,6 +3,7 @@ import { memo, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
 import {
 	ChevronDown,
@@ -373,6 +374,9 @@ export const TextBlock = memo(function TextBlock({ content }: { content: string 
 		strong: ({ children }: { children: React.ReactNode }) => (
 			<strong className="font-semibold text-foreground">{children}</strong>
 		),
+		img: ({ src, alt }: { src?: string; alt?: string }) => (
+			<img src={src} alt={alt ?? ""} className="max-w-full rounded-lg my-2 border border-border" loading="lazy" />
+		),
 		blockquote: ({ children }: { children: React.ReactNode }) => (
 			<blockquote className="border-l-2 border-border pl-3 italic text-muted-foreground mb-1.5">{children}</blockquote>
 		),
@@ -399,7 +403,8 @@ export const TextBlock = memo(function TextBlock({ content }: { content: string 
 		<div className="my-1 break-words overflow-hidden">
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
-				rehypePlugins={[rehypeSanitize]}
+				rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+				urlTransform={markdownUrlTransform}
 				components={mdComponents as never}
 			>
 				{content}

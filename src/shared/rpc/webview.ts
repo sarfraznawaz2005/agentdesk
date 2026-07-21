@@ -563,6 +563,45 @@ export type WebviewSchema = RPCSchema<{
     playgroundReset: Record<string, never>;
     playgroundFilesChanged: Record<string, never>;
 
+    // ── General Chat (standalone "Assistant" agent) — tool-call activity is
+    // live-only, never persisted; conversationId scopes every event so a page
+    // showing conversation A ignores a background run's events for B. ──
+    generalChatRunStarted: { conversationId: string };
+    generalChatPart: {
+      conversationId: string;
+      part: {
+        id: string;
+        type: "text" | "tool_call" | "tool_result" | "reasoning" | "agent_start" | "agent_end";
+        content: string;
+        toolName?: string;
+        toolInput?: string;
+        toolOutput?: string;
+        toolState?: "pending" | "running" | "success" | "error";
+        sortOrder: number;
+        timeStart?: string;
+        timeEnd?: string;
+      };
+    };
+    generalChatPartUpdated: {
+      conversationId: string;
+      partId: string;
+      updates: {
+        content?: string;
+        toolOutput?: string;
+        toolState?: "pending" | "running" | "success" | "error";
+        timeEnd?: string;
+      };
+    };
+    generalChatTextDelta: { conversationId: string; delta: string };
+    generalChatPartsRemoved: { conversationId: string; partIds: string[] };
+    generalChatComplete: { conversationId: string; status: string; assistantText: string; userMessageId: string; assistantMessageId: string; modelId: string; promptTokens: number; contextLimit: number; durationMs: number };
+    generalChatRunError: { conversationId: string; error: string };
+    generalChatCompacted: { conversationId: string };
+    generalChatConversationRenamed: { conversationId: string; title: string };
+    generalChatStreamPerformance: { conversationId: string; tokensPerSecond: number; timeToFirstOutputMs?: number };
+    /** Real per-step token usage, pushed live during a turn (InlineAgentCallbacks.onStepUsage) — the same number the backend's own auto-compaction threshold checks against. */
+    generalChatContextUsage: { conversationId: string; promptTokens: number; contextLimit: number };
+
     // ── Issue Fixer ──
     issueFixerRunStarted: {
       projectId: string;

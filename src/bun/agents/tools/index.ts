@@ -20,6 +20,7 @@ import { audioTools } from "./audio";
 import { lspTools } from "./lsp";
 import { skillTools } from "./skills";
 import { memoryTools } from "./memory";
+import { codeExecTools } from "./code-exec";
 // ---------------------------------------------------------------------------
 // Tool category metadata
 // ---------------------------------------------------------------------------
@@ -93,6 +94,7 @@ const toolRegistry: Record<string, ToolRegistryEntry> = {
 	...lspTools,
 	...skillTools,
 	...memoryTools,
+	...codeExecTools,
 };
 
 /**

@@ -43,7 +43,12 @@ export function CrossProjectApprovalToast() {
         timestamp: string;
       }>).detail;
 
-      if (useChatStore.getState().activeProjectId === projectId) return;
+      const state = useChatStore.getState();
+      if (state.activeProjectId === projectId) return;
+      // General Chat has no real project — its broadcasts use conversationId
+      // as projectId (see general-chat/orchestrator.ts) — so also suppress
+      // when it's the General Chat conversation already open on screen.
+      if (state.activeGeneralChatConversationId === projectId) return;
 
       toast(
         "warning",

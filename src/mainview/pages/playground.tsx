@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import {
   Send,
   Square,
@@ -359,6 +360,13 @@ export function PlaygroundPage() {
   // and deps arrays evaluate immediately every render (unlike a callback body), so
   // `voice` must already be initialized by the time that array is evaluated.
   const voice = useVoiceInput(input, setInput, () => requestAnimationFrame(() => textareaRef.current?.focus()));
+  // Auto-focus on mount and whenever a run finishes — mirrors chat-input.tsx's
+  // own effect exactly (same requestAnimationFrame defer; a synchronous
+  // focus() call can land before WebView2 has finished wiring up real
+  // keyboard input routing on a freshly-opened page).
+  useEffect(() => {
+    if (!store.running) requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [store.running]);
   const [confirmNew, setConfirmNew] = useState(false);
   const [confirmCreate, setConfirmCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -1064,8 +1072,8 @@ export function PlaygroundPage() {
       {/* Chat input — only on the Chat tab, hidden while the Preview pane is showing */}
       {!showPreviewPane && (
         <div className="border-t border-border bg-background p-3 shrink-0">
-          <div className="flex items-end gap-2">
-            <div className="flex flex-1 items-center gap-0.5 rounded-lg border border-input bg-background pl-1 pr-2 py-1 focus-within:ring-1 focus-within:ring-ring">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 items-center gap-0.5 h-11 rounded-lg border border-input bg-background pl-1 pr-2 focus-within:ring-1 focus-within:ring-ring">
               <AttachFileTextButton onInsertText={insertText} disabled={store.running} />
               <QuickAttachBar onInsertText={insertText} disabled={store.running} />
               <textarea
@@ -1081,19 +1089,19 @@ export function PlaygroundPage() {
                 rows={1}
                 placeholder={store.running ? "Playground Agent is working…" : "Describe what you want to build…"}
                 disabled={store.running}
-                className="max-h-40 min-h-[38px] flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
+                className="max-h-40 min-h-[38px] flex-1 resize-none bg-transparent px-1.5 py-[9px] text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
               />
               {voice.supported && (
                 <VoiceInputButton listening={voice.listening} error={voice.error} onClick={voice.toggle} disabled={store.running} />
               )}
             </div>
             {store.running ? (
-              <Button variant="destructive" size="lg" onClick={handleStop} className="h-11">
+              <Button variant="destructive" size="lg" onClick={handleStop} className="h-11 px-4">
                 <Square className="h-4 w-4 fill-current" />
                 Stop
               </Button>
             ) : (
-              <Button size="lg" onClick={handleSend} disabled={!input.trim()} className="h-11">
+              <Button size="lg" onClick={handleSend} disabled={!input.trim()} className="h-11 px-4">
                 <Send className="h-4 w-4" />
                 Send
               </Button>
@@ -1214,7 +1222,7 @@ function Transcript({ turns }: { turns: { role: "user" | "assistant"; content: s
         ) : (
           <div key={i} className="flex justify-start">
             <div className="max-w-[90%] break-words rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={TRANSCRIPT_MD as never}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]} urlTransform={markdownUrlTransform} components={TRANSCRIPT_MD as never}>
                 {t.content}
               </ReactMarkdown>
             </div>

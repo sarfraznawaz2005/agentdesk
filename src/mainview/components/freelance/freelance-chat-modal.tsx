@@ -4,6 +4,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
 import { Button } from "@/components/ui/button";
 import { Tip, TooltipProvider } from "@/components/ui/tooltip";
 import { CodeBlock } from "@/components/chat/code-block";
@@ -277,7 +278,8 @@ function MessageBubble({
         ) : (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeSanitize]}
+            rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
+            urlTransform={markdownUrlTransform}
             components={MD_COMPONENTS as never}
           >
             {message.content + (streaming ? "▍" : "")}

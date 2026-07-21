@@ -1297,3 +1297,49 @@ export const aiTelemetryEvents = sqliteTable(
 		),
 	}),
 );
+
+// ---------------------------------------------------------------------------
+// General Chat — standalone "Assistant" agent, not tied to any project
+// ---------------------------------------------------------------------------
+// A ChatGPT-style surface with no knowledge of AgentDesk projects/workspaces.
+// Deliberately independent of `projects`/`conversations`/`messages`: those are
+// all project-scoped. `generalChatMessages` is flat (role/content only) since
+// tool-call parts are never persisted — only the final text of each turn is
+// written, unlike the parts-based `messages`/`message_parts` pair used for
+// project chat. `generalChatMemories` mirrors `global_memories` in shape but is
+// a distinct table exclusive to the Assistant agent (never shared with PM).
+
+export const generalChatConversations = sqliteTable("general_chat_conversations", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	title: text("title").notNull().default("New conversation"),
+	isPinned: integer("is_pinned").notNull().default(0),
+	isArchived: integer("is_archived").notNull().default(0),
+	deepResearchMode: integer("deep_research_mode").notNull().default(0),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const generalChatMessages = sqliteTable("general_chat_messages", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	conversationId: text("conversation_id")
+		.notNull()
+		.references(() => generalChatConversations.id),
+	role: text("role").notNull(), // "user" | "assistant"
+	content: text("content").notNull(),
+	tokenCount: integer("token_count").notNull().default(0),
+	// JSON-encoded, e.g. {"modelId": "claude-sonnet-5"} — mirrors project chat's
+	// messages.metadata modelId convention (message-bubble.tsx's parsedMeta).
+	metadata: text("metadata"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const generalChatMemories = sqliteTable("general_chat_memories", {
+	id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+	title: text("title").notNull(),
+	description: text("description").notNull().default(""),
+	content: text("content").notNull(),
+	recallCount: integer("recall_count").notNull().default(0),
+	lastRecalledAt: text("last_recalled_at"),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

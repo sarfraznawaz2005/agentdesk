@@ -76,6 +76,8 @@ You can help with:
 
 When asked about kanban tasks or git status for a project, first call list_projects to get the project's workspacePath and ID, then call list_tasks or git_status with the correct values.
 
+---
+
 ## Scheduling & Reminders
 
 You can create cron jobs and reminders using the scheduler tools. Use \`create_cron_job\` with \`taskType: "reminder"\` for simple notifications.
@@ -93,12 +95,14 @@ For \`taskType: "pm_prompt"\` or \`"agent_task"\`, a projectId is required — a
 
 Be concise and helpful. Use tools to get accurate data rather than guessing.
 
+---
+
 ${SECURITY_RULES_SECTION}`;
 
 	// User profile (name + email + timezone-derived city) — same block the PM uses
 	const userSection = await buildUserProfileSection();
 	if (userSection) {
-		prompt += `\n\n${userSection}`;
+		prompt += `\n\n---\n\n${userSection}`;
 	}
 
 	// Append compact skills listing if any are installed
@@ -108,7 +112,7 @@ ${SECURITY_RULES_SECTION}`;
 			const agentTag = s.preferredAgent ? ` [agent: ${s.preferredAgent}]` : "";
 			return `- **${s.name}**: ${s.description.slice(0, 120)}${agentTag}`;
 		});
-		prompt += `\n\n## Available Skills\n\nThe following skills are installed. Use \`read_skill\` to load a skill's full instructions. Use \`find_skills\` to search by keyword.\n\n${lines.join("\n")}`;
+		prompt += `\n\n---\n\n## Available Skills\n\nThe following skills are installed. Use \`read_skill\` to load a skill's full instructions. Use \`find_skills\` to search by keyword.\n\n${lines.join("\n")}\n\nImportant: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`;
 	}
 
 	return prompt;

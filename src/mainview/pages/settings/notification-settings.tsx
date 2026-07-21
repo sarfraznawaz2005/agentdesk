@@ -535,7 +535,7 @@ export function NotificationSettings() {
             <ToggleRow
               id="session-complete-notif"
               label="Session complete"
-              description="Show a desktop notification when all agents and the PM have finished — only fires when the app is not in focus"
+              description="Show a desktop notification when all agents and the PM have finished, or when Assistant (General Chat) replies — only fires when the app is not in focus"
               value={sessionCompleteNotif}
               onToggle={() => {
                 setSessionCompleteNotif((v) => !v);

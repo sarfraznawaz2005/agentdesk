@@ -87,9 +87,22 @@ const THINKING_LEVELS = [
 interface ModelSelectorProps {
   projectId: string;
   messages: Message[];
+  /** General Chat has no Build/Plan Mode concept (no kanban, no sub-agents) —
+   *  it renders its own Deep Research toggle in this spot instead. */
+  hideBuildPlanToggle?: boolean;
+  /** General Chat's Assistant agent has no run_shell tool at all — nothing for this to control. */
+  hideShellApproval?: boolean;
+  /** Drop the row's own right/bottom padding (pr-4/pb-1.5), keeping only pl-4
+   *  — for callers (General Chat) that render this alongside a sibling control
+   *  (DeepResearchToggle) in their own flex row. The left padding stays so this
+   *  row's first button still lines up with the input box above it; the right
+   *  padding would otherwise widen the gap to the sibling beyond the internal
+   *  gap-2 between this component's own buttons, and pb-1.5 would make this
+   *  box taller than the sibling, throwing off `items-center` alignment. */
+  compact?: boolean;
 }
 
-export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
+export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false, hideShellApproval = false, compact = false }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [providers, setProviders] = useState<ProviderModels[]>(() => loadCachedProviders() ?? []);
@@ -380,26 +393,28 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
   }, [providers, prefs, search, defaultEntry]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 gap-y-2 px-4 pb-1.5">
+    <div className={cn("flex flex-wrap items-center gap-2 gap-y-2", compact ? "pl-4" : "px-4 pb-1.5")}>
       {/* Build / Plan mode toggle */}
-      <Tip content={planMode ? "Plan Mode: read-only planning. Agents propose, useful for complex tasks." : "Build Mode: agents can write files and execute."} side="top">
-        <button
-          type="button"
-          onClick={togglePlanMode}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors",
-            "border border-transparent",
-            planMode
-              ? "text-violet-700 bg-violet-50 border-violet-200 hover:bg-violet-100"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted",
-          )}
-        >
-          {planMode
-            ? <Eye className="w-3.5 h-3.5 text-violet-500" />
-            : <Hammer className="w-3.5 h-3.5 text-muted-foreground/60" />}
-          <span>{planMode ? "Plan" : "Build"}</span>
-        </button>
-      </Tip>
+      {!hideBuildPlanToggle && (
+        <Tip content={planMode ? "Plan Mode: read-only planning. Agents propose, useful for complex tasks." : "Build Mode: agents can write files and execute."} side="top">
+          <button
+            type="button"
+            onClick={togglePlanMode}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors",
+              "border border-transparent",
+              planMode
+                ? "text-violet-700 bg-violet-50 border-violet-200 hover:bg-violet-100"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            {planMode
+              ? <Eye className="w-3.5 h-3.5 text-violet-500" />
+              : <Hammer className="w-3.5 h-3.5 text-muted-foreground/60" />}
+            <span>{planMode ? "Plan" : "Build"}</span>
+          </button>
+        </Tip>
+      )}
 
       {/* Model selector */}
       <Popover open={open} onOpenChange={handleOpenChange}>
@@ -558,22 +573,24 @@ export function ModelSelector({ projectId, messages }: ModelSelectorProps) {
       </Popover>
 
       {/* Shell approval toggle */}
-      <Tip content={shellApproval ? "Shell commands require approval" : "Shell commands auto-approved"} side="top">
-        <button
-          type="button"
-          onClick={toggleShellApproval}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors",
-            "border border-transparent",
-            shellApproval
-              ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30"
-              : "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/30",
-          )}
-        >
-          <ShieldCheck className={cn("w-3.5 h-3.5", shellApproval ? "text-emerald-600" : "text-red-600")} />
-          <span>{shellApproval ? "Shell: Ask" : "Shell: Auto"}</span>
-        </button>
-      </Tip>
+      {!hideShellApproval && (
+        <Tip content={shellApproval ? "Shell commands require approval" : "Shell commands auto-approved"} side="top">
+          <button
+            type="button"
+            onClick={toggleShellApproval}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors",
+              "border border-transparent",
+              shellApproval
+                ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30"
+                : "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/30",
+            )}
+          >
+            <ShieldCheck className={cn("w-3.5 h-3.5", shellApproval ? "text-emerald-600" : "text-red-600")} />
+            <span>{shellApproval ? "Shell: Ask" : "Shell: Auto"}</span>
+          </button>
+        </Tip>
+      )}
 
       {/* Context usage — pushed to far right */}
       {messages?.length > 0 && (
