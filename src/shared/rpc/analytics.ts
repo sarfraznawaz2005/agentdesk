@@ -76,4 +76,11 @@ export type AnalyticsRequests = {
     };
   };
 
+  // Reset — global wipe of ai_telemetry_events, zeroing BOTH the AI Usage and
+  // Providers tabs (they read the same table). Telemetry only, not task data.
+  clearTelemetryUsage: {
+    params: Record<string, never>;
+    response: { success: boolean; deleted: number };
+  };
+
 };

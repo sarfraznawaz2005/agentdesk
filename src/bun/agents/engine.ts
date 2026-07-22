@@ -263,6 +263,95 @@ export class AgentEngine {
 		return { messageId: assistantMessageId, userMessageId };
 	}
 
+	/**
+	 * Regenerates the assistant reply for the LAST user message WITHOUT inserting
+	 * a new user message — the backend for the chat "Retry" button. Deletes the
+	 * trailing assistant/error/placeholder rows (parts cascade), then re-runs the
+	 * PM turn against the existing history, whose tail is already that last user
+	 * message. Mirrors sendMessage()'s busy-check + lock/abort bookkeeping.
+	 *
+	 * Prior to this the frontend faked Retry by re-sending the user's text through
+	 * sendMessage(), which always persists a fresh user row — silently duplicating
+	 * the user's message on every retry.
+	 */
+	async retryLastMessage(conversationId: string): Promise<{ messageId: string; userMessageId: string; queued?: boolean }> {
+		console.log(`[Engine] retryLastMessage | conv=${conversationId} | processing=${this.pmAbortByConv.has(conversationId)}`);
+
+		// Same guard as sendMessage: never interrupt this conversation's own
+		// in-flight PM turn or sub-agents. The Retry button is disabled while
+		// streaming, so this is a safety net rather than an expected path.
+		const runningHere = this.getRunningAgentNamesForConversationFn?.(conversationId).length ?? 0;
+		if (this.pmAbortByConv.has(conversationId) || runningHere > 0) {
+			return { messageId: "", userMessageId: "", queued: true };
+		}
+
+		const convExists = await db.select({ id: conversations.id }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+		if (convExists.length === 0) {
+			console.warn(`[Engine] retryLastMessage: conversation ${conversationId} no longer exists`);
+			return { messageId: "", userMessageId: "" };
+		}
+
+		// Find the last user message and everything after it. Sort in JS to handle
+		// SQLite CURRENT_TIMESTAMP vs ISO createdAt formats (see context.ts).
+		const rows = await db.select({ id: messages.id, role: messages.role, content: messages.content, createdAt: messages.createdAt })
+			.from(messages).where(eq(messages.conversationId, conversationId));
+		rows.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+		let lastUserIdx = -1;
+		for (let i = rows.length - 1; i >= 0; i--) {
+			if (rows[i].role === "user") { lastUserIdx = i; break; }
+		}
+		if (lastUserIdx === -1) {
+			console.warn(`[Engine] retryLastMessage: no user message to retry in ${conversationId}`);
+			return { messageId: "", userMessageId: "" };
+		}
+		const userRow = rows[lastUserIdx];
+
+		// Delete the assistant reply (and any trailing error/placeholder rows) —
+		// message_parts cascade via the schema's onDelete: "cascade".
+		for (const trailing of rows.slice(lastUserIdx + 1)) {
+			await db.delete(messages).where(eq(messages.id, trailing.id));
+		}
+
+		this.stopped = false;
+		this.userStoppedConvs.delete(conversationId);
+		const abortController = new AbortController();
+		this.pmAbortByConv.set(conversationId, abortController);
+
+		let lockResolve!: () => void;
+		const lockPromise = new Promise<void>((r) => { lockResolve = r; });
+		this.pmProcessingPromiseByConv.set(conversationId, lockPromise);
+		this.activeMetadataByConv.set(conversationId, { ...DEFAULT_METADATA });
+		this.lastActiveConversationId = conversationId;
+
+		const assistantMessageId = crypto.randomUUID();
+		await db.insert(messages).values({
+			id: assistantMessageId,
+			conversationId,
+			role: "assistant",
+			agentId: null,
+			content: "",
+			metadata: null,
+			tokenCount: 0,
+			createdAt: new Date().toISOString(),
+		});
+		this._touchConversation(conversationId);
+
+		const realPromise = this._runPMProcessing(assistantMessageId, conversationId, userRow.content, abortController, userRow.id)
+			.catch(() => {})
+			.finally(() => {
+				lockResolve();
+				if (this.pmAbortByConv.get(conversationId) === abortController) {
+					this.pmAbortByConv.delete(conversationId);
+				}
+				if (this.pmProcessingPromiseByConv.get(conversationId) === realPromise) {
+					this.pmProcessingPromiseByConv.delete(conversationId);
+				}
+			});
+		this.pmProcessingPromiseByConv.set(conversationId, realPromise);
+
+		return { messageId: assistantMessageId, userMessageId: userRow.id };
+	}
+
 	private async _runPMProcessing(
 		assistantMessageId: string,
 		conversationId: string,
@@ -297,10 +386,9 @@ export class AgentEngine {
 			}
 
 			// 3. Load Project Manager system prompt and resolve provider / model
-			const [projectRows, pmAgentRows, projectBudgetRows, chatThinkingRows, planModeRows] = await Promise.all([
+			const [projectRows, pmAgentRows, chatThinkingRows, planModeRows] = await Promise.all([
 				db.select({ name: projects.name, description: projects.description, workspacePath: projects.workspacePath, githubUrl: projects.githubUrl, workingBranch: projects.workingBranch, isQuickChat: projects.isQuickChat }).from(projects).where(eq(projects.id, this.projectId)).limit(1),
 				db.select({ thinkingBudget: agents.thinkingBudget, color: agents.color }).from(agents).where(eq(agents.name, "project-manager")).limit(1),
-				db.select({ value: settings.value }).from(settings).where(eq(settings.key, `project:${this.projectId}:thinkingBudget`)).limit(1),
 				db.select({ value: settings.value }).from(settings).where(eq(settings.key, `project:${this.projectId}:chatThinkingLevel`)).limit(1),
 				db.select({ value: settings.value }).from(settings).where(eq(settings.key, `project:${this.projectId}:planMode`)).limit(1),
 			]);
@@ -310,10 +398,10 @@ export class AgentEngine {
 			// Derived per-turn (not cached on the engine instance) so promoting a Quick
 			// Chat project to a normal one re-enables Kanban on the very next PM turn.
 			const quickChat = projectRow?.isQuickChat === 1;
+			// Explicit in-chat pick (low/medium/high), or null for "Default".
 			const chatThinkingLevel: string | null = chatThinkingRows[0]?.value || null;
-			const projectThinkingBudget: string | null = projectBudgetRows[0]?.value ?? null;
-			// Chat-level thinking override takes priority over agent/project defaults
-			const pmThinkingBudget = chatThinkingLevel ?? pmAgentRows[0]?.thinkingBudget ?? projectThinkingBudget;
+			// Explicit pick overrides the PM agent's own budget (Medium by default).
+			const pmThinkingBudget = chatThinkingLevel ?? pmAgentRows[0]?.thinkingBudget ?? "medium";
 			const pmColor = pmAgentRows[0]?.color ?? "#6366f1";
 			const { prompt: systemPrompt, agentNames: pmAgentNames } = await getPMSystemPrompt(
 				{ id: this.projectId, name: projectRow?.name, description: projectRow?.description ?? undefined, workspacePath, githubUrl: projectRow?.githubUrl ?? undefined, workingBranch: projectRow?.workingBranch ?? undefined },
@@ -485,6 +573,9 @@ export class AgentEngine {
 					},
 					planMode,
 					quickChat,
+					// Explicit in-chat thinking pick — forwarded to dispatched sub-agents
+					// so an explicit level overrides their own budget (null = Default).
+					thinkingBudgetOverride: chatThinkingLevel,
 					agentNames: pmAgentNames.length > 0 ? pmAgentNames : undefined,
 					// Pass the original user message so sub-agents get the user's exact words
 					// appended to their task prompt (only for direct queries, not kanban tasks).

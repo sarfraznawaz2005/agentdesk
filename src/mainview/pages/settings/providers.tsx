@@ -12,6 +12,8 @@ import {
   Star,
   Copy,
   RefreshCw,
+  Download,
+  Upload,
 } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
@@ -188,19 +190,24 @@ function EmptyProviders({ onAdd }: { onAdd: () => void }) {
 interface ProviderCardProps {
   provider: Provider;
   testingId: string | null;
+  settingDefaultId: string | null;
   onEdit: (provider: Provider) => void;
   onDelete: (provider: Provider) => void;
   onTest: (provider: Provider) => void;
+  onSetDefault: (provider: Provider) => void;
 }
 
 function ProviderCard({
   provider,
   testingId,
+  settingDefaultId,
   onEdit,
   onDelete,
   onTest,
+  onSetDefault,
 }: ProviderCardProps) {
   const isTesting = testingId === provider.id;
+  const isSettingDefault = settingDefaultId === provider.id;
 
   return (
     <Card>
@@ -296,6 +303,23 @@ function ProviderCard({
               </>
             )}
           </Button>
+
+          {!provider.isDefault && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSetDefault(provider)}
+              disabled={isSettingDefault}
+              aria-label={`Set ${provider.name} as the default provider`}
+            >
+              {isSettingDefault ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Star aria-hidden="true" />
+              )}
+              Set as Default
+            </Button>
+          )}
 
           <Button
             variant="ghost"
@@ -1116,6 +1140,14 @@ export function ProvidersSettings() {
   // Which provider is currently being tested
   const [testingId, setTestingId] = useState<string | null>(null);
 
+  // Which provider is currently being set as default
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+
+  // Export / import
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+
   // -------------------------------------------------------------------------
   // Data fetching
   // -------------------------------------------------------------------------
@@ -1155,6 +1187,65 @@ export function ProvidersSettings() {
     setDialogOpen(true);
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const data = await rpc.exportProviders();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `agentdesk-providers-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      const count = data.providers.length;
+      toast("success", `Exported ${count} provider${count === 1 ? "" : "s"} (including API keys).`);
+    } catch {
+      toast("error", "Failed to export providers.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleImport() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setImporting(true);
+      try {
+        const parsed = JSON.parse(await file.text());
+        // Accept either the exported wrapper ({ providers: [...] }) or a bare array.
+        const providers = Array.isArray(parsed) ? parsed : parsed?.providers;
+        if (!Array.isArray(providers)) {
+          toast("error", "This file doesn't contain any providers.");
+          return;
+        }
+        const result = await rpc.importProviders(providers);
+        if (!result.success) {
+          toast("error", result.error ?? "Import failed.");
+          return;
+        }
+        const parts: string[] = [];
+        if (result.imported > 0) parts.push(`added ${result.imported}`);
+        if (result.updated > 0) parts.push(`updated ${result.updated}`);
+        if (result.skipped > 0) parts.push(`skipped ${result.skipped} invalid`);
+        const changed = result.imported > 0 || result.updated > 0;
+        toast(changed ? "success" : "info", parts.length ? `Providers: ${parts.join(", ")}.` : "Nothing to import.");
+        if (changed) await loadProviders();
+      } catch (err) {
+        toast("error", `Import failed: ${err instanceof Error ? err.message : "Invalid file"}`);
+      } finally {
+        setImporting(false);
+      }
+    };
+    input.click();
+  }
+
   function handleEdit(provider: Provider) {
     setEditingProvider(provider);
     setDialogOpen(true);
@@ -1162,6 +1253,24 @@ export function ProvidersSettings() {
 
   function handleDeleteRequest(provider: Provider) {
     setDeleteTarget(provider);
+  }
+
+  async function handleSetDefault(provider: Provider) {
+    if (provider.isDefault) return;
+    setSettingDefaultId(provider.id);
+    try {
+      const result = await rpc.setDefaultProvider(provider.id);
+      if (result.success) {
+        toast("success", `"${provider.name}" is now the default provider.`);
+        await loadProviders();
+      } else {
+        toast("error", "Failed to set default provider.");
+      }
+    } catch {
+      toast("error", "An unexpected error occurred.");
+    } finally {
+      setSettingDefaultId(null);
+    }
   }
 
   async function handleDeleteConfirm() {
@@ -1241,11 +1350,33 @@ export function ProvidersSettings() {
           </p>
         </div>
 
-        {!loading && providers.length > 0 && (
-          <Button onClick={handleAdd} size="sm">
-            <Plus aria-hidden="true" />
-            Add Provider
-          </Button>
+        {!loading && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleImport} disabled={importing}>
+              {importing ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Upload aria-hidden="true" />
+              )}
+              Import
+            </Button>
+            {providers.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setExportConfirmOpen(true)} disabled={exporting}>
+                {exporting ? (
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download aria-hidden="true" />
+                )}
+                Export
+              </Button>
+            )}
+            {providers.length > 0 && (
+              <Button onClick={handleAdd} size="sm">
+                <Plus aria-hidden="true" />
+                Add Provider
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
@@ -1270,9 +1401,11 @@ export function ProvidersSettings() {
               <ProviderCard
                 provider={provider}
                 testingId={testingId}
+                settingDefaultId={settingDefaultId}
                 onEdit={handleEdit}
                 onDelete={handleDeleteRequest}
                 onTest={handleTest}
+                onSetDefault={handleSetDefault}
               />
             </div>
           ))}
@@ -1285,6 +1418,17 @@ export function ProvidersSettings() {
         editingProvider={editingProvider}
         onOpenChange={setDialogOpen}
         onSaved={loadProviders}
+      />
+
+      {/* Export confirmation — warns that keys are written in plain text */}
+      <ConfirmationDialog
+        open={exportConfirmOpen}
+        onOpenChange={setExportConfirmOpen}
+        title="Export providers?"
+        description="The downloaded file will contain your provider API keys in plain text. Anyone who gets the file can use your keys — store it somewhere safe and don't share it."
+        confirmLabel="Export"
+        cancelLabel="Cancel"
+        onConfirm={handleExport}
       />
 
       {/* Delete confirmation */}

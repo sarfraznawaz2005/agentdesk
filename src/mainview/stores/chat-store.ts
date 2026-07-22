@@ -434,8 +434,11 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const state = get();
     const msgs = state.messages;
 
-    // Remove trailing error messages (ephemeral, not in DB) and find the
-    // last assistant message so we can delete it and resend the user message.
+    // Collect the trailing error bubbles (ephemeral, not in DB) and the last
+    // assistant message so we can drop them from the UI. The backend deletes
+    // the persisted rows itself and regenerates against the EXISTING last user
+    // message — no new user row is created (re-sending via sendMessage would
+    // silently duplicate the user's message on every retry).
     const idsToRemove: string[] = [];
     let targetIdx = msgs.length - 1;
 
@@ -450,19 +453,31 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const assistantMsg = msgs[targetIdx];
     if (assistantMsg.role === "assistant") {
       idsToRemove.push(assistantMsg.id);
-      // Delete the persisted assistant message from DB
-      await rpc.deleteMessage(assistantMsg.id);
     }
 
-    // Find the last user message before the assistant/error messages
+    // Bail if there's no user message to regenerate a reply for.
     const userMsg = msgs.slice(0, targetIdx + 1).reverse().find((m) => m.role === "user");
     if (!userMsg) return;
 
-    // Remove all collected messages from the store
-    set((s) => ({ messages: s.messages.filter((m) => !idsToRemove.includes(m.id)) }));
+    // Optimistically drop the old assistant/error bubbles and enter the
+    // streaming state; the backend handles DB deletion + regeneration and the
+    // usual stream broadcasts fill in the new reply.
+    set((s) => ({
+      messages: s.messages.filter((m) => !idsToRemove.includes(m.id)),
+      isStreaming: true,
+      streamingContent: "",
+      streamingMessageId: null,
+    }));
 
-    // Resend the user message content
-    await get().sendMessage(projectId, conversationId, userMsg.content);
+    const result = await rpc.retryLastMessage(projectId, conversationId);
+    if (result.queued) {
+      // Shouldn't happen (button is disabled while busy) — reconcile the UI
+      // from the DB rather than leaving a hole where the old reply was.
+      set({ isStreaming: false });
+      await get().loadMessages(conversationId);
+      return;
+    }
+    set({ streamingMessageId: result.messageId });
   },
 
   branchConversation: async (projectId: string, conversationId: string, upToMessageId: string) => {

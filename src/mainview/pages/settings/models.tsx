@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Search, Star, Wifi, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Search, Star, Wifi, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,6 +53,31 @@ export function ModelsSettings() {
     setHideDisabled(v);
     try { localStorage.setItem("models_hide_disabled", String(v)); } catch { /* ignore */ }
   }, []);
+
+  // Collapsed provider groups — a view preference (localStorage), like
+  // hideDisabled above. A providerId in the set has its model list hidden; the
+  // group header (counts, select-all, enable-all) stays visible so bulk actions
+  // still work while collapsed.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem("models_collapsed_providers");
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const persistCollapsed = useCallback((next: Set<string>) => {
+    try { localStorage.setItem("models_collapsed_providers", JSON.stringify([...next])); } catch { /* ignore */ }
+  }, []);
+
+  const toggleCollapsed = useCallback((providerId: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(providerId)) next.delete(providerId);
+      else next.add(providerId);
+      persistCollapsed(next);
+      return next;
+    });
+  }, [persistCollapsed]);
 
   // ---- Load on mount -------------------------------------------------------
 
@@ -488,10 +513,20 @@ export function ModelsSettings() {
         const providerModelKeys = provider.models.map((m) => prefKey(provider.providerId, m));
         const allSelected = providerModelKeys.length > 0 && providerModelKeys.every((k) => selected.has(k));
         const someSelected = providerModelKeys.some((k) => selected.has(k));
+        const isCollapsed = collapsed.has(provider.providerId);
         return (
         <div key={provider.providerId}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                aria-label={isCollapsed ? `Expand ${provider.providerName}` : `Collapse ${provider.providerName}`}
+                aria-expanded={!isCollapsed}
+                onClick={() => toggleCollapsed(provider.providerId)}
+                className="shrink-0 p-0.5 rounded text-muted-foreground/70 hover:text-foreground hover:bg-muted transition-colors"
+              >
+                {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
               {provider.models.length > 0 && (
                 <input
                   type="checkbox"
@@ -501,18 +536,25 @@ export function ModelsSettings() {
                     if (el) el.indeterminate = !allSelected && someSelected;
                   }}
                   onChange={(e) => toggleSelectProvider(provider.providerId, provider.models, e.target.checked)}
-                  className="h-4 w-4 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="h-4 w-4 shrink-0 rounded border-input text-primary cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
               )}
-              <h4 className="text-sm font-semibold text-foreground">
-                {provider.providerName}
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  ({counts.enabled} enabled out of {counts.total})
-                </span>
-              </h4>
+              <button
+                type="button"
+                aria-expanded={!isCollapsed}
+                onClick={() => toggleCollapsed(provider.providerId)}
+                className="min-w-0 text-left"
+              >
+                <h4 className="text-sm font-semibold text-foreground truncate">
+                  {provider.providerName}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    ({counts.enabled} enabled out of {counts.total})
+                  </span>
+                </h4>
+              </button>
             </div>
             {counts.total > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs text-muted-foreground">
                   {allEnabled ? "All enabled" : "Enable all"}
                 </span>
@@ -524,6 +566,7 @@ export function ModelsSettings() {
               </div>
             )}
           </div>
+          {!isCollapsed && (
           <Card>
             <CardContent className="pt-4 space-y-0">
               {provider.models.length === 0 ? (
@@ -593,6 +636,7 @@ export function ModelsSettings() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
         );
       })}

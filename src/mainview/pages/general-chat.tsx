@@ -1152,10 +1152,10 @@ export function GeneralChatPage() {
     setActiveConversationId(result.id);
   }, [activeConversationId, reloadConversations, setActiveConversationId]);
 
-  // Deletes the last assistant reply and resends the last user message as a
-  // fresh turn — mirrors chat-store.ts's retryLastMessage exactly (the prior
-  // user bubble is intentionally left in place, not deleted; sendToConversation
-  // adds a new one alongside it, same as project chat's own Retry).
+  // Regenerates the reply for the last user message — mirrors chat-store.ts's
+  // retryLastMessage. The backend deletes the trailing assistant row and re-runs
+  // the turn against the EXISTING last user message; no new user row is created
+  // (re-sending the text would silently duplicate the user's message each retry).
   const handleRetry = useCallback(async () => {
     if (!activeConversationId || isSending) return;
     const last = messages[messages.length - 1];
@@ -1163,12 +1163,31 @@ export function GeneralChatPage() {
     const userMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!userMsg) return;
     const conversationId = activeConversationId;
-    await rpc.deleteGeneralChatMessage(last.id);
+
+    // Optimistically drop the old assistant bubble and enter the streaming state
+    // (same prep sendToConversation does, minus the optimistic user bubble).
     if (activeConversationIdRef.current === conversationId) {
       setMessages((prev) => prev.filter((m) => m.id !== last.id));
+      setIsSending(true);
+      setErrorText(null);
+      streamingTextRef.current = "";
+      streamingTextPartIdRef.current = null;
+      streamingCommittedTextRef.current = "";
+      setStreamingText("");
+      setToolCalls(new Map());
+      setLiveTokensPerSecond(0);
     }
-    await sendToConversation(conversationId, userMsg.content);
-  }, [activeConversationId, isSending, messages, sendToConversation]);
+
+    const result = await rpc.retryGeneralChatMessage(conversationId);
+    if (!result.ok) {
+      if (activeConversationIdRef.current === conversationId) {
+        setIsSending(false);
+        setErrorText(result.error ?? "Failed to retry");
+      }
+      return;
+    }
+    reloadConversations();
+  }, [activeConversationId, isSending, messages, reloadConversations]);
 
   // ── Conversation sidebar handlers ──────────────────────────────────────
 
@@ -1805,7 +1824,7 @@ export function GeneralChatPage() {
 
           {activeConversationId && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-2 mb-1.5">
-              <ModelSelector projectId={activeConversationId} messages={emptyMessages} hideBuildPlanToggle hideShellApproval compact />
+              <ModelSelector projectId={activeConversationId} messages={emptyMessages} hideBuildPlanToggle hideShellApproval compact globalThinkingKey="generalChatThinkingLevel" />
               <DeepResearchToggle conversationId={activeConversationId} enabled={deepResearchMode} onChange={setDeepResearchMode} />
               <div className="ml-auto">
                 <GeneralChatContextIndicator

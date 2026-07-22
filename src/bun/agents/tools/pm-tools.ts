@@ -84,6 +84,13 @@ export interface PMToolsDeps {
 	lastUserMessage?: string;
 	/** All agent names loaded from DB — includes custom agents. Falls back to hardcoded list. */
 	agentNames?: readonly string[];
+	/**
+	 * Explicit in-chat thinking level (low/medium/high) from the composer's
+	 * picker, or null for "Default". Forwarded to every dispatched sub-agent so
+	 * an explicit pick overrides their own thinking budget; null leaves each
+	 * sub-agent on its own budget (Medium by default).
+	 */
+	thinkingBudgetOverride?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -686,6 +693,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						readOnly: deps.planMode || isReadOnly,
 						excludeTools: effectiveQuickChat ? QUICK_CHAT_EXCLUDED_TOOLS : undefined,
 						quickChat: effectiveQuickChat,
+						thinkingBudgetOverride: deps.thinkingBudgetOverride,
 					};
 
 					// Fire-and-forget: agent runs in background
@@ -1023,6 +1031,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 									readOnly: true,
 									excludeTools: deps.quickChat ? QUICK_CHAT_EXCLUDED_TOOLS : undefined,
 									quickChat: deps.quickChat,
+									thinkingBudgetOverride: deps.thinkingBudgetOverride,
 								});
 								return parallelResult;
 							} finally {

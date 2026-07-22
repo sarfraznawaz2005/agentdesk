@@ -22,10 +22,10 @@
 14. To-do list tracking in chat
 
 ## AI Providers & Models
-15. Adding, testing, and switching AI providers/models
+15. Adding, testing, switching, setting the default directly from the provider list, and exporting/importing AI providers/models (export bundles all providers incl. API keys, with a plaintext-keys warning; import matches by base URL — overwriting an existing provider's credentials while keeping your own name)
 16. Per-agent model assignment
-17. Reasoning effort selector (thinking level)
-18. AI usage & cost analytics dashboard
+17. Thinking level selector — every agent thinks at Medium by default; picking Low/Medium/High in a chat overrides the PM and every sub-agent it dispatches (and the General Chat assistant), and the choice persists (per-project in project chat, across all conversations in General Chat)
+18. AI usage & cost analytics dashboard (incl. clearing all recorded usage data to reset usage & provider stats to zero)
 19. Raw prompt log viewer (debug prompts)
 20. Provider health dashboard
 21. Claude subscription sign-in

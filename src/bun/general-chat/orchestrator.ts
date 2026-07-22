@@ -108,12 +108,16 @@ export async function resolveProviderConfig(conversationId: string): Promise<{ c
 // Prior history — loaded from general_chat_messages (flat, final-text only).
 // ---------------------------------------------------------------------------
 
-async function loadPriorMessages(conversationId: string): Promise<ModelMessage[]> {
+async function loadPriorMessages(conversationId: string, dropTrailingUser = false): Promise<ModelMessage[]> {
 	const rows = await db
 		.select({ role: generalChatMessages.role, content: generalChatMessages.content })
 		.from(generalChatMessages)
 		.where(eq(generalChatMessages.conversationId, conversationId))
 		.orderBy(asc(generalChatMessages.createdAt));
+
+	// On retry the last user message is already persisted (it's not re-inserted),
+	// but it's also passed separately as `task` — drop it here so it isn't sent twice.
+	if (dropTrailingUser && rows.length > 0 && rows[rows.length - 1].role === "user") rows.pop();
 
 	const trimmed = rows.slice(-MAX_HISTORY_TURNS);
 	return trimmed.map((r) => ({ role: r.role as "user" | "assistant", content: r.content }));
@@ -223,10 +227,17 @@ export interface SendMessageResult {
  * (so a mid-turn reload still shows it); the assistant's final text row is
  * appended once the turn completes.
  */
-export async function sendMessage(conversationId: string, userText: string): Promise<SendMessageResult> {
+export async function sendMessage(conversationId: string, userText: string, opts?: { existingUserMessageId?: string }): Promise<SendMessageResult> {
 	if (abortControllers.has(conversationId)) {
 		throw new Error("A response is already being generated for this conversation. Stop it first.");
 	}
+
+	// Retry path: the last user message is already persisted (the trailing
+	// assistant reply was deleted by the caller), so we neither re-insert it nor
+	// re-title the conversation — we only regenerate the reply. Its real DB id is
+	// passed in so the completion broadcast still hands the frontend the correct
+	// user-row id (a fresh random one would point at a row that doesn't exist).
+	const skipUserInsert = typeof opts?.existingUserMessageId === "string";
 
 	// Wall-clock time for this whole turn (compaction + agent run) — persisted on
 	// the assistant row's metadata and broadcast so general-chat.tsx can show a
@@ -247,7 +258,7 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 	// prefix since General Chat has no Discord/WhatsApp/email channels).
 	// Fires before the turn starts (not after it completes) so the sidebar/
 	// header title update lands immediately, same as project chat.
-	if (convRows[0].title === "New conversation") {
+	if (!skipUserInsert && convRows[0].title === "New conversation") {
 		const rawTitle = userText.trim().replace(/\s+/g, " ");
 		const title = rawTitle.length <= 40 ? rawTitle : rawTitle.slice(0, 37) + "...";
 		if (title) {
@@ -275,7 +286,7 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 			});
 		}
 
-		const priorMessages = await loadPriorMessages(conversationId);
+		const priorMessages = await loadPriorMessages(conversationId, skipUserInsert);
 		const workspacePath = getGeneralChatWorkspacePath(conversationId);
 
 		// Persist the user's message NOW — before the (potentially long) agent run,
@@ -286,8 +297,10 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 		// loadPriorMessages so this turn's message isn't double-counted (it's passed
 		// separately as `task`). The id is pre-generated so the completion broadcast
 		// can hand the frontend the real persisted row id for its hover actions.
-		const userMessageId = crypto.randomUUID();
-		await db.insert(generalChatMessages).values({ id: userMessageId, conversationId, role: "user", content: userText });
+		const userMessageId = opts?.existingUserMessageId ?? crypto.randomUUID();
+		if (!skipUserInsert) {
+			await db.insert(generalChatMessages).values({ id: userMessageId, conversationId, role: "user", content: userText });
+		}
 
 		const extraTools: Record<string, Tool> = {
 			...createGeneralChatMemoryTools(),
@@ -370,6 +383,12 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 		// (streamingFlushArgs), same as every other surface.
 		const streamingModeOverride = await getGeneralChatStreamingMode();
 
+		// General Chat's thinking-level picker persists globally (see ModelSelector's
+		// globalThinkingKey). An explicit pick (low/medium/high) overrides the
+		// assistant's own budget; empty/"Default" leaves it on its budget (Medium).
+		const gcThinking = await getSetting("generalChatThinkingLevel", "ai");
+		const thinkingBudgetOverride = typeof gcThinking === "string" && gcThinking ? gcThinking : null;
+
 		const result = await runInlineAgent({
 			// The conversationId doubles as "projectId" — gives run_shell's approval
 			// gate and ModelSelector's persisted settings (chatProviderId/chatModelId/
@@ -401,6 +420,7 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 			verifyToolCall: false,
 			abortSignal: abortController.signal,
 			streamingModeOverride,
+			thinkingBudgetOverride,
 		});
 
 		// general_chat_messages has no parts table (tool-call activity is never

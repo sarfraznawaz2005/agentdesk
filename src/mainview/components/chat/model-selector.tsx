@@ -100,9 +100,17 @@ interface ModelSelectorProps {
    *  gap-2 between this component's own buttons, and pb-1.5 would make this
    *  box taller than the sibling, throwing off `items-center` alignment. */
   compact?: boolean;
+  /**
+   * When set, the thinking-level picker persists to this GLOBAL setting key
+   * (category "ai") instead of the per-project `chatThinkingLevel` — so the
+   * choice sticks across all conversations + restarts. General Chat uses this
+   * (its projectId is a per-conversation id, which would otherwise reset the
+   * level on every new conversation). Model/provider selection is unaffected.
+   */
+  globalThinkingKey?: string;
 }
 
-export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false, hideShellApproval = false, compact = false }: ModelSelectorProps) {
+export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false, hideShellApproval = false, compact = false, globalThinkingKey }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [providers, setProviders] = useState<ProviderModels[]>(() => loadCachedProviders() ?? []);
@@ -187,10 +195,21 @@ export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false
       }
       setSelectedProviderId(selProvider);
       setSelectedModelId(selModel);
-      setSelectedThinking(tl);
+      // General Chat sources its thinking level from a global key (loaded in the
+      // effect below), not per-project — don't let per-project settings set it.
+      if (!globalThinkingKey) setSelectedThinking(tl);
       setDefaultModelName(defaultModel);
     }).catch(() => {});
-  }, [projectId]);
+  }, [projectId, globalThinkingKey]);
+
+  // General Chat: load the thinking level from its global key so it persists
+  // across every General-Chat conversation and app restart.
+  useEffect(() => {
+    if (!globalThinkingKey) return;
+    rpc.getSetting(globalThinkingKey, "ai")
+      .then((v) => setSelectedThinking(typeof v === "string" ? v : ""))
+      .catch(() => {});
+  }, [globalThinkingKey]);
 
   // Load per-model preferences (enabled/favourite/last-used). Cheap, so refresh
   // every time the popover opens and whenever they change in another view.
@@ -294,8 +313,12 @@ export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false
   const selectThinking = useCallback(async (level: string) => {
     setSelectedThinking(level);
     setThinkingOpen(false);
-    await rpc.saveProjectSetting(projectId, "chatThinkingLevel", level).catch(() => {});
-  }, [projectId]);
+    if (globalThinkingKey) {
+      await rpc.saveSetting(globalThinkingKey, level, "ai").catch(() => {});
+    } else {
+      await rpc.saveProjectSetting(projectId, "chatThinkingLevel", level).catch(() => {});
+    }
+  }, [projectId, globalThinkingKey]);
 
   const toggleShellApproval = useCallback(async () => {
     const next = !shellApproval;

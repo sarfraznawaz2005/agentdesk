@@ -113,8 +113,9 @@ export const agents = sqliteTable("agents", {
 	maxTokens: integer("max_tokens"),
 	// 1 = agent is active, 0 = agent is disabled
 	isEnabled: integer("is_enabled").notNull().default(1),
-	// Per-agent thinking budget override: null = use default, "low" | "medium" | "high"
-	thinkingBudget: text("thinking_budget"),
+	// Per-agent thinking budget: "low" | "medium" | "high". Defaults to "medium"
+	// so every agent thinks by default; an explicit in-chat pick overrides it.
+	thinkingBudget: text("thinking_budget").default("medium"),
 	// Custom-agent flags (only meaningful when isBuiltin = 0)
 	// 1 = skip AgentDesk's internal code-related prompt prefix; use only the user's system prompt as-is.
 	useSystemPromptOnly: integer("use_system_prompt_only").notNull().default(0),

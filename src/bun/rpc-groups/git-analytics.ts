@@ -76,6 +76,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	getAnalyticsSummary: (params) => analyticsRpc.getAnalyticsSummary(params.projectId),
 	getTelemetryUsage: (params) => analyticsRpc.getTelemetryUsage(params),
 	getProviderHealth: (params) => analyticsRpc.getProviderHealth(params.days),
+	clearTelemetryUsage: () => analyticsRpc.clearTelemetryUsage(),
 
 	// Audit Log
 	getAuditLog: (params) => auditRpc.getAuditLog(params),

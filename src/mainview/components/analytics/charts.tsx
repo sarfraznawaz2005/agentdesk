@@ -2,6 +2,7 @@
  * Lightweight SVG chart primitives — no external dependencies.
  */
 import { useState } from "react";
+import { formatCompact } from "./format";
 
 // ── Shared hover tooltip ──────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ export function LineChart({ data, color = "#6366f1", height = 120, showDots = tr
           return (
             <g key={i}>
               <line x1={pad.left} x2={w - pad.right} y1={y} y2={y} stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
-              <text x={pad.left - 4} y={y + 4} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{v}</text>
+              <text x={pad.left - 4} y={y + 4} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{formatCompact(v)}</text>
             </g>
           );
         })}
@@ -89,7 +90,7 @@ export function LineChart({ data, color = "#6366f1", height = 120, showDots = tr
               <circle
                 cx={p.x} cy={p.y} r={3} fill={color} stroke="white" strokeWidth={1.5}
                 className="cursor-default"
-                onMouseMove={(e) => p.label && setTip({ x: e.clientX, y: e.clientY, text: `${p.label}: ${p.value}` })}
+                onMouseMove={(e) => p.label && setTip({ x: e.clientX, y: e.clientY, text: `${p.label}: ${p.value.toLocaleString()}` })}
                 onMouseLeave={() => setTip(null)}
               />
             )}
@@ -146,11 +147,11 @@ export function BarChart({ data, height = 160, horizontal = false }: BarChartPro
                 <rect
                   x={pad.left} y={y} width={barW} height={barH} rx={3} fill={color} fillOpacity={0.85}
                   className="cursor-default"
-                  onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.label}: ${d.value}` })}
+                  onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.label}: ${d.value.toLocaleString()}` })}
                   onMouseLeave={() => setTip(null)}
                 />
                 <text x={pad.left + barW + 4} y={y + barH / 2 + 4} fontSize={9} fill="currentColor" opacity={0.6}>
-                  {d.value}
+                  {formatCompact(d.value)}
                 </text>
               </g>
             );
@@ -179,7 +180,7 @@ export function BarChart({ data, height = 160, horizontal = false }: BarChartPro
               <rect
                 x={x} y={y} width={barW} height={barH} rx={2} fill={color} fillOpacity={0.85}
                 className="cursor-default"
-                onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.label}: ${d.value}` })}
+                onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.label}: ${d.value.toLocaleString()}` })}
                 onMouseLeave={() => setTip(null)}
               />
               <text x={x + barW / 2} y={pad.top + innerH + 12} textAnchor="middle" fontSize={8} fill="currentColor" opacity={0.5}>
@@ -188,8 +189,8 @@ export function BarChart({ data, height = 160, horizontal = false }: BarChartPro
             </g>
           );
         })}
-        <text x={pad.left - 4} y={pad.top + 4} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{maxVal}</text>
-        <text x={pad.left - 4} y={pad.top + innerH / 2 + 4} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{Math.round(maxVal / 2)}</text>
+        <text x={pad.left - 4} y={pad.top + 4} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{formatCompact(maxVal)}</text>
+        <text x={pad.left - 4} y={pad.top + innerH / 2 + 4} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{formatCompact(Math.round(maxVal / 2))}</text>
       </svg>
       <ChartTooltip tip={tip} />
     </div>
@@ -255,11 +256,11 @@ export function DonutChart({ data, size = 120 }: DonutChartProps) {
               stroke="white"
               strokeWidth={1}
               className="cursor-default"
-              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${s.label}: ${s.value} (${s.pct}%)` })}
+              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${s.label}: ${s.value.toLocaleString()} (${s.pct}%)` })}
               onMouseLeave={() => setTip(null)}
             />
           ))}
-          <text x={cx} y={cy + 4} textAnchor="middle" fontSize={11} fontWeight="600" fill="currentColor">{total}</text>
+          <text x={cx} y={cy + 4} textAnchor="middle" fontSize={11} fontWeight="600" fill="currentColor">{formatCompact(total)}</text>
         </svg>
         <ChartTooltip tip={tip} />
       </div>

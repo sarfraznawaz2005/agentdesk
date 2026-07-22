@@ -15,6 +15,7 @@ export const handlers: Record<string, (params: any) => any> = {
 	deleteGeneralChatMessage: (params) => generalChatRpc.deleteGeneralChatMessage(params),
 	clearGeneralChatConversation: (params) => generalChatRpc.clearGeneralChatConversation(params),
 	sendGeneralChatMessage: (params) => generalChatRpc.sendGeneralChatMessage(params),
+	retryGeneralChatMessage: (params) => generalChatRpc.retryGeneralChatMessage(params),
 	stopGeneralChatGeneration: (params) => generalChatRpc.stopGeneralChatGeneration(params),
 	setGeneralChatDeepResearchMode: (params) => generalChatRpc.setGeneralChatDeepResearchMode(params),
 	compactGeneralChatConversation: (params) => generalChatRpc.compactGeneralChatConversation(params),

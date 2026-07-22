@@ -591,6 +591,19 @@ export const rpc = {
   getProviderApiKey: (id: string) =>
     electroviewRpc.request.getProviderApiKey({ id }),
 
+  /** Export every saved provider (including API keys) as a portable snapshot. */
+  exportProviders: () => electroviewRpc.request.exportProviders({}),
+
+  /** Import providers from a previously exported snapshot (skips duplicates). */
+  importProviders: (providers: Array<{
+    name: string;
+    providerType: string;
+    apiKey: string;
+    baseUrl: string | null;
+    defaultModel: string | null;
+    isDefault: boolean;
+  }>) => electroviewRpc.request.importProviders({ providers }),
+
   /** Run a real testConnection() with raw credentials (used by Add/Edit dialog). */
   testProviderWithCredentials: (params: { providerType: string; apiKey: string; baseUrl?: string; defaultModel?: string }) =>
     electroviewRpc.request.testProviderWithCredentials(params),
@@ -614,6 +627,10 @@ export const rpc = {
   /** Remove an AI provider by id. */
   deleteProvider: (id: string) =>
     electroviewRpc.request.deleteProvider({ id }),
+
+  /** Make a provider the default (clears the flag on all others). */
+  setDefaultProvider: (id: string) =>
+    electroviewRpc.request.setDefaultProvider({ id }),
 
   /** Fetch models for all connected providers (grouped by provider). */
   getConnectedProviderModels: () =>
@@ -806,6 +823,11 @@ export const rpc = {
   /** Send a user message and start generation. */
   sendMessage: (projectId: string, conversationId: string, content: string) =>
     electroviewRpc.request.sendMessage({ projectId, conversationId, content }),
+
+  /** Regenerate the last assistant reply against the existing conversation
+   *  history — no new user message is persisted (unlike re-sending). */
+  retryLastMessage: (projectId: string, conversationId: string) =>
+    electroviewRpc.request.retryLastMessage({ projectId, conversationId }),
 
   /** Stop the current generation. Pass conversationId to scope the sub-agent
    *  abort to just this conversation — omitting it falls back to aborting
@@ -1531,6 +1553,7 @@ export const rpc = {
     electroviewRpc.request.getTelemetryUsage(params),
   getProviderHealth: (days?: number) =>
     electroviewRpc.request.getProviderHealth({ days }),
+  clearTelemetryUsage: () => electroviewRpc.request.clearTelemetryUsage({}),
 
   // MCP
   getMcpConfig: () => electroviewRpc.request.getMcpConfig({}),
@@ -2138,6 +2161,9 @@ export const rpc = {
   /** Fire-and-forget — the reply streams via generalChatPart / generalChatComplete broadcasts. */
   sendGeneralChatMessage: (conversationId: string, content: string) =>
     electroviewRpc.request.sendGeneralChatMessage({ conversationId, content }),
+  /** Regenerate the last assistant reply without persisting a duplicate user message (Retry). */
+  retryGeneralChatMessage: (conversationId: string) =>
+    electroviewRpc.request.retryGeneralChatMessage({ conversationId }),
 
   stopGeneralChatGeneration: (conversationId: string) =>
     electroviewRpc.request.stopGeneralChatGeneration({ conversationId }),

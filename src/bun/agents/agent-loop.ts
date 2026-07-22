@@ -167,8 +167,14 @@ export interface InlineAgentOptions {
 	callbacks: InlineAgentCallbacks;
 	workspacePath?: string;
 	projectId: string;
-	/** Project-level thinking budget (low/medium/high). */
-	projectThinkingBudget?: string | null;
+	/**
+	 * Explicit thinking-level override from the in-chat picker (low/medium/high).
+	 * When set, it wins over the agent's own thinkingBudget — this is how an
+	 * explicit pick in the main/quick/general chat forces every agent the PM
+	 * dispatches (and the General Chat assistant) to that level. Null/undefined
+	 * (the "Default" picker) means "no override — use the agent's own budget".
+	 */
+	thinkingBudgetOverride?: string | null;
 	/** Project-level max tokens override. */
 	projectMaxTokens?: number | null;
 	/** If true, agent gets only read-only tools (no file writes, no shell, no git writes). */
@@ -263,10 +269,8 @@ const REASONING_LEVELS = new Set(["low", "medium", "high"]);
 // logic, kept as a separate local copy to match this file's existing
 // THINKING_BUDGET_TOKENS duplication rather than introducing a new
 // cross-module dependency for a one-line function). isThinkingUnsupportedError
-// and warnThinkingUnsupportedOnce are, unlike this one, imported directly
-// (see top of file) rather than duplicated — the "warn once per app session"
-// behavior needs a single shared Set across both this file's sub-agent turns
-// and engine.ts's PM turns, which a local copy would silently break.
+// is, unlike this one, imported directly (see top of file) rather than
+// duplicated.
 function buildThinkingOptions(budget: string | null): Record<string, unknown> {
 	if (!budget || !REASONING_LEVELS.has(budget)) return {};
 	return { reasoning: budget };
@@ -930,8 +934,11 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			if (row.thinkingBudget) effectiveThinkingBudget = row.thinkingBudget;
 		}
 
-		if (!effectiveThinkingBudget && opts.projectThinkingBudget) {
-			effectiveThinkingBudget = opts.projectThinkingBudget;
+		// An explicit in-chat thinking pick (low/medium/high) wins over the
+		// agent's own budget — this is how the PM propagates the picker to the
+		// sub-agents it dispatches (and General Chat to its assistant).
+		if (opts.thinkingBudgetOverride && REASONING_LEVELS.has(opts.thinkingBudgetOverride)) {
+			effectiveThinkingBudget = opts.thinkingBudgetOverride;
 		}
 		if (opts.projectMaxTokens) {
 			effectiveMaxTokens = opts.projectMaxTokens;

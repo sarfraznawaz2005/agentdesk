@@ -221,6 +221,41 @@ export function sendGeneralChatMessage(params: { conversationId: string; content
 	return { ok: true };
 }
 
+/**
+ * Regenerate the last assistant reply WITHOUT inserting a new user message
+ * (the Retry button). Deletes the trailing assistant row(s) after the last user
+ * message, then re-runs the turn against the existing history — mirrors project
+ * chat's engine.retryLastMessage. Fire-and-forget: the reply streams via the
+ * same generalChatPart / generalChatComplete broadcasts as a normal send.
+ */
+export async function retryGeneralChatMessage(params: { conversationId: string }): Promise<{ ok: boolean; error?: string }> {
+	if (isGeneralChatRunning(params.conversationId)) {
+		return { ok: false, error: "A response is already being generated for this conversation." };
+	}
+	const rows = await db
+		.select({ id: generalChatMessages.id, role: generalChatMessages.role, content: generalChatMessages.content })
+		.from(generalChatMessages)
+		.where(eq(generalChatMessages.conversationId, params.conversationId))
+		.orderBy(asc(generalChatMessages.createdAt));
+
+	let lastUserIdx = -1;
+	for (let i = rows.length - 1; i >= 0; i--) {
+		if (rows[i].role === "user") { lastUserIdx = i; break; }
+	}
+	if (lastUserIdx === -1) return { ok: false, error: "No message to retry." };
+	const userRow = rows[lastUserIdx];
+
+	// Delete the assistant reply (and any trailing rows) after the last user message.
+	for (const trailing of rows.slice(lastUserIdx + 1)) {
+		await db.delete(generalChatMessages).where(eq(generalChatMessages.id, trailing.id));
+	}
+
+	orchestratorSendMessage(params.conversationId, userRow.content, { existingUserMessageId: userRow.id }).catch((err) => {
+		console.error("[general-chat] retry error:", err);
+	});
+	return { ok: true };
+}
+
 export function stopGeneralChatGeneration(params: { conversationId: string }): { success: boolean } {
 	orchestratorStop(params.conversationId);
 	return { success: true };

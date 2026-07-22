@@ -61,8 +61,8 @@ mock.module("../../src/bun/agents/engine-types", () => ({
 	getPluginTools: async () => ({}),
 	applyAnthropicCaching: (_: string, system: string, messages: unknown[]) => ({ instructions: system, messages }),
 	isThinkingUnsupportedError: () => false,
-	warnThinkingUnsupportedOnce: () => {},
 	isToolsUnsupportedError: () => false,
+	warnThinkingUnsupportedOnce: () => {},
 	warnToolsUnsupportedOnce: () => {},
 }));
 // rpc/settings, file-tracker, and file-ops are NOT mocked here to avoid

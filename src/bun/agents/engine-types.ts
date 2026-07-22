@@ -1,5 +1,4 @@
 import type { Instructions, ModelMessage } from "ai";
-import { APICallError } from "ai";
 import { getAllTools } from "./tools/index";
 import type { AgentConfig, AgentTask, AgentActivityEvent } from "./types";
 
@@ -61,37 +60,13 @@ export function buildReasoningOptions(budget: string | null): Record<string, unk
 	return { reasoning: budget };
 }
 
-/**
- * True when a model-call error indicates the provider/model itself rejected
- * the request because it doesn't support extended thinking/reasoning (e.g.
- * Ollama's own server for small non-reasoning models like gemma3:1b — it
- * responds with an error like `"gemma3:1b" does not support thinking` rather
- * than the SDK-level non-fatal `warnings` entry the AI SDK normally produces
- * for an unsupported option). This is a deterministic rejection, not a
- * transient one — the same call fails again with the same options — so
- * callers should retry once with `reasoning` stripped instead of surfacing it
- * as a hard generation failure. Deliberately provider-agnostic (message-text
- * based) since this can surface from any provider/model combination, not
- * just Ollama.
- *
- * Gated on APICallError first: the AI SDK has no structured, cross-provider
- * "which capability is unsupported" error for a runtime, server-side capability
- * rejection like this one (confirmed by reading @ai-sdk/openai-compatible's
- * own source — its UnsupportedFunctionalityError is for a different case, a
- * client-side "the SDK integration itself doesn't implement this" check, not
- * "the model rejected it at request time"). Requiring APICallError first at
- * least confirms this is a genuine provider HTTP-level rejection before the
- * message-text match runs, rather than matching against a network/parsing
- * error whose text might coincidentally contain similar words.
- */
-export function isThinkingUnsupportedError(err: unknown): boolean {
-	if (!APICallError.isInstance(err)) return false;
-	const message = err.message;
-	return (
-		/(?:thinking|reasoning)[^.]{0,40}(?:not support|unsupported)/i.test(message) ||
-		/(?:not support|unsupported)[^.]{0,40}(?:thinking|reasoning)/i.test(message)
-	);
-}
+// Capability-rejection classifiers (isThinkingUnsupportedError /
+// isToolsUnsupportedError) live in their own dependency-free module so their
+// REAL implementations can be unit-tested — this file is mock.module()'d
+// wholesale by agent-loop.test.ts and Bun module mocks leak process-wide. They
+// are re-exported here so existing importers (engine.ts, agent-loop.ts) are
+// unchanged.
+export { isThinkingUnsupportedError, isToolsUnsupportedError } from "./capability-errors";
 
 /** Models we've already warned about this app session — avoids repeating the
  *  same toast on every single turn for a model that never supports thinking.
@@ -117,32 +92,6 @@ export function warnThinkingUnsupportedOnce(modelId: string): void {
 			});
 		})
 		.catch(() => {});
-}
-
-/**
- * True when a model-call error indicates the provider/model rejected the
- * request because the model itself has no function/tool-calling capability
- * at all (e.g. small local Ollama models like gemma3:1b — Ollama's server
- * responds with `"<model>" does not support tools` the moment ANY tools
- * array is attached, even for a plain "hey" that never needed one — the PM
- * always attaches its full tool set to every turn). Unlike the thinking case
- * this is a much bigger capability loss: tools are how the PM actually does
- * anything (dispatch agents, kanban, files, ...), not an optional richness
- * feature — see warnToolsUnsupportedOnce's message. Still deterministic, not
- * transient, and still provider-agnostic by design.
- *
- * Gated on APICallError first — see isThinkingUnsupportedError's comment for
- * why: no structured SDK error exists for this runtime, server-side
- * rejection, so requiring a genuine API-level error first at least narrows
- * what the message-text match runs against.
- */
-export function isToolsUnsupportedError(err: unknown): boolean {
-	if (!APICallError.isInstance(err)) return false;
-	const message = err.message;
-	return (
-		/(?:tools?|tool calling|function calling)[^.]{0,40}(?:not support|unsupported)/i.test(message) ||
-		/(?:not support|unsupported)[^.]{0,40}(?:tools?|tool calling|function calling)/i.test(message)
-	);
 }
 
 /** Mirrors thinkingUnsupportedWarned — see that Set's comment for why this is

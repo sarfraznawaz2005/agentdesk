@@ -44,6 +44,10 @@ export const handlers: Record<string, (params: any) => any> = {
 			params.content,
 			params.metadata,
 		),
+	// Regenerate the last assistant reply without persisting a duplicate user
+	// message (the Retry button). Delegates to the per-project AgentEngine.
+	retryLastMessage: (params) =>
+		getOrCreateEngine(params.projectId).retryLastMessage(params.conversationId),
 	stopGeneration: (params) => {
 		// Each conversation runs its own independent PM turn now, so both the PM
 		// abort and the sub-agent abort must be scoped to conversationId — an

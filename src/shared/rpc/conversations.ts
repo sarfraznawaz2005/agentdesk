@@ -100,6 +100,12 @@ export type ConversationsRequests = {
     params: { projectId: string; conversationId?: string };
     response: { success: boolean };
   };
+  /** Regenerate the last assistant reply against the existing history — does NOT
+   *  insert a new user message (unlike re-sending via sendMessage). */
+  retryLastMessage: {
+    params: { projectId: string; conversationId: string };
+    response: { messageId: string; userMessageId: string; queued?: boolean };
+  };
   retryAgent: {
     params: {
       projectId: string;

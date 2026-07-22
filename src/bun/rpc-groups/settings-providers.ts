@@ -48,11 +48,22 @@ export const handlers: Record<string, (params: any) => any> = {
 	listProviderModels: (params) => providersRpc.listProviderModelsHandler(params),
 	listProviderModelsById: (params) => providersRpc.listProviderModelsByIdHandler(params.providerId),
 	getProviderApiKey: (params) => providersRpc.getProviderApiKeyHandler(params.id),
+	exportProviders: () => providersRpc.exportProvidersHandler(),
+	importProviders: async (params) => {
+		const result = await providersRpc.importProvidersHandler(params);
+		if (result.success && (result.imported > 0 || result.updated > 0)) broadcastToWebview("providersChanged", { reason: "imported" });
+		return result;
+	},
 	testProviderWithCredentials: (params) => providersRpc.testProviderWithCredentialsHandler(params),
 	testProviderModel: (params) => providersRpc.testProviderModelHandler(params),
 	deleteProvider: async (params) => {
 		const result = await providersRpc.deleteProviderHandler(params.id);
 		if (result.success) broadcastToWebview("providersChanged", { reason: "deleted" });
+		return result;
+	},
+	setDefaultProvider: async (params) => {
+		const result = await providersRpc.setDefaultProviderHandler(params.id);
+		if (result.success) broadcastToWebview("providersChanged", { reason: "default" });
 		return result;
 	},
 	getConnectedProviderModels: () => providersRpc.getConnectedProviderModelsHandler(),

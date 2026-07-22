@@ -91,6 +91,13 @@ export type GeneralChatRequests = {
     params: { conversationId: string; content: string };
     response: { ok: boolean; error?: string };
   };
+  /** Regenerate the last assistant reply against existing history — does NOT
+   *  insert a new user message (unlike re-sending). Streams via the same
+   *  generalChatPart / generalChatComplete broadcasts. */
+  retryGeneralChatMessage: {
+    params: { conversationId: string };
+    response: { ok: boolean; error?: string };
+  };
   stopGeneralChatGeneration: {
     params: { conversationId: string };
     response: { success: boolean };

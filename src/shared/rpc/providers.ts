@@ -39,9 +39,42 @@ export type ProvidersRequests = {
     params: { id: string };
     response: { success: boolean };
   };
+  setDefaultProvider: {
+    params: { id: string };
+    response: { success: boolean };
+  };
   getProviderApiKey: {
     params: { id: string };
     response: { apiKey: string };
+  };
+  exportProviders: {
+    params: Record<string, never>;
+    response: {
+      kind: "agentdesk-providers";
+      version: number;
+      exportedAt: string;
+      providers: Array<{
+        name: string;
+        providerType: string;
+        apiKey: string;
+        baseUrl: string | null;
+        defaultModel: string | null;
+        isDefault: boolean;
+      }>;
+    };
+  };
+  importProviders: {
+    params: {
+      providers: Array<{
+        name: string;
+        providerType: string;
+        apiKey: string;
+        baseUrl: string | null;
+        defaultModel: string | null;
+        isDefault: boolean;
+      }>;
+    };
+    response: { success: boolean; imported: number; updated: number; skipped: number; error?: string };
   };
   testProviderWithCredentials: {
     params: { providerType: string; apiKey: string; baseUrl?: string; defaultModel?: string };

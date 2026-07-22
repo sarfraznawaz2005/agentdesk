@@ -64,9 +64,6 @@ interface GeneralForm {
 }
 
 interface AiForm {
-  providerId: string;
-  modelOverride: string;
-  thinkingBudget: string;
   shellApprovalMode: string;
   sessionSummarizationThreshold: string;
   contextWindowLimit: string;
@@ -75,24 +72,11 @@ interface AiForm {
   devServerUrl: string;
 }
 
-interface ProviderItem {
-  id: string;
-  name: string;
-  providerType: string;
-  baseUrl: string | null;
-  defaultModel: string | null;
-  isDefault: boolean;
-  isValid: boolean;
-}
-
 // ---------------------------------------------------------------------------
 // Defaults
 // ---------------------------------------------------------------------------
 
 const AI_FORM_DEFAULTS: AiForm = {
-  providerId: "",
-  modelOverride: "",
-  thinkingBudget: "medium",
   shellApprovalMode: "ask",
   sessionSummarizationThreshold: "200000", // deprecated — no longer surfaced in UI or used by the engine
   contextWindowLimit: "1000000",
@@ -858,16 +842,11 @@ function GeneralTab({ project, onProjectUpdated }: GeneralTabProps) {
 
 interface AiTabProps {
   projectId: string;
-  providers: ProviderItem[];
   initialSettings: Record<string, string>;
 }
 
-function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
+function AiTab({ projectId, initialSettings }: AiTabProps) {
   const [form, setForm] = useState<AiForm>(() => ({
-    providerId: initialSettings.providerId ?? AI_FORM_DEFAULTS.providerId,
-    modelOverride: initialSettings.modelOverride ?? AI_FORM_DEFAULTS.modelOverride,
-    thinkingBudget:
-      initialSettings.thinkingBudget ?? AI_FORM_DEFAULTS.thinkingBudget,
     shellApprovalMode:
       initialSettings.shellApprovalMode ?? AI_FORM_DEFAULTS.shellApprovalMode,
     sessionSummarizationThreshold:
@@ -910,86 +889,6 @@ function AiTab({ projectId, providers, initialSettings }: AiTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Model */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Model Override</CardTitle>
-          <CardDescription>
-            Override the global AI provider and model for this project.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <FieldRow
-            id="ai-provider"
-            label="Provider"
-            description="Use a specific provider for this project (overrides global default)."
-          >
-            <Select
-              value={form.providerId || "__none__"}
-              onValueChange={(v) => handleChange("providerId", v === "__none__" ? "" : v)}
-            >
-              <SelectTrigger id="ai-provider" className="w-full">
-                <SelectValue placeholder="Inherit global default" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Inherit global default</SelectItem>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldRow>
-
-          <Separator />
-
-          <FieldRow
-            id="ai-model"
-            label="Model"
-            description="Model identifier to use (e.g. claude-opus-4-6)."
-          >
-            <Input
-              id="ai-model"
-              value={form.modelOverride}
-              onChange={(e) => handleChange("modelOverride", e.target.value)}
-              placeholder="Inherit from provider"
-            />
-          </FieldRow>
-        </CardContent>
-      </Card>
-
-      {/* Agent behaviour */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Agent Behaviour</CardTitle>
-          <CardDescription>
-            Control thinking, prompt configuration, and agent behaviour.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <FieldRow
-            id="ai-thinking"
-            label="Thinking Budget"
-            description="How much reasoning time agents are allowed per step."
-          >
-            <Select
-              value={form.thinkingBudget}
-              onValueChange={(v) => handleChange("thinkingBudget", v)}
-            >
-              <SelectTrigger id="ai-thinking" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </FieldRow>
-        </CardContent>
-      </Card>
-
       {/* Safety */}
       <Card>
         <CardHeader>
@@ -1133,7 +1032,6 @@ interface ProjectSettingsTabProps {
 
 export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
   const [project, setProject] = useState<ProjectData | null>(null);
-  const [providers, setProviders] = useState<ProviderItem[]>([]);
   const [projectSettings, setProjectSettings] = useState<
     Record<string, string>
   >({});
@@ -1144,14 +1042,12 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 
     async function load() {
       try {
-        const [proj, provs, ps] = await Promise.all([
+        const [proj, ps] = await Promise.all([
           rpc.getProject(projectId),
-          rpc.getProviders(),
           rpc.getProjectSettings(projectId),
         ]);
         if (cancelled) return;
         setProject(proj);
-        setProviders(provs);
         setProjectSettings(ps);
       } catch {
         if (!cancelled) toast("error", "Failed to load project settings.");
@@ -1211,7 +1107,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
           <TabsContent value="ai" className="pt-4">
             <AiTab
               projectId={projectId}
-              providers={providers}
               initialSettings={projectSettings}
             />
           </TabsContent>

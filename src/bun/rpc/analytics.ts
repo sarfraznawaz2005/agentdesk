@@ -343,3 +343,12 @@ export function getProviderHealth(days = 30) {
 		})),
 	};
 }
+
+// ── Reset AI usage telemetry ──────────────────────────────────────────────
+// Global wipe of ai_telemetry_events, which backs BOTH the AI Usage and
+// Providers tabs — so this zeros both at once. Telemetry only; no task or
+// operational data lives here, so nothing else in the app is affected.
+export function clearTelemetryUsage(): { success: boolean; deleted: number } {
+	const result = sqlite.prepare(`DELETE FROM ai_telemetry_events`).run();
+	return { success: true, deleted: result.changes };
+}

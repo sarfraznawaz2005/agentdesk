@@ -185,6 +185,155 @@ export async function getProviderApiKeyHandler(id: string): Promise<{ apiKey: st
 }
 
 /**
+ * Make a provider THE default (only one is ever default). Clears the flag on all
+ * others and sets it on this one, transactionally — a lightweight alternative to
+ * routing through saveProviderHandler, which would need the api key the card
+ * doesn't have. Returns success:false for an unknown id so a failed call never
+ * leaves every provider un-defaulted.
+ */
+export async function setDefaultProviderHandler(id: string): Promise<{ success: boolean }> {
+	const exists = await db.select({ id: aiProviders.id }).from(aiProviders).where(eq(aiProviders.id, id)).limit(1);
+	if (exists.length === 0) return { success: false };
+
+	const now = new Date().toISOString();
+	sqlite.exec("BEGIN");
+	try {
+		await db.update(aiProviders).set({ isDefault: 0, updatedAt: now });
+		await db.update(aiProviders).set({ isDefault: 1, updatedAt: now }).where(eq(aiProviders.id, id));
+		sqlite.exec("COMMIT");
+	} catch (err) {
+		sqlite.exec("ROLLBACK");
+		throw err;
+	}
+
+	logAudit({ action: "provider.setDefault", entityType: "provider", entityId: id });
+	return { success: true };
+}
+
+// ── Export / Import ────────────────────────────────────────────────────────
+// A portable, id-free snapshot of every configured provider — INCLUDING the
+// api key — so a user can move their whole provider setup to another machine.
+// Runtime-only columns (id, isValid, timestamps) are deliberately omitted;
+// they're re-derived on import.
+
+export interface ExportedProvider {
+	name: string;
+	providerType: string;
+	apiKey: string;
+	baseUrl: string | null;
+	defaultModel: string | null;
+	isDefault: boolean;
+}
+
+export interface ProvidersExport {
+	kind: "agentdesk-providers";
+	version: number;
+	exportedAt: string;
+	providers: ExportedProvider[];
+}
+
+export async function exportProvidersHandler(): Promise<ProvidersExport> {
+	const rows = await db.select().from(aiProviders);
+	return {
+		kind: "agentdesk-providers",
+		version: 1,
+		exportedAt: new Date().toISOString(),
+		providers: rows.map((row) => ({
+			name: row.name,
+			providerType: row.providerType,
+			apiKey: row.apiKey,
+			baseUrl: row.baseUrl,
+			defaultModel: row.defaultModel,
+			isDefault: row.isDefault === 1,
+		})),
+	};
+}
+
+// Disambiguate an imported provider's name against names already in use so a
+// freshly-inserted provider never collides with an existing one (the rest of
+// the app treats provider names as unique). Matched/replaced providers keep
+// their own name and never pass through here.
+function makeUniqueProviderName(base: string, taken: Set<string>): string {
+	const trimmed = base.trim();
+	if (!taken.has(trimmed.toLowerCase())) return trimmed;
+	let i = 2;
+	while (taken.has(`${trimmed} (${i})`.toLowerCase())) i++;
+	return `${trimmed} (${i})`;
+}
+
+/**
+ * Import providers from an exported snapshot. Identity is the base URL (for
+ * URL-bearing providers) or, for keyless providers, the provider type —
+ * NOT the name. When an imported provider matches an existing one, that row's
+ * credentials/model are overwritten in place while its name, id, and default
+ * status are kept (the user's own naming/default wins). Non-matching providers
+ * are inserted new, with the name disambiguated if it collides. An inserted
+ * provider only becomes the default when none currently exists, so importing
+ * never silently hijacks the user's current default.
+ */
+export async function importProvidersHandler(
+	data: { providers?: ExportedProvider[] },
+): Promise<{ success: boolean; imported: number; updated: number; skipped: number; error?: string }> {
+	if (!data || !Array.isArray(data.providers)) {
+		return { success: false, imported: 0, updated: 0, skipped: 0, error: "This file doesn't contain any providers." };
+	}
+
+	const now = new Date().toISOString();
+	let imported = 0;
+	let updated = 0;
+	let skipped = 0;
+
+	for (const p of data.providers) {
+		if (!p || typeof p.name !== "string" || typeof p.providerType !== "string" || !p.name.trim()) {
+			skipped++;
+			continue;
+		}
+		const normalizedBaseUrl = p.baseUrl ? normalizeBaseUrl(p.baseUrl) : null;
+
+		// Re-read each iteration so rows inserted/updated earlier in this same
+		// batch take part in matching (imports are small, so the cost is trivial).
+		const existing = await db.select().from(aiProviders);
+		const match = normalizedBaseUrl
+			? existing.find((r) => r.baseUrl && normalizeUrlForComparison(r.baseUrl) === normalizeUrlForComparison(normalizedBaseUrl))
+			: existing.find((r) => !r.baseUrl && r.providerType === p.providerType);
+
+		if (match) {
+			// Overwrite credentials/config; keep the user's name, id, and default.
+			await db.update(aiProviders).set({
+				providerType: p.providerType,
+				apiKey: typeof p.apiKey === "string" ? p.apiKey : match.apiKey,
+				baseUrl: normalizedBaseUrl,
+				defaultModel: p.defaultModel ?? null,
+				isValid: 0,
+				updatedAt: now,
+			}).where(eq(aiProviders.id, match.id));
+			// baseUrl/apiKey change which models are reachable — force reclassify.
+			await db.delete(modelCapabilitiesCache).where(eq(modelCapabilitiesCache.providerId, match.id));
+			updated++;
+			continue;
+		}
+
+		const takenNames = new Set(existing.map((r) => r.name.toLowerCase()));
+		const hasDefault = existing.some((r) => r.isDefault === 1);
+		const makeDefault = p.isDefault === true && !hasDefault;
+		await db.insert(aiProviders).values({
+			id: crypto.randomUUID(),
+			name: makeUniqueProviderName(p.name, takenNames),
+			providerType: p.providerType,
+			apiKey: typeof p.apiKey === "string" ? p.apiKey : "",
+			baseUrl: normalizedBaseUrl,
+			defaultModel: p.defaultModel ?? null,
+			isDefault: makeDefault ? 1 : 0,
+			isValid: 0,
+		});
+		imported++;
+	}
+
+	logAudit({ action: "provider.import", entityType: "provider", entityId: "batch", details: { imported, updated, skipped } });
+	return { success: true, imported, updated, skipped };
+}
+
+/**
  * Run a real testConnection() call using credentials supplied directly
  * (not from a saved provider row). Used by the Add/Edit provider dialog
  * so it tests exactly what the user has entered in the form.

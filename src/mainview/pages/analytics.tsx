@@ -3,6 +3,7 @@ import { BarChart2, RefreshCw, Info, FileText, Trash2 } from "lucide-react";
 import { rpc } from "@/lib/rpc";
 import { toast } from "@/components/ui/toast";
 import { LineChart, BarChart, DonutChart, ActivityHeatmap, StatCard } from "@/components/analytics/charts";
+import { formatCompact } from "@/components/analytics/format";
 import {
   Dialog,
   DialogContent,
@@ -631,8 +632,7 @@ function formatMs(ms: number | null): string {
 }
 
 function formatTokens(n: number): string {
-  if (n < 1000) return `~${n}`;
-  return `~${(n / 1000).toFixed(1)}k`;
+  return `~${formatCompact(n)}`;
 }
 
 function formatUsd(n: number | null): string {
@@ -650,6 +650,8 @@ function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> 
   const [days, setDays] = useState(30);
   const [data, setData] = useState<TelemetryUsage | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -662,6 +664,20 @@ function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> 
       }));
     } catch { /* empty */ } finally { setLoading(false); }
   }, [projectId, agentName, provider, days]);
+
+  const handleClear = async () => {
+    setClearing(true);
+    try {
+      const r = await rpc.clearTelemetryUsage();
+      toast("success", `Usage data cleared — ${r.deleted.toLocaleString()} events removed.`);
+      setConfirmClear(false);
+      await load();
+    } catch {
+      toast("error", "Failed to clear usage data.");
+    } finally {
+      setClearing(false);
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -706,7 +722,14 @@ function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> 
           <option value="all">All Providers</option>
           {data.filters.providers.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <button onClick={load} disabled={loading} className="ml-auto p-1.5 rounded hover:bg-muted">
+        <button
+          onClick={() => setConfirmClear(true)}
+          className="ml-auto flex items-center gap-1 px-2 py-1 rounded border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Delete all recorded AI usage telemetry (also resets the Providers tab)"
+        >
+          <Trash2 className="w-3 h-3" /> Clear usage data
+        </button>
+        <button onClick={load} disabled={loading} className="p-1.5 rounded hover:bg-muted">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
@@ -849,6 +872,34 @@ function UsageTab({ projects }: { projects: Array<{ id: string; name: string }> 
           </div>
         </section>
       )}
+
+      <Dialog open={confirmClear} onOpenChange={(o) => { if (!o) setConfirmClear(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clear all AI usage data?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes all recorded AI telemetry — token counts, cost, latency and provider health — across every project.
+              The AI Usage and Providers tabs will both reset to zero. Your tasks, projects and prompt log are not affected. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => setConfirmClear(false)}
+              disabled={clearing}
+              className="px-3 py-1.5 rounded border text-sm hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleClear}
+              disabled={clearing}
+              className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50"
+            >
+              {clearing ? "Clearing…" : "Clear data"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

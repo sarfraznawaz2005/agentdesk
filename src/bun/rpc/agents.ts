@@ -126,7 +126,7 @@ export async function resetAgent(id: string): Promise<{ success: boolean; error?
 			temperature: null,
 			maxTokens: null,
 			isEnabled: 1,
-			thinkingBudget: null,
+			thinkingBudget: "medium",
 		})
 		.where(eq(agents.id, id));
 	return { success: true };
