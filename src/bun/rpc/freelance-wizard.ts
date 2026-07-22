@@ -185,7 +185,7 @@ const FREELANCE_TOOL_NAMES = new Set([
   "web_search", "web_fetch", "http_request",
   "environment_info", "get_env", "get_agentdesk_paths", "sleep",
   "run_background", "check_process", "kill_process", "list_background_jobs",
-  "read_skill", "read_skill_file", "find_skills",
+  "read_skill", "read_skill_file", "find_skills", "list_skills",
 ]);
 
 function buildWizardTools() {

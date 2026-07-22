@@ -4,6 +4,7 @@ import { createProviderAdapter } from "../../providers";
 import type { ProviderConfig } from "../../providers/types";
 import { internalCallModelId } from "../../providers/claude-subscription";
 import { webTools, fetchPageText, type DateRangeOpts } from "./web";
+import { isDevChannel } from "../../lib/dev-mode";
 import type { ToolRegistryEntry } from "./index";
 
 // generateText's own maxRetries (default 2, i.e. 3 attempts total) already
@@ -148,14 +149,22 @@ async function runSearch(
 ): Promise<Array<{ title: string; url: string; snippet: string }>> {
 	const execute = webTools.web_search.tool.execute;
 	if (!execute) return [];
+	const devLog = isDevChannel();
+	const start = Date.now();
+	if (devLog)
+		console.log(
+			`[TOOLCALL] agent=deep_research tool=web_search args=${JSON.stringify({ query, maxResults: MAX_RESULTS_PER_QUERY, dateRange: dateRangeOpts.range, startDate: dateRangeOpts.startDate, endDate: dateRangeOpts.endDate }).slice(0, 300)}`,
+		);
 	try {
 		const raw = await execute(
 			{ query, maxResults: MAX_RESULTS_PER_QUERY, dateRange: dateRangeOpts.range, startDate: dateRangeOpts.startDate, endDate: dateRangeOpts.endDate },
 			{ toolCallId: crypto.randomUUID(), messages: [], abortSignal: signal } as never,
 		);
 		const parsed = JSON.parse(raw as string) as { results?: Array<{ title: string; url: string; snippet: string }>; error?: string };
+		if (devLog) console.log(`[TOOLCALL DONE] agent=deep_research tool=web_search durationMs=${Date.now() - start} results=${parsed.results?.length ?? 0}`);
 		return parsed.results ?? [];
-	} catch {
+	} catch (err) {
+		if (devLog) console.log(`[TOOLCALL ERROR] agent=deep_research tool=web_search durationMs=${Date.now() - start} error=${err instanceof Error ? err.message : String(err)}`);
 		return [];
 	}
 }
@@ -176,11 +185,15 @@ async function searchAndDedupe(
 
 async function fetchSourcesWithConcurrencyCap(urls: string[], titles: Map<string, string>, signal: AbortSignal): Promise<GatheredSource[]> {
 	const out: GatheredSource[] = [];
+	const devLog = isDevChannel();
 	let cursor = 0;
 	async function worker(): Promise<void> {
 		while (cursor < urls.length) {
 			const url = urls[cursor++];
+			const start = Date.now();
+			if (devLog) console.log(`[TOOLCALL] agent=deep_research tool=web_fetch args=${JSON.stringify({ url }).slice(0, 300)}`);
 			const page = await fetchPageText(url, { abortSignal: signal, timeoutMs: PER_FETCH_TIMEOUT_MS, maxChars: FETCH_MAX_CHARS });
+			if (devLog) console.log(`[TOOLCALL DONE] agent=deep_research tool=web_fetch durationMs=${Date.now() - start} ok=${page.ok} chars=${page.ok ? page.text.length : 0}`);
 			if (page.ok && page.text.length > 0) {
 				out.push({ title: titles.get(url) ?? url, url, text: page.text });
 			}

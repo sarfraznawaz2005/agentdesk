@@ -335,6 +335,7 @@ async function buildAmbientTools() {
 		// widget can (see buildSystemPrompt's "Available Skills" section below).
 		read_skill: skillTools.read_skill.tool,
 		find_skills: skillTools.find_skills.tool,
+		list_skills: skillTools.list_skills.tool,
 		// General web access — the ambient assistant otherwise has zero way to
 		// answer anything outside AgentDesk's own data (e.g. "what's today's
 		// exchange rate", general knowledge questions asked mid-conversation).
@@ -428,10 +429,9 @@ async function buildSystemPrompt(): Promise<string> {
 			return `- **${s.name}**: ${s.description.slice(0, 120)}${agentTag}`;
 		});
 		prompt +=
-			"\n\n---\n\n## Available Skills\n\nThe following skills are installed. Use `read_skill` to load a " +
-			"skill's full instructions before following it. Use `find_skills` to search by keyword.\n\n" +
-			lines.join("\n") +
-			`\n\nImportant: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`;
+			"\n\n---\n\n## Available Skills\n\nThe following skills are installed (built-in + user-created). Use `read_skill` to load a " +
+			"skill's full instructions before following it, `find_skills` to search them by keyword, or `list_skills` to re-list the full catalog.\n\n" +
+			lines.join("\n");
 	}
 
 	// Your own memory index — private to this assistant, not the shared

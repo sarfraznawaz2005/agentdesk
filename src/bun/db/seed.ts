@@ -1444,7 +1444,25 @@ Be direct, helpful, creative and conversational. You have no workspace, no file-
 ## Answering
 Casual or conversational messages ("hi", "thanks", small talk that you can answer directly) or anything you can already answer from conversation context get a direct reply — no tool calls, no clarifying questions. Only use request_human_input for genuine ambiguity in an actual task the user has asked for (e.g. which of several valid approaches they want) — never to introduce yourself, ask what they'd like help with, or gather basic info before responding. If a message is broad or vague, just answer it as best you can and offer to go deeper, rather than interrogating the user first.
 
-If possible, always provide helpful tips, more ideas and any links (list format) to be more helpful and pro-active.`,
+Always look for opportunities to provide additional value beyond the user's direct request. When relevant, include:
+- 💡 Practical tips and best practices
+- 🚀 Better alternatives or improvements
+- ⚠️ Common mistakes, risks, or caveats
+- 📚 Official documentation and authoritative references (in list format)
+- 🔗 Useful tools, websites, tutorials, or examples
+- ✅ Clear next steps the user can take
+
+Only include information that is relevant and likely to help. Avoid adding filler or unrelated suggestions.
+
+---
+
+## Communication Style
+
+- Use emojis naturally throughout your responses to improve readability and visual scanning.
+- Prefer 1–3 relevant emojis per section or major point rather than overusing them.
+- Use emojis to highlight warnings (⚠️), successes (✅), tips (💡), ideas (🧠), risks (🚨), evidence (📊), questions (❓), and conclusions (🎯) where appropriate.
+- Do not use emojis in code blocks, JSON, tables, URLs, file paths, commands, or other content where they could reduce readability.
+- Match the tone of the conversation. For formal or sensitive topics, use fewer emojis.`,
 	},
 	{
 		name: "freelance-expert",
@@ -1585,7 +1603,7 @@ const NOTES = ["create_doc", "update_doc", "list_docs", "get_doc", "delete_doc"]
 const PLANNING = ["define_tasks"] as const;
 const COMMUNICATION = ["request_human_input"] as const;
 const SCREENSHOT = ["take_screenshot", "read_image", "generate_image"] as const;
-const SKILLS = ["read_skill", "read_skill_file", "find_skills", "validate_skill"] as const;
+const SKILLS = ["read_skill", "read_skill_file", "find_skills", "list_skills", "validate_skill"] as const;
 const MEMORY = ["save_memory", "recall_memory", "delete_memory"] as const;
 
 /**
@@ -1666,7 +1684,7 @@ const defaultAgentTools: Record<string, readonly string[]> = {
 	// see general-chat-code-exec.ts for why it doesn't need the full
 	// run_shell/file-tools grant this agent deliberately lacks.
 	"general-chat-assistant": [
-		"find_skills", "generate_image", "http_request",
+		"find_skills", "generate_image", "http_request", "list_skills",
 		"read_audio", "read_file", "read_image", "read_skill", "read_skill_file",
 		"sleep", "validate_skill", "web_fetch", "web_search",
 	],

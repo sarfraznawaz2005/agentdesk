@@ -11,47 +11,41 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-type StreamingMode = "hybrid" | "none" | "full";
+// General Chat's OWN streaming preference — deliberately separate from the
+// global Settings → AI → Streaming option. "hybrid" is omitted: General Chat has
+// no sub-agent cards, so it never meant anything distinct here (it always
+// resolved to "full"). Persisted under its own key ("generalChatStreamingMode",
+// category "ai"), read by general-chat/orchestrator.ts via getGeneralChatStreamingMode.
+// Surfaced in a dialog opened by the gear icon in the General Chat header.
+type GeneralChatStreamingMode = "none" | "full";
 
-const OPTIONS: { value: StreamingMode; label: string; description: string }[] = [
+const OPTIONS: { value: GeneralChatStreamingMode; label: string; description: string }[] = [
   {
-    value: "hybrid",
-    label: "Hybrid Streaming (current)",
+    value: "full",
+    label: "Full Streaming (default)",
     description:
-      "Today's default behavior. Project chat, and the Dashboard, Collections, " +
-      "Freelance, and skills-search chat widgets stream live — except when using Claude " +
-      "Subscription's Sonnet/Opus models, which always deliver a complete response. Sub-agent " +
-      "cards (e.g. Code Explorer) and Playground update per step rather than live.",
+      "The Assistant streams its reply live, token by token, as it's generated. Tool-call " +
+      "activity always shows live regardless of this setting.",
   },
   {
     value: "none",
     label: "No live typing effect",
     description:
-      "Every chat surface delivers one complete response instead of streaming — matching how " +
-      "Claude Subscription's Sonnet/Opus models already behave today, applied everywhere. Tool " +
-      "call activity still shows live in this mode; only the model's own text and thinking are " +
-      "delivered all at once.",
-  },
-  {
-    value: "full",
-    label: "Full Streaming",
-    description:
-      "Every chat surface streams live, token by token — including Claude Subscription's " +
-      "Sonnet/Opus models, sub-agent cards in project chat, and Playground. Nothing is left out.",
+      "The Assistant delivers one complete reply instead of streaming — the model's text and " +
+      "thinking arrive all at once. Tool-call activity still shows live in this mode.",
   },
 ];
 
-export function StreamingSettings() {
-  const [mode, setMode] = useState<StreamingMode>("hybrid");
+export function GeneralChatStreamingSettings() {
+  const [mode, setMode] = useState<GeneralChatStreamingMode>("full");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    rpc.getSetting("streamingMode", "ai").then((value) => {
+    rpc.getSetting("generalChatStreamingMode", "ai").then((value) => {
       if (cancelled) return;
-      if (value === "none" || value === "full") setMode(value);
-      else setMode("hybrid");
+      setMode(value === "none" ? "none" : "full");
     }).catch(() => {
       if (!cancelled) toast("error", "Failed to load streaming settings.");
     }).finally(() => {
@@ -60,13 +54,13 @@ export function StreamingSettings() {
     return () => { cancelled = true; };
   }, []);
 
-  async function handleSelect(value: StreamingMode) {
+  async function handleSelect(value: GeneralChatStreamingMode) {
     if (value === mode || saving) return;
     setSaving(true);
     const previous = mode;
     setMode(value);
     try {
-      await rpc.saveSetting("streamingMode", value, "ai");
+      await rpc.saveSetting("generalChatStreamingMode", value, "ai");
     } catch {
       setMode(previous);
       toast("error", "Failed to save streaming setting.");
@@ -85,19 +79,14 @@ export function StreamingSettings() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold">Streaming</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Controls whether responses appear live as they're generated, or arrive complete —
-          across project chat, sub-agents, Playground, and every chat widget. General Chat has
-          its own streaming setting (the gear icon in the General Chat header).
-        </p>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Response delivery</CardTitle>
-          <CardDescription>Applies globally, to every chat surface except General Chat.</CardDescription>
+          <CardTitle>Streaming</CardTitle>
+          <CardDescription>
+            Controls whether the Assistant's replies appear live as they're generated, or arrive
+            complete. Applies to every General Chat conversation — separate from the global
+            streaming setting.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

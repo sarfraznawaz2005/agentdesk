@@ -112,7 +112,7 @@ ${SECURITY_RULES_SECTION}`;
 			const agentTag = s.preferredAgent ? ` [agent: ${s.preferredAgent}]` : "";
 			return `- **${s.name}**: ${s.description.slice(0, 120)}${agentTag}`;
 		});
-		prompt += `\n\n---\n\n## Available Skills\n\nThe following skills are installed. Use \`read_skill\` to load a skill's full instructions. Use \`find_skills\` to search by keyword.\n\n${lines.join("\n")}\n\nImportant: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`;
+		prompt += `\n\n---\n\n## Available Skills\n\nThe following skills are installed (built-in + user-created). Use \`read_skill\` to load a skill's full instructions, \`find_skills\` to search them by keyword, or \`list_skills\` to re-list the full catalog.\n\n${lines.join("\n")}`;
 	}
 
 	return prompt;
@@ -237,6 +237,7 @@ function createDashboardTools() {
 		// Skill tools (read-only — browse and read installed skills)
 		read_skill: skillTools.read_skill.tool,
 		find_skills: skillTools.find_skills.tool,
+		list_skills: skillTools.list_skills.tool,
 
 		// Scheduler tools — create/manage cron jobs and reminders
 		...schedulerTools,

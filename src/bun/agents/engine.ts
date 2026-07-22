@@ -647,6 +647,7 @@ export class AgentEngine {
 				read_skill: skillTools.read_skill.tool,
 				read_skill_file: skillTools.read_skill_file.tool,
 				find_skills: skillTools.find_skills.tool,
+				list_skills: skillTools.list_skills.tool,
 				validate_skill: skillTools.validate_skill.tool,
 				// Preview tool
 				preview_project: createPreviewTool(this.projectId, workspacePath ?? "", conversationId, providerConfig),

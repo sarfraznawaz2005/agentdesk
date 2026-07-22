@@ -614,7 +614,7 @@ function isFeatureEnabled(feature: string): boolean {
 	return false;
 }
 
-export function buildSkillsDescriptionSection(includeAgentRules = true, includeUserSkillDirNote = false): string {
+export function buildSkillsDescriptionSection(includeAgentRules = true): string {
 	// Exclude skills whose feature gate is not currently active.
 	const skills = skillRegistry.getAll().filter((s) => !s.feature || isFeatureEnabled(s.feature));
 	if (skills.length === 0) return "";
@@ -627,19 +627,23 @@ export function buildSkillsDescriptionSection(includeAgentRules = true, includeU
 	const header = [
 		"## Available Skills",
 		"",
-		"The following skills are installed and can provide specialized instructions for",
-		"your tasks. When a skill looks relevant to your current work:",
+		"Skills provide specialized, task-specific instructions. Every installed skill (built-in +",
+		"user-created) is listed at the end of this section. Tools for working with them:",
+		"- `list_skills` — re-list the full catalog (name, description, source) at any time",
+		"- `find_skills` — search the installed skills by keyword",
+		"- `read_skill` — load a skill's full instructions by its exact name (do this before following it)",
+		"- `read_skill_file` — read a supporting file (docs, scripts, references) a loaded skill points to",
+		"",
+		"When a skill looks relevant to your current work:",
 		"1. Call `read_skill` with the skill name to load its full instructions",
 		"2. The response includes a list of supporting files (docs, scripts, references) with full paths",
 		"3. When the skill instructions reference a file (e.g. markdown links like `[docx-js.md](docx-js.md)`), use `read_skill_file` with the matching full path from the supporting files list",
 		"4. Follow the loaded instructions for the task at hand",
-		"Use `find_skills` with a keyword to search skills already installed above — it does NOT reach",
-		"any external catalog. An empty result means nothing installed matches, not that no skill exists",
+		"",
+		"`list_skills` and `find_skills` cover ONLY skills already installed here — not any external",
+		"catalog. An empty `find_skills` result means nothing installed matches, not that no skill exists",
 		"anywhere: before telling the user a capability isn't available, check whether one of the skills",
-		"listed above is itself for discovering/installing more skills from outside AgentDesk, and read it.",
-		...(includeUserSkillDirNote
-			? ["", `Important: For more user-created skills, look into \`${skillRegistry.dir}\`. Use that directory for reading/creating/editing user-defined skills.`]
-			: []),
+		"listed below is itself for discovering/installing more skills from outside AgentDesk, and read it.",
 	];
 
 	const agentRules = includeAgentRules ? [
@@ -993,7 +997,7 @@ export async function getPMSystemPrompt(
 	if (workspaceInstructions) {
 		prompt += `\n\n---\n\n## Project-Specific Instructions\n\nThe following instructions were loaded from the project workspace and MUST be followed:\n\n${workspaceInstructions}`;
 	}
-	const skillsSection = buildSkillsDescriptionSection(true, true);
+	const skillsSection = buildSkillsDescriptionSection(true);
 	if (skillsSection) {
 		prompt += `\n\n---\n\n${skillsSection}`;
 	}
@@ -1204,7 +1208,7 @@ export async function getAssistantSystemPrompt(deepResearchMode = false): Promis
 
 	const [userProfile, mcpSection] = await Promise.all([loadUserProfile(), buildAssistantMcpSection()]);
 	const userSection = buildUserSection(userProfile, { includeEmail: false });
-	const skillsSection = buildSkillsDescriptionSection(false, true); // no agent-routing/delegation rules; include the user-skills-directory note (Assistant has no project-context block to learn this from otherwise)
+	const skillsSection = buildSkillsDescriptionSection(false); // no agent-routing/delegation rules
 
 	let appVersion = "unknown";
 	try {
@@ -1279,7 +1283,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 			buildBrowserToolingSection(excludeMcpPrefixes),
 		]);
 		const userSection = buildUserSection(userProfile);
-		const skillsSection = buildSkillsDescriptionSection(false, true); // no agent-routing/delegation rules; include the user-skills-directory note (no project-context block to learn this from otherwise)
+		const skillsSection = buildSkillsDescriptionSection(false); // no agent-routing/delegation rules
 		return [basePrompt, userSection, skillsSection, mcpSection, browserGuidance]
 			.filter(Boolean)
 			.map((s) => s.trim())
@@ -1319,7 +1323,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 			? `## User Profile\n\n${userProfileLines.join("\n")}\n\nAddress the user by their name in communications.`
 			: "";
 
-		const skillsSection = buildSkillsDescriptionSection(false, true); // include the user-skills-directory note — lean mode has no project-context block either
+		const skillsSection = buildSkillsDescriptionSection(false);
 		// Security rules are injected even in lean mode — everything else here is
 		// skipped in favour of the user's hand-crafted prompt, but the security
 		// floor is non-negotiable regardless of how the agent's prompt was authored.
@@ -1353,7 +1357,7 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 	const decisionsContent = loadDecisionsFile(workspacePath);
 	const gitContext = await buildGitContext(workspacePath);
 
-	const skillsSection = buildSkillsDescriptionSection(true, true);
+	const skillsSection = buildSkillsDescriptionSection(true);
 
 	const mcpSection = await buildAgentMcpSection();
 	const browserGuidance = await buildBrowserToolingSection();

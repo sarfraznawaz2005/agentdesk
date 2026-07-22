@@ -34,7 +34,7 @@ const SKILLS_CHAT_TOOL_NAMES = new Set([
   "web_search", "web_fetch", "http_request",
   "environment_info", "get_env", "get_agentdesk_paths", "sleep",
   "run_background", "check_process", "kill_process", "list_background_jobs",
-  "read_skill", "read_skill_file", "find_skills", "validate_skill",
+  "read_skill", "read_skill_file", "find_skills", "list_skills", "validate_skill",
 ]);
 
 function buildSkillsChatTools(): Record<string, Tool> {
@@ -53,7 +53,7 @@ function buildSkillsChatTools(): Record<string, Tool> {
 // ---------------------------------------------------------------------------
 
 function buildSystemPrompt(): string {
-  const skillsSection = buildSkillsDescriptionSection(false, true);
+  const skillsSection = buildSkillsDescriptionSection(false);
 
   return `You are AgentDesk's skill-discovery assistant. You help the user find and install specialized skills — both ones already installed in AgentDesk, and new ones from the external open agent-skills ecosystem (skills.sh).
 

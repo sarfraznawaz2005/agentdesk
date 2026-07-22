@@ -5,8 +5,9 @@
 // from the PM, kanban, and review-cycle paths (mirrors the Playground's use
 // of runInlineAgent directly). Conversation history is DB-backed
 // (general_chat_messages) but flat: tool-call activity streams live via
-// callbacks and is NEVER persisted — only the final user/assistant text of
-// each turn is written, once the turn completes.
+// callbacks and is NEVER persisted. The user's message row is written UP FRONT
+// (before the agent run) so leaving/refreshing the page mid-turn still shows it;
+// the assistant's final text row is appended once the turn completes.
 // ---------------------------------------------------------------------------
 
 import { generateText } from "ai";
@@ -18,7 +19,7 @@ import { getDefaultModel, getContextLimit } from "../providers/models";
 import { createProviderAdapter } from "../providers";
 import { internalCallModelId } from "../providers/claude-subscription";
 import { getSetting } from "../rpc/settings";
-import { getStreamingMode } from "../agents/streaming-mode";
+import { getGeneralChatStreamingMode } from "../agents/streaming-mode";
 import { getProjectSettings } from "../rpc/projects";
 import { db } from "../db";
 import { aiProviders, generalChatConversations, generalChatMessages } from "../db/schema";
@@ -218,8 +219,9 @@ export interface SendMessageResult {
 /**
  * Run the Assistant agent on a user message for one General Chat conversation.
  * Tool-call activity streams live via broadcastToWebview (generalChatPart*) and
- * is NEVER persisted. On completion, exactly two rows are written to
- * general_chat_messages: the user's message and the assistant's final text.
+ * is NEVER persisted. The user's message row is written before the run starts
+ * (so a mid-turn reload still shows it); the assistant's final text row is
+ * appended once the turn completes.
  */
 export async function sendMessage(conversationId: string, userText: string): Promise<SendMessageResult> {
 	if (abortControllers.has(conversationId)) {
@@ -275,6 +277,17 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 
 		const priorMessages = await loadPriorMessages(conversationId);
 		const workspacePath = getGeneralChatWorkspacePath(conversationId);
+
+		// Persist the user's message NOW — before the (potentially long) agent run,
+		// not at completion. Otherwise leaving/refreshing the page mid-turn reloads
+		// from general_chat_messages and finds no user row yet, so the message the
+		// user just sent vanishes until the turn finishes (only the live optimistic
+		// bubble held it, and a reload throws that away). Inserted AFTER
+		// loadPriorMessages so this turn's message isn't double-counted (it's passed
+		// separately as `task`). The id is pre-generated so the completion broadcast
+		// can hand the frontend the real persisted row id for its hover actions.
+		const userMessageId = crypto.randomUUID();
+		await db.insert(generalChatMessages).values({ id: userMessageId, conversationId, role: "user", content: userText });
 
 		const extraTools: Record<string, Tool> = {
 			...createGeneralChatMemoryTools(),
@@ -349,17 +362,12 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 		// General Chat runs through runInlineAgent directly, the same mechanism
 		// Playground/sub-agent cards use — NOT the separate direct-streamText
 		// forwarding PM chat and the six widget-chat surfaces use for their own
-		// "Hybrid" live-streaming behavior. Left on the global setting's literal
-		// "hybrid" value, General Chat would inherit runInlineAgent's hybrid
-		// behavior instead: no live text (identical to "none") until a step
-		// completes, since pushLiveDelta only fires in "full" mode (agent-loop.ts).
-		// Hybrid's whole reason to differ from Full — "sub-agent cards update per
-		// step, not live" — doesn't apply here (there are no sub-agent cards;
-		// every turn IS the top-level agent), so for General Chat specifically,
-		// Hybrid just means Full. An explicit "none" choice is left alone — that's
-		// a genuine user opt-out of live typing, not something to override.
-		const globalStreamingMode = await getStreamingMode();
-		const streamingModeOverride = globalStreamingMode === "hybrid" ? "full" : globalStreamingMode;
+		// live-streaming behavior. It uses its OWN streaming preference (the
+		// General Chat header gear-icon settings dialog), independent of the global streamingMode:
+		// only "full" (live) or "none" (complete response at once). See
+		// getGeneralChatStreamingMode's own comment for the full rationale on why
+		// "hybrid" never applied here.
+		const streamingModeOverride = await getGeneralChatStreamingMode();
 
 		const result = await runInlineAgent({
 			// The conversationId doubles as "projectId" — gives run_shell's approval
@@ -404,15 +412,15 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 			.join("");
 		const finalContent = imageBlocks ? `${result.summary}\n${imageBlocks}` : result.summary;
 
-		// Explicit ids (rather than relying on the schema's $defaultFn) so the
+		// Explicit id (rather than relying on the schema's $defaultFn) so the
 		// broadcast below can hand the frontend the REAL, persisted message id
 		// straight away — general-chat.tsx's hover action row (delete/fork/
 		// retry) needs the actual DB row id, not a client-generated placeholder.
-		const userMessageId = crypto.randomUUID();
+		// The user row was already persisted before the run (see above); here we
+		// only append the assistant's reply.
 		const assistantMessageId = crypto.randomUUID();
 		const durationMs = Date.now() - turnStartedAt;
 		await db.insert(generalChatMessages).values([
-			{ id: userMessageId, conversationId, role: "user", content: userText },
 			// status: only meaningful when "failed" — general-chat.tsx reads it to
 			// render this bubble as a red error card with a Retry button, matching
 			// project chat's message-bubble.tsx isError treatment. Unlike project

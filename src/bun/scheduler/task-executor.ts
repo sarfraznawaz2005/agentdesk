@@ -369,7 +369,7 @@ export async function executeTask(
 						.from(agentsTable).where(eq(agentsTable.name, agentId)).limit(1);
 					const baseSystemPrompt = agentRows[0]?.systemPrompt ?? "";
 					const { buildSkillsDescriptionSection, buildAgentMcpSection } = await import("../agents/prompts");
-					const skillsSection = buildSkillsDescriptionSection(true, true); // include the user-skills-directory note — this dispatched agent has no project-context block to learn this from
+					const skillsSection = buildSkillsDescriptionSection(true);
 					const mcpSection = await buildAgentMcpSection();
 					systemPrompt = [baseSystemPrompt, skillsSection, mcpSection].filter(Boolean).join("\n\n---\n\n");
 				}

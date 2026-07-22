@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import { markdownSanitizeSchema, markdownUrlTransform } from "@/lib/markdown-sanitize-schema";
-import { ArrowUp, Square, Check, Copy, Server, RefreshCw, WifiOff, Loader2, AlertCircle, X, Paperclip, Library, Music, FileText as FileTextIcon, Trash2, GitBranch, BookmarkPlus, PanelLeft, ZoomIn, ZoomOut, Search, Download, Plus } from "lucide-react";
+import { ArrowUp, Square, Check, Copy, Server, RefreshCw, WifiOff, Loader2, AlertCircle, X, Paperclip, Library, Music, FileText as FileTextIcon, Trash2, GitBranch, BookmarkPlus, PanelLeft, ZoomIn, ZoomOut, Search, Download, Plus, Settings } from "lucide-react";
 import { useHeaderActions } from "@/lib/header-context";
 import { cn } from "@/lib/utils";
 import { rpc } from "@/lib/rpc";
@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tip, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { SLASH_COMMANDS, useInputPopover, type PopoverItem } from "@/components/chat/chat-input-popover";
 import { DeepResearchToggle } from "@/components/general-chat/deep-research-toggle";
+import { GeneralChatStreamingSettings } from "@/components/general-chat/general-chat-settings";
 import { MessageSearch } from "@/components/chat/message-search";
 import { useConvFontSize } from "@/lib/use-conv-font-size";
 import { toast } from "@/components/ui/toast";
@@ -634,6 +635,9 @@ export function GeneralChatPage() {
   // the activity pane toggle (General Chat has neither sub-agents nor an
   // activity pane to hide).
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // General Chat's own streaming preference dialog (gear icon in the header) —
+  // independent of the global Settings → AI → Streaming.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
@@ -1489,6 +1493,17 @@ export function GeneralChatPage() {
               </button>
             </Tip>
           )}
+
+          <Tip content="General Chat settings" side="bottom">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="General Chat settings"
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </Tip>
         </div>
 
         {/* Search bar */}
@@ -1804,6 +1819,16 @@ export function GeneralChatPage() {
           )}
         </div>
       </div>
+
+      {/* General Chat streaming settings — opened via the header gear icon */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>General Chat Settings</DialogTitle>
+          </DialogHeader>
+          <GeneralChatStreamingSettings />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

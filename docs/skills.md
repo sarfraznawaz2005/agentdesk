@@ -221,8 +221,9 @@ A compact "Available Skills" section is appended to every agent's system prompt:
 ```
 ## Available Skills
 
-The following skills are installed. Use `read_skill` to load a skill's full
-instructions when relevant. Use `find_skills` to search for skills by keyword.
+The following skills are installed (built-in + user-created). Use `read_skill` to
+load a skill's full instructions when relevant, `find_skills` to search by keyword,
+or `list_skills` to re-list the full catalog.
 
 - **explain-code**: Explains code with visual diagrams and analogies
 - **api-conventions**: API design patterns for this codebase
@@ -235,13 +236,14 @@ out of the prompt (see `buildSkillsDescriptionSection` in `prompts.ts`).
 
 ### How Agents Use Skills
 
-Agents have four skill tools available:
+Agents have five skill tools available:
 
 | Tool | Description |
 |------|-------------|
 | `read_skill` | Loads the full content of a skill by exact name. Returns the resolved SKILL.md body (after substitutions and bash injections), plus the skill directory path and a list of supporting files with full paths. Agents call this when they determine a skill is relevant to their current task. |
 | `read_skill_file` | Reads a supporting file from a skill's directory by full path. Used after `read_skill` to access companion docs, scripts, or reference files. Path-guarded to skills directories; refuses binary files and caps size at 512KB. |
-| `find_skills` | Searches skill names and descriptions by keyword query. Returns matching skill summaries. Agents use this when they need to discover skills beyond the compact listing (e.g. searching for a concept). |
+| `find_skills` | Searches skill names and descriptions by keyword query. Returns matching skill summaries. Agents use this when they need to discover skills beyond the compact listing (e.g. searching for a concept). Covers both built-in and user-created skills. |
+| `list_skills` | Returns the complete catalog of installed skills (built-in + user-created), each with name, description, `source` (`bundled`/`user`), and preferred agent. Unlike `find_skills`, it takes no query — use it to re-enumerate everything at any time. |
 | `validate_skill` | Validates a skill directory after creating or editing it. Parses SKILL.md, checks frontmatter, naming conventions, line count, and structure, and returns errors/warnings. Should be called after creating a skill. |
 
 **The LLM decides relevance** — no auto-matching or keyword overlap scoring is
@@ -259,7 +261,7 @@ The following skills are installed and can provide specialized instructions for
 your tasks. When a skill looks relevant to your current work:
 1. Call `read_skill` with the skill name to load its full instructions
 2. Follow the loaded instructions for the task at hand
-Use `find_skills` with a keyword if you need to search for skills.
+Use `find_skills` to search installed skills by keyword, or `list_skills` to re-list the full catalog.
 
 - **skill-name**: one-line description
 ...

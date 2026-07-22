@@ -201,6 +201,34 @@ export const skillTools: Record<string, ToolRegistryEntry> = {
 		}),
 	},
 
+	list_skills: {
+		category: "skills",
+		tool: tool({
+			description:
+				"List ALL skills currently installed in AgentDesk — both pre-built (bundled with the app) " +
+				"and user-created/custom skills — with their names, descriptions, and source. Unlike " +
+				"find_skills (which filters by a keyword), this returns the complete catalog. Use it when " +
+				"you want the full inventory of available skills rather than a keyword search. This only " +
+				"covers what's installed on this machine — it does not search any external catalog.",
+			inputSchema: z.object({}),
+			execute: async () => {
+				const skills = skillRegistry.getAll();
+				if (skills.length === 0) {
+					return JSON.stringify({ results: [], message: "No skills are installed in AgentDesk." });
+				}
+				return JSON.stringify({
+					count: skills.length,
+					results: skills.map((s) => ({
+						name: s.name,
+						description: s.description,
+						source: s.isBundled ? "bundled" : "user",
+						preferredAgent: s.preferredAgent ?? null,
+					})),
+				});
+			},
+		}),
+	},
+
 	validate_skill: {
 		category: "skills",
 		tool: tool({

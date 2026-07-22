@@ -27,7 +27,7 @@ const FREELANCE_TOOL_NAMES = new Set([
   "web_search", "web_fetch", "http_request",
   "environment_info", "get_env", "get_agentdesk_paths", "sleep",
   "run_background", "check_process", "kill_process", "list_background_jobs",
-  "read_skill", "read_skill_file", "find_skills",
+  "read_skill", "read_skill_file", "find_skills", "list_skills",
 ]);
 
 async function buildFreelanceTools(): Promise<Record<string, Tool>> {
@@ -55,7 +55,7 @@ async function buildSystemPrompt(
   listing: typeof freelanceListings.$inferSelect,
   fullDescription: string | null,
 ): Promise<string> {
-  const skillsSection = buildSkillsDescriptionSection(false, true);
+  const skillsSection = buildSkillsDescriptionSection(false);
   let skills: string[] = [];
   try { skills = JSON.parse(listing.skills) as string[]; } catch { /* ignore */ }
 
