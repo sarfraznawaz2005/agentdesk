@@ -17,15 +17,23 @@ import {
 // resolved to "full"). Persisted under its own key ("generalChatStreamingMode",
 // category "ai"), read by general-chat/orchestrator.ts via getGeneralChatStreamingMode.
 // Surfaced in a dialog opened by the gear icon in the General Chat header.
-type GeneralChatStreamingMode = "none" | "full";
+type GeneralChatStreamingMode = "none" | "full" | "chunked";
 
 const OPTIONS: { value: GeneralChatStreamingMode; label: string; description: string }[] = [
   {
     value: "full",
-    label: "Full Streaming (default)",
+    label: "Full Streaming",
     description:
-      "The Assistant streams its reply live, token by token, as it's generated. Tool-call " +
-      "activity always shows live regardless of this setting.",
+      "The Assistant streams its reply live, token by token, as it's generated — a smooth " +
+      "typewriter effect. Tool-call activity always shows live regardless of this setting.",
+  },
+  {
+    value: "chunked",
+    label: "Chunked Streaming (default)",
+    description:
+      "Still live, but the reply appears in larger blocks instead of a smooth typewriter — code " +
+      "and lists stream line-by-line, while long prose updates about twice a second. Fewer screen " +
+      "updates, which is lighter on long or code-heavy replies. (Total speed is unchanged.)",
   },
   {
     value: "none",
@@ -37,7 +45,7 @@ const OPTIONS: { value: GeneralChatStreamingMode; label: string; description: st
 ];
 
 export function GeneralChatStreamingSettings() {
-  const [mode, setMode] = useState<GeneralChatStreamingMode>("full");
+  const [mode, setMode] = useState<GeneralChatStreamingMode>("chunked");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -45,7 +53,7 @@ export function GeneralChatStreamingSettings() {
     let cancelled = false;
     rpc.getSetting("generalChatStreamingMode", "ai").then((value) => {
       if (cancelled) return;
-      setMode(value === "none" ? "none" : "full");
+      setMode(value === "none" || value === "full" ? value : "chunked");
     }).catch(() => {
       if (!cancelled) toast("error", "Failed to load streaming settings.");
     }).finally(() => {

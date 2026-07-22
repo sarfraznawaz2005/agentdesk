@@ -11,7 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-type StreamingMode = "hybrid" | "none" | "full";
+type StreamingMode = "hybrid" | "none" | "full" | "chunked";
 
 const OPTIONS: { value: StreamingMode; label: string; description: string }[] = [
   {
@@ -39,6 +39,15 @@ const OPTIONS: { value: StreamingMode; label: string; description: string }[] = 
       "Every chat surface streams live, token by token — including Claude Subscription's " +
       "Sonnet/Opus models, sub-agent cards in project chat, and Playground. Nothing is left out.",
   },
+  {
+    value: "chunked",
+    label: "Chunked Streaming",
+    description:
+      "Still live, but replies appear in larger blocks instead of a smooth typewriter — code and " +
+      "lists stream line-by-line, while long prose updates about twice a second. Fewer screen " +
+      "updates, which is lighter on long or code-heavy replies. Applies everywhere Full does. " +
+      "(Total speed is unchanged.)",
+  },
 ];
 
 export function StreamingSettings() {
@@ -50,7 +59,7 @@ export function StreamingSettings() {
     let cancelled = false;
     rpc.getSetting("streamingMode", "ai").then((value) => {
       if (cancelled) return;
-      if (value === "none" || value === "full") setMode(value);
+      if (value === "none" || value === "full" || value === "chunked") setMode(value);
       else setMode("hybrid");
     }).catch(() => {
       if (!cancelled) toast("error", "Failed to load streaming settings.");
@@ -67,6 +76,9 @@ export function StreamingSettings() {
     setMode(value);
     try {
       await rpc.saveSetting("streamingMode", value, "ai");
+      // Let the PM chat token buffer (chat-event-handlers.ts) re-read the mode
+      // immediately, so "chunked" takes effect without a reload.
+      window.dispatchEvent(new Event("agentdesk:settings-changed"));
     } catch {
       setMode(previous);
       toast("error", "Failed to save streaming setting.");

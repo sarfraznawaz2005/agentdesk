@@ -17,7 +17,7 @@ import { db } from "../db";
 import { collectionNotes, aiProviders } from "../db/schema";
 import { createProviderAdapter, getDefaultModel } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
-import { getStreamingMode } from "../agents/streaming-mode";
+import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs } from "../agents/streaming-mode";
 import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { embedText } from "./embeddings/embedder";
 import { unpackVector, rankBySimilarity, type VectorEntry } from "./embeddings/similarity";
@@ -294,8 +294,10 @@ export async function sendCollectionsChatMessage(params: {
 			const tools = createCollectionsChatTools(scope, citationSink, tuning);
 			const systemPrompt = await buildCollectionsSystemPrompt();
 			const streamingMode = await getStreamingMode();
-			const isFullStreaming = streamingMode === "full";
+			// "chunked" streams live too (larger blocks); only "none" fully opts out.
+			const isFullStreaming = isLiveStreamingMode(streamingMode);
 			const isNoStreaming = streamingMode === "none";
+			const [liveFlushMs, liveFlushNewline] = streamingFlushArgs(streamingMode);
 
 			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
 			// Haiku — non-Haiku models route through the official Agent SDK
@@ -309,7 +311,7 @@ export async function sendCollectionsChatMessage(params: {
 					const delta = acc.slice(flushedLength);
 					flushedLength = acc.length;
 					if (delta) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: delta });
-				}) : null;
+				}, liveFlushMs, liveFlushNewline) : null;
 				const cliResult = await runClaudeCliTask({
 					task: flattenHistoryForCli(newHistory),
 					systemPrompt,
@@ -354,11 +356,22 @@ export async function sendCollectionsChatMessage(params: {
 					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
 				});
 
+				// Chunked mode batches raw deltas through a throttled accumulator
+				// (coarse interval + newline-flush); other live modes broadcast raw.
+				let sbFlushed = 0;
+				const sbTextAcc = streamingMode === "chunked" ? createThrottledAccumulator((acc) => {
+					const d = acc.slice(sbFlushed);
+					sbFlushed = acc.length;
+					if (d) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: d });
+				}, liveFlushMs, liveFlushNewline) : null;
 				for await (const part of result.stream) {
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;
-						if (!isNoStreaming) broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
+						if (!isNoStreaming) {
+							if (sbTextAcc) sbTextAcc.push(text);
+							else broadcastToWebview("collectionsChatChunk", { sessionId, messageId, token: text });
+						}
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
 						broadcastToWebview("collectionsChatToolCall", { sessionId, toolName: part.toolName, args: tcInput as Record<string, unknown> });
@@ -367,6 +380,7 @@ export async function sendCollectionsChatMessage(params: {
 						throw err instanceof Error ? err : new Error(String(err));
 					}
 				}
+				sbTextAcc?.flushNow();
 
 				if (!fullText.trim()) {
 					let finalText = "";

@@ -23,9 +23,17 @@ export interface ThrottledAccumulator {
 	cancel(): void;
 }
 
+/**
+ * @param flushOnNewline when true, a chunk containing a newline flushes
+ *   immediately instead of waiting for the timer. Lets a coarse `flushMs`
+ *   (e.g. General Chat's "Chunked Streaming", ~1s) still update at natural line
+ *   breaks — so code/lists stream line-by-line while only unbroken prose waits
+ *   the full interval. Defaults false, so existing callers are unchanged.
+ */
 export function createThrottledAccumulator(
 	onFlush: (accumulated: string) => void,
 	flushMs: number = DEFAULT_FLUSH_MS,
+	flushOnNewline = false,
 ): ThrottledAccumulator {
 	let accumulated = "";
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -35,18 +43,21 @@ export function createThrottledAccumulator(
 		onFlush(accumulated);
 	};
 
+	const flushNow = () => {
+		if (timer) { clearTimeout(timer); timer = null; }
+		onFlush(accumulated);
+	};
+
 	return {
 		push(chunk: string) {
 			accumulated += chunk;
+			if (flushOnNewline && chunk.includes("\n")) { flushNow(); return; }
 			if (!timer) timer = setTimeout(flush, flushMs);
 		},
 		value() {
 			return accumulated;
 		},
-		flushNow() {
-			if (timer) { clearTimeout(timer); timer = null; }
-			onFlush(accumulated);
-		},
+		flushNow,
 		cancel() {
 			if (timer) { clearTimeout(timer); timer = null; }
 		},

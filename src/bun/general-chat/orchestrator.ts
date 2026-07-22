@@ -363,10 +363,11 @@ export async function sendMessage(conversationId: string, userText: string): Pro
 		// Playground/sub-agent cards use — NOT the separate direct-streamText
 		// forwarding PM chat and the six widget-chat surfaces use for their own
 		// live-streaming behavior. It uses its OWN streaming preference (the
-		// General Chat header gear-icon settings dialog), independent of the global streamingMode:
-		// only "full" (live) or "none" (complete response at once). See
-		// getGeneralChatStreamingMode's own comment for the full rationale on why
-		// "hybrid" never applied here.
+		// General Chat header gear-icon settings dialog), independent of the global
+		// streamingMode. Its three modes ("full"/"chunked"/"none") are all valid
+		// StreamingMode values, so we pass the choice straight through as the
+		// override — runInlineAgent derives the flush cadence from it centrally
+		// (streamingFlushArgs), same as every other surface.
 		const streamingModeOverride = await getGeneralChatStreamingMode();
 
 		const result = await runInlineAgent({

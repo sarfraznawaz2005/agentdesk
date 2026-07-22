@@ -28,7 +28,7 @@ import { skillTools } from "./tools/skills";
 import { createPreviewTool } from "./tools/preview";
 import { isTransientError, getBackoffDelay } from "./safety";
 import { logPrompt } from "./prompt-logger";
-import { getStreamingMode } from "./streaming-mode";
+import { getStreamingMode, isLiveStreamingMode } from "./streaming-mode";
 import { createThrottledAccumulator } from "./throttled-accumulator";
 import { eventBus } from "../scheduler";
 import { enqueueMessage, getQueuedMessages } from "../message-queue-manager";
@@ -386,7 +386,11 @@ export class AgentEngine {
 			// Read once, shared by both the CLI branch below and the streamText
 			// branch further down — see docs/... global "Streaming" setting.
 			const streamingMode = await getStreamingMode();
-			const isFullStreaming = streamingMode === "full";
+			// "chunked" streams live too (just coarser) — same as "full" on the CLI
+			// branch's accumulator path. The extra chunking for the PM chat is done
+			// on the frontend token buffer (chat-event-handlers.ts), so no backend
+			// flush-arg threading is needed here.
+			const isFullStreaming = isLiveStreamingMode(streamingMode);
 			const isNoStreaming = streamingMode === "none";
 
 			// 6. Build inline agent callbacks that bridge to RPC broadcasts

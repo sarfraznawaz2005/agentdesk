@@ -26,7 +26,7 @@ import {
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
-import { getStreamingMode } from "../agents/streaming-mode";
+import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs } from "../agents/streaming-mode";
 import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { webTools } from "../agents/tools/web";
 import { kanbanTools } from "../agents/tools/kanban";
@@ -643,8 +643,10 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 			const tools = createDashboardTools();
 			const systemPrompt = await buildDashboardSystemPrompt();
 			const streamingMode = await getStreamingMode();
-			const isFullStreaming = streamingMode === "full";
+			// "chunked" streams live too (larger blocks); only "none" fully opts out.
+			const isFullStreaming = isLiveStreamingMode(streamingMode);
 			const isNoStreaming = streamingMode === "none";
+			const [liveFlushMs, liveFlushNewline] = streamingFlushArgs(streamingMode);
 
 			// Claude Subscription's direct-HTTP OAuth path 429s for anything but
 			// Haiku — non-Haiku models route through the official Agent SDK
@@ -663,7 +665,7 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					const delta = acc.slice(flushedLength);
 					flushedLength = acc.length;
 					if (delta) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: delta });
-				}) : null;
+				}, liveFlushMs, liveFlushNewline) : null;
 				const cliResult = await runClaudeCliTask({
 					task: flattenHistoryForCli(newHistory),
 					systemPrompt,
@@ -731,11 +733,22 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 					abortSignal: AbortSignal.any([abortController.signal, AbortSignal.timeout(900_000)]),
 				});
 
+				// Chunked mode batches raw deltas through a throttled accumulator
+				// (coarse interval + newline-flush); other live modes broadcast raw.
+				let sbFlushed = 0;
+				const sbTextAcc = streamingMode === "chunked" ? createThrottledAccumulator((acc) => {
+					const d = acc.slice(sbFlushed);
+					sbFlushed = acc.length;
+					if (d) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: d });
+				}, liveFlushMs, liveFlushNewline) : null;
 				for await (const part of result.stream) {
 					if (part.type === "text-delta") {
 						const text = (part as { text?: string }).text ?? "";
 						fullText += text;
-						if (!isNoStreaming) broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
+						if (!isNoStreaming) {
+							if (sbTextAcc) sbTextAcc.push(text);
+							else broadcastToWebview("dashboardPMChunk", { sessionId, messageId, token: text });
+						}
 					} else if (part.type === "tool-call") {
 						const tcInput = (part as Record<string, unknown>).input ?? (part as Record<string, unknown>).args;
 						broadcastToWebview("dashboardPMToolCall", { sessionId, callId: part.toolCallId, toolName: part.toolName, args: tcInput });
@@ -755,6 +768,7 @@ export async function sendDashboardMessage(params: { sessionId: string; content:
 						throw err instanceof Error ? err : new Error(String(err));
 					}
 				}
+				sbTextAcc?.flushNow();
 
 				if (!fullText.trim()) {
 					let finalText = "";

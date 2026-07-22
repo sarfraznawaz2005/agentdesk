@@ -14,7 +14,7 @@ import { db } from "../db";
 import { aiProviders } from "../db/schema";
 import { createProviderAdapter } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
-import { getStreamingMode } from "../agents/streaming-mode";
+import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs } from "../agents/streaming-mode";
 import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { broadcastToWebview } from "../engine-manager";
 import { getAllTools } from "../agents/tools/index";
@@ -131,8 +131,10 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
     const tools = buildSkillsChatTools();
     const systemPrompt = buildSystemPrompt();
     const streamingMode = await getStreamingMode();
-    const isFullStreaming = streamingMode === "full";
+    // "chunked" streams live too (larger blocks); only "none" fully opts out.
+    const isFullStreaming = isLiveStreamingMode(streamingMode);
     const isNoStreaming = streamingMode === "none";
+    const [liveFlushMs, liveFlushNewline] = streamingFlushArgs(streamingMode);
 
     // Claude Subscription's direct-HTTP OAuth path 429s for anything but
     // Haiku — non-Haiku models route through the official Agent SDK instead
@@ -147,7 +149,7 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
         const delta = acc.slice(flushedLength);
         flushedLength = acc.length;
         if (delta) broadcastToWebview("skillsChat.token", { messageId, token: delta });
-      }) : null;
+      }, liveFlushMs, liveFlushNewline) : null;
 
       const cliResult = await runClaudeCliTask({
         task: flattenHistoryForCli(modelHistory),
@@ -220,11 +222,23 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
 
       const toolStartTimes = new Map<string, string>();
 
+      // Chunked mode batches raw deltas through a throttled accumulator
+      // (coarse interval + newline-flush); other live modes broadcast raw.
+      let sbFlushed = 0;
+      const sbTextAcc = streamingMode === "chunked" ? createThrottledAccumulator((acc) => {
+        const d = acc.slice(sbFlushed);
+        sbFlushed = acc.length;
+        if (d) broadcastToWebview("skillsChat.token", { messageId, token: d });
+      }, liveFlushMs, liveFlushNewline) : null;
+
       for await (const part of result.stream) {
         if (part.type === "text-delta") {
           const token = (part as { text?: string }).text ?? "";
           fullContent += token;
-          if (!isNoStreaming) broadcastToWebview("skillsChat.token", { messageId, token });
+          if (!isNoStreaming) {
+            if (sbTextAcc) sbTextAcc.push(token);
+            else broadcastToWebview("skillsChat.token", { messageId, token });
+          }
         } else if (part.type === "tool-call") {
           const tc = part as unknown as { toolCallId: string; toolName: string; input: Record<string, unknown> };
           const timeStart = new Date().toISOString();
@@ -253,6 +267,7 @@ async function streamAndAppend(messageId: string, modelHistory: ModelMessage[], 
           throw (part as { error: unknown }).error;
         }
       }
+      sbTextAcc?.flushNow();
     }
 
     if (signal.aborted) {

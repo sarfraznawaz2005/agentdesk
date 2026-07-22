@@ -39,6 +39,27 @@ export const buffers = {
 };
 
 const TOKEN_FLUSH_INTERVAL = 32; // ms (~30 fps)
+// "Chunked" global streaming mode: coarser flush + flush-on-newline, so PM chat
+// (and Quick Chat, same buffer) re-renders in larger blocks instead of ~30fps.
+// Mirrors the backend CHUNKED_FLUSH_MS (streaming-mode.ts) — kept in sync by hand
+// since the frontend can't import from src/bun.
+const CHUNKED_FLUSH_INTERVAL = 500;
+
+// Live flush behavior, refreshed from the global streamingMode setting on load
+// and whenever it changes. Only "chunked" deviates from the default 32ms.
+let tokenFlushInterval = TOKEN_FLUSH_INTERVAL;
+let tokenFlushOnNewline = false;
+
+async function refreshStreamFlushConfig(): Promise<void> {
+  try {
+    const mode = await rpc.getSetting("streamingMode", "ai");
+    const chunked = mode === "chunked";
+    tokenFlushInterval = chunked ? CHUNKED_FLUSH_INTERVAL : TOKEN_FLUSH_INTERVAL;
+    tokenFlushOnNewline = chunked;
+  } catch {
+    /* keep current values on failure */
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Token flush helper
@@ -109,8 +130,19 @@ function onStreamToken(e: Event): void {
   buffers.tokenStreamMeta = { conversationId, messageId };
   buffers.tokenBuffer += token;
 
+  // Chunked mode: flush immediately on a newline so code/lists still stream
+  // line-by-line; otherwise coalesce until the (coarser) interval fires.
+  if (tokenFlushOnNewline && token.includes("\n")) {
+    if (buffers.tokenFlushTimer) {
+      clearTimeout(buffers.tokenFlushTimer);
+      buffers.tokenFlushTimer = null;
+    }
+    flushTokenBuffer();
+    return;
+  }
+
   if (!buffers.tokenFlushTimer) {
-    buffers.tokenFlushTimer = setTimeout(flushTokenBuffer, TOKEN_FLUSH_INTERVAL);
+    buffers.tokenFlushTimer = setTimeout(flushTokenBuffer, tokenFlushInterval);
   }
 }
 
@@ -833,6 +865,10 @@ let handlersInitialized = false;
 export function initChatEventHandlers(): void {
   if (handlersInitialized) return;
   handlersInitialized = true;
+  // Load the streaming-mode flush config now, and refresh whenever settings
+  // change (the Streaming settings page dispatches "agentdesk:settings-changed").
+  void refreshStreamFlushConfig();
+  window.addEventListener("agentdesk:settings-changed", () => { void refreshStreamFlushConfig(); });
   window.addEventListener("agentdesk:stream-token", onStreamToken);
   window.addEventListener("agentdesk:stream-reset", onStreamReset);
   window.addEventListener("agentdesk:stream-complete", onStreamComplete);

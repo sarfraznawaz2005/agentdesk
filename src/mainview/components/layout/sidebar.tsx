@@ -26,6 +26,7 @@ import {
   MessageSquarePlus,
   WifiOff,
   HelpCircle,
+  Loader2,
   type LucideIcon,
   icons,
 } from "lucide-react";
@@ -38,6 +39,7 @@ import { useIsMobile } from "@/lib/use-is-mobile";
 import { Tip } from "@/components/ui/tooltip";
 import { UnreadDot } from "@/components/ui/unread-dot";
 import { useUnreadStore, hasUnread } from "@/stores/unread-store";
+import { useGeneralChatActivityStore } from "@/stores/general-chat-activity-store";
 import { useNetworkStore } from "@/stores/network-store";
 import { FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION } from "../../../shared/freelance/attention";
 
@@ -48,6 +50,10 @@ interface NavItem {
   badge?: number;
   /** Red "needs attention" dot, independent of the numeric badge. */
   attention?: boolean;
+  /** Tooltip for the attention dot (defaults to UnreadDot's generic label). */
+  attentionTooltip?: string;
+  /** Swap the item's icon for a spinner (e.g. a General Chat turn in flight). */
+  loading?: boolean;
 }
 
 interface SidebarProps {
@@ -84,7 +90,7 @@ function NavItemButton({
   collapsed: boolean;
   active: boolean;
 }) {
-  const Icon = item.icon;
+  const Icon = item.loading ? Loader2 : item.icon;
 
   const hasBadge = item.badge !== undefined && item.badge > 0;
   const showAttention = !!item.attention;
@@ -101,7 +107,7 @@ function NavItemButton({
       )}
     >
       <Icon
-        className={cn("h-4 w-4 shrink-0", active ? "text-indigo-600" : "")}
+        className={cn("h-4 w-4 shrink-0", item.loading && "animate-spin", active ? "text-indigo-600" : "")}
         aria-hidden="true"
       />
       {/* Collapsed badge dot */}
@@ -113,13 +119,13 @@ function NavItemButton({
       )}
       {/* Collapsed "needs attention" dot (red) — takes precedence in the corner */}
       {collapsed && showAttention && (
-        <UnreadDot className="absolute -top-0.5 -right-0.5" tooltip="Freelance needs your attention" side="right" />
+        <UnreadDot className="absolute -top-0.5 -right-0.5" tooltip={item.attentionTooltip} side="right" />
       )}
       {!collapsed && (
         <span className="flex-1 truncate">{item.label}</span>
       )}
       {!collapsed && showAttention && (
-        <UnreadDot tooltip="Freelance needs your attention" />
+        <UnreadDot tooltip={item.attentionTooltip} />
       )}
       {!collapsed && hasBadge && (
         <span
@@ -213,6 +219,17 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
   // Freelance "needs attention" red dot — set when an escalation is raised, cleared
   // when the user opens the Auto-Earn tab (reuses the per-project unread store).
   const freelanceAttention = useUnreadStore(hasUnread(FREELANCE_ATTENTION_PROJECT, FREELANCE_ATTENTION_LOCATION));
+
+  // General Chat activity — spinner while a turn is in flight, red dot when one
+  // finishes while the user isn't viewing General Chat (cleared on visit).
+  const generalChatWorking = useGeneralChatActivityStore((s) => s.runningIds.length > 0);
+  const generalChatUnread = useGeneralChatActivityStore((s) => s.hasUnread);
+  const clearGeneralChatUnread = useGeneralChatActivityStore((s) => s.clearUnread);
+  const onGeneralChat = pathname.startsWith("/general-chat");
+
+  useEffect(() => {
+    if (onGeneralChat && generalChatUnread) clearGeneralChatUnread();
+  }, [onGeneralChat, generalChatUnread, clearGeneralChatUnread]);
 
   // ── Icon spin on navigation ──
   const [iconSpinKey, setIconSpinKey] = useState(0);
@@ -407,7 +424,15 @@ export function Sidebar({ collapsed: collapsedProp, onToggleCollapse, mobileOpen
   const NAV_ITEMS: NavItem[] = ALL_NAV_ITEMS
     .map((item) => {
       if (item.href === "/inbox") return { ...item, badge: inboxUnread };
-      if (item.href === "/freelance") return { ...item, badge: newListingsCount, attention: freelanceAttention };
+      if (item.href === "/freelance")
+        return { ...item, badge: newListingsCount, attention: freelanceAttention, attentionTooltip: "Freelance needs your attention" };
+      if (item.href === "/general-chat")
+        return {
+          ...item,
+          loading: generalChatWorking,
+          attention: generalChatUnread && !onGeneralChat,
+          attentionTooltip: "General Chat finished — new activity",
+        };
       return item;
     });
 

@@ -20,7 +20,7 @@ import { aiProviders } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { createProviderAdapter, getDefaultModel } from "../providers";
 import { isHaikuModel } from "../providers/claude-subscription";
-import { getStreamingMode } from "../agents/streaming-mode";
+import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs } from "../agents/streaming-mode";
 import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { broadcastToWebview } from "../engine-manager";
 import { sendDesktopNotification } from "../notifications/desktop";
@@ -116,10 +116,12 @@ async function councilComplete(opts: {
 }): Promise<string> {
   const { provider, system, prompt, signal, onToken } = opts;
   const streamingMode = await getStreamingMode();
+  const [liveFlushMs, liveFlushNewline] = streamingFlushArgs(streamingMode);
 
   if (provider.providerType === "claude-subscription" && !isHaikuModel(provider.modelId)) {
     const { runClaudeCliTask } = await import("../providers/claude-subscription-cli-runner");
-    const isFullStreaming = streamingMode === "full";
+    // "chunked" streams live too (larger blocks); only "none" fully opts out.
+    const isFullStreaming = isLiveStreamingMode(streamingMode);
     let fullText = "";
     // Full Streaming only — onToken is treated as a delta-append callback by
     // every caller (matches the non-CLI branch's per-chunk onToken(chunk)
@@ -129,7 +131,7 @@ async function councilComplete(opts: {
       const delta = acc.slice(flushedLength);
       flushedLength = acc.length;
       if (delta) onToken(delta);
-    }) : null;
+    }, liveFlushMs, liveFlushNewline) : null;
     const cliResult = await runClaudeCliTask({
       task: prompt,
       systemPrompt: system,
@@ -155,11 +157,23 @@ async function councilComplete(opts: {
   if (onToken) {
     const stream = streamText({ model, abortSignal: signal, instructions: system, messages: [{ role: "user", content: prompt }] });
     let fullText = "";
+    // Chunked mode batches raw deltas through a throttled accumulator (coarse
+    // interval + newline-flush); other live modes stream each chunk raw.
+    let sbFlushed = 0;
+    const sbTextAcc = streamingMode === "chunked" ? createThrottledAccumulator((acc) => {
+      const d = acc.slice(sbFlushed);
+      sbFlushed = acc.length;
+      if (d) onToken?.(d);
+    }, liveFlushMs, liveFlushNewline) : null;
     for await (const chunk of stream.textStream) {
       if (signal.aborted) break;
       fullText += chunk;
-      if (streamingMode !== "none") onToken(chunk);
+      if (streamingMode !== "none") {
+        if (sbTextAcc) sbTextAcc.push(chunk);
+        else onToken(chunk);
+      }
     }
+    sbTextAcc?.flushNow();
     return fullText;
   }
   const result = await generateText({ model, abortSignal: signal, instructions: system, messages: [{ role: "user", content: prompt }] });

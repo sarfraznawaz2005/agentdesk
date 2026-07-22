@@ -33,7 +33,7 @@ import {
 	warnToolsUnsupportedOnce,
 } from "./engine-types";
 import { getSetting } from "../rpc/settings";
-import { getStreamingMode, type StreamingMode } from "./streaming-mode";
+import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs, type StreamingMode } from "./streaming-mode";
 import { createThrottledAccumulator } from "./throttled-accumulator";
 import { FileTracker } from "./tools/file-tracker";
 import { createTrackedFileTools } from "./tools/file-ops";
@@ -1305,12 +1305,14 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 	// streamingModeOverride lets a caller (the Playground) ignore the global
 	// setting entirely — skips the DB read too, via ?? short-circuiting.
 	const streamingMode = opts.streamingModeOverride ?? (await getStreamingMode());
+	// Flush cadence derived from the mode ("chunked" → coarse interval + newline).
+	const [effFlushMs, effFlushNewline] = streamingFlushArgs(streamingMode);
 	type LiveKind = "text" | "reasoning";
 	const livePartIds: Record<LiveKind, string | null> = { text: null, reasoning: null };
 	const liveAccs: Record<LiveKind, ReturnType<typeof createThrottledAccumulator> | null> = { text: null, reasoning: null };
 
 	function pushLiveDelta(kind: LiveKind, delta: string): void {
-		if (streamingMode !== "full") return;
+		if (!isLiveStreamingMode(streamingMode)) return;
 		let acc = liveAccs[kind];
 		if (!acc) {
 			acc = createThrottledAccumulator((accumulated) => {
@@ -1328,7 +1330,7 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 					if (persist) db.update(messageParts).set({ content: accumulated }).where(eq(messageParts.id, existingId)).catch(() => {});
 					callbacks.onPartUpdated(startMsgId, existingId, { content: accumulated });
 				}
-			});
+			}, effFlushMs, effFlushNewline);
 			liveAccs[kind] = acc;
 		}
 		acc.push(delta);
