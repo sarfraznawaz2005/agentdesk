@@ -1,5 +1,13 @@
 [
     {
+        "version":  "2.9.1",
+        "title":  "Enhanced Chat Features",
+        "changes":  [
+                        "Improved chat streaming settings for better performance",
+                        "Updated documentation for enhanced chat features"
+                    ]
+    },
+    {
         "version":  "2.9.0",
         "title":  "New Chat and Voice Features",
         "changes":  [
