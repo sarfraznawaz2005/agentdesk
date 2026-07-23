@@ -30,7 +30,7 @@ import { skillTools } from "./tools/skills";
 import { createPreviewTool } from "./tools/preview";
 import { isTransientError, getBackoffDelay, getRetryDelay } from "./safety";
 import { logPrompt } from "./prompt-logger";
-import { getStreamingMode, isLiveStreamingMode } from "./streaming-mode";
+import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs } from "./streaming-mode";
 import { createThrottledAccumulator } from "./throttled-accumulator";
 import { eventBus } from "../scheduler";
 import { enqueueMessage, getQueuedMessages } from "../message-queue-manager";
@@ -491,9 +491,17 @@ export class AgentEngine {
 			// branch further down — see docs/... global "Streaming" setting.
 			const streamingMode = await getStreamingMode();
 			// "chunked" streams live too (just coarser) — same as "full" on the CLI
-			// branch's accumulator path. The extra chunking for the PM chat is done
-			// on the frontend token buffer (chat-event-handlers.ts), so no backend
-			// flush-arg threading is needed here.
+			// branch's accumulator path.
+			//
+			// Both branches accumulate before broadcasting. The frontend token buffer
+			// (chat-event-handlers.ts) is NOT a substitute: it batches React renders,
+			// but it sits downstream of the process bridge. Every broadcast is
+			// JSON-serialised, wrapped in a `window.__electrobun.receiveMessageFromBun(...)`
+			// source string and evaluated by the webview as a fresh script
+			// (BrowserView.sendMessageToWebviewViaExecute), so an unbatched token
+			// stream costs one script compile per token no matter what the frontend
+			// does with the events afterwards.
+			const [pmFlushMs, pmFlushOnNewline] = streamingFlushArgs(streamingMode);
 			const isFullStreaming = isLiveStreamingMode(streamingMode);
 			const isNoStreaming = streamingMode === "none";
 
@@ -1255,6 +1263,23 @@ export class AgentEngine {
 					}
 				};
 
+				// Batch text deltas before they cross the process bridge — one
+				// broadcast per flush instead of one per token. Mirrors the CLI
+				// branch above; `flushedTextLength` exists because onStreamToken
+				// APPENDS client-side, so only the slice new since the last flush
+				// may be sent. Declared per attempt, so a retry starts clean.
+				let flushedTextLength = 0;
+				const textAcc = isNoStreaming ? null : createThrottledAccumulator((acc) => {
+					const delta = acc.slice(flushedTextLength);
+					flushedTextLength = acc.length;
+					if (!delta) return;
+					// Set here rather than at push time: text that was buffered but
+					// never broadcast cannot have duplicated on screen, so a retry
+					// after a mid-stream failure is still safe. Gates the retry below.
+					emittedToUiThisAttempt = true;
+					this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
+				}, pmFlushMs, pmFlushOnNewline);
+
 				// Track text emitted in the current step so we can retract it
 				// if the step also dispatches a wait-type sub-agent.
 				let stepTextEmitted = "";
@@ -1293,12 +1318,7 @@ export class AgentEngine {
 						fullText += delta;
 						stepTextEmitted += delta;
 						if (retractedFallback) retractedFallback = "";
-						if (!isNoStreaming) {
-							// The frontend APPENDS each token, so once one has gone out a
-							// retry would duplicate visible text. Gates the retry below.
-							emittedToUiThisAttempt = true;
-							this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
-						}
+						textAcc?.push(delta);
 					} else if (part.type === "tool-call") {
 						const tc = part as { toolName?: string };
 						if (tc.toolName === "run_agent") {
@@ -1341,6 +1361,12 @@ export class AgentEngine {
 							// wrong; an empty continuation is corrected explicitly below instead.
 							if (stepHasWaitAgent) retractedFallback = stepTextEmitted;
 							fullText = fullText.slice(0, fullText.length - stepTextEmitted.length);
+							// Drop anything still buffered and mark it as handled: the
+							// reset below wipes the message client-side, so a later flush
+							// carrying the retracted tail would put it straight back on
+							// screen. Only text arriving AFTER this point may be sent.
+							textAcc?.cancel();
+							flushedTextLength = textAcc?.value().length ?? 0;
 							this.callbacks.onStreamReset(conversationId, assistantMessageId);
 							// Surface the retracted narration as reasoning instead of letting it
 							// flash-then-vanish in the answer lane. The restore-fallback below still
@@ -1371,6 +1397,10 @@ export class AgentEngine {
 						throw err instanceof Error ? err : new Error(String(err));
 					}
 				}
+				// Push any tail still sitting in the buffer before the fallbacks below
+				// decide whether the turn produced text — they broadcast in bulk, and
+				// a late flush landing after them would append a duplicate.
+				textAcc?.flushNow();
 				emitThinking(false);
 
 				// Persist reasoning captured from stream (onStepEnd won't duplicate it

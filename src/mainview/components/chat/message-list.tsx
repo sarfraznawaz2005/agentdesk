@@ -62,6 +62,18 @@ const QUICK_STARTS = [
   },
 ] as const;
 
+/** Minimum gap between programmatic follow-scrolls while streaming. */
+const SCROLL_FOLLOW_THROTTLE_MS = 100;
+
+// NOTE: `content-visibility: auto` + `contain-intrinsic-size` was applied to each
+// message wrapper below to skip layout for off-screen messages, then removed: it is
+// the prime suspect for a STATUS_BREAKPOINT renderer crash that hit while three
+// sub-agents streamed concurrently (peak DOM mutation while the follow-scroll below
+// repeatedly drove elements in and out of the skipped state). Unlike the rest of the
+// streaming work it changes Blink's rendering pipeline rather than JS behaviour, so a
+// renderer-level crash is something it can plausibly cause and the others cannot.
+// Don't reintroduce it without a reproduction for that crash.
+
 interface MessageListProps {
   projectId: string;
   messages: Message[];
@@ -170,21 +182,82 @@ export function MessageList({
   // Set to true after the initial load scroll completes so it only fires once per mount
   const initialScrollDoneRef = useRef(false);
 
+  // Last scrollTop seen by handleScroll — used to tell a user scroll-up apart
+  // from the view simply falling behind growing content (see handleScroll).
+  const lastScrollTopRef = useRef(0);
+
   const doScrollToBottom = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     programmingScrollRef.current = true;
     el.scrollTop = el.scrollHeight;
+    lastScrollTopRef.current = el.scrollTop;
     requestAnimationFrame(() => requestAnimationFrame(() => { programmingScrollRef.current = false; }));
+  }, []);
+
+  // Throttle state for the streaming auto-follow (see requestScrollFollow).
+  const followRef = useRef<{ lastAt: number; timer: ReturnType<typeof setTimeout> | null; raf: number }>({
+    lastAt: 0,
+    timer: null,
+    raf: 0,
+  });
+
+  /**
+   * Throttled "keep the view pinned to the bottom" used by the two paths that
+   * fire continuously while a reply streams: the streamingContent effect below
+   * and the MutationObserver further down.
+   *
+   * Reading `el.scrollHeight` forces a synchronous layout of the ENTIRE mounted
+   * conversation, not just the bubble that changed. At the 32ms token cadence
+   * both paths together were forcing that dozens of times a second, and the
+   * cost scales with how much is already in the conversation — which is what
+   * made streaming degrade in long chats. Capping the follow at ~10/s keeps it
+   * visually pinned while cutting those reflows several-fold.
+   *
+   * Explicit, one-shot scrolls (initial load, the scroll-to-bottom button) still
+   * call doScrollToBottom directly — they must land exactly, not eventually.
+   */
+  const requestScrollFollow = useCallback(() => {
+    if (!isAtBottomRef.current) return;
+    const st = followRef.current;
+    if (st.timer) return; // a trailing run is already queued
+
+    const scroll = () => {
+      st.lastAt = performance.now();
+      cancelAnimationFrame(st.raf);
+      st.raf = requestAnimationFrame(() => {
+        // Re-check: the user can scroll away between scheduling and firing.
+        if (!isAtBottomRef.current) return;
+        doScrollToBottom();
+      });
+    };
+
+    const elapsed = performance.now() - st.lastAt;
+    if (elapsed < SCROLL_FOLLOW_THROTTLE_MS) {
+      st.timer = setTimeout(() => {
+        st.timer = null;
+        if (isAtBottomRef.current) scroll();
+      }, SCROLL_FOLLOW_THROTTLE_MS - elapsed);
+      return;
+    }
+    scroll();
+  }, [doScrollToBottom]);
+
+  useEffect(() => {
+    const st = followRef.current;
+    return () => {
+      if (st.timer) clearTimeout(st.timer);
+      cancelAnimationFrame(st.raf);
+    };
   }, []);
 
   // Auto-scroll to bottom when new messages arrive or streaming grows
   const itemCount = visibleMessages.length + (streamingMessage ? 1 : 0) + (showTypingDots ? 1 : 0) + (showWaitingRow ? 1 : 0);
   useEffect(() => {
     if (isAtBottomRef.current && itemCount > 0) {
-      doScrollToBottom();
+      requestScrollFollow();
     }
-  }, [itemCount, streamingContent, doScrollToBottom]);
+  }, [itemCount, streamingContent, requestScrollFollow]);
 
   // After initial message load completes, force-scroll to bottom and do one
   // delayed retry so that progressively-rendered content (syntax highlighting,
@@ -205,46 +278,46 @@ export function MessageList({
   // Auto-scroll when content changes after initial render:
   // - childList: catches code-block syntax highlighting, tool card expansion,
   //   Mermaid diagram injection (all insert/replace DOM nodes)
-  // - characterData: catches streaming text token updates
+  // - characterData: catches streaming text token updates, and text-only
+  //   updates inside sub-agent tool cards (part-updated events grow existing
+  //   text nodes without touching childList) — dropping it would stop the view
+  //   following live agent activity
   // - load (capture): catches <img> and other media finishing load
+  // All three funnel through the throttled follow rather than scrolling on
+  // every mutation.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let rafId = 0;
 
-    const scrollIfAtBottom = () => {
-      if (!isAtBottomRef.current) return;
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        if (!isAtBottomRef.current) return;
-        programmingScrollRef.current = true;
-        el.scrollTop = el.scrollHeight;
-        requestAnimationFrame(() => requestAnimationFrame(() => { programmingScrollRef.current = false; }));
-      });
-    };
-
-    const mo = new MutationObserver(scrollIfAtBottom);
+    const mo = new MutationObserver(requestScrollFollow);
     mo.observe(el, { subtree: true, childList: true, characterData: true });
 
     // Image / media load events bubble differently — use capture to intercept
     // them before they reach the element (load doesn't bubble natively)
-    el.addEventListener("load", scrollIfAtBottom, { capture: true, passive: true });
+    el.addEventListener("load", requestScrollFollow, { capture: true, passive: true });
 
     return () => {
       mo.disconnect();
-      cancelAnimationFrame(rafId);
-      el.removeEventListener("load", scrollIfAtBottom, { capture: true });
+      el.removeEventListener("load", requestScrollFollow, { capture: true });
     };
-  }, []);
+  }, [requestScrollFollow]);
 
   // Track whether the user has scrolled away from the bottom
   const handleScroll = useCallback(() => {
     if (programmingScrollRef.current) return;
     const el = scrollRef.current;
     if (!el) return;
+    const prevTop = lastScrollTopRef.current;
+    lastScrollTopRef.current = el.scrollTop;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-    isAtBottomRef.current = atBottom;
-    setShowScrollButton(!atBottom);
+    // Detaching from the bottom takes an actual upward scroll. The follow runs
+    // on a ~100ms throttle, so a fast reply can add more than the 60px
+    // threshold between follows; without this check any incidental scroll
+    // event landing in that window (a stray wheel nudge, a scroll-anchoring
+    // adjustment) would read as "user scrolled away" and kill auto-follow for
+    // the rest of the reply. Falling behind growing content is not a scroll-up.
+    if (atBottom || el.scrollTop < prevTop) isAtBottomRef.current = atBottom;
+    setShowScrollButton(!isAtBottomRef.current);
     setShowScrollTopButton(el.scrollTop > 200);
   }, []);
 

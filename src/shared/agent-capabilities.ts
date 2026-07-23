@@ -141,3 +141,24 @@ export function summarizeCapabilities(caps: AgentCapabilities): string {
 	else parts.push("no writes");
 	return parts.join(" · ");
 }
+
+/**
+ * True for an agent that records a verdict on someone else's work rather than
+ * implementing its own — it holds `submit_review` but is deliberately denied
+ * `verify_implementation` ("only implementers call that", see KANBAN_REVIEWER
+ * in db/agent-tool-defaults.ts).
+ *
+ * Derived from the toolset rather than matched on the name so custom review
+ * agents behave the same as the built-in `code-reviewer`, and so this can never
+ * drift from the grants. `prompt-sections.ts` picks its reviewer variant on the
+ * same distinction via that section's `requires`.
+ *
+ * Callers use this to keep review dispatch off the implementer path: a reviewer
+ * must NOT have its task moved to "working" (submit_review rejects any task not
+ * in "review", so the move only forces the agent to move it back), and must not
+ * be handed implementer instructions naming tools it does not have.
+ */
+export function isReviewerToolset(tools: Iterable<string>): boolean {
+	const set = tools instanceof Set ? tools : new Set(tools);
+	return set.has("submit_review") && !set.has("verify_implementation");
+}

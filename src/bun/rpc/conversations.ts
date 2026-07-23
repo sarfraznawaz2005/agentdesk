@@ -296,6 +296,11 @@ const messageSelection = {
 /**
  * Return messages for a conversation ordered by insertion order (rowid ASC).
  *
+ * `limit` selects the NEWEST slice, not the oldest — a conversation longer than
+ * the limit must show its most recent messages, since that's where the user is
+ * reading and where a reply lands. Ordering the query ASC and truncating would
+ * return the first N and silently hide everything after them.
+ *
  * Cursor pagination uses the message's rowid (`seq`) rather than createdAt, so
  * the cursor is stable even when timestamps collide or are later mutated.
  */
@@ -330,14 +335,16 @@ export async function getMessages(
 		}
 	}
 
+	// DESC + limit takes the newest `limit` rows; reverse restores ASC
+	// (insertion) order for the caller — same shape as the cursor branch above.
 	const rows = await db
 		.select(messageSelection)
 		.from(messages)
 		.where(eq(messages.conversationId, conversationId))
-		.orderBy(asc(sql`${messages}.rowid`))
+		.orderBy(desc(sql`${messages}.rowid`))
 		.limit(limit);
 
-	return rows.map(mapMessage);
+	return rows.reverse().map(mapMessage);
 }
 
 /**

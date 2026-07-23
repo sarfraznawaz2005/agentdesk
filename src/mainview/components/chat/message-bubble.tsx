@@ -11,6 +11,7 @@ import { AgentAvatar } from "@/components/ui/agent-avatar";
 import { useMessageActions } from "./message-actions-context";
 import { Tip } from "@/components/ui/tooltip";
 import { CodeBlock } from "./code-block";
+import { StreamingMarkdown } from "./streaming-markdown";
 import { PlanDiff } from "./plan-diff";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { MessageParts, ThinkingBlock, type MessagePartData } from "./message-parts";
@@ -736,14 +737,20 @@ export const MessageBubble = memo(function MessageBubble({ message, projectId, i
                     }
                   } catch { /* not JSON */ }
                 }
-                return (
+                // While streaming, render block-by-block so a token flush only
+                // re-parses the block still being written — see
+                // StreamingMarkdown. Completed messages are memoised and never
+                // re-render, so they stay on the plain single-parse path.
+                return isStreaming ? (
+                  <StreamingMarkdown content={displayContent} components={mdComponents} />
+                ) : (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[[rehypeSanitize, markdownSanitizeSchema]]}
                     urlTransform={markdownUrlTransform}
                     components={mdComponents as never}
                   >
-                    {displayContent + (isStreaming ? "▍" : "")}
+                    {displayContent}
                   </ReactMarkdown>
                 );
               })()}

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 export type CodeBlockTheme = "dark" | "light";
@@ -49,35 +49,56 @@ const THEME_MAP: Record<CodeBlockTheme, { shiki: string; bg: string; headerBg: s
   },
 };
 
+/** Trailing debounce applied to re-highlights of a code block that's still growing. */
+const HIGHLIGHT_DEBOUNCE_MS = 150;
+
 export function CodeBlock({ language, code, theme = "dark", maxHeight = 0, compact = false, lineCount }: CodeBlockProps) {
   const [html, setHtml] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const hasHighlightedRef = useRef(false);
   const t = THEME_MAP[theme];
 
   useEffect(() => {
     let cancelled = false;
 
-    getHighlighter().then(async (highlighter) => {
-      // Dynamically load the requested language; silently fall back to plaintext
-      try {
-        await highlighter.loadLanguage(language as Parameters<typeof highlighter.loadLanguage>[0]);
-      } catch {
-        // Language not supported by shiki — will use plaintext below
-      }
+    const highlight = () => {
+      getHighlighter().then(async (highlighter) => {
+        // Dynamically load the requested language; silently fall back to plaintext
+        try {
+          await highlighter.loadLanguage(language as Parameters<typeof highlighter.loadLanguage>[0]);
+        } catch {
+          // Language not supported by shiki — will use plaintext below
+        }
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      const loadedLangs = highlighter.getLoadedLanguages();
-      const result = highlighter.codeToHtml(code, {
-        lang: loadedLangs.includes(language) ? language : "plaintext",
-        theme: t.shiki,
+        const loadedLangs = highlighter.getLoadedLanguages();
+        const result = highlighter.codeToHtml(code, {
+          lang: loadedLangs.includes(language) ? language : "plaintext",
+          theme: t.shiki,
+        });
+
+        setHtml(result);
+        hasHighlightedRef.current = true;
       });
+    };
 
-      setHtml(result);
-    });
+    // First pass runs immediately, so a code block in an already-finished
+    // message colourises without delay. Later passes mean `code` is still
+    // growing — i.e. the block is being streamed — and shiki is expensive
+    // enough (full TextMate re-tokenise of the whole block) that running it
+    // per flush is the dominant cost of a code-heavy reply. Chunked streaming
+    // makes that worse, not better: it flushes on every newline, so a 200-line
+    // block used to mean 200 re-tokenises of an ever-longer string.
+    if (!hasHighlightedRef.current) {
+      highlight();
+      return () => { cancelled = true; };
+    }
 
+    const timer = setTimeout(highlight, HIGHLIGHT_DEBOUNCE_MS);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [code, language, t.shiki]);
 

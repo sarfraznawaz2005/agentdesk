@@ -22,7 +22,7 @@ import {
 	conversations as conversationsTable,
 	agentTools as agentToolsTable,
 } from "../../db/schema";
-import { describeCapabilities, isToolStrippedAtDispatch } from "../../../shared/agent-capabilities";
+import { describeCapabilities, isToolStrippedAtDispatch, isReviewerToolset } from "../../../shared/agent-capabilities";
 import { getToolDefinitions } from "./index";
 import type { AgentActivityEvent } from "../types";
 import { runInlineAgent, pruneAgentToolResults, READ_ONLY_AGENTS, isWriteConcurrencyExempt, type InlineAgentCallbacks } from "../agent-loop";
@@ -562,6 +562,12 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 
 					const displayName = agentRows.length > 0 ? agentRows[0].displayName : args.agent;
 
+					// Reviewers take a different board path from implementers — see the
+					// two branches below. Derived from the agent's own grants, not its
+					// name, so custom review agents behave the same way.
+					const { getGrantedToolNames } = await import("../prompts");
+					const isReviewDispatch = isReviewerToolset(await getGrantedToolNames(args.agent));
+
 					// Move kanban task to working before agent starts
 					let taskConversationId: string | null = null;
 					if (args.kanban_task_id) {
@@ -577,9 +583,16 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 								});
 							}
 							const wasBacklog = existingTask.column === "backlog";
-							await moveKanbanTask(args.kanban_task_id, "working");
 							const { broadcastToWebview } = await import("../../engine-manager");
-							broadcastToWebview("kanbanTaskUpdated", { projectId: effectiveProjectId, taskId: args.kanban_task_id, action: "moved" });
+							// A reviewer leaves the column alone. `submit_review` rejects any
+							// task not sitting in "review" (kanban.ts), so moving it to
+							// "working" here only forced the reviewer to move it back before
+							// it could record a verdict — the review → working → review bounce
+							// seen when the PM picks up a task left in review after a restart.
+							if (!isReviewDispatch) {
+								await moveKanbanTask(args.kanban_task_id, "working");
+								broadcastToWebview("kanbanTaskUpdated", { projectId: effectiveProjectId, taskId: args.kanban_task_id, action: "moved" });
+							}
 
 							// Create a dedicated conversation for this task when the setting is on
 							// and the task is moving from backlog → working (agent-initiated only).
@@ -647,7 +660,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						taskWithInstructions = [
 							`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
 							`  YOUR TASK ID: ${tid}`,
-							`  Use ONLY "${tid}" when calling check_criteria, verify_implementation, and move_task.`,
+							`  Use ONLY "${tid}" when calling ${isReviewDispatch ? "check_criteria and submit_review" : "check_criteria, verify_implementation, and move_task"}.`,
 							`  Do NOT use any other task ID — not from context, not from memory.`,
 							``,
 							`  MANDATORY FIRST STEPS (in order):`,
@@ -662,12 +675,26 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							``,
 							args.task,
 							``,
-							`The task has already been moved to "working" — do NOT call move_task to working again.`,
-							`When implementation is complete:`,
-							`1. Use check_criteria with id="${tid}" and ALL indices as an array in ONE call (e.g. criteria_index=[0,1,2]) — never call it one index at a time.`,
-							`2. Call verify_implementation with your summary, files changed, and checklist — this is MANDATORY.`,
-							`3. verify_implementation will automatically move the task to review on pass.`,
-							`Do NOT call move_task to review yourself — it will be rejected. Do NOT call move_task to done — only the review system does that.`,
+							// Reviewers are denied verify_implementation, so the implementer
+							// closing steps below would order them to call a tool that is not
+							// in their schema — and tell them the task is in "working" when
+							// submit_review requires it to be in "review".
+							...(isReviewDispatch
+								? [
+									`The task is in "review" and must STAY there — do NOT call move_task.`,
+									`When your review is complete:`,
+									`1. Use check_criteria with id="${tid}" and ALL indices as an array in ONE call (e.g. criteria_index=[0,1,2]) — never call it one index at a time.`,
+									`2. Call submit_review with id="${tid}" and your verdict — this is MANDATORY and is the only way to record the outcome.`,
+									`   Approving moves the task to "done"; requesting changes sends it back to "working". Both transitions are handled for you.`,
+								]
+								: [
+									`The task has already been moved to "working" — do NOT call move_task to working again.`,
+									`When implementation is complete:`,
+									`1. Use check_criteria with id="${tid}" and ALL indices as an array in ONE call (e.g. criteria_index=[0,1,2]) — never call it one index at a time.`,
+									`2. Call verify_implementation with your summary, files changed, and checklist — this is MANDATORY.`,
+									`3. verify_implementation will automatically move the task to review on pass.`,
+									`Do NOT call move_task to review yourself — it will be rejected. Do NOT call move_task to done — only the review system does that.`,
+								]),
 						].join("\n");
 					}
 

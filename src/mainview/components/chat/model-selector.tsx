@@ -31,6 +31,13 @@ interface ModelSection {
   label: string;
   icon: "default" | "latest" | "favorites" | null;
   entries: ModelEntry[];
+  /**
+   * Show each row's provider as a badge. True for the aggregate sections
+   * (Default/Latest/Favorites), which mix providers and would otherwise show
+   * two identically-named models with no way to tell them apart. False for the
+   * per-provider groups below, where the section header already says it.
+   */
+  showProvider: boolean;
 }
 
 const prefKey = (providerId: string, model: string) => `${providerId}|${model}`;
@@ -381,7 +388,7 @@ export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false
       // Alphabetical within a provider's own model list.
       entries.sort((a, b) => a.model.localeCompare(b.model, undefined, { sensitivity: "base" }));
       if (entries.length > 0) {
-        providerSections.push({ key: `prov-${p.providerId}`, label: p.providerName, icon: null, entries });
+        providerSections.push({ key: `prov-${p.providerId}`, label: p.providerName, icon: null, entries, showProvider: false });
       }
     }
     // Alphabetical by provider name — the raw `providers` order otherwise
@@ -394,7 +401,7 @@ export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false
     // of usage history or favourites, so there's always one guaranteed,
     // one-click way back to the app's actual default.
     if (defaultEntry && matches(defaultEntry.providerName, defaultEntry.model, defaultEntry.providerType)) {
-      top.push({ key: "default", label: "Default", icon: "default", entries: [defaultEntry] });
+      top.push({ key: "default", label: "Default", icon: "default", entries: [defaultEntry], showProvider: true });
     }
 
     // Latest — enabled models with a last-used timestamp, most recent first, cap 10.
@@ -406,11 +413,11 @@ export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false
         return tb.localeCompare(ta);
       })
       .slice(0, 10);
-    if (latest.length > 0) top.push({ key: "latest", label: "Latest", icon: "latest", entries: latest });
+    if (latest.length > 0) top.push({ key: "latest", label: "Latest", icon: "latest", entries: latest, showProvider: true });
 
     // Favorites — enabled, favourited models.
     const favorites = allEnabled.filter((e) => prefs[prefKey(e.providerId, e.model)]?.isFavorite);
-    if (favorites.length > 0) top.push({ key: "favorites", label: "Favorites", icon: "favorites", entries: favorites });
+    if (favorites.length > 0) top.push({ key: "favorites", label: "Favorites", icon: "favorites", entries: favorites, showProvider: true });
 
     return [...top, ...providerSections];
   }, [providers, prefs, search, defaultEntry]);
@@ -524,6 +531,19 @@ export function ModelSelector({ projectId, messages, hideBuildPlanToggle = false
                       )}
                       onClick={() => selectModel(entry.providerId, entry.model)}
                     >
+                      {section.showProvider && (
+                        <span
+                          title={entry.providerName}
+                          className={cn(
+                            "shrink-0 max-w-[92px] truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                            isSelected
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "bg-muted text-muted-foreground/80",
+                          )}
+                        >
+                          {entry.providerName}
+                        </span>
+                      )}
                       <span className="flex-1 truncate text-left">{entry.model}</span>
                       {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" />}
                       <button

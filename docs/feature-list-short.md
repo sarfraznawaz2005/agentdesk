@@ -11,7 +11,7 @@
 3. Plan approval flow (propose a plan → approve/reject → tasks get created)
 4. Auto-continue to the next task after one finishes
 5. Kanban workflow (backlog → working → review → done, drag-and-drop)
-6. Automatic code review after a task completes, and rejection sending it back
+6. Automatic code review after a task completes, and rejection sending it back — including picking a task back up that was left sitting in review when the app was closed: the reviewer reviews it where it stands instead of bouncing it through "working" first
 7. Task acceptance-criteria checklist
 8. Auto git commit & feature branches per task
 9. Creating a GitHub issue from a kanban task

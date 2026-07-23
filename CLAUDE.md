@@ -253,6 +253,13 @@ Turn tasks into verifiable goals rather than stopping at "looks right."
    otherwise. Never add a section to `getAgentSystemPrompt`'s composition array directly —
    that's how `code-reviewer` ended up ordered to call a `verify_implementation` it is
    deliberately denied, and every narrow custom agent got told to call `list_docs`.
+   **This covers the dynamic dispatch text too, not just the static sections.** `run_agent`
+   appends a kanban instruction block (`tools/pm-tools.ts`) that was implementer-shaped for
+   every agent: it named `verify_implementation`, and it moved the task to "working" first.
+   Dispatching a reviewer that way told it to call a tool it lacks and left the task in a
+   column `submit_review` rejects, so the agent had to move it back — the review → working →
+   review bounce. Both the move and the block now branch on `isReviewerToolset()`
+   (`shared/agent-capabilities.ts`), derived from the grants so custom review agents match.
 - **Agent capability enforcement must be continuous, not one-shot.** A migration repairs
    existing rows once; the next write re-creates the problem. Stripped `agent_tools` rows are
    blocked at three independent points — the Settings UI (greyed toggle), `setAgentToolsList`
@@ -274,6 +281,24 @@ Turn tasks into verifiable goals rather than stopping at "looks right."
    job). **Never wrap a `streamText` consumption loop in it**: those surfaces broadcast tokens
    as they arrive and the client appends them, so a retry duplicates text on screen. Streaming
    callers keep the SDK's own retry, which is safe because it happens before the first token.
+- **Every live-streaming surface must accumulate BEFORE it broadcasts — a frontend buffer is not
+   a substitute.** `broadcastToProject` → `webview.rpc.send.*` → `JSON.stringify` → wrap in a
+   `window.__electrobun.receiveMessageFromBun(...)` **source string** → `executeJavascript`
+   (`BrowserView.sendMessageToWebviewViaExecute`). The webview parses and evaluates a fresh
+   script per call, so an unbatched token stream costs one script compile *per token* — the
+   single largest cost in PM chat, and invisible to any frontend-side batching because
+   `chat-event-handlers.ts`'s token buffer sits *downstream* of the bridge (it batches React
+   renders, not bridge crossings). That is why picking "Chunked Streaming" did nothing for it.
+   Wrap the emission in `createThrottledAccumulator(cb, ...streamingFlushArgs(mode))` — every
+   surface does this (`agent-loop.ts`, `collections/chat.ts`, `council.ts`, `dashboard-agent.ts`,
+   General Chat, and both branches of `engine.ts`). Three things a new call site must get right:
+   send only the slice new since the last flush (`flushedTextLength` — `onStreamToken` APPENDS
+   client-side), `flushNow()` before any bulk-send fallback so a late flush can't append a
+   duplicate, and `cancel()` + resync `flushedTextLength` to `value().length` on any path that
+   calls `onStreamReset` (otherwise retracted text reappears after the reset wipes it).
+   Corollary — **replace-semantics events are quadratic**: `emitThinking` re-sends the *entire*
+   accumulated reasoning every 300ms, so displaying n chars of thinking pushes O(n²) across the
+   bridge. Prefer append/delta semantics for anything that grows.
 - **Both composer pickers propagate to dispatched sub-agents — keep it that way.** The thinking
    picker rides `thinkingBudgetOverride`; the model picker rides `chatModelId` → `PMToolsDeps` →
    `InlineAgentOptions.modelId`. Model precedence is: the agent's own **Model ID Override** wins,
