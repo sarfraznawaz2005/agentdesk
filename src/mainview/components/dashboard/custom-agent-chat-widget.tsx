@@ -263,7 +263,7 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
       // portaled to document.body, outside widgetRef — without this check
       // a click inside them reads as "outside" and closes the panel before
       // the pick registers.
-      if (target.closest('[role="dialog"], [data-radix-popper-content-wrapper]')) return;
+      if (target.closest('[role="dialog"], [data-radix-popper-content-wrapper], [data-chat-launcher-footer]')) return;
       if (widgetRef.current && !widgetRef.current.contains(target)) setOpen(false);
     };
     document.addEventListener("mousedown", onMouseDown);
@@ -402,13 +402,22 @@ export function CustomAgentChatWidget({ agentName, displayName, color, visible =
   }, [open, launcherId]);
   const openRequestId = useDashboardLauncherStore((s) => s.openRequestId);
   useEffect(() => {
+    if (openRequestId == null) return;
     if (openRequestId === launcherId) {
       // Responding to an external toggle-request signal from the footer —
       // clicking an already-open entry closes its panel back down.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen((o) => !o);
       useDashboardLauncherStore.getState().clearOpenRequest();
+    } else if (open) {
+      // A different launcher was just requested open while this one already
+      // was — every panel shares the same fixed bottom-right slot, so leaving
+      // this one open too just stacks it silently underneath the new one
+      // instead of visibly closing.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpen(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequestId, launcherId]);
 
   const retryLastMessage = useCallback(async () => {

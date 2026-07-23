@@ -170,6 +170,13 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
   return (
     <div
       ref={containerRef}
+      // Marks every click inside the footer as "not outside" for each chat
+      // widget's own outside-click-closes handler — without it, clicking a
+      // pill to close its already-open panel raced two state updates (the
+      // outside-click's setOpen(false) on mousedown, then this pill's own
+      // toggle on click) and the toggle always won, so the panel silently
+      // reopened itself instead of closing.
+      data-chat-launcher-footer
       // z-40 (not higher): the expanded-chat Dialog's scrim (DialogOverlay) is
       // z-50 and covers the whole app — this bar must sit below that so it
       // dims along with everything else instead of poking through on top of it.
@@ -222,6 +229,10 @@ export function ChatLauncherFooter({ sidebarCollapsed, isMobile }: { sidebarColl
           {moreOpen && menuPos && createPortal(
             <div
               ref={menuRef}
+              // Portaled to document.body, so it's outside the footer's own
+              // data-chat-launcher-footer container — needs the same marker
+              // for the widgets' outside-click handlers (see note above).
+              data-chat-launcher-footer
               // Portaled to document.body and positioned via `fixed` from the
               // trigger's live rect — the footer bar's own `overflow-hidden`
               // (needed to keep the hidden pill-measuring clone from affecting
