@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.9.3",
+        "title":  "Enhanced Streaming Performance",
+        "changes":  [
+                        "Improved streaming performance with batching enhancements for better agent capabilities."
+                    ]
+    },
+    {
         "version":  "2.9.2",
         "title":  "Enhanced AI Provider Capabilities",
         "changes":  [
