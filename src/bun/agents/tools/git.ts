@@ -129,6 +129,82 @@ const gitDiffTool = tool({
 });
 
 // ---------------------------------------------------------------------------
+// git_show
+// ---------------------------------------------------------------------------
+
+// Inspecting a HISTORICAL commit had no read-only path before this tool:
+// git_log returns metadata only (hash/author/date/subject — no --stat, no -p)
+// and git_diff is hard-wired to the working tree with no ref parameter. The
+// only way to answer "what did commit X change" was `run_shell`, which is a
+// WRITE_TOOL and therefore stripped from every read-only agent — so
+// code-explorer would correctly report it could not answer, and the PM had to
+// escalate to a write agent for what is a purely read-only question.
+/**
+ * Git args for `git_show`'s four stat/patch combinations.
+ *
+ * The subtlety this exists for: `git show --stat --no-patch` prints NO stat.
+ * `-s`/`--no-patch` suppresses all diff output, the stat included — so the
+ * documented "fast file-list-only view" (stat=true, patch=false) came back as
+ * bare commit metadata with no file list at all. `git log -1 --stat <commit>`
+ * is the idiom that yields metadata plus the changed-file summary without a
+ * patch body, and unlike `show -s` it accepts a pathspec.
+ *
+ * Exported for tests/agents/git-show-args.test.ts — git.ts itself imports the
+ * DB, so the pure part is tested in isolation.
+ */
+export function buildGitShowArgs(commit: string, stat: boolean, patch: boolean, file?: string): string[] {
+	if (patch) return ["show", commit, ...(stat ? ["--stat"] : []), ...(file ? ["--", file] : [])];
+	if (stat) return ["log", "-1", "--stat", commit, ...(file ? ["--", file] : [])];
+	return ["show", "--no-patch", commit];
+}
+
+const gitShowTool = tool({
+	description:
+		"Show a specific historical commit: its metadata, changed-file stat summary, and optionally " +
+		"the full patch. Use this to answer 'what did commit X change' — git_log gives only commit " +
+		"metadata and git_diff only covers the current working tree, neither can inspect a past commit. " +
+		"Accepts any git revision (full/short SHA, HEAD~2, a tag, a branch name). Output is truncated to 15 000 characters.",
+	inputSchema: z.object({
+		workspacePath: z.string().describe("Absolute path to the git repository root"),
+		commit: z
+			.string()
+			.describe("Git revision to show — full or short SHA, or a ref like HEAD, HEAD~3, v1.2.0, main"),
+		stat: z
+			.boolean()
+			.optional()
+			.describe("Include the changed-file stat summary (default: true)"),
+		patch: z
+			.boolean()
+			.optional()
+			.describe("Include the full diff/patch body (default: true). Set false for a fast file-list-only view."),
+		file: z
+			.string()
+			.optional()
+			.describe("Optional path (relative to workspacePath) to limit the patch to one file"),
+	}),
+	execute: async ({ workspacePath, commit, stat = true, patch = true, file }, { abortSignal }): Promise<string> => {
+		try {
+			const args = buildGitShowArgs(commit, stat, patch, file);
+
+			const { stdout, stderr, exitCode } = await runGit(args, workspacePath, abortSignal);
+
+			if (exitCode !== 0) {
+				return JSON.stringify({ error: stderr || `git show failed for revision '${commit}'` });
+			}
+
+			const MAX = 15_000;
+			if (stdout.length > MAX) {
+				return stdout.slice(0, MAX) + `\n... (truncated at ${MAX} characters — re-run with patch=false for the file list, or pass \`file\` to narrow to one path)`;
+			}
+
+			return stdout || `(commit '${commit}' produced no output — it may be an empty merge commit)`;
+		} catch (err) {
+			return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+		}
+	},
+});
+
+// ---------------------------------------------------------------------------
 // git_commit
 // ---------------------------------------------------------------------------
 
@@ -734,6 +810,7 @@ export const gitTools: Record<string, ToolRegistryEntry> = {
 	git_pull: { tool: gitPullTool, category: "git" },
 	git_fetch: { tool: gitFetchTool, category: "git" },
 	git_log: { tool: gitLogTool, category: "git" },
+	git_show: { tool: gitShowTool, category: "git" },
 	git_pr: { tool: gitPrTool, category: "git" },
 	git_stash: { tool: gitStashTool, category: "git" },
 	git_reset: { tool: gitResetTool, category: "git" },

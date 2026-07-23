@@ -11,10 +11,9 @@
 
 import { generateText, streamText, type Tool, type ModelMessage } from "ai";
 import { eq, inArray } from "drizzle-orm";
-import { Utils } from "electrobun/bun";
-import { appendFileSync, existsSync, mkdirSync } from "fs";
 import { spawnAsync } from "../lib/spawn-async";
 import { isDevChannel } from "../lib/dev-mode";
+import { createLogger } from "../lib/logger";
 import { join, isAbsolute } from "path";
 import { db } from "../db";
 import { messages, messageParts, agents as agentsTable, aiProviders, conversations, projects } from "../db/schema";
@@ -22,7 +21,14 @@ import type { ProviderConfig } from "../providers/types";
 import { createProviderAdapter } from "../providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { isReasoningUnsupported, markReasoningUnsupported } from "../providers/reasoning-support";
+import { withProviderCaller } from "../providers/error-log";
 import { getAgentSystemPrompt } from "./prompts";
+import {
+	WRITE_TOOLS,
+	READ_ONLY_AGENTS,
+	isToolStrippedAtDispatch,
+} from "../../shared/agent-capabilities";
 import { getToolsForAgent } from "./tools/index";
 import {
 	getPluginTools,
@@ -39,25 +45,14 @@ import { FileTracker } from "./tools/file-tracker";
 import { createTrackedFileTools } from "./tools/file-ops";
 import { skillRegistry } from "../skills/registry";
 import { logPrompt } from "./prompt-logger";
-import { isTransientError, getBackoffDelay } from "./safety";
+import { isTransientError, getRetryDelay, getRetryAfterMs } from "./safety";
 import { buildMediaFollowUpMessage } from "./tools/media-followup";
 
 // ---------------------------------------------------------------------------
-// Agent loop file logger — writes to {userData}/logs/agent-loop.log
+// File logger — {userData}/logs/agent-loop.log
 // ---------------------------------------------------------------------------
 
-let agentLogPath: string | null = null;
-
-function logAgent(line: string): void {
-	try {
-		if (!agentLogPath) {
-			const dir = join(Utils.paths.userData, "logs");
-			if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-			agentLogPath = join(dir, "agent-loop.log");
-		}
-		appendFileSync(agentLogPath, `[${new Date().toISOString()}] ${line}\n`);
-	} catch { /* non-critical */ }
-}
+const logAgent = createLogger("agent-loop");
 
 // ---------------------------------------------------------------------------
 // Tool-result error classification
@@ -280,26 +275,18 @@ function buildThinkingOptions(budget: string | null): Record<string, unknown> {
 // Read-only tool filter
 // ---------------------------------------------------------------------------
 
-const WRITE_TOOLS = new Set([
-	"write_file", "edit_file", "multi_edit_file", "append_file", "delete_file",
-	"move_file", "copy_file", "create_directory", "patch_file", "batch_rename",
-	"archive", "download_file",
-	"run_shell", "execute_code",
-	"git_commit", "git_push", "git_branch", "git_stash", "git_reset",
-	"git_cherry_pick",
-	"create_task", "move_task", "update_task", "delete_task",
-	"save_memory", "delete_memory",
-]);
-
-/**
- * Agents that only read/explore — safe to run in parallel.
- * All other agents are considered "write" agents and must run one at a time.
- */
-export const READ_ONLY_AGENTS = new Set([
-	"code-explorer",
-	"research-expert",
-	"task-planner",
-]);
+// WRITE_TOOLS / READ_ONLY_AGENTS / READ_ONLY_WRITE_EXCEPTIONS now live in
+// src/shared/agent-capabilities.ts — the single source of truth shared with the
+// PM prompt builder (prompts.ts) and the Settings → Agents UI, which previously
+// each kept their own drifting copy. Re-exported here so the ~10 existing
+// import sites (pm-tools.ts, simple-dispatch.ts, task-executor.ts, …) keep
+// working unchanged.
+export {
+	WRITE_TOOLS,
+	READ_ONLY_AGENTS,
+	READ_ONLY_WRITE_EXCEPTIONS,
+	isToolStrippedAtDispatch,
+} from "../../shared/agent-capabilities";
 
 /**
  * Agents that never mutate files or the git working directory, so they're
@@ -331,22 +318,10 @@ export async function isWriteConcurrencyExempt(agentName: string): Promise<boole
 	return !Object.keys(tools).some((name) => WRITE_TOOLS.has(name));
 }
 
-/**
- * Per-agent exceptions to the read-only write-tool filter. The task-planner is
- * read-only (parallelizable, no file/shell/git writes) yet is the sole task
- * author, so it keeps `create_task` even though that tool is in WRITE_TOOLS.
- */
-export const READ_ONLY_WRITE_EXCEPTIONS: Record<string, ReadonlySet<string>> = {
-	"task-planner": new Set(["create_task"]),
-};
-
-function filterReadOnlyTools(tools: Record<string, Tool>, agentName: string): Record<string, Tool> {
-	const allowWrite = READ_ONLY_WRITE_EXCEPTIONS[agentName];
+export function filterReadOnlyTools(tools: Record<string, Tool>, agentName: string): Record<string, Tool> {
 	const filtered: Record<string, Tool> = {};
 	for (const [name, tool] of Object.entries(tools)) {
-		if (!WRITE_TOOLS.has(name) || allowWrite?.has(name)) {
-			filtered[name] = tool;
-		}
+		if (!isToolStrippedAtDispatch(agentName, name)) filtered[name] = tool;
 	}
 	return filtered;
 }
@@ -880,7 +855,17 @@ function describeToolCall(toolName: string, args: unknown): string {
 // runInlineAgent
 // ---------------------------------------------------------------------------
 
+/**
+ * Attributes every provider failure inside this run to the agent, so
+ * provider_errors.log can tell one agent's repeated failure apart from several
+ * agents each failing once. AsyncLocalStorage-scoped — safe under the parallel
+ * read-only dispatch.
+ */
 export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAgentResult> {
+	return withProviderCaller(opts.agentName, () => runInlineAgentInner(opts));
+}
+
+async function runInlineAgentInner(opts: InlineAgentOptions): Promise<InlineAgentResult> {
 	const {
 		conversationId, agentName, agentDisplayName, task: rawTask, projectContext,
 		providerConfig, abortSignal, callbacks, workspacePath, projectId,
@@ -926,8 +911,17 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 						id: pr.id, name: pr.name, providerType: pr.providerType,
 						apiKey: pr.apiKey, baseUrl: pr.baseUrl, defaultModel: pr.defaultModel,
 					};
+					// Re-base the model on THIS provider. effectiveModelId currently
+					// holds the caller's model — the chat picker's choice, or the
+					// dispatching provider's default — and a model id only means
+					// something to the provider it came from. Sending one provider's
+					// model id to another was already wrong before the picker was
+					// forwarded here; it just had fewer ways to happen.
+					effectiveModelId = pr.defaultModel ?? getDefaultModel(pr.providerType);
 				}
 			}
+			// The agent's own model override is the most specific signal — it wins
+			// over both the chat picker and any provider default.
 			if (row.modelId) effectiveModelId = row.modelId;
 			if (row.temperature) effectiveTemperature = parseFloat(row.temperature);
 			if (row.maxTokens) effectiveMaxTokens = row.maxTokens;
@@ -945,6 +939,13 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		}
 	} catch {
 		// Fall through to defaults
+	}
+
+	// This provider+model already rejected `reasoning` once this run of the app
+	// (Mistral's devstral/codestral/large all 400 on it). Don't spend another
+	// failed round-trip rediscovering that — see providers/reasoning-support.ts.
+	if (effectiveThinkingBudget && isReasoningUnsupported(effectiveProviderConfig.id, effectiveModelId)) {
+		effectiveThinkingBudget = null;
 	}
 
 	// Claude Subscription's direct-HTTP OAuth path 429s for anything but Haiku
@@ -1699,6 +1700,21 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			...(effectiveMaxTokens !== undefined && { maxTokens: effectiveMaxTokens }),
 			...buildThinkingOptions(effectiveThinkingBudget),
 
+			// Retrying is owned entirely by the `retry:` loop below, which knows
+			// things the SDK cannot: our transient classification reads the response
+			// BODY (opencode Zen returns a transient capacity failure as a 401 the
+			// SDK must treat as permanent), it honours Retry-After, and its backoff
+			// is jittered so parallel agents don't retry in lockstep. Leaving the
+			// SDK's own maxRetries at its default of 2 nested three SDK attempts
+			// inside each of our three, so a hard-down provider cost up to 9 requests
+			// and ~21s before reporting; ours alone is 3 attempts and ~3-5s. Resuming
+			// is cheap because agentMessages keeps the completed steps (see the
+			// `retry:` loop comment) — the outer retry continues, it doesn't restart.
+			// PRECONDITION: isTransientStatus in safety.ts must stay a superset of the
+			// SDK's own isRetryable rule, or disabling this silently drops retries the
+			// SDK used to perform. tests/tools/safety.test.ts enforces that.
+			maxRetries: 0,
+
 			// --- Stop when no more tool calls or guardrails trigger ---
 			stopWhen: [
 				// Natural completion: model has no more tool calls
@@ -2091,6 +2107,9 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 		) {
 			thinkingRetried = true;
 			effectiveThinkingBudget = null;
+			// Remember it, so the next run skips the doomed first attempt entirely
+			// rather than rediscovering this the same way.
+			markReasoningUnsupported(effectiveProviderConfig.id, effectiveModelId);
 			warnThinkingUnsupportedOnce(effectiveModelId);
 			retractLiveParts();
 			continue retry;
@@ -2111,16 +2130,23 @@ export async function runInlineAgent(opts: InlineAgentOptions): Promise<InlineAg
 			continue retry;
 		}
 
-		// Retry on transient provider errors (e.g., connection timeout when agents spawn in parallel)
+		// Retry on transient provider errors (e.g., connection timeout when agents spawn in parallel).
+		// getRetryDelay prefers the provider's own Retry-After over our backoff, and
+		// returns null when it asks for longer than we're willing to block a turn —
+		// in which case we fall through to the failure path rather than retry early.
 		if (!isUserAbort && !isContextFull && !isStuck && !isTimeout && isTransientError(error) && retryAttempt < MAX_RETRIES) {
-			retryAttempt++;
-			const delay = getBackoffDelay(retryAttempt - 1);
-			logAgent(`${agentName} transient error, retry ${retryAttempt}/${MAX_RETRIES} after ${delay}ms: ${error instanceof Error ? error.message : String(error)}`);
-			// Discard any "full" mode live part(s) streamed before the transient
-			// error hit — this whole attempt is being retried from scratch.
-			retractLiveParts();
-			await new Promise(r => setTimeout(r, delay));
-			continue retry;
+			const delay = getRetryDelay(error, retryAttempt);
+			if (delay !== null) {
+				retryAttempt++;
+				const source = getRetryAfterMs(error) !== null ? "Retry-After" : "backoff";
+				logAgent(`${agentName} transient error, retry ${retryAttempt}/${MAX_RETRIES} after ${delay}ms (${source}): ${error instanceof Error ? error.message : String(error)}`);
+				// Discard any "full" mode live part(s) streamed before the transient
+				// error hit — this whole attempt is being retried from scratch.
+				retractLiveParts();
+				await new Promise(r => setTimeout(r, delay));
+				continue retry;
+			}
+			logAgent(`${agentName} transient error but provider asked to wait ${getRetryAfterMs(error)}ms — giving up rather than retrying early`);
 		}
 
 		// Log task + failure reason together, same as the success path above —

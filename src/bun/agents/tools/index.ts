@@ -21,11 +21,12 @@ import { lspTools } from "./lsp";
 import { skillTools } from "./skills";
 import { memoryTools } from "./memory";
 import { codeExecTools } from "./code-exec";
+import { dataTools } from "./data";
 // ---------------------------------------------------------------------------
 // Tool category metadata
 // ---------------------------------------------------------------------------
 
-export type ToolCategory = "file" | "shell" | "communication" | "notes" | "kanban" | "git" | "web" | "system" | "process" | "plugin" | "skills" | "memory";
+export type ToolCategory = "file" | "shell" | "communication" | "notes" | "kanban" | "git" | "web" | "system" | "process" | "plugin" | "skills" | "memory" | "data";
 
 export interface ToolDefinition {
 	name: string;
@@ -95,6 +96,7 @@ const toolRegistry: Record<string, ToolRegistryEntry> = {
 	...skillTools,
 	...memoryTools,
 	...codeExecTools,
+	...dataTools,
 };
 
 /**

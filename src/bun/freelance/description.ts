@@ -21,6 +21,7 @@ import { db } from "../db";
 import { freelanceListings } from "../db/schema";
 import type { createProviderAdapter } from "../providers";
 import { internalCallModelId } from "../providers/claude-subscription";
+import { withTransientRetry } from "../agents/safety";
 
 // Listings whose description fetch failed (or extracted nothing) this app
 // session. A cached "" is retried once per session instead of never, so
@@ -68,7 +69,8 @@ export async function extractDescription(
   abortSignal?: AbortSignal,
   providerType?: string,
 ): Promise<string> {
-  const { text } = await generateText({
+  const { text } = await withTransientRetry(() => generateText({
+    maxRetries: 0,
     model: adapter.createModel(providerType ? internalCallModelId(providerType, modelId) : modelId),
     abortSignal,
     instructions:
@@ -86,7 +88,7 @@ export async function extractDescription(
           `Extract the project description from this page for the listing titled "${listing.title}":\n\n${pageText}`,
       },
     ],
-  });
+  }), { label: "freelance-description" });
   return text.trim();
 }
 

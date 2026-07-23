@@ -14,6 +14,8 @@ import { createProviderAdapter } from "../providers";
 import { recordModelUsageHandler } from "../rpc/providers";
 import { getDefaultModel, getContextLimit } from "../providers/models";
 import { isHaikuModel } from "../providers/claude-subscription";
+import { isReasoningUnsupported, markReasoningUnsupported } from "../providers/reasoning-support";
+import { withProviderCaller } from "../providers/error-log";
 import { buildContext } from "./context";
 import { getPMSystemPrompt } from "./prompts";
 import { summarizeConversation } from "./summarizer";
@@ -26,7 +28,7 @@ import { audioTools } from "./tools/audio";
 import { buildMediaFollowUpMessage } from "./tools/media-followup";
 import { skillTools } from "./tools/skills";
 import { createPreviewTool } from "./tools/preview";
-import { isTransientError, getBackoffDelay } from "./safety";
+import { isTransientError, getBackoffDelay, getRetryDelay } from "./safety";
 import { logPrompt } from "./prompt-logger";
 import { getStreamingMode, isLiveStreamingMode } from "./streaming-mode";
 import { createThrottledAccumulator } from "./throttled-accumulator";
@@ -359,6 +361,20 @@ export class AgentEngine {
 		abortController: AbortController,
 		userMessageId?: string,
 	): Promise<void> {
+		// Attribute provider failures raised during this turn to the PM in
+		// provider_errors.log. Sub-agents dispatched from here re-scope it to
+		// their own name inside runInlineAgent.
+		return withProviderCaller("project-manager", () =>
+			this._runPMProcessingInner(assistantMessageId, conversationId, content, abortController, userMessageId));
+	}
+
+	private async _runPMProcessingInner(
+		assistantMessageId: string,
+		conversationId: string,
+		content: string,
+		abortController: AbortController,
+		userMessageId?: string,
+	): Promise<void> {
 		try {
 			// ---------------------------------------------------------------------------
 			// Slash-command: /info — hardcoded handler, no LLM call required.
@@ -576,6 +592,12 @@ export class AgentEngine {
 					// Explicit in-chat thinking pick — forwarded to dispatched sub-agents
 					// so an explicit level overrides their own budget (null = Default).
 					thinkingBudgetOverride: chatThinkingLevel,
+					// The model the PM resolved for this turn — includes the composer's
+					// model picker. Passed so the picker applies to dispatched
+					// sub-agents too, matching how thinkingBudgetOverride already
+					// behaves; without it the two adjacent pickers in the same chat bar
+					// propagated differently with nothing on screen saying so.
+					chatModelId: modelId,
 					agentNames: pmAgentNames.length > 0 ? pmAgentNames : undefined,
 					// Pass the original user message so sub-agents get the user's exact words
 					// appended to their task prompt (only for direct queries, not kanban tasks).
@@ -1017,7 +1039,12 @@ export class AgentEngine {
 			let postStreamCorrectionNeeded = false;
 			let postStreamDetectionSource = "";
 
-			let pmThinkingOptions = buildReasoningOptions(pmThinkingBudget);
+			// Skip `reasoning` entirely when this provider+model already rejected it
+			// this run — otherwise every PM turn burns a doomed first request before
+			// the strip-and-retry below recovers. See providers/reasoning-support.ts.
+			let pmThinkingOptions = isReasoningUnsupported(providerRow.id, modelId)
+				? {}
+				: buildReasoningOptions(pmThinkingBudget);
 			// Set once the model rejects `reasoning` outright (see catch block
 			// below) so we don't loop retrying forever — one retry per turn.
 			let pmThinkingRetried = false;
@@ -1029,11 +1056,18 @@ export class AgentEngine {
 			const MAX_PM_RETRIES = 3;
 			let pmAttempt = 0;
 			let lastStreamError: unknown = null;
+			// True once a token has been pushed to the UI on THIS attempt. Reset per
+			// attempt, below. The retry path resets `fullText` and re-streams from
+			// scratch, which is only safe while nothing has been shown — the
+			// frontend appends tokens, so re-streaming after partial output would
+			// duplicate visible text.
+			let emittedToUiThisAttempt = false;
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			let result: any;
 			while (true) {
 				try {
 				fullText = "";
+				emittedToUiThisAttempt = false;
 				reasoningEmittedFromStream = false;
 				// Notify frontend immediately so PM placeholder is in the messages array
 				// BEFORE any tool calls or agent dispatches happen.
@@ -1046,6 +1080,12 @@ export class AgentEngine {
 					messages: cached.messages,
 					tools: activeTools,
 					stopWhen: [isStepCount(100)],
+					// Retries belong to the pmAttempt loop below, for the same reasons
+					// spelled out at the sub-agent streamText call in agent-loop.ts:
+					// it classifies on the response body, honours Retry-After, and
+					// jitters. Nesting the SDK's own retries inside ours tripled the
+					// time a hard-down provider took to report.
+					maxRetries: 0,
 					abortSignal: abortController?.signal,
 					// Flows automatically into every telemetry event's `runtimeContext`
 					// field (see telemetry-sink.ts, Phase 3.1) — the PM turn is the
@@ -1253,7 +1293,12 @@ export class AgentEngine {
 						fullText += delta;
 						stepTextEmitted += delta;
 						if (retractedFallback) retractedFallback = "";
-						if (!isNoStreaming) this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
+						if (!isNoStreaming) {
+							// The frontend APPENDS each token, so once one has gone out a
+							// retry would duplicate visible text. Gates the retry below.
+							emittedToUiThisAttempt = true;
+							this.callbacks.onStreamToken(conversationId, assistantMessageId, delta, null);
+						}
 					} else if (part.type === "tool-call") {
 						const tc = part as { toolName?: string };
 						if (tc.toolName === "run_agent") {
@@ -1549,6 +1594,7 @@ export class AgentEngine {
 					) {
 						pmThinkingRetried = true;
 						pmThinkingOptions = {};
+						markReasoningUnsupported(providerRow.id, modelId);
 						warnThinkingUnsupportedOnce(modelId);
 						continue;
 					}
@@ -1570,6 +1616,22 @@ export class AgentEngine {
 					}
 
 					if (!isTransientError(streamErr)) {
+						throw streamErr;
+					}
+
+					// Transient, but tokens are already on screen — re-streaming would
+					// append a second copy of the reply. Surface the error instead.
+					// (Mid-stream gateway deaths like opencode Zen's "Streaming response
+					// failed" usually hit before any text, so this rarely blocks a retry.)
+					if (emittedToUiThisAttempt) {
+						throw streamErr;
+					}
+
+					// The provider asked us to wait longer than we're willing to block
+					// a PM turn for. Retrying early is the specific thing several
+					// providers punish by restarting the window, so surface the error
+					// instead of guessing (see getRetryDelay in safety.ts).
+					if (getRetryDelay(streamErr, pmAttempt) === null) {
 						throw streamErr;
 					}
 
@@ -1615,7 +1677,10 @@ export class AgentEngine {
 					);
 				}
 
-				const delayMs = getBackoffDelay(pmAttempt - 1);
+				// Provider's Retry-After when it sent one, else exponential+jitter.
+				// Non-null here: the > MAX_HONOURED_RETRY_AFTER_MS case already threw
+				// above, and an empty-response retry carries no error to read.
+				const delayMs = getRetryDelay(lastStreamError, pmAttempt - 1) ?? getBackoffDelay(pmAttempt - 1);
 				this.callbacks.onAgentActivity?.({
 					projectId: this.projectId,
 					conversationId,
@@ -1629,8 +1694,11 @@ export class AgentEngine {
 					timestamp: new Date().toISOString(),
 				});
 
+				// Reuse delayMs rather than recomputing — getBackoffDelay is now
+				// jittered, so a second call would wait a different length of time
+				// than the message above just promised the user.
 				await new Promise<void>((resolve, reject) => {
-					const timer = setTimeout(resolve, getBackoffDelay(pmAttempt - 1));
+					const timer = setTimeout(resolve, delayMs);
 					abortController?.signal.addEventListener(
 						"abort",
 						() => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); },

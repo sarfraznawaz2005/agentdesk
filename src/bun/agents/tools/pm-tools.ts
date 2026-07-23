@@ -20,7 +20,10 @@ import {
 	branchStrategies,
 	kanbanTasks,
 	conversations as conversationsTable,
+	agentTools as agentToolsTable,
 } from "../../db/schema";
+import { describeCapabilities, isToolStrippedAtDispatch } from "../../../shared/agent-capabilities";
+import { getToolDefinitions } from "./index";
 import type { AgentActivityEvent } from "../types";
 import { runInlineAgent, pruneAgentToolResults, READ_ONLY_AGENTS, isWriteConcurrencyExempt, type InlineAgentCallbacks } from "../agent-loop";
 import { buildContext } from "../context";
@@ -91,6 +94,19 @@ export interface PMToolsDeps {
 	 * sub-agent on its own budget (Medium by default).
 	 */
 	thinkingBudgetOverride?: string | null;
+	/**
+	 * The model the PM itself resolved for this turn, including the composer's
+	 * model picker (`project:<id>:chatModelId`). Forwarded to every dispatched
+	 * sub-agent so the picker means the same thing for them as it does for the
+	 * PM — it previously reached only the PM, so choosing e.g. devstral-latest
+	 * in chat left every sub-agent on the provider's default (codestral-latest),
+	 * silently invalidating any comparison the user was trying to make.
+	 *
+	 * A sub-agent's OWN model override still wins, and the value is ignored
+	 * entirely when the agent has its own provider override — a model id only
+	 * means something to the provider it came from. See runInlineAgent.
+	 */
+	chatModelId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +332,9 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 				),
 				task: z.string().describe(
 					"Comprehensive task description. Include: what to do, which files/areas are relevant, acceptance criteria, and any constraints. The agent does NOT see conversation history — this description IS its full context.",
+				),
+				reason: z.string().describe(
+					"One line: why THIS agent for THIS task. Name the capability or expertise that decided it (e.g. \"needs shell to run the migration\", \"schema change — database-expert over backend-engineer\"). Most write agents share a toolset, so committing to a reason is what stops a task landing on a near-miss specialist.",
 				),
 				kanban_task_id: z.string().optional().describe(
 					"Kanban task ID — auto-moves to 'working' when agent starts, 'review' on completion.",
@@ -694,6 +713,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 						excludeTools: effectiveQuickChat ? QUICK_CHAT_EXCLUDED_TOOLS : undefined,
 						quickChat: effectiveQuickChat,
 						thinkingBudgetOverride: deps.thinkingBudgetOverride,
+						modelId: deps.chatModelId ?? undefined,
 					};
 
 					// Fire-and-forget: agent runs in background
@@ -979,6 +999,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 				tasks: z.array(z.object({
 					agent: z.string().describe(`Read-only agent type. Must be one of: ${[...READ_ONLY_AGENTS].join(", ")}`),
 					task: z.string().describe("Exploration/research task description"),
+					reason: z.string().describe("One line: why this agent for this task — the capability or expertise that decided it."),
 				})).min(1).max(5),
 			}),
 			execute: async (args) => {
@@ -1032,6 +1053,7 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 									excludeTools: deps.quickChat ? QUICK_CHAT_EXCLUDED_TOOLS : undefined,
 									quickChat: deps.quickChat,
 									thinkingBudgetOverride: deps.thinkingBudgetOverride,
+									modelId: deps.chatModelId ?? undefined,
 								});
 								return parallelResult;
 							} finally {
@@ -2196,24 +2218,71 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 		list_agents: tool({
 			description:
 				"List all agents with what each one does, their capabilities, models, and enabled status. " +
+				"Each agent includes a `capabilities` object (shell / fileWrite / gitRead / gitWrite / readOnly) " +
+				"and `strippedTools` — write tools that are removed at dispatch and therefore CANNOT be used, " +
+				"no matter what the agent's tool settings show. Consult these before dispatching an agent for a " +
+				"task that needs to run commands or change files. " +
+				"Pass `agent` with a single agent name to also get that agent's EXACT tool list — use this to " +
+				"settle a specific question (\"can this agent query a database?\") instead of guessing and " +
+				"burning a dispatch. " +
 				"IMPORTANT: Only dispatch agents where isEnabled=true. Disabled agents (isEnabled=false) " +
 				"will be rejected by run_agent — do not attempt to call them.",
-			inputSchema: z.object({}),
-			execute: async () => {
+			inputSchema: z.object({
+				agent: z.string().optional().describe(
+					"Optional agent name. When given, the response adds that agent's full effective tool list (post-strip) under `tools`.",
+				),
+			}),
+			execute: async (args) => {
 				try {
 					const allRows = await db.select().from(agentsTable).orderBy(agentsTable.name);
+					// Granted tools per agent, one query. No rows => full registry at
+					// dispatch (getToolsForAgent), so mirror that here.
+					const grantRows = await db
+						.select({ agentId: agentToolsTable.agentId, toolName: agentToolsTable.toolName, isEnabled: agentToolsTable.isEnabled })
+						.from(agentToolsTable);
+					const grantsByAgent = new Map<string, string[]>();
+					for (const row of grantRows) {
+						if (row.isEnabled !== 1) continue;
+						const list = grantsByAgent.get(row.agentId) ?? [];
+						list.push(row.toolName);
+						grantsByAgent.set(row.agentId, list);
+					}
+					const allRegistryTools = getToolDefinitions().map((d) => d.name);
 					// Hide custom agents the user has opted out of PM visibility —
 					// matches the filter in buildAgentsSection so the PM sees a
 					// consistent picture across its system prompt and this tool.
 					const rows = allRows.filter((a) => a.isBuiltin === 1 || a.availableToPm === 1);
+
+					// Single-agent detail: the exact post-strip toolset. Answers
+					// "does agent X have tool Y" without a dispatch to find out.
+					let requestedTools: string[] | undefined;
+					if (args.agent) {
+						const target = rows.find((a) => a.name === args.agent);
+						if (target) {
+							requestedTools = (grantsByAgent.get(target.id) ?? allRegistryTools)
+								.filter((t) => !isToolStrippedAtDispatch(target.name, t))
+								.sort();
+						}
+					}
 					return JSON.stringify({
 						success: true,
-						agents: rows.map((a) => ({
+						...(args.agent ? { agent: args.agent, tools: requestedTools ?? null } : {}),
+						agents: rows.map((a) => {
+							const caps = describeCapabilities(a.name, grantsByAgent.get(a.id) ?? allRegistryTools);
+							return {
 							id: a.id,
 							name: a.name,
 							displayName: a.displayName,
 							description: BUILTIN_AGENT_DESCRIPTIONS[a.name] ?? (a.systemPrompt ? extractFirstSentence(a.systemPrompt) : "Custom agent"),
 							type: READ_ONLY_AGENTS.has(a.name) ? "read-only" : "write",
+							capabilities: {
+								readOnly: caps.readOnly,
+								shell: caps.shell,
+								fileWrite: caps.fileWrite,
+								gitRead: caps.gitRead,
+								gitWrite: caps.gitWrite,
+							},
+							strippedTools: caps.strippedTools,
 							isEnabled: !!a.isEnabled,
 							isBuiltin: !!a.isBuiltin,
 							modelId: a.modelId,
@@ -2221,7 +2290,8 @@ Available agents: ${effectiveAgentNames.join(", ")}.`,
 							temperature: a.temperature,
 							maxTokens: a.maxTokens,
 							thinkingBudget: a.thinkingBudget,
-						})),
+							};
+						}),
 						count: rows.length,
 					});
 				} catch (err) {

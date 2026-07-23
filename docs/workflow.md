@@ -196,7 +196,277 @@ is a real cross-conversation restriction.
 and `type` (`read-only`/`write`) per agent, reusing the same description
 table (`BUILTIN_AGENT_DESCRIPTIONS` in `prompts.ts`) that's already baked
 into the PM's system prompt — so the PM can re-fetch "what does each agent
-do" on demand instead of relying on remembering its own system prompt.
+do" on demand instead of relying on remembering its own system prompt. It
+additionally returns a `capabilities` object (`readOnly`/`shell`/`fileWrite`/
+`gitRead`/`gitWrite`) and `strippedTools` — the write tools removed at
+dispatch, which therefore cannot be used no matter what the agent's Settings
+→ Tools page shows.
+
+### Agent Capability Model (single source of truth)
+
+`src/shared/agent-capabilities.ts` owns `WRITE_TOOLS`, `READ_ONLY_AGENTS`,
+`READ_ONLY_WRITE_EXCEPTIONS`, `isToolStrippedAtDispatch()`,
+`describeCapabilities()` and `summarizeCapabilities()`. **Everything that
+describes a capability derives it from the same predicate that enforces it.**
+
+That rule exists because it was previously violated in five places at once.
+Capability truth is *computed* at dispatch (`filterReadOnlyTools` in
+`agent-loop.ts`) but used to be *restated by hand* in the seed defaults, two
+divergent read-only agent lists in `prompts.ts`, and the Settings → Agents UI.
+Each drifted independently, and the failure was silent in both directions:
+
+- `code-explorer` was granted `run_shell` it could never use — Settings showed
+  an enabled toggle for a tool the agent (correctly) reported it did not have.
+- One `prompts.ts` list named a non-existent agent (`explore`) and omitted
+  `task-planner`, so `task-planner` received the **write**-agent prompt while
+  being dispatched with its write tools stripped.
+- The read-only kanban section instructed agents to call `move_task` and
+  `check_criteria`; neither survives the strip.
+- The PM saw only an undefined `Read-only`/`Write` label, inferred that a
+  read-only agent had a shell, dispatched `code-explorer` to run `git show`,
+  was told that was impossible, and re-dispatched the *same agent* with
+  instructions to "use shell".
+
+The PM's `## Sub-Agents Available` table now carries a **derived** Capabilities
+column plus a legend defining exactly what read-only means, and four rules:
+match the capability before dispatching, never re-dispatch an agent that
+reported a missing capability, follow the "Instead use" hand-offs, and call
+`list_agents` rather than guess. Because ~16 write agents hold near-identical
+toolsets, that column is a **filter** (can this agent do the job at all?) —
+the routing profile is the **selector** (which agent fits?).
+
+#### Enforcement is continuous, in three independent layers
+
+A migration alone was not enough: it repairs existing rows once, then anything
+that writes a new one wins. So a granted-but-stripped `agent_tools` row is now
+prevented at three points:
+
+1. **UI** — Settings → Agents greys the toggle out and labels it "stripped at
+   dispatch"; it cannot be switched on.
+2. **RPC** — `setAgentToolsList` (`rpc/agents.ts`) filters stripped tools out of
+   any write, so no other caller (Remote Access, a future code path) can
+   persist one.
+3. **Boot** — `sweepStrippedToolRows()` in `seedAgentTools()` deletes any that
+   got in some other way (a restored backup, a hand-edited DB, a regressed seed
+   default). Migration `v66` is now just the first run of that same rule.
+
+#### Prompts are gated on the toolset too
+
+`src/bun/agents/prompt-sections.ts` owns the static sub-agent sections and the
+pure rule for which of them an agent receives. Each section declares the tools
+its text instructs the agent to call, and `selectPromptSections()` picks the
+most capable variant whose requirements the agent's *effective* (post-strip)
+toolset satisfies — falling back to a narrower variant, or omitting the section
+entirely. This closes the mirror-image bug: a section naming a tool the agent
+lacks is an instruction it cannot follow.
+
+Three live mismatches this fixed:
+
+- `research-expert`'s "Key Tools" listed `run_background` after that became a
+  write tool and started being stripped.
+- `code-reviewer`, being a write agent, received the kanban section telling it
+  that calling `verify_implementation` was MANDATORY — a tool deliberately
+  withheld from reviewers (`KANBAN_REVIEWER`). It now gets a reviewer variant
+  built around `submit_review`.
+- Every narrow **custom** agent received the docs, kanban, work-integrity and
+  skills sections unconditionally, regardless of its grants. A custom agent
+  with no write tools at all now also reads the read-only prompt shape
+  (`hasNoWriteCapability`).
+
+#### Routing: capability rules agents out, profiles rule one in
+
+`src/bun/agents/agent-routing.ts` holds `BUILTIN_AGENT_PROFILES` — per agent a
+`useWhen`, an optional `preferInstead` map of hand-offs to better-fitting
+specialists, and a `tier`. `BUILTIN_AGENT_DESCRIPTIONS` is *derived* from it.
+
+The hand-offs are the fix for wrong-specialist routing: a description can only
+say what an agent *is*, never what it is second-best at, which is how a
+database-inspection task landed on `backend-engineer`. Tiering (`primary` /
+`specialist`) shrinks the default choice space from 20 to 8 — nothing is hidden
+or undispatchable, the table is just split under two headings. `run_agent` and
+`run_agents_parallel` additionally require a one-line `reason`, which is both a
+routing aid and the only record of *why* an agent was chosen (see Logging).
+
+#### Tests
+
+| Test | Locks |
+|---|---|
+| `tests/agents/agent-capabilities.test.ts` | No agent is granted a tool stripped at dispatch; no read-only summary claims shell/write |
+| `tests/agents/agent-prompt-tools.test.ts` | No composed prompt names a tool the agent lacks; every section's declared `requires` covers the tools its text names |
+| `tests/agents/agent-routing.test.ts` | Every dispatchable agent has a profile; every hand-off target exists; the primary tier stays a shortlist |
+
+All three read from pure modules extracted so they never open a DB connection
+(Bun's `mock.module` leaks process-wide, so stubbing `electrobun/bun` in one
+test file would affect every other): `db/agent-tool-defaults.ts` (grants),
+`db/agent-seed-defs.ts` (seed prompts), `agents/prompt-sections.ts` (sections),
+`agents/agent-routing.ts` (profiles).
+
+#### Logging
+
+`src/bun/lib/logger.ts` is the one category-scoped file logger for
+`{userData}/logs/<category>.log`, replacing five hand-copied append-and-rotate
+routines. Two categories exist:
+
+| File | Event | Means |
+|---|---|---|
+| `agent-loop.log` | run lifecycle | Sub-agent start/steps/compaction/end — `logAgent` routes through the shared logger |
+| `provider_errors.log` | every failed provider call | Endpoint, HTTP status, retryability, the provider's own error body |
+
+`capability.log` and `routing.log` existed during the capability/routing work
+to verify it end to end (dispatch-time strips, the table the PM was shown,
+grant repairs, calls to a tool the agent lacks, and every dispatch with the PM's
+stated reason). They were removed once verified. **The enforcement they observed
+is all still in place** — only the observation was dropped, so a future
+regression in this area will be silent rather than logged. Re-add a category to
+`LogCategory` if that becomes a problem.
+
+##### provider_errors.log
+
+`providers/error-log.ts` wraps `createModel` inside `createProviderAdapter`, so
+**every** provider call in the app is covered — PM loop, sub-agents, Council,
+Scheduler, Freelance, Playground, General Chat — with no per-call-site opt-in.
+Failures were previously visible only as a raw AI SDK stack dumped to the dev
+console by whichever caller happened to catch them: an upstream outage
+(opencode.ai/zen returning HTTP 500 to the Freelance auto-shortlist job) read
+as an application bug, and was invisible in production where no console is
+attached.
+
+Two things to know when reading it:
+
+- **One line per attempt, not per failure.** The wrapper sits below the AI SDK's
+  retry loop, so a call that fails 3 times logs 3 lines. The timestamps show the
+  backoff, which is usually what you want when judging whether a provider is
+  down or just flaky.
+- **The Claude Subscription CLI path logs separately.** That route drives a
+  `claude` CLI subprocess via the Agent SDK and never builds a `LanguageModel`,
+  so the model wrapper cannot see it — `claude-subscription-cli-runner.ts` calls
+  `logProviderCallError` directly. Both routes of that two-path provider are
+  covered; keep it that way (see CLAUDE.md's Claude Subscription rule).
+
+Redaction is deliberate: the file records the endpoint, status, retryability and
+the provider's error body, and never the request headers (bearer token) or
+request body (the full conversation). A key-shaped string in the URL or body is
+scrubbed as a backstop, since this file is meant to be shareable in a bug report.
+`tests/providers/provider-error-log.test.ts` locks both halves.
+
+**Mid-stream failures are captured too.** `doStream()`'s promise resolves the
+moment the connection opens, so wrapping only the call catches connection
+failures; a provider that dies partway through delivering tokens emits an
+`error` *part inside the stream* instead. `logStreamErrors` observes the
+returned stream for those, passing every chunk through untouched. Without it,
+opencode Zen's own `Streaming response failed` (a known free-tier issue —
+anomalyco/opencode#38024, #35397, #37638) reached a user with **no log entry at
+all**, which is what made it hard to diagnose.
+
+Each line starts with `caller=` — the agent name, `project-manager`, or a label
+like `freelance-bid`. Without it, four identical failures were indistinguishable
+between one turn failing to recover and four callers each failing once, which is
+exactly the question that arose when Mistral rejected `reasoning_effort` four
+times. Attribution uses `AsyncLocalStorage` (`withProviderCaller`), not a module
+variable: up to five agents run concurrently and a shared "current caller" would
+misattribute. It is set at `runInlineAgent`, `_runPMProcessing`, and via
+`withTransientRetry`'s `label`.
+
+##### Models that reject `reasoning`
+
+Every agent thinks at Medium by default, so `reasoning_effort` goes out on every
+call. Some models reject the whole request for it — Mistral's
+`devstral-latest`, `codestral-latest` and `mistral-large-latest` all return
+`400 reasoning_effort is not enabled for this model` (verified live: 100%
+failure with the option, 100% success without).
+
+Both loops already recovered — `isThinkingUnsupportedError` strips `reasoning`
+and retries once — but nothing remembered, so every run burned a doomed request
+first. `providers/reasoning-support.ts` memoises the rejection per
+provider-id + model, checked before building thinking options and recorded on
+rejection. Measured: 3 runs cost 4 requests instead of 6.
+
+In-memory, so it resets on restart — same lifetime and rationale as
+`THINKING_PARAMS_UNSUPPORTED` in `providers/openai.ts` (which does the same job
+for the non-standard `enable_thinking`/`thinking_budget` pair). Deliberately not
+persisted: a provider that later enables reasoning should be picked up on the
+next launch, not require clearing a stored flag.
+
+##### Retry classification (`agents/safety.ts`)
+
+`isTransientError()` decides whether a failed provider call is retried. Both
+retry paths use it — the PM loop (`engine.ts`) and the sub-agent loop
+(`agent-loop.ts`, `MAX_RETRIES = 2` with exponential backoff) — so it is the
+single place that governs retry behaviour app-wide.
+
+It used to match only `429`/`503` by status, which classified five real,
+frequently-seen failures as permanent and ended the run outright:
+
+| Status | Source | Was |
+|---|---|---|
+| `500` | every provider's generic fault | not retried |
+| `502` / `504` | any proxy or gateway | not retried |
+| `520`–`527` | Cloudflare origin errors (Cloudflare fronts opencode Zen) | not retried |
+| **`529`** | **Anthropic's documented `overloaded_error`** | not retried |
+| `401` + `No provider available` | opencode Zen, upstream capacity exhausted | not retried |
+
+The last one is matched on the **message**, never the status. Zen answers `401`
+for four unrelated conditions distinguishable only by the response body —
+`AuthError: Missing API key.` and `ModelError: Model x is not supported` are
+permanent, while `ModelError: No provider available` is transient (verified
+live: two free models returned it in the same second four others answered fine,
+and the same model then succeeded 14 of the next 15 calls). Treating `401`
+itself as retryable would make a genuinely wrong API key burn three backed-off
+attempts on every call.
+
+`tests/tools/safety.test.ts` covers both directions — every shape above retries,
+and the permanent lookalikes (wrong key, 403, 404, 400, 501) still do not.
+
+##### How long we wait
+
+`getRetryDelay(error, attempt)` decides, in this order:
+
+1. **The provider's own `Retry-After`**, when it sent one. It states exactly when
+   the limit clears, so any guess of ours is strictly worse — and several
+   providers restart the window on a request that arrives too early, meaning a
+   guess can actively prolong the outage.
+2. **Exponential backoff with jitter** otherwise: `min(1000 × 2ⁿ, 30_000)` plus
+   0–1000ms. Both retry paths cap at 2 retries, so real delays are ~1s then ~2s;
+   the higher steps and the 30s cap exist but are currently unreachable.
+
+It returns **null** — meaning give up, don't retry — when the provider asked for
+longer than `MAX_HONOURED_RETRY_AFTER_MS` (60s). Blocking an agent turn for
+minutes is worse than failing it, and retrying early is the specific harm above.
+
+The jitter is the part that matters. Agents fail together —
+`run_agents_parallel` starts up to 5 agents 1.5s apart, the PM and a sub-agent
+overlap, scheduler jobs collide — and without it every one of them retried at
+exactly the same two instants after a shared rate-limit event, re-creating the
+burst that caused it. `fetchWithRetry` in `tools/web.ts` had jittered for this
+reason all along; the provider-call path was the one place that did not.
+
+Note for anyone editing the PM retry block: `delayMs` is computed once and
+reused for both the "retrying in Ns" notice and the actual timer. It used to
+call the backoff helper twice, which now that it is jittered would tell the user
+one number and wait a different one.
+
+##### Which surfaces get this
+
+| Surface | Retry behaviour |
+|---|---|
+| PM loop, all sub-agents, and everything on `runInlineAgent` — General Chat, Playground, Issue Fixer, Freelance Expert, Scheduler, Recommendations, review-cycle | Full: classification, `Retry-After`, jitter, `maxRetries: 0` |
+| One-shot `generateText` callers — the Freelance pipelines (`freelance-wizard`, `bid-pipeline`, `reply-pipeline`, `qa`, `description`, `expert/tools`), `summarizer`, `preview`, `rpc/playground` | Full, via `withTransientRetry()` |
+| Streaming callers — Council, Ambient, Collections, Dashboard PM, dashboard-agent, freelance-chat, skills-search-chat | **SDK's own retry only** (see below) |
+
+The PM's own retry is gated on `emittedToUiThisAttempt`: it re-streams from
+scratch, which is only safe while nothing has reached the UI. Before that guard,
+a transient error arriving *after* some text had streamed would have appended a
+second copy of the reply. Mid-stream gateway deaths usually hit before any
+token, so the guard rarely blocks a legitimate retry.
+
+**Never wrap a streaming consumption loop in `withTransientRetry`.** Those seven
+surfaces `broadcastToWebview` tokens as they arrive and the client appends them,
+so a retry after partial output duplicates text on screen. This is exactly what
+`retractLiveParts()` exists for in `agent-loop.ts`. They are not unprotected —
+the SDK still retries the initial connection, which is safe because it happens
+before any token flows — but they miss our extra classification (`No provider
+available`, Anthropic 529, Cloudflare 5xx). Closing that needs per-site
+"nothing emitted yet" tracking, deliberately left as separate work.
 
 ---
 
@@ -421,6 +691,17 @@ See [`docs/sequential-agent-model.md`](./sequential-agent-model.md) for the full
 - `writeAgentRunning` closure-scoped boolean in `createPMTools` prevents concurrent write agents
 - `run_agents_parallel` validates agents are in the `READ_ONLY_AGENTS` set
 - PM dispatch logic hardcodes `maxConcurrent = 1` for write agents
+- `filterReadOnlyTools` strips every `WRITE_TOOLS` member from a read-only
+  agent's toolset at dispatch (`isToolStrippedAtDispatch`, shared module)
+
+**What read-only actually costs an agent:** no shell (`run_shell`,
+`execute_code`, and `run_background` — whose own description is "spawn a shell
+command as a background process"), no file writes, no `download_file`, no git
+writes, no kanban writes. It keeps reads, search, LSP, web, `git_show`,
+`query_sqlite`, and memory. Memory tools are deliberately **not** in
+`WRITE_TOOLS`: they write `agent_memories` rows, not workspace files, so they
+cannot race a concurrent write agent — and read-only agents are exactly the
+ones whose findings are worth remembering.
 
 ### Handoff Summaries
 
@@ -647,7 +928,8 @@ The code-reviewer is read-only except for `submit_review`. It does NOT call
 | `search_files` | Find files by glob pattern. |
 | `list_directory` | Browse the workspace directory structure. |
 | `git_diff` | Review all changes (primary tool for code review). |
-| `git_log` | Check commit history for context. |
+| `git_log` | Check commit history for context (metadata only — no diff). |
+| `git_show` | Inspect a **historical** commit: stat summary and/or full patch. `git_log` returns metadata only and `git_diff` covers just the working tree, so this is the only read-only way to answer "what did commit X change". |
 | `run_shell` | Run type checks, linters, or build commands. |
 | `submit_review` | Submit a structured review verdict (`approved` or `changes_requested`) with summary. |
 

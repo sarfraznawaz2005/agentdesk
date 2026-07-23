@@ -21,6 +21,7 @@ import { qaRevise } from "./qa";
 import { DRAFT_SIMILARITY_MAX, maxSimilarityAgainst, recentOutboxBodies } from "./similarity";
 import type { BidQuestionDto, BidRequirementsDto, BidAnswerDto } from "../../shared/rpc/freelance";
 import type { OutboxItem } from "./reply-pipeline";
+import { withTransientRetry } from "../agents/safety";
 
 function buildProposalSystem(): string {
 	return `You are an experienced freelancer writing a winning proposal (bid) for a job post.
@@ -101,11 +102,12 @@ Respond ONLY with valid JSON in this exact shape:
 
 	let parsed: BidRequirementsDto = { hasRequirements: false, questions: [] };
 	try {
-		const { text } = await generateText({
+		const { text } = await withTransientRetry(() => generateText({
+			maxRetries: 0,
 			model: adapter.createModel(internalCallModelId(providerType, modelId)),
 			prompt: analysisPrompt,
 			temperature: 0,
-		});
+		}), { label: "freelance-bid" });
 		const jsonMatch = text.match(/\{[\s\S]*\}/);
 		if (jsonMatch) {
 			const raw = JSON.parse(jsonMatch[0]) as { hasRequirements?: boolean; questions?: BidQuestionDto[] };
@@ -143,12 +145,13 @@ export async function draftBidForListing(platform: string, listingId: string, hu
 		? `\nThe client specifically requested the following information in the application — include ALL of these in the proposal:\n${humanAnswers.map((a) => `- ${a.question}: ${a.answer}`).join("\n")}\n`
 		: "";
 	const prompt = `Job post:\nTitle: ${listing.title}\nSkills: ${skills}\n\n${description}${answersBlock}\n\nWrite my proposal for this job.`;
-	const { text } = await generateText({
+	const { text } = await withTransientRetry(() => generateText({
+		maxRetries: 0,
 		model: adapter.createModel(internalCallModelId(providerType, modelId)),
 		instructions: buildProposalSystem(),
 		prompt,
 		temperature: 0.75,
-	});
+	}), { label: "freelance-bid" });
 	let draftBody = await qaRevise(adapter, modelId, "proposal", text.trim(), providerType);
 
 	// Template-variation guard (draft time): identical-skeleton proposals across
@@ -158,12 +161,13 @@ export async function draftBidForListing(platform: string, listingId: string, hu
 	const sim = maxSimilarityAgainst(draftBody, priors);
 	if (sim > DRAFT_SIMILARITY_MAX) {
 		try {
-			const { text: retry } = await generateText({
+			const { text: retry } = await withTransientRetry(() => generateText({
+				maxRetries: 0,
 				model: adapter.createModel(internalCallModelId(providerType, modelId)),
 				instructions: buildProposalSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: This proposal must clearly differ in structure and wording from your recent proposals — different opening, different ordering, different phrasing. Anchor it in the specifics of THIS job.`,
 				temperature: 0.9,
-			});
+			}), { label: "freelance-bid" });
 			const retryBody = await qaRevise(adapter, modelId, "proposal", retry.trim(), providerType);
 			if (maxSimilarityAgainst(retryBody, priors) < sim) draftBody = retryBody;
 		} catch {

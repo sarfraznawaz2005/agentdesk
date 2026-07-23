@@ -4,6 +4,7 @@ import { agents, agentTools } from "../db/schema";
 import { isUniqueViolation } from "../db/errors";
 import { logAudit } from "../db/audit";
 import { getToolDefinitions, clearToolCache } from "../agents/tools/index";
+import { isToolStrippedAtDispatch } from "../../shared/agent-capabilities";
 
 export interface AgentListItem {
 	id: string;
@@ -275,10 +276,19 @@ export async function setAgentToolsList(
 	const agentRows = await db.select({ name: agents.name }).from(agents).where(eq(agents.id, agentId)).limit(1);
 	const agentName = agentRows[0]?.name;
 
+	// Drop grants the dispatch filter would strip anyway. Settings → Agents
+	// already greys these out, but that's a UI convention — this is the actual
+	// guarantee, so no other caller (Remote Access, a future code path, a
+	// hand-written RPC call) can persist a row that renders as an enabled
+	// toggle for a tool the agent can never invoke.
+	const accepted = agentName
+		? tools.filter((t) => !isToolStrippedAtDispatch(agentName, t.toolName))
+		: tools;
+
 	// Delete existing rows and insert new ones
 	await db.delete(agentTools).where(eq(agentTools.agentId, agentId));
-	if (tools.length > 0) {
-		const rows = tools.map((t) => ({
+	if (accepted.length > 0) {
+		const rows = accepted.map((t) => ({
 			id: crypto.randomUUID(),
 			agentId,
 			toolName: t.toolName,

@@ -23,6 +23,7 @@ import { FREELANCE_EVENTS } from "../freelance/events";
 import { formatBudget } from "../freelance/budget";
 import { sendDesktopNotification } from "../notifications/desktop";
 import type { WizardWorkableListing, WizardFailedListing, FreelanceBlockKind } from "../../shared/rpc/freelance";
+import { withTransientRetry } from "../agents/safety";
 
 // ---------------------------------------------------------------------------
 // Provider resolution for wizard / auto-shortlist
@@ -835,7 +836,8 @@ async function analyzeListingWorkability(
   // checks) AND write the prose analysis. toolChoice "auto" lets the model run the checks
   // and then write its analysis in the same loop. If it skips the checks entirely we force
   // them below — Condition A requires actual verification.
-  let phase1Result = await generateText({
+  let phase1Result = await withTransientRetry(() => generateText({
+    maxRetries: 0,
     model: adapter.createModel(internalModelId),
     abortSignal,
     instructions: buildAnalysisSystemPrompt(),
@@ -847,7 +849,7 @@ async function analyzeListingWorkability(
     toolsContext: { run_shell: {} } as never,
     toolChoice: "auto",
     stopWhen: [isStepCount(8)],
-  });
+  }), { label: "freelance-wizard" });
 
   const collectToolResults = (r: typeof phase1Result): string[] => {
     const out: string[] = [];
@@ -867,7 +869,8 @@ async function analyzeListingWorkability(
   // have, and the analysis correctly fails Condition A as unverified.)
   if (toolResultLines.length === 0) {
     try {
-      phase1Result = await generateText({
+      phase1Result = await withTransientRetry(() => generateText({
+        maxRetries: 0,
         model: adapter.createModel(internalModelId),
         abortSignal,
         instructions: buildAnalysisSystemPrompt(),
@@ -876,7 +879,7 @@ async function analyzeListingWorkability(
         toolsContext: { run_shell: {} } as never,
         toolChoice: "required",
         stopWhen: [isStepCount(6)],
-      });
+      }), { label: "freelance-wizard" });
       toolResultLines = collectToolResults(phase1Result);
     } catch (forceErr) {
       if (isAbortError(forceErr)) throw forceErr;
@@ -896,7 +899,8 @@ async function analyzeListingWorkability(
   // forced), produce the prose now from the real results — no tools, no raw dump.
   if (!analysisText) {
     try {
-      const written = await generateText({
+      const written = await withTransientRetry(() => generateText({
+        maxRetries: 0,
         model: adapter.createModel(internalModelId),
         abortSignal,
         instructions: buildAnalysisWritePrompt(),
@@ -904,7 +908,7 @@ async function analyzeListingWorkability(
           role: "user",
           content: `${userMessage}\n\n---\n\n## Verified system results (ground truth — summarise in prose, never list raw)\n${toolContext}\n\nNow write the analysis in the required format.`,
         }],
-      });
+      }), { label: "freelance-wizard" });
       analysisText = written.text.trim();
     } catch (writeErr) {
       if (isAbortError(writeErr)) throw writeErr;
@@ -916,7 +920,8 @@ async function analyzeListingWorkability(
   // and the real tool results (internal). generateText (not generateObject) for broad
   // provider support; the JSON is parsed defensively.
   const fullContext = `## Analysis\n\n${analysisText || "(no written analysis was produced)"}\n\n## System checks (internal)\n\n${toolContext}`;
-  const { text: verdictText } = await generateText({
+  const { text: verdictText } = await withTransientRetry(() => generateText({
+    maxRetries: 0,
     model: adapter.createModel(internalModelId),
     abortSignal,
     instructions:
@@ -930,7 +935,7 @@ async function analyzeListingWorkability(
     messages: [
       { role: "user", content: `Extract a structured verdict from this feasibility analysis:\n\n${fullContext}` },
     ],
-  });
+  }), { label: "freelance-wizard" });
 
   let verdict: Verdict;
   try {

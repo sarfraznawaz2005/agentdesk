@@ -607,7 +607,6 @@ const AGENT_COLORS: Record<string, string> = {
   PM: "#6366f1",
   "project-manager": "#6366f1",
   "code-explorer": "#06b6d4",
-  "explore": "#06b6d4",
   "research-expert": "#06b6d4",
   "task-planner": "#f59e0b",
   "software-architect": "#8b5cf6",

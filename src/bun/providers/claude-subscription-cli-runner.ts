@@ -3,6 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodTypeAny } from "zod";
 import { asSchema, type FlexibleSchema, type Tool } from "ai";
 import { readOAuthTokenOrNull, resolveClaudeCliPath } from "./claude-subscription";
+import { logProviderCallError } from "./error-log";
 import { extractImagePayload, imageToolModelOutput } from "../agents/tools/screenshot";
 
 const MCP_SERVER_NAME = "agentdesk";
@@ -485,6 +486,18 @@ async function runClaudeCliTaskOnce(
 			}
 		}
 	} catch (err) {
+		if (!abortController.signal.aborted) {
+			// This path never builds a LanguageModel — the Agent SDK drives a
+			// `claude` CLI subprocess — so createProviderAdapter's model wrapper
+			// cannot see its failures. Logged here so provider_errors.log covers
+			// BOTH claude-subscription routes, not just the Haiku/direct-HTTP one.
+			logProviderCallError(err, {
+				providerType: "claude-subscription",
+				providerName: "Claude Subscription (CLI)",
+				modelId: opts.modelId,
+				phase: "stream",
+			});
+		}
 		if (abortController.signal.aborted) {
 			wasAborted = true;
 		} else if (err instanceof Error && !err.message && refusalDetail) {

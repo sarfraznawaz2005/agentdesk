@@ -10,8 +10,10 @@ import { ZaiAdapter } from "./zai";
 import { OpenCodeAdapter } from "./opencode";
 import { ClaudeSubscriptionAdapter } from "./claude-subscription";
 import type { ProviderAdapter, ProviderConfig } from "./types";
+import { withProviderErrorLogging } from "./error-log";
 
 export type { ProviderAdapter, ProviderConfig };
+export { logProviderCallError, describeProviderError } from "./error-log";
 export { getContextLimit, getDefaultModel, dedupeModels } from "./models";
 
 const SUPPORTED_TYPES = ["anthropic", "openai", "google", "deepseek", "groq", "xai", "openrouter", "ollama", "zai", "opencode", "custom", "claude-subscription"] as const;
@@ -29,6 +31,28 @@ const SUPPORTED_TYPES = ["anthropic", "openai", "google", "deepseek", "groq", "x
  * Throws if an unrecognised provider type is supplied.
  */
 export function createProviderAdapter(config: ProviderConfig): ProviderAdapter {
+	return attachErrorLogging(buildAdapter(config), config);
+}
+
+/**
+ * Overlay createModel so every provider call failure lands in
+ * {userData}/logs/provider_errors.log — see providers/error-log.ts for why this
+ * is done here rather than at each call site. Logging only: the error is
+ * re-thrown unchanged, so retry/fallback behaviour is untouched.
+ */
+function attachErrorLogging(adapter: ProviderAdapter, config: ProviderConfig): ProviderAdapter {
+	const original = adapter.createModel.bind(adapter);
+	adapter.createModel = (modelId: string, thinkingBudgetTokens?: number) =>
+		withProviderErrorLogging(original(modelId, thinkingBudgetTokens), {
+			providerType: config.providerType,
+			providerName: config.name,
+			modelId,
+			phase: "generate",
+		});
+	return adapter;
+}
+
+function buildAdapter(config: ProviderConfig): ProviderAdapter {
 	switch (config.providerType) {
 		case "anthropic":
 			return new AnthropicAdapter(config);

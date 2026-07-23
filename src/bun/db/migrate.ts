@@ -65,6 +65,7 @@ import * as v62 from "./migrations/v62_general-chat-message-metadata";
 import * as v63 from "./migrations/v63_assistant-workspace-less";
 import * as v64 from "./migrations/v64_general-chat-assistant-rename";
 import * as v65 from "./migrations/v65_agents-default-thinking-medium";
+import * as v66 from "./migrations/v66_read-only-agent-tool-truth";
 
 // ---------------------------------------------------------------------------
 // Versioned Database Migration System
@@ -154,6 +155,7 @@ const migrations: Migration[] = [
 	{ version: 63, name: v63.name, run: v63.run },
 	{ version: 64, name: v64.name, run: v64.run },
 	{ version: 65, name: v65.name, run: v65.run },
+	{ version: 66, name: v66.name, run: v66.run },
 ];
 
 const LATEST_VERSION = migrations[migrations.length - 1].version;

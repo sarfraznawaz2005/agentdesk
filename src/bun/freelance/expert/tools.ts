@@ -24,6 +24,7 @@ import { createProjectFromListing } from "../project-bootstrap";
 import { storeCredential, getCredential, listCredentialSummaries } from "./vault";
 import { escalateToHuman, notifyJobEvent, type Severity } from "./notify";
 import { setJobState, logJobAction, getJobById, saveJobFact, listJobFacts, isDeliveryApproved, type JobState, type FactCategory } from "./jobs";
+import { withTransientRetry } from "../../agents/safety";
 
 const DELIVERY_GATE_MSG =
 	"Delivery requires the user's approval. Call freelance_request_delivery_approval with a summary of what you'll hand over, then STOP. The user approves and you are re-run to deliver. Do not push/upload/hand over before approval.";
@@ -342,7 +343,8 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 						defaultModel: row.defaultModel ?? null,
 					});
 					const diff = (await runGit(["-C", ctx.workspacePath, "--no-pager", "diff", "--stat"], ctx.workspacePath)).out;
-					const { text } = await generateText({
+					const { text } = await withTransientRetry(() => generateText({
+						maxRetries: 0,
 						model: adapter.createModel(internalCallModelId(row.providerType, row.defaultModel ?? "gpt-4o-mini")),
 						instructions:
 							"You are a strict senior reviewer doing final QA before delivering paid freelance work to a client. " +
@@ -350,7 +352,7 @@ export function buildFreelanceExpertTools(ctx: FxToolContext): Record<string, To
 							"incomplete, untested, low quality, or does not meet the stated requirements. Be honest and demanding.",
 						prompt: `Work summary:\n${summary}\n\nChanged files: ${(changedFiles ?? []).join(", ") || "(unknown)"}\n\ngit diff --stat:\n${diff.slice(0, 3000)}`,
 						temperature: 0.2,
-					});
+					}), { label: "freelance-expert-tools" });
 					let verdict: { pass?: boolean; issues?: string[] } = {};
 					try {
 						verdict = JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")) as typeof verdict;

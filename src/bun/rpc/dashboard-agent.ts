@@ -23,6 +23,7 @@ import { getStreamingMode, isLiveStreamingMode, streamingFlushArgs } from "../ag
 import { createThrottledAccumulator } from "../agents/throttled-accumulator";
 import { getAgentSystemPrompt } from "../agents/prompts";
 import { getToolsForAgent } from "../agents/tools/index";
+import { filterReadOnlyTools } from "../agents/agent-loop";
 import { extractImagePayload } from "../agents/tools/screenshot";
 import { broadcastToWebview } from "../engine-manager";
 import { saveLastMessage, loadLastMessage, removeLastMessage, buildLastMsgInjection } from "../agents/last-msg-store";
@@ -115,11 +116,17 @@ export async function sendDashboardAgentMessage(
 			const modelId  = agentRow.modelId ?? provider.defaultModel ?? getDefaultModel(provider.providerType);
 
 			// System prompt: getAgentSystemPrompt honours useSystemPromptOnly already.
-			// Tools: getToolsForAgent honours the per-agent agent_tools rows.
-			const [systemBase, agentTools] = await Promise.all([
+			// Tools: getToolsForAgent honours the per-agent agent_tools rows, then
+			// filterReadOnlyTools applies the same dispatch-time strip runInlineAgent
+			// does. Redundant while the DB holds no stripped rows (three layers keep
+			// it that way), but this was the only agent-dispatch path without the
+			// runtime backstop — a widget for a read-only agent must behave exactly
+			// as that agent does everywhere else.
+			const [systemBase, grantedTools] = await Promise.all([
 				getAgentSystemPrompt(agentName),
 				getToolsForAgent(agentName),
 			]);
+			const agentTools = filterReadOnlyTools(grantedTools, agentName);
 
 			// Inject last saved message so the agent remembers its previous reply
 			// even after the user clears the conversation.

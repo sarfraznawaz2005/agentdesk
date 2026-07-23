@@ -22,6 +22,7 @@ import { PLAYGROUND_ROOT, PLAYGROUND_FILES_DIR, PLAYGROUND_COPY_IGNORE, PREVIEW_
 import { getRunningJobsUnderPath, killJobById, startBackgroundJob } from "../agents/tools/process";
 import type { PlaygroundServerDto, PlaygroundPreviewDto } from "../../shared/rpc/playground";
 import { createProjectHandler, getProject } from "./projects";
+import { withTransientRetry } from "../agents/safety";
 
 // --- playgroundSend (fire-and-forget; streams via broadcasts) ----------------
 
@@ -140,13 +141,14 @@ async function generateProjectName(): Promise<string> {
 			baseUrl: providerRow.baseUrl ?? null,
 			defaultModel: providerRow.defaultModel ?? null,
 		});
-		const result = await generateText({
+		const result = await withTransientRetry(() => generateText({
+			maxRetries: 0,
 			model: adapter.createModel(internalCallModelId(providerRow.providerType, modelId)),
 			instructions:
 				"You name software projects. Given a list of files, reply with ONLY a concise, descriptive " +
 				"project name of 2-4 words in Title Case. No quotes, no punctuation, no explanation.",
 			messages: [{ role: "user", content: `Files in the project:\n${files.join("\n")}\n\nProject name:` }],
-		});
+		}), { label: "playground-rpc" });
 		const name = result.text.trim().replace(/^["']|["']$/g, "").split("\n")[0].slice(0, 60);
 		return name || fallback;
 	} catch {

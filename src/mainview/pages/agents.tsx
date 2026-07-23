@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useHeaderActions } from "@/lib/header-context";
 import { rpc } from "../lib/rpc";
+import { isToolStrippedAtDispatch } from "../../shared/agent-capabilities";
 import { toast } from "@/components/ui/toast";
 import { Tip } from "@/components/ui/tooltip";
 import { Plus, Trash2, Zap, RotateCcw } from "lucide-react";
@@ -93,6 +94,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   skills: "Skills",
   plugin: "Plugins",
   memory: "Memory",
+  data: "Data",
 };
 
 // ---------------------------------------------------------------------------
@@ -101,17 +103,30 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface AgentToolsTabProps {
   agentId: string;
+  /** Internal agent name (not display name) — drives the read-only tool strip. */
+  agentName: string;
   onDirty: (dirty: boolean) => void;
   saveRef: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
-function AgentToolsTab({ agentId, onDirty, saveRef }: AgentToolsTabProps) {
+function AgentToolsTab({ agentId, agentName, onDirty, saveRef }: AgentToolsTabProps) {
   const [allTools, setAllTools] = useState<ToolDef[]>([]);
   const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set());
   const [initialEnabled, setInitialEnabled] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+
+  // Write tools on a read-only agent are removed at dispatch no matter what
+  // agent_tools says, so showing them as toggleable was a lie — this is the
+  // exact mismatch that had run_shell reading as "enabled" for code-explorer
+  // while the agent correctly reported it had no shell. Derived from the same
+  // shared predicate the dispatch filter uses, over the FULL registry rather
+  // than the agent's granted rows (a stripped tool may have no row at all).
+  const strippedTools = useMemo(
+    () => new Set(allTools.filter((t) => isToolStrippedAtDispatch(agentName, t.name)).map((t) => t.name)),
+    [allTools, agentName],
+  );
 
   // Load tool definitions + agent's current assignments
   useEffect(() => {
@@ -141,9 +156,11 @@ function AgentToolsTab({ agentId, onDirty, saveRef }: AgentToolsTabProps) {
   saveRef.current = async () => {
     setSaving(true);
     try {
+      // Never persist a stripped tool as enabled — that row is what made
+      // Settings disagree with the runtime in the first place.
       const tools = allTools.map((t) => ({
         toolName: t.name,
-        isEnabled: enabledTools.has(t.name),
+        isEnabled: !strippedTools.has(t.name) && enabledTools.has(t.name),
       }));
       await rpc.setAgentTools(agentId, tools);
       setInitialEnabled(new Set(enabledTools));
@@ -156,26 +173,28 @@ function AgentToolsTab({ agentId, onDirty, saveRef }: AgentToolsTabProps) {
   };
 
   const toggle = useCallback((toolName: string) => {
+    if (strippedTools.has(toolName)) return;
     setEnabledTools((prev) => {
       const next = new Set(prev);
       if (next.has(toolName)) next.delete(toolName);
       else next.add(toolName);
       return next;
     });
-  }, []);
+  }, [strippedTools]);
 
   const toggleCategory = useCallback(
     (categoryTools: ToolDef[], allEnabled: boolean) => {
       setEnabledTools((prev) => {
         const next = new Set(prev);
         for (const t of categoryTools) {
+          if (strippedTools.has(t.name)) continue;
           if (allEnabled) next.delete(t.name);
           else next.add(t.name);
         }
         return next;
       });
     },
-    [],
+    [strippedTools],
   );
 
   const handleReset = useCallback(async () => {
@@ -248,13 +267,23 @@ function AgentToolsTab({ agentId, onDirty, saveRef }: AgentToolsTabProps) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {enabledTools.size} of {allTools.length} tools enabled
+        {[...enabledTools].filter((t) => !strippedTools.has(t)).length} of{" "}
+        {allTools.length - strippedTools.size} tools enabled
+        {strippedTools.size > 0 && (
+          <>
+            {" · "}
+            <span title="This agent is read-only, so write-capable tools are removed when it is dispatched. They cannot be enabled.">
+              {strippedTools.size} unavailable (read-only agent)
+            </span>
+          </>
+        )}
       </p>
 
       <div className="max-h-[45vh] overflow-y-auto space-y-3 pr-1">
         {[...grouped.entries()].map(([category, tools]) => {
-          const allEnabled = tools.every((t) => enabledTools.has(t.name));
-          const someEnabled = tools.some((t) => enabledTools.has(t.name));
+          const toggleable = tools.filter((t) => !strippedTools.has(t.name));
+          const allEnabled = toggleable.length > 0 && toggleable.every((t) => enabledTools.has(t.name));
+          const someEnabled = toggleable.some((t) => enabledTools.has(t.name));
           return (
             <div key={category} className="rounded-lg border border-border overflow-hidden">
               {/* Category header */}
@@ -267,23 +296,34 @@ function AgentToolsTab({ agentId, onDirty, saveRef }: AgentToolsTabProps) {
                   {CATEGORY_LABELS[category] ?? category}
                 </span>
                 <span className={`text-xs font-medium ${allEnabled ? "text-primary" : someEnabled ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
-                  {tools.filter((t) => enabledTools.has(t.name)).length}/{tools.length}
+                  {toggleable.filter((t) => enabledTools.has(t.name)).length}/{toggleable.length}
                 </span>
               </button>
               {/* Tool rows */}
               <div className="divide-y divide-border">
-                {tools.map((t) => (
+                {tools.map((t) => {
+                  const stripped = strippedTools.has(t.name);
+                  return (
                   <label
                     key={t.name}
-                    className="flex items-center gap-3 px-3 py-1.5 hover:bg-muted/30 transition-colors cursor-pointer"
+                    className={`flex items-center gap-3 px-3 py-1.5 transition-colors ${
+                      stripped ? "opacity-50 cursor-not-allowed" : "hover:bg-muted/30 cursor-pointer"
+                    }`}
+                    title={stripped ? "Removed at dispatch — this agent is read-only and cannot use write-capable tools." : undefined}
                   >
                     <Switch
-                      checked={enabledTools.has(t.name)}
+                      checked={!stripped && enabledTools.has(t.name)}
                       onCheckedChange={() => toggle(t.name)}
+                      disabled={stripped}
                       className="scale-75"
                     />
                     <div className="min-w-0 flex-1">
                       <span className="text-xs font-mono text-foreground">{t.name}</span>
+                      {stripped && (
+                        <span className="ml-1.5 text-[9px] uppercase tracking-wide text-muted-foreground/80">
+                          stripped at dispatch
+                        </span>
+                      )}
                       {t.description && (
                         <p className="text-[10px] text-muted-foreground leading-tight line-clamp-1 mt-0.5">
                           {t.description}
@@ -291,7 +331,8 @@ function AgentToolsTab({ agentId, onDirty, saveRef }: AgentToolsTabProps) {
                       )}
                     </div>
                   </label>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -708,6 +749,7 @@ export function AgentSettingsDialog({
             {agent && (
               <AgentToolsTab
                 agentId={agent.id}
+                agentName={agent.name}
                 onDirty={setToolsDirty}
                 saveRef={toolsSaveRef}
               />

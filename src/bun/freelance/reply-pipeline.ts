@@ -18,6 +18,7 @@ import { getFreelanceSettings } from "./settings";
 import { getHumanizerRules } from "./humanizer-prompt";
 import { qaRevise } from "./qa";
 import { DRAFT_SIMILARITY_MAX, maxSimilarityAgainst, recentOutboxBodies } from "./similarity";
+import { withTransientRetry } from "../agents/safety";
 
 function buildStrategistSystem(): string {
 	return `You are an experienced freelancer replying to a client on a freelancing platform.
@@ -127,12 +128,13 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 	const prompt = `Conversation so far (most recent last):\n${conversation || "(no messages captured yet)"}${listingBrief(ctx.listingId)}\n\nWrite my reply to the client's latest message.`;
 
 	const { adapter, modelId, providerType } = await resolveProviderAndModel();
-	const { text } = await generateText({
+	const { text } = await withTransientRetry(() => generateText({
+		maxRetries: 0,
 		model: adapter.createModel(internalCallModelId(providerType, modelId)),
 		instructions: buildStrategistSystem(),
 		prompt,
 		temperature: 0.7,
-	});
+	}), { label: "freelance-reply" });
 	let draftBody = await qaRevise(adapter, modelId, "reply", text.trim(), providerType);
 
 	// Template-variation guard (draft time): near-identical messages are a top
@@ -142,12 +144,13 @@ export async function draftReplyForThread(platform: string, threadId: string): P
 	const sim = maxSimilarityAgainst(draftBody, priors);
 	if (sim > DRAFT_SIMILARITY_MAX) {
 		try {
-			const { text: retry } = await generateText({
+			const { text: retry } = await withTransientRetry(() => generateText({
+				maxRetries: 0,
 				model: adapter.createModel(internalCallModelId(providerType, modelId)),
 				instructions: buildStrategistSystem(),
 				prompt: `${prompt}\n\nIMPORTANT: Your reply must clearly differ in structure and wording from your recent messages — vary the opening, sentence order, and phrasing.`,
 				temperature: 0.9,
-			});
+			}), { label: "freelance-reply" });
 			const retryBody = await qaRevise(adapter, modelId, "reply", retry.trim(), providerType);
 			if (maxSimilarityAgainst(retryBody, priors) < sim) draftBody = retryBody;
 		} catch {

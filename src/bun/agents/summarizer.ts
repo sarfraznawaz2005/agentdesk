@@ -7,6 +7,7 @@ import { getDefaultModel } from "../providers/models";
 import { createSummary } from "../db/summaries";
 import type { ProviderConfig } from "../providers/types";
 import { internalCallModelId } from "../providers/claude-subscription";
+import { withTransientRetry } from "./safety";
 
 /** Per-conversation lock to prevent concurrent summarization runs. */
 const activeSummarizations = new Set<string>();
@@ -150,11 +151,12 @@ export async function summarizeConversation(options: {
         );
       }
 
-      const result = await generateText({
+      const result = await withTransientRetry(() => generateText({
+        maxRetries: 0,
         model,
         instructions: SUMMARIZER_SYSTEM_PROMPT,
         messages: [{ role: "user", content: parts.join("\n\n") }],
-      });
+      }), { label: "summarizer" });
 
       const text = result.text.trim();
       if (text) runningSummary = text;

@@ -18,6 +18,7 @@ import { createProviderAdapter } from "../../providers";
 import { getDefaultModel } from "../../providers/models";
 import { internalCallModelId } from "../../providers/claude-subscription";
 import type { ProviderConfig } from "../../providers/types";
+import { withTransientRetry } from "../safety";
 
 // ---------------------------------------------------------------------------
 // Config types
@@ -182,10 +183,11 @@ async function detectWithAI(workspacePath: string, providerConfig: ProviderConfi
 	try {
 		const adapter = createProviderAdapter(providerConfig);
 		const modelId = providerConfig.defaultModel ?? getDefaultModel(providerConfig.providerType);
-		const { text } = await generateText({
+		const { text } = await withTransientRetry(() => generateText({
+			maxRetries: 0,
 			model:    adapter.createModel(internalCallModelId(providerConfig.providerType, modelId)),
 			messages: [{ role: "user", content: prompt }],
-		});
+		}), { label: "preview-tool" });
 
 		const json = extractJson(text);
 		if (!json || typeof json.projectType !== "string" || typeof json.url !== "string") {

@@ -3,11 +3,30 @@ import { join } from "path";
 import { eq, and, ne } from "drizzle-orm";
 import { spawnAsync } from "../lib/spawn-async";
 import { db } from "../db";
-import { settings, agents, notes, plugins } from "../db/schema";
+import { settings, agents, agentTools, notes, plugins } from "../db/schema";
+import { getToolDefinitions } from "./tools/index";
 import { skillRegistry } from "../skills/registry";
 import { isFreelanceEnabled } from "../freelance/feature-flag";
 import { buildMemoryIndexSection } from "./tools/memory";
 import { buildGlobalMemoryIndexSection } from "./tools/global-memory";
+import {
+	READ_ONLY_AGENTS,
+	describeCapabilities,
+	summarizeCapabilities,
+	isToolStrippedAtDispatch,
+} from "../../shared/agent-capabilities";
+import {
+	AGENT_KNOWLEDGE_UPDATE_LINE,
+	hasNoWriteCapability,
+	pluginPromptApplies,
+	sectionText,
+	selectPromptSections,
+} from "./prompt-sections";
+import { BUILTIN_AGENT_DESCRIPTIONS, BUILTIN_AGENT_PROFILES } from "./agent-routing";
+
+// Re-exported for the many existing importers of these two names (pm-tools.ts,
+// dashboard widgets, ambient assistant) — the data itself lives in agent-routing.ts.
+export { BUILTIN_AGENT_DESCRIPTIONS, BUILTIN_AGENT_PROFILES };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -147,7 +166,8 @@ async function isAgentKnowledgeUpdateEnabled(projectId?: string): Promise<boolea
 	}
 }
 
-const AGENT_KNOWLEDGE_UPDATE_LINE = `- **Keep knowledge current**: If your work changes something described in a project-knowledge doc (e.g. new dependency, changed architecture, modified API), update that doc via \`update_doc\` so future agents get accurate context.`;
+// AGENT_KNOWLEDGE_UPDATE_LINE moved to prompt-sections.ts alongside the docs
+// section it is substituted into.
 
 // ---------------------------------------------------------------------------
 // Constitution filtering
@@ -194,30 +214,15 @@ function filterConstitution(constitution: string, role: "pm" | "read-only" | "wo
 // Dynamic Sub-Agents section — loaded from DB so custom agents are included
 // ---------------------------------------------------------------------------
 
-export const BUILTIN_AGENT_DESCRIPTIONS: Record<string, string> = {
-	"software-architect": "System design, architecture decisions",
-	"frontend_engineer": "UI components, React/TypeScript, styling",
-	"backend-engineer": "Server-side logic, APIs, database",
-	"devops-engineer": "CI/CD, infrastructure, deployment",
-	"qa-engineer": "Test writing, end-to-end verification",
-	"security-expert": "Security audits, vulnerability assessment",
-	"code-reviewer": "Code review, correctness verification",
-	"debugging-specialist": "Root-cause analysis, bug investigation",
-	"performance-expert": "Profiling, optimisation",
-	"data-engineer": "Data pipelines, analytics",
-	"database-expert": "DB design, query optimisation",
-	"api-designer": "REST/GraphQL design, OpenAPI specs",
-	"ui-ux-designer": "UX/UI design, wireframes, accessibility",
-	"refactoring-specialist": "Code restructuring, tech debt",
-	"mobile-engineer": "React Native, Expo, iOS/Android",
-	"ml-engineer": "LLM integration, prompt engineering",
-	"documentation-expert": "Docs, README, API docs",
-	"task-planner": "Task breakdown, PRD creation",
-	"research-expert": "Web search, library comparisons",
-	"code-explorer": "Codebase exploration, dependency mapping",
-};
+// Routing profiles (BUILTIN_AGENT_PROFILES / BUILTIN_AGENT_DESCRIPTIONS) live in
+// agent-routing.ts — pure data, so the roster-consistency test can read it
+// without opening a DB.
 
-const READ_ONLY_AGENT_NAMES = new Set(["code-explorer", "research-expert", "task-planner"]);
+// READ_ONLY_AGENTS is imported from shared/agent-capabilities.ts — this file used
+// to keep two separate local copies of the list, one of which had drifted to
+// include a non-existent "explore" agent while omitting task-planner, so
+// task-planner received the write-agent prompt sections despite being dispatched
+// with its write tools stripped.
 
 export function extractFirstSentence(text: string): string {
 	const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -229,10 +234,51 @@ export function extractFirstSentence(text: string): string {
 	return sentence.length > 80 ? sentence.slice(0, 77) + "..." : sentence;
 }
 
+/**
+ * Capability legend for the Sub-Agents table.
+ *
+ * The PM previously saw only a bare "Read-only"/"Write" label with no
+ * definition anywhere in its context, so it had no way to know that a
+ * read-only agent has no shell — it inferred one, dispatched code-explorer to
+ * run `git show`, got told that was impossible, and re-dispatched the SAME
+ * agent with instructions to "use shell". Both the meaning and the two
+ * resulting rules are now stated explicitly.
+ */
+const AGENT_CAPABILITY_LEGEND = `**Reading the Capabilities column** — this tells you what an agent *can* do; the "When to Use" column tells you which agent *fits*:
+- \`full write\` — can edit files, run shell commands, and execute code. Most specialist agents are equally capable here, so choose between them on role fit, not tooling.
+- \`no shell\` — **cannot run any command**: no shell, no background jobs, no code execution. It can read files, search, and use its read-only git/database tools.
+- \`no writes\` — cannot create, edit, move, or delete files, cannot commit, and cannot move kanban tasks.
+
+Rules that follow from this:
+1. **Match the capability before dispatching.** If the task requires running a command or changing a file, dispatch a \`full write\` agent. Never dispatch a \`no shell\`/\`no writes\` agent for such a task and ask it to work around the limitation — it cannot, and the dispatch is wasted.
+2. **Never re-dispatch an agent that reported a missing capability.** If an agent reports it lacks a tool, that is a fact about its toolset, not a failure of effort — repeating the same instruction to the same agent will produce the same answer. Dispatch a differently-capable agent instead.
+3. **Follow "Instead use" hand-offs.** When an entry names a better-fitting agent for the kind of work you have, dispatch that one. These exist because most write agents share a toolset — the right choice is about the agent's expertise, and the table already records which is which.
+4. **Uncertain which agent fits?** Call \`list_agents\` — optionally with an \`agent\` name to see one agent's exact tool list — rather than guessing and burning a dispatch.`;
+
+/**
+ * Tool names `agentName` is granted, mirroring getToolsForAgent's rule that an
+ * agent with NO agent_tools rows receives the full registry. Returns a fresh
+ * mutable array — callers append runtime-injected tools (log_decision).
+ */
+export async function getGrantedToolNames(agentName: string): Promise<string[]> {
+	try {
+		const rows = await db
+			.select({ toolName: agentTools.toolName })
+			.from(agentTools)
+			.innerJoin(agents, eq(agents.id, agentTools.agentId))
+			.where(and(eq(agents.name, agentName), eq(agentTools.isEnabled, 1)));
+		if (rows.length > 0) return rows.map((r) => r.toolName);
+	} catch {
+		// Fall through to the full registry — the same permissive default the
+		// dispatch path uses when an agent has no rows.
+	}
+	return getToolDefinitions().map((d) => d.name);
+}
+
 async function buildAgentsSection(): Promise<{ section: string; agentNames: string[] }> {
 	try {
 		const allAgentRows = await db
-			.select({ name: agents.name, isBuiltin: agents.isBuiltin, systemPrompt: agents.systemPrompt, availableToPm: agents.availableToPm })
+			.select({ id: agents.id, name: agents.name, isBuiltin: agents.isBuiltin, systemPrompt: agents.systemPrompt, availableToPm: agents.availableToPm })
 			.from(agents)
 			.where(ne(agents.name, "project-manager"));
 
@@ -254,20 +300,59 @@ async function buildAgentsSection(): Promise<{ section: string; agentNames: stri
 
 		const agentNames = agentRows.map((a) => a.name);
 
-		const tableRows = agentRows.map((a) => {
-			const type = READ_ONLY_AGENT_NAMES.has(a.name) ? "Read-only" : "Write";
+		// Per-agent granted tools, in one query rather than N. An agent with no
+		// agent_tools rows gets the FULL registry at dispatch (see
+		// getToolsForAgent), so its capabilities are derived from the registry —
+		// mirroring runtime exactly rather than assuming a restricted set.
+		const toolRows = await db
+			.select({ agentId: agentTools.agentId, toolName: agentTools.toolName, isEnabled: agentTools.isEnabled })
+			.from(agentTools);
+		const grantsByAgent = new Map<string, string[]>();
+		for (const row of toolRows) {
+			if (row.isEnabled !== 1) continue;
+			const list = grantsByAgent.get(row.agentId) ?? [];
+			list.push(row.toolName);
+			grantsByAgent.set(row.agentId, list);
+		}
+		const allRegistryTools = getToolDefinitions().map((d) => d.name);
+
+		const toRow = (a: (typeof agentRows)[number]) => {
+			const granted = grantsByAgent.get(a.id) ?? allRegistryTools;
+			const capabilities = summarizeCapabilities(describeCapabilities(a.name, granted));
 			const desc = BUILTIN_AGENT_DESCRIPTIONS[a.name]
 				?? (a.systemPrompt ? extractFirstSentence(a.systemPrompt) : "Custom agent");
 			const tag = a.isBuiltin ? "" : " *(custom)*";
-			return `| ${a.name}${tag} | ${type} | ${desc} |`;
-		});
+			return `| ${a.name}${tag} | ${capabilities} | ${desc} |`;
+		};
 
+		// Tiering, not filtering: every agent is still listed and dispatchable.
+		// Splitting them shrinks the set the PM weighs by default from 20 to 8,
+		// which is where description-based routing stops being reliable. Custom
+		// agents sit with the specialists — the PM has no profile for them, so
+		// they should not compete with the everyday roster by default.
+		const primary = agentRows.filter((a) => BUILTIN_AGENT_PROFILES[a.name]?.tier === "primary");
+		const specialists = agentRows.filter((a) => BUILTIN_AGENT_PROFILES[a.name]?.tier !== "primary");
+
+		const header = ["| Agent | Capabilities | When to Use |", "|---|---|---|"];
 		const section = [
 			"## Sub-Agents Available",
 			"",
-			"| Agent | Type | When to Use |",
-			"|---|---|---|",
-			...tableRows,
+			"### Primary — start here",
+			"",
+			"These cover most work. Check this table first.",
+			"",
+			...header,
+			...primary.map(toRow),
+			"",
+			"### Specialists — only when the task is squarely in their domain",
+			"",
+			"Do not reach for one of these when a primary agent covers the task; a specialist's",
+			"advantage is its system prompt, not extra tooling, and most hold the same toolset.",
+			"",
+			...header,
+			...specialists.map(toRow),
+			"",
+			AGENT_CAPABILITY_LEGEND,
 		].join("\n");
 
 		return { section, agentNames };
@@ -348,6 +433,8 @@ Call \`run_agent\` to dispatch a specialist. The agent runs inline in the main c
 - Tech stack and constraints
 - Acceptance criteria
 - If a prior agent ran: summarize files it created, key decisions, and relevant names (keep it brief — the agent can explore details itself via tools)
+
+**Choosing the agent.** \`run_agent\` requires a \`reason\` — one line naming the capability or expertise that decided it. Work it out from the table below BEFORE dispatching: rule out anything whose Capabilities can't do the job, then pick on "When to Use" and follow any "Instead use" hand-off. Most write agents share an identical toolset, so the choice is about expertise, not tooling — and a near-miss specialist costs a full dispatch to discover.
 
 ---
 
@@ -1036,112 +1123,10 @@ export async function getPMSystemPrompt(
 // Knowledge Sharing, Kanban Task Lifecycle) or don't apply at all (Critical Rules,
 // Decisions Log, LSP Diagnostics, Work Integrity — write-agent only).
 
-const EXECUTION_CONTEXT_WRITE = `## Execution Context
-
-You are running **inline** in the main conversation. The Project Manager dispatched you via \`run_agent\`. Your tool calls and output are visible to the PM and the user in real time.
-
-- You received ONLY a task description — you have NO conversation history. The task description is your entire context.
-- You do NOT communicate with the user directly. The PM handles all user interaction.
-- You do NOT spawn other agents. If a task requires skills outside your domain, note it in your final output.
-- When your task is complete, provide a comprehensive summary in your final response.
-- If you encounter an unrecoverable error, describe the error clearly in your final response.
-
-## Critical Rules
-
-1. **ALWAYS read existing files before modifying them.** Never overwrite code you haven't inspected.
-2. **ALWAYS verify your code works after writing.** Check for import errors, type errors, and runtime issues.
-3. **Fix LSP errors immediately** — do not move on with broken code.
-4. **Never hallucinate** — do not claim a file exists, a function works, or a test passes unless you have verified it with actual tool calls.
-5. **Think full-stack.** When you add or change backend logic, data models, or JS modules, check if the UI needs updating too — new HTML elements, form fields, display sections, or user-facing controls. Likewise, when changing the UI, make sure the underlying logic supports it. A feature that works in code but has no way for the user to see or interact with it is incomplete.`;
-
-const EXECUTION_CONTEXT_READONLY = `## Execution Context
-
-You are running **inline** in the main conversation. The Project Manager dispatched you for a read-only task. Your tool calls and output are visible to the PM and the user in real time.
-
-- You received ONLY a task description — you have NO conversation history. The task description is your entire context.
-- You do NOT communicate with the user directly. The PM handles all user interaction.
-- You do NOT spawn other agents. If a task requires skills outside your domain, note it in your final output.
-- You have **read-only tools** — no file writes, no shell commands.
-- When your task is complete, provide a comprehensive summary in your final response.
-- If you encounter an unrecoverable error, describe the error clearly in your final response.`;
-
-const TOKEN_EFFICIENCY_SECTION = `## Token Efficiency
-
-- **Targeted file reads**: Use \`startLine\` and \`endLine\` on \`read_file\` to read only the relevant section instead of the entire file. Critical for large files (>200 lines).
-- **Avoid re-reading unchanged files**: If you already read a file and haven't modified it, do not read it again.
-- **Use search before read**: Use \`search_content\` or \`search_files\` to locate the exact file and line range before reading.`;
-
-const LSP_DIAGNOSTICS_SECTION = `## LSP Diagnostics
-
-File write/edit tools automatically return LSP diagnostics (type errors, lint issues) after each change. **You MUST address these before moving on:**
-1. After every \`write_file\`, \`edit_file\`, \`multi_edit_file\`, or \`patch_file\` — read the diagnostics in the tool result.
-2. If there are **errors** (not warnings): fix them immediately before proceeding to the next file or task step.
-3. Before moving a task to "review", ensure there are **zero LSP errors** in files you modified. Warnings are acceptable if intentional.
-4. If an error is a false positive or unfixable (e.g. missing third-party types), note it in your report — do not silently ignore errors.`;
-
-const CROSS_AGENT_KNOWLEDGE_SHARING_WRITE = `## Cross-Agent Knowledge Sharing
-
-You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
-- **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
-- **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result (old content that's still accurate + your new information) instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
-- **During work**: Create or update docs for important decisions, API contracts, gotchas, or anything another agent working on the same project would need to know.
-- **Title convention**: Use clear prefixes like "Architecture: ...", "API: ...", "Gotcha: ..." so other agents can find relevant docs quickly.
-- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed (title + purpose only) below under "Prior Agents Knowledge". Use \`get_doc\` to read the full content of any relevant document before starting work.
-- **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.
-{agent_knowledge_update}`;
-
-const CROSS_AGENT_KNOWLEDGE_SHARING_READONLY = `## Cross-Agent Knowledge Sharing
-
-You have access to project docs via \`list_docs\`, \`get_doc\`, \`create_doc\`, \`update_doc\`, and \`delete_doc\`.
-- **Before starting**: Call \`list_docs\` to check if previous agents left architecture decisions, API docs, or context you should know about.
-- **Never create a duplicate doc**: Before calling \`create_doc\`, check the \`list_docs\` results for an existing doc with the same or a similarly-worded title. If one exists, call \`get_doc\` to read its full current content, then call \`update_doc\` with the merged result instead of creating a second doc. Only call \`create_doc\` when no matching doc exists.
-- **Agent knowledge**: Documents titled "project-knowledge- ..." are listed below under "Prior Agents Knowledge". Use \`get_doc\` to read any relevant document. Use \`create_doc\` to persist important project knowledge for future agents (e.g. "project-knowledge- Tech Stack", "project-knowledge- Architecture Overview") — or \`update_doc\` if one already exists.
-- **Curation**: Use \`delete_doc\` to remove a doc that is stale, wrong, or fully superseded — not as a substitute for \`update_doc\`.`;
-
-const DECISIONS_LOG_SECTION = `## Decisions Log (CRITICAL)
-
-A shared \`DECISIONS.md\` file in the workspace tracks architectural and design decisions across all agents. **This is how agents stay coordinated. Read it at session start — it is loaded fresh in your prompt under "Architectural Decisions".**
-
-- **At session start**: DECISIONS.md content is injected into your prompt under the "Architectural Decisions" section. Read it before doing any work.
-- **Before making any design choice** (tech stack, naming convention, data structure, API shape, auth strategy, file organization): check the "Architectural Decisions" section to see if a prior agent already decided.
-- **After making a decision**: call \`log_decision\` with a clear title, rationale, and impact. Future agents will see it in their prompt.
-- **Never contradict a logged decision** without explicitly noting why and logging the change.
-- Examples of decisions to log: "Use camelCase for JS, snake_case for DB columns", "Auth via JWT stored in httpOnly cookie", "State management via Zustand", "API prefix /api/v1".`;
-
-const WORK_INTEGRITY_SECTION = `## Work Integrity
-
-- **Complete ALL assigned work** — never skip steps, cut corners, or leave acceptance criteria half-done. If your task has 5 criteria, all 5 must be fully implemented and verified.
-- **Never mark criteria as checked unless truly done** — use \`check_criteria\` only after you have implemented AND verified the criterion.
-- **Do not give up prematurely** — if something is difficult, try alternative approaches. Only report inability after genuine effort. Explain exactly what you tried and what failed.
-- **Report honestly** — if you could not complete something, say so clearly in your report. A partial honest report is far more valuable than a fabricated complete one.`;
-
-const KANBAN_TASK_LIFECYCLE_WRITE = `## Kanban Task Lifecycle
-
-If your task context includes a kanban task ID:
-1. **Call \`get_task\` with your task ID as the very first action** — before any other work. This returns the authoritative description, exact acceptance criteria list, and current state from the kanban board. The criteria listed in your prompt may be a summary or out of sync; the kanban board is the source of truth. You MUST know the real criteria count before calling \`check_criteria\`.
-2. **Call \`list_docs\` and read the project plan or PRD document** — this is MANDATORY before starting any implementation. Call \`list_docs\` with your project ID to get all project documents, then scan the returned titles and call \`get_doc\` on any document whose title contains "Plan:", "Product Requirements Document", or "PRD". This gives you the overall picture of the project and how your task fits into it. If no matching document is found in the list, continue with your assigned task — do not block on it.
-3. Use \`move_task\` to move the task to "working" when you start.
-4. Work through all acceptance criteria returned by \`get_task\` (not the ones in your prompt).
-5. Use \`check_criteria\` with **all indices in a single call** once you have verified them — e.g. \`criteria_index=[0,1,2]\` for a 3-criterion task. Never call \`check_criteria\` one index at a time. Use the exact count from \`get_task\`, not from your prompt.
-6. Verify there are no LSP errors in files you modified (fix any that remain).
-7. **Call \`verify_implementation\`** — this is MANDATORY. The task cannot move to review without passing this check. Pass your honest self-assessment via the structured checklist. If it fails, fix the gaps and call it again. On pass, the task automatically moves to review.
-   - Do NOT call \`move_task\` to review — \`verify_implementation\` handles that on pass.
-   - Moving to "done" is **reserved for the automated review system** — never move tasks to "done" yourself.
-8. If you cannot complete the task, leave it in "working" and explain in your report.`;
-
-const KANBAN_TASK_LIFECYCLE_READONLY = `## Kanban Task Lifecycle
-
-If your task context includes a kanban task ID:
-1. **Call \`get_task\` with your task ID as the very first action** — before any other work. This returns the authoritative acceptance criteria list. Never infer the criteria count from your prompt.
-2. **Call \`list_docs\` and read the project plan or PRD document** — this is MANDATORY before starting any work. Call \`list_docs\` with your project ID, then scan the returned titles and call \`get_doc\` on any document whose title contains "Plan:", "Product Requirements Document", or "PRD". This gives you the overall picture of the project and how your task fits into it. If no matching document is found in the list, continue with your assigned task — do not block on it.
-3. Use \`move_task\` to move the task to "working" when you start.
-4. Work through all acceptance criteria returned by \`get_task\` (not the ones in your prompt).
-5. Use \`check_criteria\` with **all indices in a single call** — e.g. \`criteria_index=[0,1,2]\`. Never call it one index at a time.
-6. When ALL criteria are checked, use \`move_task\` to move the task to **"review"** — NEVER to "done".
-   - Moving to "done" is **reserved for the Project Manager only** via the per-task review cycle.
-7. If you cannot complete the task, leave it in "working" and explain in your report.`;
-
-const READ_ONLY_AGENTS = new Set(["code-explorer", "explore", "research-expert"]);
+// Static sub-agent sections and the pure rule for which of them an agent
+// receives now live in prompt-sections.ts — see that module's header for why
+// (they name tools, so they must be gated on the agent's actual toolset, and
+// the audit test needs to read them without a DB).
 
 // ---------------------------------------------------------------------------
 // Dynamic plugin prompt injection — injected from enabled plugins' prompt field
@@ -1149,18 +1134,38 @@ const READ_ONLY_AGENTS = new Set(["code-explorer", "explore", "research-expert"]
 
 /**
  * Load prompt snippets from all enabled plugins that have a non-empty prompt.
- * These are concatenated and injected into agent system prompts so agents
- * automatically know how to use plugin-provided tools.
+ *
+ * Skips a snippet when the agent cannot call ANY of the tools that snippet
+ * names. Enabling a plugin is an app-wide toggle, but a plugin prompt is
+ * per-agent text — the LSP Manager's snippet ("use `lsp_diagnostics` …") was
+ * being injected into `research-expert` and `task-planner`, neither of which is
+ * granted the `lsp_*` tools, so both were told to use five tools they do not
+ * have. Same class of bug as the read-only kanban section, arriving from user
+ * data rather than our own source, which is why prompt-sections.ts's static
+ * gating cannot catch it.
+ *
+ * The requirement is derived from the snippet's own backticked tool mentions
+ * rather than the manifest's `tools` array, because the plugin registers its
+ * tools under a prefixed name (`plugin__<name>__<tool>`) that never matches
+ * what the prose tells the agent to type. What matters is whether the agent can
+ * follow the instruction as written. A snippet naming no known tool is pure
+ * behavioural guidance and is always injected.
  */
-async function loadPluginPrompts(): Promise<string> {
+async function loadPluginPrompts(effectiveTools: ReadonlySet<string>): Promise<string> {
 	try {
 		const rows = await db
-			.select({ prompt: plugins.prompt })
+			.select({ name: plugins.name, prompt: plugins.prompt })
 			.from(plugins)
 			.where(eq(plugins.enabled, 1));
-		const snippets = rows
-			.map((r) => r.prompt?.trim())
-			.filter((p): p is string => !!p);
+
+		const knownTools = new Set(getToolDefinitions().map((d) => d.name));
+		const snippets: string[] = [];
+		for (const row of rows) {
+			const snippet = row.prompt?.trim();
+			if (!snippet) continue;
+			if (!pluginPromptApplies(snippet, effectiveTools, knownTools).applies) continue;
+			snippets.push(snippet);
+		}
 		return snippets.length > 0 ? "\n" + snippets.join("\n\n") : "";
 	} catch {
 		// Plugin table may not exist yet during early startup
@@ -1334,37 +1339,58 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 			.join("\n\n---\n\n");
 	}
 
+	// Effective toolset drives which sections this agent is given — a section
+	// that names a tool the agent lacks is an instruction it cannot follow.
+	// log_decision is added when a workspace exists because that is exactly how
+	// it is granted (agent-loop.ts's createDecisionsTool); it is never a row.
+	// Resolved before the loads below because plugin-prompt gating needs it.
+	const grantedTools = await getGrantedToolNames(agentName);
+	if (workspacePath) grantedTools.push("log_decision");
+	const effectiveTools = new Set(grantedTools.filter((t) => !isToolStrippedAtDispatch(agentName, t)));
+
 	// Load constitution + user profile + agent knowledge listing + update setting + plugin prompts
 	const [constitution, userProfile, knowledgeSection, knowledgeUpdateEnabled, pluginPrompts, featureBranchEnabled, memorySection] = await Promise.all([
 		loadConstitution(),
 		loadUserProfile(),
 		loadAgentKnowledgeListing(projectId),
 		isAgentKnowledgeUpdateEnabled(projectId),
-		loadPluginPrompts(),
+		loadPluginPrompts(effectiveTools),
 		isFeatureBranchWorkflowEnabled(projectId),
 		buildMemoryIndexSection(agentName, projectId),
 	]);
 	const userSection = buildUserSection(userProfile);
 
-	const isReadOnly = READ_ONLY_AGENTS.has(agentName);
+	// A custom agent the user built with every write tool unticked reads the
+	// read-only prompt, rather than being told it can edit files.
+	const isReadOnly = READ_ONLY_AGENTS.has(agentName) || hasNoWriteCapability(agentName, grantedTools);
 	const filteredConstitution = filterConstitution(constitution, isReadOnly ? "read-only" : "worker");
-	const executionContext = isReadOnly ? EXECUTION_CONTEXT_READONLY : EXECUTION_CONTEXT_WRITE;
-	const crossAgentKnowledgeSharing = (isReadOnly ? CROSS_AGENT_KNOWLEDGE_SHARING_READONLY : CROSS_AGENT_KNOWLEDGE_SHARING_WRITE)
+
+	const sections = selectPromptSections({
+		agentName,
+		grantedTools,
+		readOnly: isReadOnly,
+		knowledgeUpdateEnabled,
+		featureBranchEnabled,
+	});
+	const executionContext = sectionText(sections, "execution_context");
+	const crossAgentKnowledgeSharing = sectionText(sections, "cross_agent_knowledge")
 		.replace("{agent_knowledge_update}", knowledgeUpdateEnabled ? AGENT_KNOWLEDGE_UPDATE_LINE : "");
-	const kanbanTaskLifecycle = isReadOnly ? KANBAN_TASK_LIFECYCLE_READONLY : KANBAN_TASK_LIFECYCLE_WRITE;
+	const kanbanTaskLifecycle = sectionText(sections, "kanban_lifecycle");
+	const tokenEfficiencySection = sectionText(sections, "token_efficiency");
+	const lspDiagnosticsSection = sectionText(sections, "lsp_diagnostics");
+	const decisionsLogSection = sectionText(sections, "decisions_log");
+	const workIntegritySection = sectionText(sections, "work_integrity");
+	const featureBranchInstruction = sectionText(sections, "feature_branch");
 
 	const workspaceInstructions = loadWorkspaceInstructions(workspacePath);
 	const decisionsContent = loadDecisionsFile(workspacePath);
 	const gitContext = await buildGitContext(workspacePath);
 
-	const skillsSection = buildSkillsDescriptionSection(true);
+	// The skills section is entirely about calling read_skill/find_skills/etc.
+	const skillsSection = grantedTools.includes("read_skill") ? buildSkillsDescriptionSection(true) : "";
 
 	const mcpSection = await buildAgentMcpSection();
 	const browserGuidance = await buildBrowserToolingSection();
-
-	const featureBranchInstruction = featureBranchEnabled && !isReadOnly
-		? `\n## Feature Branch Workflow\n\nThis project uses a feature branch workflow. Auto-commit will handle switching to the correct feature branch when your task is complete. Your only responsibility: **never commit directly to main or master**. Use \`git_status\` to check the current branch before committing if you commit manually.`
-		: "";
 
 	// App Context (today's date + current time) — the PM and lean-mode custom agents
 	// already get this (getPMSystemPrompt, and the useSystemPromptOnly branch above);
@@ -1394,8 +1420,8 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		executionContext,
 		filteredConstitution ? `## Constitution\n\n${filteredConstitution}` : "",
 		// 2. Role & Tools
-		TOKEN_EFFICIENCY_SECTION,
-		isReadOnly ? "" : LSP_DIAGNOSTICS_SECTION,
+		tokenEfficiencySection,
+		lspDiagnosticsSection,
 		pluginPrompts,
 		skillsSection,
 		mcpSection,
@@ -1403,12 +1429,12 @@ export async function getAgentSystemPrompt(agentName: string, workspacePath?: st
 		// 3. Knowledge & Coordination
 		crossAgentKnowledgeSharing,
 		knowledgeSection,
-		isReadOnly ? "" : DECISIONS_LOG_SECTION,
+		decisionsLogSection,
 		decisionsContent ? `## Architectural Decisions\n\nThe following decisions were logged by previous agents in DECISIONS.md. **Read before making any design choice.**\n\n${decisionsContent}` : "",
 		memorySection,
 		workspaceInstructions ? `## Project-Specific Context\n\nThe following instructions were loaded from the project workspace and MUST be followed:\n\n${workspaceInstructions}` : "",
 		// 4. Task Workflow
-		isReadOnly ? "" : WORK_INTEGRITY_SECTION,
+		workIntegritySection,
 		kanbanTaskLifecycle,
 		featureBranchInstruction,
 		// 5. Reference Data

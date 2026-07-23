@@ -70,7 +70,9 @@ The four wiring anchors — trace any feature from here: `src/bun/index.ts` (lif
 - **PM is the sole orchestrator** — classifies requests, plans, dispatches agents, manages kanban directly. There is NO separate WorkflowEngine state machine. (`AgentEngine` in `src/bun/agents/engine.ts`; one engine per project via `EngineManager` in `src/bun/engine-manager.ts`.)
 - **Plan → Approve → Execute**: PM calls `request_plan_approval` (plan card in chat), user approves, PM calls `create_tasks_from_plan`, then dispatches via `run_agent`.
 - **Kanban flow**: **backlog → working → review → done**. Agents cannot skip columns; move to "done" is reserved for the review system via `submit_review`.
-- **Sequential Single-Agent Model**: write agents run one at a time; read-only agents (`code-explorer`, `research-expert`, `task-planner` — the `READ_ONLY_AGENTS` set in `agent-loop.ts`) run in parallel via `run_agents_parallel`. Enforced by the `writeAgentRunning` guard in PM tools.
+- **Sequential Single-Agent Model**: write agents run one at a time; read-only agents (`code-explorer`, `research-expert`, `task-planner` — the `READ_ONLY_AGENTS` set in `src/shared/agent-capabilities.ts`) run in parallel via `run_agents_parallel`. Enforced by the `writeAgentRunning` guard in PM tools.
+- **Agent capabilities have one source of truth**: `src/shared/agent-capabilities.ts` (`WRITE_TOOLS`, `READ_ONLY_AGENTS`, `isToolStrippedAtDispatch`, `describeCapabilities`). `filterReadOnlyTools` strips write tools from read-only agents at dispatch, and the PM's Sub-Agents table, `list_agents`, Settings → Agents → Tools, and every static prompt section (`agents/prompt-sections.ts`) all *derive* their claims from that same predicate. Stripped `agent_tools` rows are blocked at three points — Settings greys the toggle, `setAgentToolsList` filters the write, `sweepStrippedToolRows()` cleans on every boot.
+- **Agent routing has its own source of truth**: `src/bun/agents/agent-routing.ts` (`BUILTIN_AGENT_PROFILES` → `useWhen` / `preferInstead` / `tier`; `BUILTIN_AGENT_DESCRIPTIONS` is derived from it). Capability is a *filter* ("can this agent do the job?"); the profile is the *selector* ("which agent fits?"), since ~16 write agents share a near-identical toolset. `preferInstead` hand-offs exist because a description can only say what an agent *is*, never what it is second-best at — that gap is what routed a database task to `backend-engineer`. `tier` splits the PM's table into ~8 primary agents and the rest as specialists (nothing is hidden; the choice space is just narrowed). `run_agent` requires a one-line `reason` — kept because committing to a rationale improves the choice, even though it is no longer logged anywhere.
 - **Automatic Code Review**: moving a task to "review" auto-spawns a code-reviewer (`review-cycle.ts`); `submit_review(approved)` → done, rejection → back to working (up to `maxReviewRounds`, default 2).
 - **Inline Agent Execution**: sub-agents run inline in the main conversation (fresh context = system prompt + task), tool calls visible as message parts; `handoff.ts` summaries chain sequential tasks.
 - **Feature Branch Workflow**: PM calls `set_feature_branch` (AI-named) before dispatch; `autoCommitTask` (in `review-cycle.ts`) switches/creates the branch before committing.
@@ -96,7 +98,7 @@ Operational essentials:
 
 ---
 
-## Built-in Agent Roster (`src/bun/db/seed.ts`)
+## Built-in Agent Roster (`src/bun/db/agent-seed-defs.ts`, seeded by `seed.ts`)
 
 Operational essentials:
 
@@ -228,8 +230,70 @@ Turn tasks into verifiable goals rather than stopping at "looks right."
    frontend.
 - **Schema changes require a new migration file** in `src/bun/db/migrations/`.
    Never alter `schema.ts` without adding the corresponding migration.
-- **Agent system prompts live in `src/bun/db/seed.ts`.** Edit there, not
-   inline in engine code.
+- **Never hand-write an agent capability claim — derive it.** Any code or prompt text that
+   states what an agent can do (the PM's Sub-Agents table, `list_agents`, Settings → Agents →
+   Tools, a system-prompt section naming a tool) must derive that claim from
+   `src/shared/agent-capabilities.ts`, not restate it. Restating it is how five places ended up
+   disagreeing with the runtime: `code-explorer` was granted a `run_shell` it could never use,
+   `task-planner` got the write-agent prompt while dispatched read-only, read-only agents were
+   told to call `move_task`, and the PM — seeing only an undefined "Read-only" label — inferred a
+   shell that did not exist and burned two dispatches on it. Corollary: adding a tool to
+   `WRITE_TOOLS` or `READ_ONLY_AGENTS` means auditing every agent's default grant *and* every
+   prompt section that names the affected tools — **both halves are now mechanical**:
+   `tests/agents/agent-capabilities.test.ts` for grants, `agent-prompt-tools.test.ts` for
+   prompts, `agent-routing.test.ts` for the routing profiles. All three read from pure
+   modules extracted so they never open a DB: `db/agent-tool-defaults.ts` (grants),
+   `db/agent-seed-defs.ts` (seed prompts), `agents/prompt-sections.ts` (static sections),
+   `agents/agent-routing.ts` (routing profiles). A tool mention added to a shared prompt
+   section must also be added to that section's `requires`, or the test fails.
+- **A prompt section that names a tool must be gated on that tool.**
+   `src/bun/agents/prompt-sections.ts` owns the static sub-agent sections; each declares the
+   tools its text tells the agent to call, and `selectPromptSections()` picks the most capable
+   variant the agent's *effective* (post-strip) toolset satisfies, narrowing or omitting
+   otherwise. Never add a section to `getAgentSystemPrompt`'s composition array directly —
+   that's how `code-reviewer` ended up ordered to call a `verify_implementation` it is
+   deliberately denied, and every narrow custom agent got told to call `list_docs`.
+- **Agent capability enforcement must be continuous, not one-shot.** A migration repairs
+   existing rows once; the next write re-creates the problem. Stripped `agent_tools` rows are
+   blocked at three independent points — the Settings UI (greyed toggle), `setAgentToolsList`
+   (server-side filter), and `sweepStrippedToolRows()` on every boot. Keep all three.
+- **Agent system prompts live in `src/bun/db/agent-seed-defs.ts`** (extracted from `seed.ts`).
+   Edit there, not inline in engine code. Shared sections appended to every sub-agent prompt
+   live in `src/bun/agents/prompt-sections.ts`; PM-only text in `src/bun/agents/prompts.ts`.
+- **Use `src/bun/lib/logger.ts` for new diagnostic file logging** — `createLogger("<category>")`
+   writes timestamped, rotated lines to `{userData}/logs/<category>.log`, in **every channel**
+   (dev/canary/stable), which is the point: production has no console attached. Don't hand-roll
+   a sixth copy of the append-and-rotate routine. `error-logger.ts` stays separate (it also
+   mirrors into the audit table and installs process handlers). These files are shareable in a
+   bug report, so never log request headers, request bodies, or anything key-shaped.
+- **A new provider call site needs retry handling — pick the right one.** Reuse `runInlineAgent`
+   and you inherit everything. A one-shot `generateText` must be wrapped in
+   `withTransientRetry()` (`agents/safety.ts`) with `maxRetries: 0` on the SDK call, or it
+   silently loses our transient classification (notably opencode Zen's `No provider available`,
+   a 401 the SDK must treat as permanent — that is what killed the unattended auto-shortlist
+   job). **Never wrap a `streamText` consumption loop in it**: those surfaces broadcast tokens
+   as they arrive and the client appends them, so a retry duplicates text on screen. Streaming
+   callers keep the SDK's own retry, which is safe because it happens before the first token.
+- **Both composer pickers propagate to dispatched sub-agents — keep it that way.** The thinking
+   picker rides `thinkingBudgetOverride`; the model picker rides `chatModelId` → `PMToolsDeps` →
+   `InlineAgentOptions.modelId`. Model precedence is: the agent's own **Model ID Override** wins,
+   then the chat picker, then the provider default. The chat pick is discarded entirely when the
+   agent has its own **AI Provider Override** — a model id only means something to the provider
+   it came from. Until this was wired, picking a model in chat changed only the PM while every
+   sub-agent stayed on the provider default, which silently invalidated model comparisons.
+- **A model capability the provider rejects must be memoised, not just retried.** Both agent
+   loops strip `reasoning` and retry when a model rejects it (Mistral's devstral/codestral/large
+   all 400 on `reasoning_effort`), but a reactive retry alone burns a doomed request on every
+   single run. `providers/reasoning-support.ts` remembers it per provider-id + model; check
+   before sending, record on rejection. Same pattern as `THINKING_PARAMS_UNSUPPORTED` in
+   `providers/openai.ts`. Both are in-memory on purpose — a provider that later enables the
+   capability is picked up on the next launch instead of needing a stored flag cleared.
+- **Provider call failures are logged centrally — don't add per-call-site logging.**
+   `createProviderAdapter` wraps `createModel` (`providers/error-log.ts`), so every provider
+   call in the app already lands in `provider_errors.log` with endpoint/status/retryability.
+   The ONE exception is the Claude Subscription CLI/SDK route, which drives a `claude`
+   subprocess and never builds a `LanguageModel` — it calls `logProviderCallError` directly.
+   Any new non-`LanguageModel` provider path must do the same, or it becomes invisible.
 - **GitHub git network ops (clone/fetch/pull/push) must authenticate via the token, not the
    system credential helper.** Prefix the git args with `gitAuthArgs(token)` (for an existing
    repo, `await githubAuthPrefix({ workspacePath, projectId })`) from `rpc/github-api.ts` — this
