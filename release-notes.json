@@ -1,5 +1,12 @@
 [
     {
+        "version":  "2.9.4",
+        "title":  "Chat Widget Improvements",
+        "changes":  [
+                        "Fixed an issue that caused the chat widget to close when clicking inside the footer."
+                    ]
+    },
+    {
         "version":  "2.9.3",
         "title":  "Enhanced Streaming Performance",
         "changes":  [
