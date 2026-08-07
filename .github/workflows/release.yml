@@ -1,0 +1,578 @@
+name: Release
+
+# Triggered by workflow_dispatch ONLY — dispatched by release.ps1 (via
+# scripts/gh-actions.ps1's Invoke-GhDispatch) once it has verified the source
+# commit is green on ci.yml. Never by a tag push: source lives in the PRIVATE
+# sarfraznawaz2005/agentdesk-source, and a tag pushed there has nothing to
+# trigger in THIS (public) repo. See ci.yml's header for why the split exists
+# and why `workflow_dispatch`-only matters (no fork can ever reach
+# SOURCE_REPO_TOKEN).
+#
+# Nothing here is published until everything has succeeded:
+#   guard          - refuses to build unless a ci.yml run for this exact
+#                    source SHA (matched by that run's title - see below)
+#                    passed
+#   create-release - creates the GitHub Release as a DRAFT
+#   build-*        - the three platform builds upload their assets to the draft
+#   publish        - flips the draft to published, only if all three succeeded
+#   cleanup        - on ANY failure, deletes the draft release in THIS repo.
+#                    release.ps1 deletes its own provenance tag in the PRIVATE
+#                    repo on the same failure - this job has no write access
+#                    there to do it itself.
+#
+# A draft release is never "latest", and the auto-updater fetches its manifest
+# from /releases/latest/download - so a half-finished or failed release can
+# never be handed to users.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Full 40-char commit SHA in agentdesk-source to build'
+        required: true
+        type: string
+      tag:
+        description: 'Release tag, e.g. v3.1.2'
+        required: true
+        type: string
+      ci_run_id:
+        description: 'databaseId of the ci.yml run that approved this SHA (0 = search by title instead)'
+        required: false
+        default: '0'
+        type: string
+
+# The only link between this run and the ci.yml run that approved it is that
+# run's OWN title (its head SHA is a public-repo SHA and says nothing about
+# what was built) - see the guard job below.
+run-name: Release ${{ inputs.tag }} (${{ inputs.sha }})
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Gate: a ci.yml run for this exact source commit must already be green ──
+  # release.ps1 dispatches ci.yml itself and passes back that run's id as
+  # ci_run_id, so in the normal flow this resolves in one API call. The title
+  # scan below is the fallback - it also covers a release dispatched by hand.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require a successful CI run for this source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA:      ${{ inputs.sha }}
+          MIN_ID:   ${{ inputs.ci_run_id }}
+          REPO:     ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # ci.yml sets `run-name: CI ${{ inputs.sha }}`, so this is the exact
+          # displayTitle to match on.
+          TITLE="CI ${SHA}"
+          MIN_ID="${MIN_ID:-0}"
+
+          # Up to 5 minutes for the run to appear (covers a hand-dispatched
+          # release whose ci_run_id is unknown), then up to 30 minutes for it
+          # to finish.
+          appear_deadline=$(( SECONDS + 300 ))
+          finish_deadline=$(( SECONDS + 1800 ))
+
+          while :; do
+            if [ "$MIN_ID" != "0" ]; then
+              # Exact: release.ps1 already watched this run itself, so there is
+              # no ambiguity to resolve. `|| raw=""` keeps a 404/permission
+              # error from killing the script under set -e - it is treated the
+              # same as "not found yet".
+              raw=$(gh run view "$MIN_ID" --repo "$REPO" \
+                      --json databaseId,displayTitle,status,conclusion,url,workflowName 2>/dev/null) || raw=""
+              if [ -n "$raw" ]; then
+                run=$(printf '%s' "$raw" | jq -c --arg t "$TITLE" \
+                        'if (.workflowName == "CI" and .displayTitle == $t) then . else empty end')
+                run=${run:-null}
+              else
+                run=null
+              fi
+            else
+              # Fallback: newest ci.yml dispatch whose title names this SHA.
+              # displayTitle is NOT unique - a re-dispatch of the same commit
+              # repeats it - so take the highest databaseId, i.e. the most
+              # recent verdict.
+              raw=$(gh run list --repo "$REPO" --workflow=ci.yml --event=workflow_dispatch \
+                      --limit 100 --json databaseId,displayTitle,status,conclusion,url 2>/dev/null) || raw="[]"
+              run=$(printf '%s' "${raw:-[]}" | jq -c --arg t "$TITLE" \
+                      '[ .[] | select(.displayTitle == $t) ] | sort_by(.databaseId) | last // null')
+            fi
+
+            status=$(printf '%s' "$run"     | jq -r '.status     // "none"')
+            conclusion=$(printf '%s' "$run" | jq -r '.conclusion // ""')
+            url=$(printf '%s' "$run"        | jq -r '.url        // ""')
+
+            if [ "$status" = "none" ]; then
+              if [ "$SECONDS" -ge "$appear_deadline" ]; then
+                echo "::error::No ci.yml run titled '$TITLE' exists. Dispatch ci.yml for $SHA and let it pass before releasing it."
+                exit 1
+              fi
+              echo "waiting for a CI run titled '$TITLE' to appear..."
+              sleep 15
+              continue
+            fi
+
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                echo "CI passed for $SHA: $url"
+                exit 0
+              fi
+              echo "::error::CI concluded '$conclusion' for $SHA - refusing to build a release. $url"
+              exit 1
+            fi
+
+            if [ "$SECONDS" -ge "$finish_deadline" ]; then
+              echo "::error::CI for $SHA did not finish in time ($url)."
+              exit 1
+            fi
+            echo "CI is $status - waiting... ($url)"
+            sleep 20
+          done
+
+  # ── Create the GitHub Release first so parallel build jobs can upload to it ──
+  create-release:
+    needs: guard
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Extract tag name
+        id: meta
+        run: echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+
+      # Cross-repo, same read-only PAT the build jobs use below - needed only
+      # to read release-notes.json for the body step. Sparse-checked-out to
+      # that one file: this job has no reason to pull the rest of the source.
+      - uses: actions/checkout@v5.0.0
+        with:
+          repository: sarfraznawaz2005/agentdesk-source
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: release-notes.json
+          sparse-checkout-cone-mode: false
+
+      # `generate_release_notes` (GitHub's own auto-notes) is not usable
+      # post-split: it diffs commits in THIS repo, which after the split only
+      # ever contains workflow edits - not the user-facing changes users read
+      # in the "What's New" dialog. release-notes.json (written by
+      # release.ps1) is the real source of truth; build the release body from
+      # its entry for this version instead.
+      - name: Build release notes body from release-notes.json
+        id: notes
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+          BODY=$(jq -r --arg v "$VERSION" \
+            '.[] | select(.version == $v) | (["## " + (.title // ("Release " + $v)), ""] + (.changes // [] | map("- " + .))) | join("\n")' \
+            release-notes.json)
+          if [ -z "$BODY" ]; then
+            BODY="No user-facing changes recorded for v$VERSION."
+          fi
+          DELIM="NOTES_EOF_$$"
+          { echo "body<<$DELIM"; echo "$BODY"; echo "$DELIM"; } >> "$GITHUB_OUTPUT"
+
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
+          draft: true
+          prerelease: false
+
+  # ── Windows x64 build ──────────────────────────────────────────────────────
+  build-windows:
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          repository: sarfraznawaz2005/agentdesk-source
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend (Vite)
+        run: bun run vite build
+
+      # A single pass is enough now: electrobun.config.ts's scripts.postBuild
+      # (scripts/postbuild-win-icon.ts) embeds the icon into launcher.exe/
+      # bun.exe itself, directly inside this build's own output folder,
+      # before Electrobun tars/packages it — no need to pre-seed
+      # node_modules/electrobun's copy and rebuild a second time to pick it
+      # up. (That two-pass dance existed because Electrobun's OWN built-in
+      # build.win.icon embed step fails on Windows — its precompiled CLI
+      # binary's require.resolve("rcedit") resolves against ITS OWN CI
+      # checkout path, not this project's node_modules — postbuild-win-
+      # icon.ts redoes the same rcedit call as a plain `bun` process instead,
+      # where require.resolve works correctly.)
+      - name: Build app
+        run: bunx electrobun build --env=stable
+
+      - name: Embed icon into installer exe
+        shell: pwsh
+        run: |
+          $rcedit = "node_modules\rcedit\bin\rcedit-x64.exe"
+          & $rcedit "build\stable-win-x64\AgentDesk-Setup.exe" --set-icon "assets\icon.ico"
+          if ($LASTEXITCODE -ne 0) { Write-Error "rcedit failed on AgentDesk-Setup.exe"; exit 1 }
+          Write-Host "Icon embedded into AgentDesk-Setup.exe"
+
+      # Strip Electrobun's unused updater binaries (bspatch.exe + zig-zstd.exe) from the
+      # canonical Setup payload. AgentDesk's Windows updater is full-zip based and never
+      # invokes the native bsdiff/zstd path, so both are dead weight (bspatch also trips
+      # some AV engines) and neither is a startup dep. The metadata.json `hash` is the
+      # build identity, NOT a payload checksum, and the self-extractor performs no
+      # integrity check — so the tar.zst can be repacked without rehashing. We re-tar with
+      # the same System32 tar and recompress with Electrobun's OWN zig-zstd, so the stream
+      # is byte-format-identical to what the extractor expects. Doing this on the canonical
+      # AgentDesk-Setup.tar.zst means the Setup zip, the updater tarball, AND the portable
+      # zip all inherit the stripped payload from one place.
+      # NOTE: the payload's top level is <bundleName>/bin/… (one level down), so the strip
+      # must recurse — a $staging/bin/* match would silently no-op.
+      - name: Strip unused updater binaries from Setup payload
+        shell: pwsh
+        run: |
+          $dir  = "build/stable-win-x64"
+          $zst  = "$dir/AgentDesk-Setup.tar.zst"
+          $work = "build/setup-repack"
+          $tar  = "build/setup-repack.tar"
+          $zstd = "node_modules/electrobun/dist-win-x64/zig-zstd.exe"
+          if (-not (Test-Path $zstd)) { Write-Error "zig-zstd.exe not found at $zstd"; exit 1 }
+
+          # 1. Extract the payload (top level is <bundleName>/bin, <bundleName>/Resources, …)
+          Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          C:\Windows\System32\tar.exe -xf $zst -C $work
+          if ($LASTEXITCODE -ne 0) { Write-Error "payload extract failed"; exit 1 }
+
+          # 2. Strip the unused binaries wherever they sit under the bundle
+          Get-ChildItem -Path $work -Recurse -Include bspatch.exe,zig-zstd.exe | Remove-Item -Force
+
+          # 3. Re-tar with the identical layout: a single top-level bundle folder
+          $bundleDir = (Get-ChildItem -Path $work -Directory | Select-Object -First 1).Name
+          if (-not $bundleDir) { Write-Error "could not find bundle folder in payload"; exit 1 }
+          Remove-Item -Force $tar -ErrorAction SilentlyContinue
+          C:\Windows\System32\tar.exe -cf $tar -C $work $bundleDir
+          if ($LASTEXITCODE -ne 0) { Write-Error "re-tar failed"; exit 1 }
+
+          # 4. Recompress with Electrobun's own zig-zstd (extractor-compatible format)
+          Remove-Item -Force $zst
+          & $zstd compress -i $tar -o $zst --threads max
+          if ($LASTEXITCODE -ne 0) { Write-Error "zstd recompress failed"; exit 1 }
+
+          # 5. VERIFY: re-extract and assert the binaries are gone but the app is intact.
+          # Fails the build (and thus the release) if the repack went wrong.
+          $verify = "build/setup-verify"
+          Remove-Item -Recurse -Force $verify -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $verify | Out-Null
+          C:\Windows\System32\tar.exe -xf $zst -C $verify
+          if ($LASTEXITCODE -ne 0) { Write-Error "VERIFY: re-extract failed"; exit 1 }
+          if (Get-ChildItem -Path $verify -Recurse -Include bspatch.exe,zig-zstd.exe) {
+            Write-Error "VERIFY: updater binaries still present after repack"; exit 1
+          }
+          if (-not (Get-ChildItem -Path $verify -Recurse -Filter launcher.exe)) {
+            Write-Error "VERIFY: launcher.exe missing after repack — bundle damaged"; exit 1
+          }
+          Write-Host "Setup payload repacked without bspatch.exe / zig-zstd.exe (verified)"
+
+          # 6. Cleanup
+          Remove-Item -Recurse -Force $work, $verify -ErrorAction SilentlyContinue
+          Remove-Item -Force $tar -ErrorAction SilentlyContinue
+
+      # Bundle exe + archive into a single zip so users download one file.
+      # Layout mirrors what electrobun's wrapWindowsInstallerInZip produces:
+      #   AgentDesk-Setup.zip
+      #   ├── AgentDesk-Setup.exe          ← user runs this
+      #   └── .installer/
+      #       ├── AgentDesk-Setup.metadata.json
+      #       └── AgentDesk-Setup.tar.zst
+      # Also rename files to the flat prefix-based names the updater expects:
+      #   {baseUrl}/stable-win-x64-update.json          ← checked by Updater.checkForUpdate()
+      #   {baseUrl}/stable-win-x64-AgentDesk.tar.zst     ← downloaded by Updater.downloadUpdate()
+      - name: Prepare distribution files
+        shell: pwsh
+        run: |
+          $dir = "build/stable-win-x64"
+
+          # Build single-zip installer for user distribution
+          $staging = "$dir/.installer-staging"
+          New-Item -ItemType Directory -Force -Path "$staging/.installer" | Out-Null
+          Copy-Item "$dir/AgentDesk-Setup.exe"           "$staging/AgentDesk-Setup.exe"
+          Copy-Item "$dir/AgentDesk-Setup.metadata.json" "$staging/.installer/AgentDesk-Setup.metadata.json"
+          Copy-Item "$dir/AgentDesk-Setup.tar.zst"       "$staging/.installer/AgentDesk-Setup.tar.zst"
+          Compress-Archive -Path "$staging/*" -DestinationPath "$dir/AgentDesk-win-x64-Setup.zip" -Force
+          Remove-Item -Recurse -Force "$staging"
+
+          # update.json for Updater.checkForUpdate()
+          # Inject version from the git tag (strips leading 'v') so Updater.checkForUpdate()
+          # can return a non-undefined version string for the UI to display.
+          $tag     = "${{ needs.create-release.outputs.tag }}"
+          $semver  = $tag -replace '^v', ''
+          $meta    = Get-Content "$dir/AgentDesk-Setup.metadata.json" | ConvertFrom-Json
+          $meta | Add-Member -NotePropertyName 'version' -NotePropertyValue $semver -Force
+          $meta | ConvertTo-Json -Compress | Set-Content "$dir/stable-win-x64-update.json"
+          # Renamed tarball for Updater.downloadUpdate()
+          Copy-Item "$dir/AgentDesk-Setup.tar.zst" "$dir/stable-win-x64-AgentDesk.tar.zst"
+
+      # Portable build: extract the app bundle (tar.zst) into a plain folder and zip
+      # it. No installer required — users just extract the zip and run the exe directly.
+      # Uses C:\Windows\System32\tar.exe (libarchive, zstd-capable on Server 2022 runners).
+      - name: Build portable zip
+        shell: pwsh
+        run: |
+          $dir      = "build/stable-win-x64"
+          $staging  = "build/portable-staging"
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          # The canonical AgentDesk-Setup.tar.zst was already stripped of the unused updater
+          # binaries upstream ("Strip unused updater binaries from Setup payload"), so the
+          # portable zip inherits the clean payload — no per-zip strip needed here.
+          C:\Windows\System32\tar.exe -xf "$dir/AgentDesk-Setup.tar.zst" -C $staging
+          if ($LASTEXITCODE -ne 0) { Write-Error "tar extraction failed"; exit 1 }
+          Compress-Archive -Path "$staging/*" -DestinationPath "$dir/AgentDesk-win-x64-portable.zip" -Force
+          Remove-Item -Recurse -Force $staging
+          Write-Host "Portable zip created: $dir/AgentDesk-win-x64-portable.zip"
+
+      # draft: true on every upload — the action defaults to false, which would
+      # publish the release the moment the first platform finished uploading.
+      - name: Upload Windows artifacts
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          draft: true
+          files: |
+            build/stable-win-x64/AgentDesk-win-x64-Setup.zip
+            build/stable-win-x64/AgentDesk-win-x64-portable.zip
+            build/stable-win-x64/stable-win-x64-update.json
+            build/stable-win-x64/stable-win-x64-AgentDesk.tar.zst
+          fail_on_unmatched_files: true
+
+  # ── macOS arm64 build (Apple Silicon) ──────────────────────────────────────
+  build-macos-arm64:
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          repository: sarfraznawaz2005/agentdesk-source
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend (Vite)
+        run: bun run vite build
+
+      - name: Build app (Electrobun stable)
+        run: bunx electrobun build --env=stable
+
+      - name: Prepare distribution files
+        run: |
+          set -e
+          dir="build/stable-macos-arm64"
+
+          # metadata.json is at Contents/Resources/metadata.json on macOS
+          metadata="$dir/AgentDesk.app/Contents/Resources/metadata.json"
+          echo "App metadata: $(cat $metadata)"
+
+          # update.json — fetched by Updater.checkForUpdate()
+          # Inject version from git tag so the UI can display it correctly.
+          semver="${{ needs.create-release.outputs.tag }}"
+          semver="${semver#v}"
+          jq --arg v "$semver" '. + {version: $v}' "$metadata" > "$dir/stable-macos-arm64-update.json"
+
+          # tar.zst — downloaded by Updater.downloadUpdate()
+          tar -cf - -C "$dir" "AgentDesk.app" | zstd --stdout > "$dir/stable-macos-arm64-AgentDesk.app.tar.zst"
+
+          # zip — for users to download and drag to /Applications
+          cd "$dir" && zip -r "AgentDesk-mac-arm64.zip" "AgentDesk.app" && cd -
+
+      - name: Upload macOS arm64 artifacts
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          draft: true
+          files: |
+            build/stable-macos-arm64/AgentDesk-mac-arm64.zip
+            build/stable-macos-arm64/stable-macos-arm64-update.json
+            build/stable-macos-arm64/stable-macos-arm64-AgentDesk.app.tar.zst
+          fail_on_unmatched_files: true
+
+  # Intel (x64) macOS build intentionally omitted — macos-13 runners have very
+  # long queue times on GitHub Actions. Apple Silicon covers the vast majority
+  # of current Mac users. Re-add build-macos-x64 here if Intel support is needed.
+
+  # ── Linux x64 build ───────────────────────────────────────────────────────────
+  # CEF is bundled (see electrobun.config.ts linux.bundleCEF: true) — larger
+  # download but required because WebKitGTK has significant limitations.
+  # Note: ApplicationMenu and ContextMenu are no-ops on Linux (Electrobun limitation)
+  # but AgentDesk only calls setApplicationMenu([]) to clear it, so no functional loss.
+  build-linux-x64:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          repository: sarfraznawaz2005/agentdesk-source
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend (Vite)
+        run: bun run vite build
+
+      - name: Install zstd
+        run: sudo apt-get install -y zstd
+
+      - name: Build app (Electrobun stable)
+        run: bunx electrobun build --env=stable
+
+      - name: Prepare distribution files
+        run: |
+          set -e
+          dir="build/stable-linux-x64"
+
+          semver="${{ needs.create-release.outputs.tag }}"
+          semver="${semver#v}"
+
+          # ── Source of truth ──────────────────────────────────────────────────
+          # Electrobun does NOT leave its final deliverables in the build folder.
+          # It renames them into the project-root "artifacts/" folder (its default
+          # `artifactFolder`) with a "<channel>-<os>-<arch>-" prefix. The genuine
+          # *runtime* app bundle (the one whose bin/launcher is the real 92KB
+          # static launcher, NOT the self-extractor) is:
+          #     artifacts/stable-linux-x64-AgentDesk.tar.zst
+          # The leftover build/stable-linux-x64/AgentDesk/ directory is the
+          # macOS-style self-extractor bundle and must NOT be shipped on Linux —
+          # its launcher only self-extracts from a single appended-archive binary.
+          runtime_zst="artifacts/stable-linux-x64-AgentDesk.tar.zst"
+          if [ ! -f "$runtime_zst" ]; then
+            echo "ERROR: runtime tarball not found at $runtime_zst"
+            echo "--- artifacts/ ---";        ls -la artifacts/ || true
+            echo "--- $dir ---";              ls -la "$dir" || true
+            exit 1
+          fi
+
+          # update.json for Updater.checkForUpdate().
+          # Built from the bundle's metadata.json (has identifier/name/channel/hash,
+          # same shape the macOS/Windows jobs use) with the tag version injected.
+          metadata=$(find "$dir" -name "metadata.json" | head -1)
+          echo "Metadata: $metadata"
+          jq --arg v "$semver" '. + {version: $v}' "$metadata" > "$dir/stable-linux-x64-update.json"
+
+          # Updater tarball — electrobun's canonical runtime bundle, used as-is.
+          cp "$runtime_zst" "$dir/stable-linux-x64-AgentDesk.tar.zst"
+
+          # Portable tar.gz for direct user download. We ship the already-unpacked
+          # runtime bundle so users just `tar -xzf` and run ./AgentDesk/bin/launcher
+          # directly — no self-extraction step. This deliberately avoids electrobun's
+          # Linux self-extracting installer, whose embedded tar reader rejects some
+          # archive entries (TarUnsupportedFileType).
+          staging="build/linux-portable-staging"
+          rm -rf "$staging"; mkdir -p "$staging"
+          zstd -d "$runtime_zst" -o "$staging/app.tar"
+          tar -xf "$staging/app.tar" -C "$staging"
+          rm -f "$staging/app.tar"
+          tar -czf "$dir/AgentDesk-linux-x64.tar.gz" -C "$staging" .
+          rm -rf "$staging"
+
+          echo "Linux artifacts prepared:"
+          ls -la "$dir/stable-linux-x64-AgentDesk.tar.zst" \
+                 "$dir/stable-linux-x64-update.json" \
+                 "$dir/AgentDesk-linux-x64.tar.gz"
+
+      - name: Upload Linux artifacts
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          draft: true
+          files: |
+            build/stable-linux-x64/AgentDesk-linux-x64.tar.gz
+            build/stable-linux-x64/stable-linux-x64-update.json
+            build/stable-linux-x64/stable-linux-x64-AgentDesk.tar.zst
+          fail_on_unmatched_files: true
+
+  # ── Publish — the only step that makes the release visible to users ────────
+  # Runs only when all three platform builds succeeded, so a release is never
+  # "latest" with one platform's assets missing (which the auto-updater would
+  # otherwise serve as a broken update to that platform).
+  publish:
+    needs: [create-release, build-windows, build-macos-arm64, build-linux-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --repo "$REPO" --draft=false
+          echo "Published https://github.com/$REPO/releases/tag/$TAG"
+
+  # ── Cleanup — leave nothing behind when a release fails ────────────────────
+  # Deletes the draft release in THIS (public) repo, so the exact same version
+  # can be retried once the cause is fixed with no manual draft surgery.
+  # Deliberately covers guard failures too: a release whose CI was never green
+  # should not leave a draft sitting around either.
+  cleanup-failed-release:
+    needs: [guard, create-release, build-windows, build-macos-arm64, build-linux-x64, publish]
+    # cancelled() too: a run stopped half-way leaves exactly the same debris as
+    # a failed one — a draft release pointing at an unshipped build.
+    if: ${{ failure() || cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # A draft release never has a real git tag in THIS repo —
+          # softprops/action-gh-release only creates one on publish, which is
+          # exactly the step that never ran if this job is running. So there is
+          # no --cleanup-tag needed here; deleting the draft is the whole job.
+          # The provenance tag release.ps1 pushed to the PRIVATE source repo is
+          # release.ps1's own responsibility to remove on this same failure —
+          # this job's PAT is read-only there.
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$REPO" --yes
+            echo "Deleted the draft release $TAG."
+          else
+            echo "No draft release $TAG existed — guard likely failed before create-release ran."
+          fi
+          echo "::notice::Release $TAG failed and was rolled back on the public side — no draft left behind. Fix the cause and re-run release.bat with the same version."

@@ -1,0 +1,210 @@
+name: CI
+
+# The project health gate. These are the same four checks check.ps1 runs
+# locally (typecheck + tests + lint + migration replay) — they used to block
+# `git commit` through .githooks/pre-commit, which made every push wait for a
+# full local run. They now run here instead: push.ps1 pushes first and then
+# dispatches this run, so the wait happens remotely and in parallel.
+#
+# check.ps1 still exists and is unchanged — run it by hand (`.\check.bat`)
+# whenever you want the same verdict without a round trip.
+#
+# release.yml refuses to build a tag whose commit has not passed this workflow,
+# so this is also the gate on every release.
+#
+# ── Two-repo split ───────────────────────────────────────────────────────────
+# Source lives in the PRIVATE sarfraznawaz2005/agentdesk-source. This repo
+# (sarfraznawaz2005/agentdesk, public) holds only workflow files, so Actions
+# stay free/unlimited (private-repo minutes are metered, and macOS runs at a
+# 10x multiplier — not viable on this matrix). `workflow_dispatch` is the ONLY
+# trigger — a `push`/`pull_request`/`pull_request_target` trigger here would
+# let a fork's PR run with access to SOURCE_REPO_TOKEN. Dispatched only by
+# push.ps1 -Watch and release.ps1 (see scripts/gh-actions.ps1's
+# Invoke-GhDispatch), never automatically on push, since there is no push to
+# this repo to react to.
+#
+# Job logs on a public repo are world-readable with no setting to change that
+# (test names, smoke assertion labels, and on failure real source frames) —
+# accepted deliberately, see CLAUDE.md. That acceptance does NOT extend to:
+#   - actions/upload-artifact of the workspace (publishes the whole source tree
+#     as a downloadable zip — turns a partial log leak into a total one)
+#   - tmate/SSH-debug actions (hands an interactive shell on the checked-out
+#     runner to anyone who reads the public log)
+# Never add either to this file or release.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Full 40-char commit SHA in agentdesk-source to check out and test'
+        required: true
+        type: string
+
+# The run's own display title is the only link back to the private commit it
+# tested (its own head SHA is a PUBLIC-repo SHA, since the checkout below is
+# cross-repo) — release.yml's guard job and scripts/gh-actions.ps1's
+# Find-GhDispatchRun both match runs by this exact title.
+run-name: CI ${{ inputs.sha }}
+
+# A newer dispatch for the SAME commit supersedes an older one for that commit.
+# Grouping by inputs.sha (not github.ref, which is always refs/heads/main under
+# workflow_dispatch) matters: grouping by ref would make every dispatch cancel
+# whatever release.ps1 or push.ps1 had in flight for a DIFFERENT commit.
+concurrency:
+  group: ci-${{ inputs.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      # One red check must not hide the state of the others — the whole point of
+      # check.ps1's parallel layout, kept here.
+      fail-fast: false
+      matrix:
+        # Anything with a `cmd` is run as-is; the first three need special
+        # handling below. The job name is what push.ps1 prints when it reports a
+        # failure, so it is also the label you read first.
+        #
+        # ONLY offline smokes belong here — but EVERY offline smoke does: adding
+        # one is a line in this matrix (or in the smoke-tools chain below) in the
+        # same change that writes the script.
+        #
+        # smoke:workflow (live), smoke:steering, `bun run eval` and
+        # verify-ai-sdk-v7-live.ts drive real providers with credentials borrowed
+        # from the local app database and spend real tokens — they are excluded on
+        # purpose and must stay excluded. The first two also skip themselves when
+        # $CI is set so a mistaken entry here fails safe rather than failing red;
+        # eval has no such guard, so it would simply burn tokens on every push.
+        include:
+          - name: typecheck
+          - name: tests
+          - name: lint
+          - name: migrations
+            cmd: bun run smoke:migrations
+          - name: smoke-workflow
+            cmd: bun run smoke:workflow:fake
+          - name: smoke-agent-loop
+            cmd: bun run smoke:agent-loop
+          - name: smoke-prompt-drift
+            cmd: bun run smoke:prompt-drift
+          - name: smoke-goal
+            cmd: bun run smoke:goal
+          - name: smoke-hooks
+            cmd: bun run smoke:hooks
+          - name: smoke-worktree
+            cmd: bun run smoke:worktree-isolation
+          # Its own entry rather than the chain below: it drives five real engine
+          # turns across two projects (~10s) and only grows, and the bug class it
+          # covers is invisible in every other check, so it deserves its own name
+          # in the failure report.
+          - name: smoke-conversation-scope
+            cmd: bun run smoke:conversation-scope
+          # Also its own entry: it runs a real sub-agent AND a real PM turn that
+          # dispatches one, and the failure it guards (a transcript that reads out
+          # of order) is silent — no error, no missing row, just content in the
+          # wrong place, which nothing else here would notice.
+          - name: smoke-chat-order
+            cmd: bun run smoke:chat-order
+          # The short ones share a runner — six separate jobs to save forty
+          # seconds would cost more in queueing than it saves.
+          - name: smoke-tools
+            cmd: >-
+              bun run smoke:skill-search &&
+              bun run smoke:test-mocks &&
+              bun run smoke:schema-parity &&
+              bun run smoke:prompt-cache &&
+              bun run smoke:human-input &&
+              bun run smoke:lsp &&
+              bun run smoke:dispatch-agents &&
+              bun run smoke:eval-offline &&
+              bun run smoke:structured-output &&
+              bun run smoke:automation &&
+              bun run smoke:compact-output &&
+              bun run smoke:token-accounting &&
+              bun run smoke:terminal
+
+    steps:
+      # Cross-repo: the source lives in the private agentdesk-source, not here.
+      # persist-credentials: false is load-bearing — the default leaves
+      # SOURCE_REPO_TOKEN in the workspace's git config, and this same
+      # workspace is what release.yml's build jobs later archive into assets
+      # uploaded to this repo's PUBLIC Releases page.
+      - uses: actions/checkout@v5.0.0
+        with:
+          repository: sarfraznawaz2005/agentdesk-source
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Cache bun's install cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Both the typecheck and lint scripts write into this directory (their
+      # incremental caches live there). tsc/eslint create the file but not the
+      # nested folder, and node_modules/.cache does not exist on a fresh runner.
+      - name: Create the check cache directory
+        run: mkdir -p node_modules/.cache/agentdesk-check
+
+      # Mirrors check.ps1's typecheck rule exactly: tsc's exit code is not
+      # authoritative for TYPE errors — real project "error TS" lines are, with
+      # node_modules excluded. Keying off the exit code alone would make CI red
+      # for library errors that the local gate deliberately ignores.
+      #
+      # But the exit code is still the only signal for a typecheck that did not
+      # RUN. A tsc crash, an unreadable tsconfig, a missing entry file or a bad
+      # flag prints no "error TS" line at all, so the grep found nothing and the
+      # job went green over a check that never happened. The second branch below
+      # closes that: non-zero with no `error TS` anywhere is a broken typecheck,
+      # not a clean one. The ignored-library case still exits zero here, because
+      # it DOES print `error TS` lines — just only under node_modules.
+      - name: Typecheck
+        if: matrix.name == 'typecheck'
+        run: |
+          out="$(bun run typecheck 2>&1)" && code=0 || code=$?
+          echo "$out"
+          if echo "$out" | grep -v node_modules | grep -q 'error TS'; then
+            echo "::error::TypeScript errors found — see the output above."
+            exit 1
+          fi
+          if [ "$code" -ne 0 ] && ! echo "$out" | grep -q 'error TS'; then
+            echo "::error::tsc exited $code without reporting a single type error — the typecheck did not run (crash, bad tsconfig, or missing input). Not a pass."
+            exit 1
+          fi
+
+      # `bun run test`, NOT `bun test`: the latter ignores package.json scripts
+      # and silently drops the --isolate flag the test script carries. See the
+      # long note in check.ps1 for what that breaks.
+      - name: Tests
+        if: matrix.name == 'tests'
+        run: bun run test
+
+      - name: Lint
+        if: matrix.name == 'lint'
+        run: bun run lint
+
+      # Everything else in the matrix. Note what the migration replay can and
+      # cannot prove here: only the fresh-install path runs, because there are no
+      # real user databases on a runner. That still catches a migration or seed
+      # that breaks the v1->latest chain outright — but run `.\check.bat` locally
+      # before shipping a migration to also replay it over your own databases.
+      - name: ${{ matrix.name }}
+        if: matrix.cmd
+        run: ${{ matrix.cmd }}
